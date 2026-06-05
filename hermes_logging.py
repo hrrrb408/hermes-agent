@@ -246,9 +246,13 @@ def setup_logging(
 
     # --- gateway.log (INFO+, gateway component only) ------------------------
     if mode == "gateway":
+        gateway_log_name = os.getenv("HERMES_GATEWAY_LOG_FILE", "gateway.log").strip() or "gateway.log"
+        gateway_log_path = Path(gateway_log_name)
+        if not gateway_log_path.is_absolute():
+            gateway_log_path = log_dir / gateway_log_path
         _add_rotating_handler(
             root,
-            log_dir / "gateway.log",
+            gateway_log_path,
             level=logging.INFO,
             max_bytes=5 * 1024 * 1024,
             backup_count=3,

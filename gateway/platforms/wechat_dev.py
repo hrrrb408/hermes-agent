@@ -6,8 +6,10 @@ not connect to WeChat, does not start the gateway, and does not send replies.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from agent.runtime_memory import RuntimeMemoryContext, build_runtime_prompt_preview
@@ -64,3 +66,103 @@ def handle_dev_wechat_text_message(
         reply_preview=reply_preview,
         llm_call=llm_call,
     )
+
+
+def _load_first_weixin_account(state_home: Path) -> dict | None:
+    account_dir = state_home / "weixin" / "accounts"
+    if not account_dir.is_dir():
+        return None
+    for path in sorted(account_dir.glob("*.json")):
+        if path.name.endswith(".context-tokens.json") or path.name.endswith(".sync.json"):
+            continue
+        try:
+            import json
+
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(payload, dict) and payload.get("token"):
+            payload = dict(payload)
+            payload.setdefault("account_id", path.stem)
+            return payload
+    return None
+
+
+async def run_dev_wechat_gateway() -> bool:
+    """Run the foreground dev WeChat scan-login gateway.
+
+    This reuses the production Weixin iLink adapter but points all runtime
+    metadata at development-only paths. It intentionally does not use
+    ``--replace`` and does not modify global Hermes state.
+    """
+    from gateway.config import GatewayConfig, Platform, PlatformConfig
+    from gateway.dev_isolation import (
+        assert_dev_gateway_safe,
+        configure_dev_gateway_environment,
+        get_dev_gateway_status,
+    )
+    from gateway.platforms.weixin import qr_login
+    from gateway.run import start_gateway
+    from hermes_constants import get_hermes_home
+
+    home = get_hermes_home()
+    paths = assert_dev_gateway_safe(home)
+    status = get_dev_gateway_status(home)
+    if status.state == "running":
+        raise RuntimeError(f"Dev gateway already running with PID {status.pid}")
+    if status.state == "foreign pid":
+        raise RuntimeError(f"Refusing to run with foreign PID in {status.pid_file}")
+
+    for key in ("state_dir", "wechat_state_dir", "log_file"):
+        paths[key].parent.mkdir(parents=True, exist_ok=True)
+    paths["state_dir"].mkdir(parents=True, exist_ok=True)
+    paths["wechat_state_dir"].mkdir(parents=True, exist_ok=True)
+    configure_dev_gateway_environment(home)
+
+    account = _load_first_weixin_account(paths["wechat_state_dir"])
+    if account is None:
+        account = await qr_login(str(paths["wechat_state_dir"]))
+    if not account:
+        raise RuntimeError("Weixin QR login did not produce credentials")
+
+    account_id = str(account.get("account_id") or "").strip()
+    token = str(account.get("token") or "").strip()
+    base_url = str(account.get("base_url") or "").strip()
+    if not account_id or not token:
+        raise RuntimeError("Weixin credentials are incomplete")
+
+    config = GatewayConfig()
+    config.platforms[Platform.WEIXIN] = PlatformConfig(
+        enabled=True,
+        token=token,
+        extra={
+            "account_id": account_id,
+            "token": token,
+            "base_url": base_url,
+            "state_dir": str(paths["wechat_state_dir"]),
+            "dm_policy": "open",
+            "group_policy": "disabled",
+        },
+    )
+
+    print()
+    print("Hermes Dev WeChat Gateway Starting...")
+    print("────────────────────────────────────────")
+    print(f"Source root:       {paths['source_root']}")
+    print(f"HERMES_HOME:       {home}")
+    print("Mode:              scan-login")
+    print("Platform:          wechat-dev")
+    print(f"PID file:          {paths['pid_file']}")
+    print(f"Wechat state dir:  {paths['wechat_state_dir']}")
+    print("Production PID:    not touched")
+    print("Memory injection:  enabled")
+    print()
+    print("Please scan QR code with a test WeChat account if prompted.")
+    print("Press Ctrl+C to stop dev gateway.")
+    print()
+
+    return await start_gateway(config=config, replace=False, verbosity=0)
+
+
+def run_dev_wechat_gateway_foreground() -> bool:
+    return asyncio.run(run_dev_wechat_gateway())

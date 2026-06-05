@@ -44,6 +44,10 @@ _WINDOWS_LOCK_OFFSET = 1024 * 1024
 def _get_pid_path() -> Path:
     """Return the path to the gateway PID file, respecting HERMES_HOME."""
     home = get_hermes_home()
+    override = os.getenv("HERMES_GATEWAY_PID_FILE", "").strip()
+    if override:
+        path = Path(override)
+        return path if path.is_absolute() else home / path
     return home / "gateway.pid"
 
 
@@ -57,6 +61,11 @@ def _get_gateway_lock_path(pid_path: Optional[Path] = None) -> Path:
 
 def _get_runtime_status_path() -> Path:
     """Return the persisted runtime health/status file path."""
+    override = os.getenv("HERMES_GATEWAY_STATE_FILE", "").strip()
+    if override:
+        home = get_hermes_home()
+        path = Path(override)
+        return path if path.is_absolute() else home / path
     return _get_pid_path().with_name(_RUNTIME_STATUS_FILE)
 
 

@@ -39,9 +39,13 @@ Development Gateway:
 - Uses dev-only gateway metadata such as `gateway-dev.pid`.
 - Defaults to local-only host `127.0.0.1`.
 - Defaults to port `18080`.
-- Does not connect to real WeChat by default.
-- Is currently exposed through safe status and dry-run commands, not a long
-  running service.
+- Uses a dev-only WeChat state directory under `gateway/dev/wechat`.
+- Can be run in the foreground as a scan-login development gateway.
+- Can use another WeChat account for isolated testing.
+
+The production Gateway currently running as PID `1717` is the user's active
+Hermes Gateway. Do not stop, restart, replace, or otherwise manage it from
+development commands.
 
 ## Dev WeChat Message Dry-Run
 
@@ -72,10 +76,13 @@ memory is loaded only through the Agent Runtime memory injection layer.
 The development gateway isolation defaults are:
 
 ```text
-Host:      127.0.0.1
-Port:      18080
-PID file:  <HERMES_HOME>/gateway-dev.pid
-Log file:  <HERMES_HOME>/gateway-dev.log
+Host:              127.0.0.1
+Port:              18080
+PID file:          <HERMES_HOME>/gateway-dev.pid
+Runtime state:     <HERMES_HOME>/gateway-dev-state.json
+State dir:         <HERMES_HOME>/gateway/dev
+Wechat state dir:  <HERMES_HOME>/gateway/dev/wechat
+Log file:          <HERMES_HOME>/logs/gateway-dev.log
 ```
 
 Check status with:
@@ -84,9 +91,36 @@ Check status with:
 ./scripts/run-dev-hermes.sh gateway-dev status
 ```
 
-The current safe implementation is status-only. It intentionally does not start
-or stop any gateway process. Use `dev-wechat-message` for runtime validation
-until a local callback server is added.
+Start the development scan-login Gateway in the foreground with:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run
+```
+
+This command uses the development source tree, `hermes-home-dev`, the
+dev-only PID file, and the dev-only WeChat state directory. It does not use
+`--replace`. If no dev Weixin credentials are present, it displays the QR login
+flow so a test WeChat account can scan it.
+
+Stop only the development Gateway with:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev stop
+```
+
+`gateway-dev stop` reads only `gateway-dev.pid` and refuses to stop PID `1717`
+or any process whose command line cannot be verified as the dev gateway.
+
+Do not use these commands for development testing:
+
+```bash
+hermes gateway stop
+hermes gateway restart
+hermes gateway run --replace
+```
+
+Those commands manage the normal Gateway surface and can affect the production
+Gateway when pointed at the production environment.
 
 ## Recommended Real WeChat Path
 
@@ -96,10 +130,10 @@ are fragile and create unnecessary account and privacy risk.
 Recommended progression:
 
 1. Keep using `dev-wechat-message` for dry-run validation.
-2. Add a local-only HTTP callback on `127.0.0.1:18080`.
-3. Test `GET /wechat/callback` and `POST /wechat/callback` locally with `curl`.
-4. Use a WeChat official account test account or a WeCom self-built app.
-5. Only after isolated testing, plan a controlled production Gateway migration.
+2. Use `gateway-dev run` for isolated scan-login testing with a test WeChat
+   account.
+3. Confirm messages enter Agent Runtime and receive runtime memory injection.
+4. Only after isolated testing, plan a controlled production Gateway migration.
 
 ## Architecture Boundary
 

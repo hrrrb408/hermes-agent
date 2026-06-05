@@ -2166,10 +2166,20 @@ DEFAULT_CONFIG = {
         # `gateway-dev status` and dry-run tooling; they do not start a real
         # gateway or affect the production gateway.
         "dev": {
+            "enabled": True,
             "host": "127.0.0.1",
             "port": 18080,
             "pid_file": "gateway-dev.pid",
-            "log_file": "gateway-dev.log",
+            "state_file": "gateway-dev-state.json",
+            "log_file": "logs/gateway-dev.log",
+            "state_dir": "gateway/dev",
+        },
+        "wechat": {
+            "dev": {
+                "enabled": True,
+                "platform_state_dir": "gateway/dev/wechat",
+                "account_label": "dev-wechat",
+            },
         },
     },
 

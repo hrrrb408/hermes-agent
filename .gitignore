@@ -24,6 +24,12 @@ export*
 __pycache__/model_tools.cpython-310.pyc
 __pycache__/web_tools.cpython-310.pyc
 logs/
+gateway-dev.pid
+gateway-dev-state.json
+gateway/dev/
+platforms/wechat-dev/
+*.session
+*.cookie
 data/
 .pytest_cache/
 test_durations.json

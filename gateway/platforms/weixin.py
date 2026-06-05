@@ -1148,8 +1148,10 @@ class WeixinAdapter(BasePlatformAdapter):
         super().__init__(config, Platform.WEIXIN)
         extra = config.extra or {}
         hermes_home = str(get_hermes_home())
+        state_home = str(extra.get("state_dir") or hermes_home).strip() or hermes_home
         self._hermes_home = hermes_home
-        self._token_store = ContextTokenStore(hermes_home)
+        self._state_home = state_home
+        self._token_store = ContextTokenStore(state_home)
         self._typing_cache = TypingTicketCache()
         self._poll_session: Optional[aiohttp.ClientSession] = None
         self._send_session: Optional[aiohttp.ClientSession] = None
@@ -1206,7 +1208,7 @@ class WeixinAdapter(BasePlatformAdapter):
         self._pending_text_batch_tasks: Dict[str, asyncio.Task] = {}
 
         if self._account_id and not self._token:
-            persisted = load_weixin_account(hermes_home, self._account_id)
+            persisted = load_weixin_account(state_home, self._account_id)
             if persisted:
                 self._token = str(persisted.get("token") or "").strip()
                 self._base_url = str(persisted.get("base_url") or self._base_url).strip().rstrip("/")
@@ -1315,7 +1317,7 @@ class WeixinAdapter(BasePlatformAdapter):
 
     async def _poll_loop(self) -> None:
         assert self._poll_session is not None
-        sync_buf = _load_sync_buf(self._hermes_home, self._account_id)
+        sync_buf = _load_sync_buf(self._state_home, self._account_id)
         timeout_ms = LONG_POLL_TIMEOUT_MS
         consecutive_failures = 0
 
@@ -1360,7 +1362,7 @@ class WeixinAdapter(BasePlatformAdapter):
                 new_sync_buf = str(response.get("get_updates_buf") or "")
                 if new_sync_buf:
                     sync_buf = new_sync_buf
-                    _save_sync_buf(self._hermes_home, self._account_id, sync_buf)
+                    _save_sync_buf(self._state_home, self._account_id, sync_buf)
 
                 for message in response.get("msgs") or []:
                     asyncio.create_task(self._process_message_safe(message))

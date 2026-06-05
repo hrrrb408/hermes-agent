@@ -6764,15 +6764,17 @@ def cmd_dev_info(args):
         print()
         print("Hermes gateway")
         print("────────────────────────────────────────")
-        print("Production/global gateway: not managed by dev environment")
-        print(f"Dev gateway:                {dev_gateway.state}")
-        print(f"Dev gateway home:           {dev_gateway.home}")
-        print(f"Dev gateway host:           {dev_gateway.host}")
-        print(f"Dev gateway port:           {dev_gateway.port}")
-        print(f"Dev gateway pid file:       {dev_gateway.pid_file.name}")
-        print(f"Dev gateway log file:       {dev_gateway.log_file.name}")
-        print("Wechat adapter:             available")
-        print("Wechat dry-run:             available")
+        print("Production gateway:   not managed by dev environment")
+        print(f"Dev gateway:          {dev_gateway.state}")
+        print("Mode:                 scan-login")
+        print("Platform:             wechat-dev")
+        print(f"HERMES_HOME:          {dev_gateway.home}")
+        print(f"PID file:             {dev_gateway.pid_file.name}")
+        print(f"State dir:            {dev_gateway.state_dir.relative_to(dev_gateway.home)}")
+        print(f"Wechat state dir:     {dev_gateway.wechat_state_dir.relative_to(dev_gateway.home)}")
+        print("Wechat dry-run:       available")
+        print(f"Wechat scan runner:   {dev_gateway.scan_runner}")
+        print(f"Isolation check:      {dev_gateway.isolation}")
     except Exception as exc:
         print()
         print("Hermes gateway")
@@ -6895,18 +6897,30 @@ def cmd_dev_wechat_message(args):
 
 
 def cmd_gateway_dev(args):
-    """Show dev gateway isolation status."""
-    if args.action != "status":
-        print("ERROR gateway-dev currently supports status only.", file=sys.stderr)
-        print("Use dev-wechat-message for safe WeChat runtime dry-run.", file=sys.stderr)
-        sys.exit(1)
+    """Manage the isolated dev gateway."""
     try:
-        from gateway.dev_isolation import format_dev_gateway_status, get_dev_gateway_status
+        if args.action == "status":
+            from gateway.dev_isolation import format_dev_gateway_status, get_dev_gateway_status
 
-        print()
-        print(format_dev_gateway_status(get_dev_gateway_status()))
+            print()
+            print(format_dev_gateway_status(get_dev_gateway_status()))
+            return
+        if args.action == "run":
+            from gateway.platforms.wechat_dev import run_dev_wechat_gateway_foreground
+
+            success = run_dev_wechat_gateway_foreground()
+            if not success:
+                sys.exit(1)
+            return
+        if args.action == "stop":
+            from gateway.dev_isolation import stop_dev_gateway
+
+            print(stop_dev_gateway())
+            return
+        print(f"ERROR Unsupported gateway-dev action: {args.action}", file=sys.stderr)
+        sys.exit(1)
     except Exception as exc:
-        print(f"ERROR Failed to read dev gateway status: {exc}", file=sys.stderr)
+        print(f"ERROR gateway-dev {args.action} failed: {exc}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -7034,6 +7048,21 @@ def cmd_dev_check(args):
             dev_gateway.pid_file.name,
         )
         _add(
+            "PASS" if str(dev_gateway.pid_file).startswith(str(expected_hermes_home)) else "FAIL",
+            "Dev pid under home",
+            str(dev_gateway.pid_file),
+        )
+        _add(
+            "PASS" if str(dev_gateway.state_dir).startswith(str(expected_hermes_home)) else "FAIL",
+            "Dev state dir",
+            str(dev_gateway.state_dir),
+        )
+        _add(
+            "PASS" if str(dev_gateway.wechat_state_dir).startswith(str(expected_hermes_home)) else "FAIL",
+            "Wechat state dir",
+            str(dev_gateway.wechat_state_dir),
+        )
+        _add(
             "PASS" if dev_gateway.host == "127.0.0.1" else "FAIL",
             "Dev gateway host",
             dev_gateway.host,
@@ -7044,6 +7073,9 @@ def cmd_dev_check(args):
             str(dev_gateway.port),
         )
         _add("PASS", "Dev gateway status", dev_gateway.state)
+        _add("PASS" if dev_gateway.scan_runner == "available" else "WARN", "Gateway-dev run", dev_gateway.scan_runner)
+        _add("PASS", "Gateway-dev status", "available")
+        _add("PASS", "Gateway-dev stop", "available")
     except Exception as exc:
         _add("FAIL", "Dev gateway", str(exc))
 
@@ -7054,6 +7086,12 @@ def cmd_dev_check(args):
     except Exception as exc:
         _add("FAIL", "Wechat adapter", str(exc))
     _add("PASS", "dev-wechat-message", "available")
+    try:
+        from agent.runtime_memory import build_runtime_prompt_preview  # noqa: F401
+
+        _add("PASS", "Runtime memory injection", "available")
+    except Exception as exc:
+        _add("FAIL", "Runtime memory injection", str(exc))
 
     try:
         from hermes_cli.memory_router import validate_memory
@@ -15743,14 +15781,14 @@ Examples:
 
     gateway_dev_parser = subparsers.add_parser(
         "gateway-dev",
-        help="Show development gateway isolation status",
+        help="Manage isolated development WeChat gateway",
     )
     gateway_dev_parser.add_argument(
         "action",
         nargs="?",
         default="status",
-        choices=["status"],
-        help="Development gateway action (status only)",
+        choices=["status", "run", "stop"],
+        help="Development gateway action",
     )
     gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
 
