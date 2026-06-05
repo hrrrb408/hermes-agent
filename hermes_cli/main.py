@@ -6781,7 +6781,7 @@ def cmd_dev_check(args):
     _path_status("config.yaml", expected_hermes_home / "config.yaml")
     _path_status(".env", expected_hermes_home / ".env")
     _path_status("SOUL.md", expected_hermes_home / "SOUL.md")
-    _path_status("MEMORY.md", expected_hermes_home / "memories" / "MEMORY.md")
+    _path_status("legacy MEMORY.md", expected_hermes_home / "memories" / "MEMORY.md")
     _path_status("USER.md", expected_hermes_home / "memories" / "USER.md")
     _path_status("state.db", expected_hermes_home / "state.db")
 
@@ -6810,6 +6810,17 @@ def cmd_dev_check(args):
         elif state_exists:
             value = "state file present, no pid"
         _add("WARN", "Gateway", value)
+
+    try:
+        from hermes_cli.memory_router import validate_memory
+
+        memory_result = validate_memory(expected_hermes_home)
+        for status, label, value in memory_result.checks:
+            _add(status, label, value)
+        for failure in memory_result.failures:
+            _add("FAIL", "Memory detail", failure)
+    except Exception as exc:
+        _add("FAIL", "Memory system", str(exc))
 
     has_fail = any(status == "FAIL" for status, _label, _value in checks)
     has_warn = any(status == "WARN" for status, _label, _value in checks)
@@ -15470,6 +15481,57 @@ Examples:
         help="Check development environment isolation",
     )
     dev_check_parser.set_defaults(func=cmd_dev_check)
+
+    # =========================================================================
+    # hierarchical memory router commands
+    # =========================================================================
+    from hermes_cli.memory_router import (
+        cmd_memory_check,
+        cmd_memory_index,
+        cmd_memory_list,
+        cmd_memory_root,
+        cmd_memory_search,
+        cmd_memory_show,
+    )
+
+    memory_root_parser = subparsers.add_parser(
+        "memory-root",
+        help="Show hierarchical memory root router",
+    )
+    memory_root_parser.set_defaults(func=cmd_memory_root)
+
+    memory_index_parser = subparsers.add_parser(
+        "memory-index",
+        help="Show a category memory index",
+    )
+    memory_index_parser.add_argument("category", help="Memory category name")
+    memory_index_parser.set_defaults(func=cmd_memory_index)
+
+    memory_list_parser = subparsers.add_parser(
+        "memory-list",
+        help="List hierarchical memory items",
+    )
+    memory_list_parser.set_defaults(func=cmd_memory_list)
+
+    memory_show_parser = subparsers.add_parser(
+        "memory-show",
+        help="Show a memory record by memory_id",
+    )
+    memory_show_parser.add_argument("memory_id", help="Memory id, e.g. MEM-HERMES-001")
+    memory_show_parser.set_defaults(func=cmd_memory_show)
+
+    memory_search_parser = subparsers.add_parser(
+        "memory-search",
+        help="Search hierarchical memory files by keyword",
+    )
+    memory_search_parser.add_argument("query", help="Keyword to search")
+    memory_search_parser.set_defaults(func=cmd_memory_search)
+
+    memory_check_parser = subparsers.add_parser(
+        "memory-check",
+        help="Check hierarchical memory structure and references",
+    )
+    memory_check_parser.set_defaults(func=cmd_memory_check)
 
     # =========================================================================
     # update command
