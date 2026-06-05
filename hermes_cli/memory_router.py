@@ -22,6 +22,7 @@ VALID_TTL = {"permanent", "project", "session", "temporary"}
 VALID_STATUS = {"active", "archived", "deprecated", "superseded", "conflict"}
 VALID_CATEGORY_STATUS = {"active", "archived", "deprecated"}
 CATEGORY_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+MEMORY_ID_RE = re.compile(r"^MEM-[A-Z0-9][A-Z0-9_-]*-[0-9]{3,}$")
 
 ROOT_TEMPLATE = """# Hermes Memory Root Router
 
@@ -133,6 +134,14 @@ def resolve_memory_uri(uri: str, home: Path | None = None) -> Path:
     return memory_dir(home) / rel
 
 
+def _is_memory_path(path: Path, home: Path | None = None) -> bool:
+    try:
+        path.resolve().relative_to(memory_dir(home).resolve())
+        return True
+    except ValueError:
+        return False
+
+
 def ensure_memory_scaffold(home: Path | None = None) -> None:
     home = home or get_hermes_home()
     mem_dir = memory_dir(home)
@@ -165,6 +174,7 @@ def append_event(
     *,
     memory_id: str | None = None,
     index: str | None = None,
+    storage: str | None = None,
 ) -> None:
     home = home or get_hermes_home()
     ensure_memory_scaffold(home)
@@ -178,6 +188,8 @@ def append_event(
         event["memory_id"] = memory_id
     if index:
         event["index"] = index
+    if storage:
+        event["storage"] = storage
     with (memory_dir(home) / "events.jsonl").open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(event, ensure_ascii=False) + "\n")
 
@@ -207,6 +219,51 @@ def _split_sections(text: str) -> list[tuple[str, list[str]]]:
     if current_title is not None:
         sections.append((current_title, current_lines))
     return sections
+
+
+def _document_header(text: str) -> str:
+    first_heading = re.search(r"^##\s+", text, flags=re.MULTILINE)
+    if first_heading:
+        return text[: first_heading.start()].rstrip() + "\n"
+    return text.rstrip() + "\n"
+
+
+def _today() -> str:
+    return datetime.now().astimezone().date().isoformat()
+
+
+def _slug(value: str) -> str:
+    lowered = value.casefold()
+    chars: list[str] = []
+    for char in lowered:
+        if char.isascii() and char.isalnum():
+            chars.append(char)
+        elif char in {"-", "_"}:
+            chars.append(char)
+        elif char.isspace():
+            chars.append("-")
+    slug = re.sub(r"-+", "-", "".join(chars)).strip("-_")
+    return slug or "memory"
+
+
+def validate_memory_id(memory_id: str) -> None:
+    if not MEMORY_ID_RE.match(memory_id):
+        raise ValueError(
+            f"invalid memory id: {memory_id!r}. Must match MEM-<NAME>-<NNN>"
+        )
+
+
+def validate_memory_fields(*, importance: str, ttl: str, status: str, tags: str, summary: str) -> None:
+    if importance not in VALID_IMPORTANCE:
+        raise ValueError(f"Invalid importance: {importance}")
+    if ttl not in VALID_TTL:
+        raise ValueError(f"Invalid ttl: {ttl}")
+    if status not in VALID_STATUS:
+        raise ValueError(f"Invalid status: {status}")
+    if not _normalize_keywords(tags):
+        raise ValueError("tags cannot be empty")
+    if not summary.strip():
+        raise ValueError("summary cannot be empty")
 
 
 def parse_root(home: Path | None = None) -> dict[str, RootCategory]:
@@ -302,6 +359,22 @@ def backup_memory_root(home: Path | None = None) -> Path:
     return backup
 
 
+def backup_file(path: Path, prefix: str, home: Path | None = None) -> Path:
+    home = home or get_hermes_home()
+    ensure_memory_scaffold(home)
+    snapshots = memory_dir(home) / "snapshots"
+    snapshots.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    safe_prefix = re.sub(r"[^A-Za-z0-9_-]+", "-", prefix).strip("-") or "MEMORY"
+    backup = snapshots / f"{safe_prefix}-{stamp}{path.suffix or '.bak'}"
+    counter = 1
+    while backup.exists():
+        backup = snapshots / f"{safe_prefix}-{stamp}-{counter}{path.suffix or '.bak'}"
+        counter += 1
+    backup.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+    return backup
+
+
 def write_root_categories(categories: Iterable[RootCategory], home: Path | None = None) -> None:
     home = home or get_hermes_home()
     memory_root(home).write_text(_render_root(categories), encoding="utf-8")
@@ -350,10 +423,56 @@ def parse_index(category: str, home: Path | None = None) -> list[MemoryItem]:
     return items
 
 
+def category_index_path(category: str, home: Path | None = None) -> Path:
+    categories = parse_root(home)
+    if category not in categories:
+        raise KeyError(f"memory category not found: {category}")
+    return resolve_memory_uri(categories[category].fields.get("index", ""), home)
+
+
+def _render_index_item(item: MemoryItem) -> str:
+    fields = item.fields
+    ordered = [
+        "type",
+        "importance",
+        "ttl",
+        "status",
+        "tags",
+        "storage",
+        "created_at",
+        "updated_at",
+        "summary",
+    ]
+    lines = [f"## {item.memory_id} {item.title}", ""]
+    for field in ordered:
+        lines.append(f"- {field}: {fields.get(field, '')}")
+    return "\n".join(lines).rstrip()
+
+
+def write_index_items(category: str, items: list[MemoryItem], home: Path | None = None) -> None:
+    path = category_index_path(category, home)
+    header = _document_header(path.read_text(encoding="utf-8"))
+    parts = [header.rstrip()]
+    for item in items:
+        parts.extend(["", _render_index_item(item)])
+    path.write_text("\n".join(parts).rstrip() + "\n", encoding="utf-8")
+
+
+def find_item_location(memory_id: str, home: Path | None = None) -> tuple[MemoryItem, Path, list[MemoryItem]] | None:
+    for category in parse_root(home):
+        items = parse_index(category, home)
+        for item in items:
+            if item.memory_id == memory_id:
+                return item, category_index_path(category, home), items
+    return None
+
+
 def list_items(home: Path | None = None, *, include_all: bool = False) -> list[MemoryItem]:
     items: list[MemoryItem] = []
     for category in active_root_categories(home, include_all=include_all):
-        items.extend(parse_index(category, home))
+        for item in parse_index(category, home):
+            if include_all or item.fields.get("status") == "active":
+                items.append(item)
     return items
 
 
@@ -362,6 +481,183 @@ def find_item(memory_id: str, home: Path | None = None) -> MemoryItem | None:
         if item.memory_id == memory_id:
             return item
     return None
+
+
+def _record_uri_for(category: str, memory_id: str, title: str) -> str:
+    if category == "hermes":
+        return f"memory://records/projects/hermes/{memory_id.casefold()}.md"
+    return f"memory://records/{category}/{memory_id.casefold()}.md"
+
+
+def _validate_record_uri(uri: str, home: Path | None = None) -> Path:
+    if not uri.startswith("memory://records/"):
+        raise ValueError(f"Invalid storage path: {uri}")
+    path = resolve_memory_uri(uri, home)
+    if not _is_memory_path(path, home):
+        raise ValueError(f"Invalid storage path: {uri}")
+    return path
+
+
+def _record_body_from_text(text: str) -> str:
+    match = re.search(
+        r"^## Details\s*\n(?P<body>.*?)(?=^## Metadata\s*$|\Z)",
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if match:
+        return match.group("body").strip()
+    return ""
+
+
+def _render_record(item: MemoryItem, body: str) -> str:
+    fields = item.fields
+    details = body.strip() or "No details provided yet."
+    return f"""# {item.memory_id} {item.title}
+
+## Summary
+
+{fields.get("summary", "")}
+
+## Details
+
+{details}
+
+## Metadata
+
+- category: {item.category}
+- type: {fields.get("type", "")}
+- importance: {fields.get("importance", "")}
+- ttl: {fields.get("ttl", "")}
+- status: {fields.get("status", "")}
+- tags: {fields.get("tags", "")}
+- created_at: {fields.get("created_at", "")}
+- updated_at: {fields.get("updated_at", "")}
+"""
+
+
+def create_memory_item(args) -> tuple[MemoryItem, str]:
+    ensure_memory_scaffold()
+    category = args.category
+    categories = parse_root()
+    if category not in categories:
+        raise ValueError(f"Category not found: {category}")
+    category_status = categories[category].fields.get("status", "active")
+    if category_status != "active":
+        raise ValueError(f"Category is {category_status}: {category}")
+
+    memory_id = args.memory_id
+    validate_memory_id(memory_id)
+    if find_item(memory_id) is not None:
+        raise ValueError(f"Duplicate memory id: {memory_id}")
+
+    tags = _normalize_keywords(args.tags)
+    validate_memory_fields(
+        importance=args.importance,
+        ttl=args.ttl,
+        status="active",
+        tags=tags,
+        summary=args.summary,
+    )
+
+    storage = args.record_path or _record_uri_for(category, memory_id, args.title)
+    record_path = _validate_record_uri(storage)
+    if record_path.exists():
+        raise FileExistsError(f"Record file already exists: {storage}")
+
+    index_path = category_index_path(category)
+    backup_file(index_path, f"INDEX-{category}")
+
+    today = _today()
+    item = MemoryItem(
+        memory_id=memory_id,
+        title=args.title,
+        category=category,
+        fields={
+            "type": args.type,
+            "importance": args.importance,
+            "ttl": args.ttl,
+            "status": "active",
+            "tags": tags,
+            "storage": storage,
+            "created_at": today,
+            "updated_at": today,
+            "summary": args.summary,
+        },
+    )
+    items = parse_index(category)
+    items.append(item)
+    write_index_items(category, items)
+
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    body = args.body or args.summary
+    record_path.write_text(_render_record(item, body), encoding="utf-8")
+    append_event(
+        "memory_create",
+        category,
+        f"Created memory {memory_id}",
+        memory_id=memory_id,
+        storage=storage,
+    )
+    return item, categories[category].fields.get("index", "")
+
+
+def update_memory_item(args, *, archive: bool = False) -> MemoryItem:
+    ensure_memory_scaffold()
+    location = find_item_location(args.memory_id)
+    if location is None:
+        raise ValueError(f"Memory not found: {args.memory_id}")
+    item, index_path, items = location
+    record_path = _validate_record_uri(item.storage)
+    if not record_path.exists():
+        raise FileNotFoundError(f"Memory record not found: {item.storage}")
+
+    if archive and item.fields.get("status") == "archived":
+        return item
+
+    updates: dict[str, str] = {}
+    for field in ("title", "type", "importance", "ttl", "status", "tags", "summary"):
+        value = getattr(args, field, None)
+        if value is None:
+            continue
+        updates[field] = _normalize_keywords(value) if field == "tags" else value
+    if archive:
+        updates["status"] = "archived"
+    if "importance" in updates and updates["importance"] not in VALID_IMPORTANCE:
+        raise ValueError(f"Invalid importance: {updates['importance']}")
+    if "ttl" in updates and updates["ttl"] not in VALID_TTL:
+        raise ValueError(f"Invalid ttl: {updates['ttl']}")
+    if "status" in updates and updates["status"] not in VALID_STATUS:
+        raise ValueError(f"Invalid status: {updates['status']}")
+    if "tags" in updates and not updates["tags"]:
+        raise ValueError("tags cannot be empty")
+    if "summary" in updates and not updates["summary"].strip():
+        raise ValueError("summary cannot be empty")
+
+    if not updates and getattr(args, "body", None) is None:
+        return item
+
+    backup_file(index_path, f"INDEX-{item.category}")
+    backup_file(record_path, f"RECORD-{item.memory_id}")
+
+    if "title" in updates:
+        item.title = updates.pop("title")
+    item.fields.update(updates)
+    item.fields["updated_at"] = _today()
+    write_index_items(item.category, items)
+
+    existing_text = record_path.read_text(encoding="utf-8")
+    body = getattr(args, "body", None)
+    if body is None:
+        body = _record_body_from_text(existing_text) or item.fields.get("summary", "")
+    record_path.write_text(_render_record(item, body), encoding="utf-8")
+    append_event(
+        "memory_archive" if archive else "memory_update",
+        item.category,
+        f"{'Archived' if archive else 'Updated'} memory {item.memory_id}",
+        memory_id=item.memory_id,
+        storage=item.storage,
+    )
+    return item
 
 
 def validate_memory(home: Path | None = None) -> MemoryCheckResult:
@@ -632,6 +928,55 @@ def cmd_memory_search(args) -> None:
 
 def cmd_memory_check(args) -> None:
     sys.exit(print_memory_check())
+
+
+def _print_write_result(header: str, item: MemoryItem, *, index: str | None = None) -> None:
+    check = validate_memory()
+    print()
+    print(header)
+    print()
+    print(f"id: {item.memory_id}")
+    print(f"category: {item.category}")
+    if index:
+        print(f"index: {index}")
+    print(f"storage: {item.storage}")
+    print(f"status: {item.fields.get('status', '')}")
+    print()
+    print(f"Result: {'PASS' if check.ok else 'FAIL'}")
+    if check.failures:
+        for failure in check.failures:
+            print(f"- {failure}")
+        sys.exit(1)
+
+
+def cmd_memory_add(args) -> None:
+    try:
+        item, index = create_memory_item(args)
+    except (ValueError, FileExistsError, KeyError) as exc:
+        print(f"ERROR {exc}", file=sys.stderr)
+        sys.exit(1)
+    _print_write_result("Memory added", item, index=index)
+
+
+def cmd_memory_update(args) -> None:
+    try:
+        item = update_memory_item(args)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"ERROR {exc}", file=sys.stderr)
+        sys.exit(1)
+    _print_write_result("Memory updated", item)
+
+
+def cmd_memory_archive(args) -> None:
+    try:
+        before = find_item(args.memory_id)
+        item = update_memory_item(args, archive=True)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"ERROR {exc}", file=sys.stderr)
+        sys.exit(1)
+    if before and before.fields.get("status") == "archived":
+        print(f"Memory already archived: {args.memory_id}")
+    _print_write_result("Memory archived", item)
 
 
 def cmd_memory_category_list(args) -> None:

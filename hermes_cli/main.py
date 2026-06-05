@@ -15491,12 +15491,15 @@ Examples:
         cmd_memory_category_list,
         cmd_memory_category_show,
         cmd_memory_category_update,
+        cmd_memory_add,
+        cmd_memory_archive,
         cmd_memory_check,
         cmd_memory_index,
         cmd_memory_list,
         cmd_memory_root,
         cmd_memory_search,
         cmd_memory_show,
+        cmd_memory_update,
     )
 
     memory_root_parser = subparsers.add_parser(
@@ -15547,6 +15550,69 @@ Examples:
         help="Check hierarchical memory structure and references",
     )
     memory_check_parser.set_defaults(func=cmd_memory_check)
+
+    memory_add_parser = subparsers.add_parser(
+        "memory-add",
+        help="Add a hierarchical memory item",
+    )
+    memory_add_parser.add_argument("--category", required=True, help="Memory category")
+    memory_add_parser.add_argument("--id", dest="memory_id", required=True, help="Memory id")
+    memory_add_parser.add_argument("--title", required=True, help="Memory title")
+    memory_add_parser.add_argument("--type", required=True, help="Memory type")
+    memory_add_parser.add_argument(
+        "--importance",
+        required=True,
+        choices=["P0", "P1", "P2", "P3"],
+        help="Memory importance",
+    )
+    memory_add_parser.add_argument(
+        "--ttl",
+        required=True,
+        choices=["permanent", "project", "session", "temporary"],
+        help="Memory ttl",
+    )
+    memory_add_parser.add_argument("--tags", required=True, help="Comma-separated tags")
+    memory_add_parser.add_argument("--summary", required=True, help="Memory summary")
+    memory_add_parser.add_argument("--body", help="Detailed memory body")
+    memory_add_parser.add_argument(
+        "--record-path",
+        help="Optional memory://records/... storage path",
+    )
+    memory_add_parser.set_defaults(func=cmd_memory_add)
+
+    memory_update_parser = subparsers.add_parser(
+        "memory-update",
+        help="Update a hierarchical memory item",
+    )
+    memory_update_parser.add_argument("memory_id", help="Memory id")
+    memory_update_parser.add_argument("--title", help="Memory title")
+    memory_update_parser.add_argument("--type", help="Memory type")
+    memory_update_parser.add_argument(
+        "--importance",
+        choices=["P0", "P1", "P2", "P3"],
+        help="Memory importance",
+    )
+    memory_update_parser.add_argument(
+        "--ttl",
+        choices=["permanent", "project", "session", "temporary"],
+        help="Memory ttl",
+    )
+    memory_update_parser.add_argument(
+        "--status",
+        choices=["active", "archived", "deprecated", "superseded", "conflict"],
+        help="Memory status",
+    )
+    memory_update_parser.add_argument("--tags", help="Comma-separated tags")
+    memory_update_parser.add_argument("--summary", help="Memory summary")
+    memory_update_parser.add_argument("--body", help="Detailed memory body")
+    memory_update_parser.set_defaults(func=cmd_memory_update)
+
+    memory_archive_parser = subparsers.add_parser(
+        "memory-archive",
+        help="Archive a hierarchical memory item",
+    )
+    memory_archive_parser.add_argument("memory_id", help="Memory id")
+    memory_archive_parser.set_defaults(func=cmd_memory_archive)
 
     memory_category_list_parser = subparsers.add_parser(
         "memory-category-list",
