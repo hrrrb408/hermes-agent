@@ -15494,6 +15494,7 @@ Examples:
         cmd_memory_add,
         cmd_memory_archive,
         cmd_memory_check,
+        cmd_memory_context,
         cmd_memory_index,
         cmd_memory_list,
         cmd_memory_root,
@@ -15550,6 +15551,47 @@ Examples:
         help="Check hierarchical memory structure and references",
     )
     memory_check_parser.set_defaults(func=cmd_memory_check)
+
+    memory_context_parser = subparsers.add_parser(
+        "memory-context",
+        help="Load relevant hierarchical memory context for a query",
+    )
+    memory_context_parser.add_argument("query", help="Current user query")
+    memory_context_parser.add_argument(
+        "--max-categories",
+        type=int,
+        default=3,
+        help="Maximum root categories to select (default: 3)",
+    )
+    memory_context_parser.add_argument(
+        "--max-memories",
+        type=int,
+        default=5,
+        help="Maximum memories to load (default: 5)",
+    )
+    memory_context_parser.add_argument(
+        "--max-record-chars",
+        type=int,
+        default=3000,
+        help="Maximum characters per memory record (default: 3000)",
+    )
+    memory_context_parser.add_argument(
+        "--include-archived",
+        action="store_true",
+        help="Include archived/deprecated/superseded/conflict memories",
+    )
+    memory_context_parser.add_argument(
+        "--show-scores",
+        action="store_true",
+        help="Show category and memory match scores",
+    )
+    memory_context_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
+    )
+    memory_context_parser.set_defaults(func=cmd_memory_context)
 
     memory_add_parser = subparsers.add_parser(
         "memory-add",

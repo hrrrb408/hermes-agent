@@ -117,6 +117,28 @@ class MemoryCheckResult:
     failures: list[str]
 
 
+@dataclass
+class ScoredCategory:
+    category: RootCategory
+    score: int
+
+
+@dataclass
+class ScoredMemory:
+    item: MemoryItem
+    score: int
+    record_text: str
+    truncated: bool
+
+
+@dataclass
+class MemoryContextResult:
+    query: str
+    selected_categories: list[ScoredCategory]
+    loaded_memories: list[ScoredMemory]
+    skipped: list[str]
+
+
 def memory_root(home: Path | None = None) -> Path:
     return (home or get_hermes_home()) / "MEMORY.md"
 
@@ -244,6 +266,101 @@ def _slug(value: str) -> str:
             chars.append("-")
     slug = re.sub(r"-+", "-", "".join(chars)).strip("-_")
     return slug or "memory"
+
+
+def _query_terms(query: str) -> list[str]:
+    lowered = query.casefold()
+    terms: set[str] = set(re.findall(r"[a-z0-9_-]{2,}", lowered))
+    for chunk in re.findall(r"[\u4e00-\u9fff]{2,}", query):
+        terms.add(chunk)
+        for size in (2, 3, 4):
+            if len(chunk) >= size:
+                for idx in range(0, len(chunk) - size + 1):
+                    terms.add(chunk[idx : idx + size])
+    return sorted(terms, key=lambda item: (-len(item), item))
+
+
+def _contains(text: str, needle: str) -> bool:
+    return needle.casefold() in text.casefold()
+
+
+def _priority_bonus(priority: str) -> int:
+    return {"P0": 3, "P1": 2, "P2": 1}.get(priority, 0)
+
+
+def _importance_rank(importance: str) -> int:
+    return {"P0": 0, "P1": 1, "P2": 2, "P3": 3}.get(importance, 9)
+
+
+def _date_sort_value(value: str) -> str:
+    return value or ""
+
+
+def _truncate_text(text: str, limit: int) -> tuple[str, bool]:
+    if limit <= 0:
+        return "", bool(text)
+    if len(text) <= limit:
+        return text, False
+    return text[:limit].rstrip() + "\n[truncated]", True
+
+
+def score_category(query: str, category: RootCategory) -> int:
+    terms = _query_terms(query)
+    fields = category.fields
+    name = category.name
+    keywords = fields.get("keywords", "")
+    description = fields.get("description", "")
+    scope = fields.get("scope", "")
+    score = 0
+    if _contains(name, query) or _contains(query, name):
+        score += 10
+    for term in terms:
+        if _contains(name, term):
+            score += 8
+        if _contains(keywords, term):
+            score += 5
+        if _contains(description, term):
+            score += 3
+        if _contains(scope, term):
+            score += 2
+    if score > 0:
+        score += _priority_bonus(fields.get("priority", ""))
+    return score
+
+
+def score_memory_item(query: str, item: MemoryItem) -> int:
+    terms = _query_terms(query)
+    fields = item.fields
+    searchable = {
+        "memory_id": item.memory_id,
+        "title": item.title,
+        "type": fields.get("type", ""),
+        "tags": fields.get("tags", ""),
+        "summary": fields.get("summary", ""),
+        "storage": fields.get("storage", ""),
+        "ttl": fields.get("ttl", ""),
+    }
+    score = 0
+    if _contains(item.title, query):
+        score += 10
+    for term in terms:
+        if _contains(searchable["memory_id"], term):
+            score += 8
+        if _contains(searchable["title"], term):
+            score += 6
+        if _contains(searchable["tags"], term):
+            score += 5
+        if _contains(searchable["summary"], term):
+            score += 4
+        if _contains(searchable["type"], term):
+            score += 2
+        if _contains(searchable["storage"], term):
+            score += 1
+        if _contains(searchable["ttl"], term):
+            score += 1
+    if score > 0:
+        score += _priority_bonus(fields.get("importance", ""))
+    return score
 
 
 def validate_memory_id(memory_id: str) -> None:
@@ -660,6 +777,216 @@ def update_memory_item(args, *, archive: bool = False) -> MemoryItem:
     return item
 
 
+def load_memory_context(
+    query: str,
+    *,
+    max_categories: int = 3,
+    max_memories: int = 5,
+    max_record_chars: int = 3000,
+    include_archived: bool = False,
+) -> MemoryContextResult:
+    query = query.strip()
+    if not query:
+        raise ValueError("Query is required")
+    root = memory_root()
+    if not root.exists():
+        raise FileNotFoundError("MEMORY.md not found")
+
+    categories = active_root_categories(include_all=include_archived)
+    scored_categories = [
+        ScoredCategory(category=category, score=score_category(query, category))
+        for category in categories.values()
+    ]
+    matched_categories = [entry for entry in scored_categories if entry.score > 0]
+    selected_categories = sorted(
+        matched_categories or scored_categories,
+        key=lambda entry: (
+            -entry.score,
+            _importance_rank(entry.category.fields.get("priority", "")),
+            entry.category.name,
+        ),
+    )[:max_categories]
+
+    selected_names = {entry.category.name for entry in selected_categories}
+    if not matched_categories:
+        selected_names = set(categories)
+
+    candidates: list[MemoryItem] = []
+    skipped: list[str] = []
+    for category_name in selected_names:
+        try:
+            items = parse_index(category_name)
+        except FileNotFoundError:
+            category = categories.get(category_name)
+            uri = category.fields.get("index", "") if category else category_name
+            skipped.append(f"WARN Category index not found: {uri}")
+            continue
+        for item in items:
+            status = item.fields.get("status", "")
+            if not include_archived and status != "active":
+                if score_memory_item(query, item) > 0:
+                    skipped.append(f"Skipped non-active memory: {item.memory_id} status={status}")
+                continue
+            candidates.append(item)
+
+    scored_items: list[tuple[MemoryItem, int]] = []
+    for item in candidates:
+        score = score_memory_item(query, item)
+        if score > 0:
+            scored_items.append((item, score))
+
+    scored_items.sort(
+        key=lambda pair: (
+            -pair[1],
+            _importance_rank(pair[0].fields.get("importance", "")),
+            -int(pair[0].fields.get("updated_at", "0").replace("-", "") or "0"),
+            pair[0].memory_id,
+        )
+    )
+
+    loaded: list[ScoredMemory] = []
+    for item, score in scored_items[:max_memories]:
+        try:
+            record_path = resolve_memory_uri(item.storage)
+        except ValueError:
+            skipped.append(f"WARN Invalid memory record path: {item.memory_id} {item.storage}")
+            continue
+        if not record_path.exists():
+            skipped.append(f"WARN Memory record not found: {item.memory_id} {item.storage}")
+            continue
+        text = record_path.read_text(encoding="utf-8")
+        record_text, truncated = _truncate_text(text, max_record_chars)
+        loaded.append(
+            ScoredMemory(
+                item=item,
+                score=score,
+                record_text=record_text,
+                truncated=truncated,
+            )
+        )
+
+    if loaded:
+        category_scores = {entry.category.name: entry.score for entry in scored_categories}
+        for entry in loaded:
+            category_scores[entry.item.category] = max(
+                category_scores.get(entry.item.category, 0),
+                entry.score,
+            )
+        loaded_category_names = {entry.item.category for entry in loaded}
+        selected_categories = sorted(
+            [
+                ScoredCategory(category=categories[name], score=category_scores[name])
+                for name in loaded_category_names
+                if name in categories
+            ],
+            key=lambda entry: (
+                -entry.score,
+                _importance_rank(entry.category.fields.get("priority", "")),
+                entry.category.name,
+            ),
+        )[:max_categories]
+    else:
+        selected_categories = sorted(
+            matched_categories,
+            key=lambda entry: (
+                -entry.score,
+                _importance_rank(entry.category.fields.get("priority", "")),
+                entry.category.name,
+            ),
+        )[:max_categories]
+
+    return MemoryContextResult(
+        query=query,
+        selected_categories=selected_categories,
+        loaded_memories=loaded,
+        skipped=skipped,
+    )
+
+
+def format_memory_context(result: MemoryContextResult, *, show_scores: bool = False) -> str:
+    lines: list[str] = [
+        "Memory Context Loader",
+        "",
+        "Query:",
+        result.query,
+        "",
+        "Selected categories:",
+    ]
+    if result.selected_categories:
+        for entry in result.selected_categories:
+            fields = entry.category.fields
+            score = f" score={entry.score}" if show_scores else ""
+            lines.append(
+                f"- {entry.category.name}{score} priority={fields.get('priority', '')} status={fields.get('status', 'active')}"
+            )
+    else:
+        lines.append("- none")
+
+    if result.skipped:
+        lines.extend(["", "Notes:"])
+        lines.extend(f"- {note}" for note in result.skipped)
+
+    if not result.loaded_memories:
+        lines.extend(["", "No relevant memories found."])
+        return "\n".join(lines) + "\n"
+
+    lines.extend(["", "Loaded memories:"])
+    for entry in result.loaded_memories:
+        item = entry.item
+        score = f" score={entry.score}" if show_scores else ""
+        lines.append(
+            f"- {item.memory_id} {item.title}{score} importance={item.fields.get('importance', '')} status={item.fields.get('status', '')}"
+        )
+
+    lines.extend(["", "Context:", "────────────────────────────────────────"])
+    for entry in result.loaded_memories:
+        item = entry.item
+        fields = item.fields
+        lines.extend(
+            [
+                f"[{item.memory_id}] {item.title}",
+                f"category: {item.category}",
+                f"importance: {fields.get('importance', '')}",
+                f"ttl: {fields.get('ttl', '')}",
+                f"status: {fields.get('status', '')}",
+                f"updated_at: {fields.get('updated_at', '')}",
+                f"summary: {fields.get('summary', '')}",
+                "",
+                entry.record_text,
+                "",
+                "────────────────────────────────────────",
+            ]
+        )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def memory_context_to_dict(result: MemoryContextResult) -> dict:
+    return {
+        "query": result.query,
+        "selected_categories": [
+            {
+                "category": entry.category.name,
+                "score": entry.score,
+                **entry.category.fields,
+            }
+            for entry in result.selected_categories
+        ],
+        "loaded_memories": [
+            {
+                "memory_id": entry.item.memory_id,
+                "title": entry.item.title,
+                "category": entry.item.category,
+                "score": entry.score,
+                "truncated": entry.truncated,
+                "record": entry.record_text,
+                **entry.item.fields,
+            }
+            for entry in result.loaded_memories
+        ],
+        "skipped": result.skipped,
+    }
+
+
 def validate_memory(home: Path | None = None) -> MemoryCheckResult:
     home = home or get_hermes_home()
     checks: list[tuple[str, str, str]] = []
@@ -928,6 +1255,24 @@ def cmd_memory_search(args) -> None:
 
 def cmd_memory_check(args) -> None:
     sys.exit(print_memory_check())
+
+
+def cmd_memory_context(args) -> None:
+    try:
+        result = load_memory_context(
+            args.query,
+            max_categories=args.max_categories,
+            max_memories=args.max_memories,
+            max_record_chars=args.max_record_chars,
+            include_archived=args.include_archived,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"ERROR {exc}", file=sys.stderr)
+        sys.exit(1)
+    if args.format == "json":
+        print(json.dumps(memory_context_to_dict(result), ensure_ascii=False, indent=2))
+        return
+    print(format_memory_context(result, show_scores=args.show_scores))
 
 
 def _print_write_result(header: str, item: MemoryItem, *, index: str | None = None) -> None:
