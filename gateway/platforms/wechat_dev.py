@@ -92,6 +92,7 @@ async def run_dev_wechat_gateway(
     *,
     allow_all_users: bool = False,
     allowed_users: list[str] | None = None,
+    verbose: bool = False,
 ) -> bool:
     """Run the foreground dev WeChat scan-login gateway.
 
@@ -106,6 +107,7 @@ async def run_dev_wechat_gateway(
         assert_dev_gateway_safe,
         configure_dev_gateway_environment,
         get_dev_gateway_status,
+        write_dev_gateway_runtime_state,
     )
     from gateway.platforms.weixin import qr_login
     from gateway.run import start_gateway
@@ -125,9 +127,19 @@ async def run_dev_wechat_gateway(
     paths["wechat_state_dir"].mkdir(parents=True, exist_ok=True)
     configure_dev_gateway_environment(home)
     secret_redaction = apply_dev_gateway_redaction_default()
-    dev_user_access = apply_dev_gateway_auth_environment(
+    dev_user_access, auth_state = apply_dev_gateway_auth_environment(
         allow_all_users=allow_all_users,
         allowed_users=allowed_users,
+    )
+    if verbose:
+        import os
+
+        os.environ["HERMES_DEV_GATEWAY_MEMORY_LOGS"] = "true"
+    write_dev_gateway_runtime_state(
+        paths,
+        auth=auth_state,
+        redact_secrets=secret_redaction == "enabled",
+        log_memory=verbose,
     )
 
     account = _load_first_weixin_account(paths["wechat_state_dir"])
@@ -169,6 +181,7 @@ async def run_dev_wechat_gateway(
     print("Memory injection:  enabled")
     print(f"Secret redaction:  {secret_redaction}")
     print(f"Dev user access:   {dev_user_access}")
+    print(f"Memory logs:       {'enabled' if verbose else 'basic'}")
     if allow_all_users:
         print()
         print("WARNING: gateway-dev is running with --allow-all-users.")
@@ -180,17 +193,19 @@ async def run_dev_wechat_gateway(
     print("Press Ctrl+C to stop dev gateway.")
     print()
 
-    return await start_gateway(config=config, replace=False, verbosity=0)
+    return await start_gateway(config=config, replace=False, verbosity=1 if verbose else 0)
 
 
 def run_dev_wechat_gateway_foreground(
     *,
     allow_all_users: bool = False,
     allowed_users: list[str] | None = None,
+    verbose: bool = False,
 ) -> bool:
     return asyncio.run(
         run_dev_wechat_gateway(
             allow_all_users=allow_all_users,
             allowed_users=allowed_users,
+            verbose=verbose,
         )
     )

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import importlib.util
+import json
 import os
 import time
 from pathlib import Path
 
 from hermes_constants import get_hermes_home
+from utils import atomic_json_write
 
 
 DEV_GATEWAY_HOST = "127.0.0.1"
@@ -44,6 +47,8 @@ class DevGatewayStatus:
     secret_redaction: str
     qr_terminal: str
     auth_controls: str
+    runtime_state: str
+    memory_log_summary: str
     reason: str = ""
 
 
@@ -74,6 +79,10 @@ def _dev_paths(home: Path | None = None) -> dict[str, Path]:
         "state_dir": home / DEV_GATEWAY_STATE_DIR,
         "wechat_state_dir": home / DEV_WECHAT_STATE_DIR,
     }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
 def configure_dev_gateway_environment(home: Path | None = None) -> dict[str, Path]:
@@ -110,11 +119,60 @@ def dev_gateway_user_access_status() -> str:
     return "deny by default, no dev allowlist configured"
 
 
+def _read_runtime_state(path: Path) -> tuple[dict, str]:
+    if not path.exists():
+        return {}, "missing"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {}, f"unreadable: {exc}"
+    if not isinstance(payload, dict):
+        return {}, "invalid"
+    return payload, "available"
+
+
+def _auth_status_from_state(payload: dict) -> str | None:
+    auth = payload.get("auth")
+    if not isinstance(auth, dict):
+        return None
+    source = "running process"
+    if auth.get("allow_all_users") is True:
+        return f"allow all users (dev only, {source})"
+    allowed = auth.get("allowed_users")
+    if isinstance(allowed, list) and allowed:
+        return f"allowed users configured ({len(allowed)}, {source})"
+    if auth.get("mode"):
+        return f"{auth.get('mode')} ({source})"
+    return None
+
+
+def _secret_status_from_state(payload: dict) -> str | None:
+    security = payload.get("security")
+    if not isinstance(security, dict):
+        return None
+    if security.get("redact_secrets") is True:
+        return "enabled (running process)"
+    if security.get("redact_secrets") is False:
+        return "disabled (running process)"
+    return None
+
+
+def _memory_log_status_from_state(payload: dict) -> str | None:
+    memory = payload.get("memory")
+    if not isinstance(memory, dict):
+        return None
+    if memory.get("log_summary") is True:
+        return "available (verbose)"
+    if memory.get("runtime_injection") is True:
+        return "available"
+    return None
+
+
 def apply_dev_gateway_auth_environment(
     *,
     allow_all_users: bool = False,
     allowed_users: list[str] | None = None,
-) -> str:
+) -> tuple[str, dict]:
     env_allow_all = _truthy(os.getenv("HERMES_DEV_GATEWAY_ALLOW_ALL_USERS"))
     env_allowed = [
         item.strip()
@@ -127,19 +185,32 @@ def apply_dev_gateway_auth_environment(
     if allow_all_users or env_allow_all:
         os.environ["WEIXIN_ALLOW_ALL_USERS"] = "true"
         os.environ["GATEWAY_ALLOW_ALL_USERS"] = "true"
-        return "allow all users (dev only)"
+        return "allow all users (dev only)", {
+            "allow_all_users": True,
+            "allowed_users": [],
+            "source": "gateway-dev run --allow-all-users" if allow_all_users else "HERMES_DEV_GATEWAY_ALLOW_ALL_USERS",
+        }
 
     os.environ["WEIXIN_ALLOW_ALL_USERS"] = "false"
     os.environ["GATEWAY_ALLOW_ALL_USERS"] = "false"
     if resolved_allowed:
         allowed_value = ",".join(resolved_allowed)
         os.environ["WEIXIN_ALLOWED_USERS"] = allowed_value
-        return f"allowed users: {allowed_value}"
+        return f"allowed users: {allowed_value}", {
+            "allow_all_users": False,
+            "allowed_users": resolved_allowed,
+            "source": "--allowed-user" if cli_allowed else "HERMES_DEV_GATEWAY_ALLOWED_USERS",
+        }
 
     # Keep the gateway startup diagnostic from pointing developers at
     # ~/.hermes/.env while preserving default-deny behavior.
     os.environ["WEIXIN_ALLOWED_USERS"] = "__hermes_dev_gateway_no_users__"
-    return "deny by default, no dev allowlist configured"
+    return "deny by default, no dev allowlist configured", {
+        "allow_all_users": False,
+        "allowed_users": [],
+        "source": "default",
+        "mode": "deny by default",
+    }
 
 
 def apply_dev_gateway_redaction_default() -> str:
@@ -149,6 +220,39 @@ def apply_dev_gateway_redaction_default() -> str:
         return "disabled by explicit dev env"
     os.environ["HERMES_REDACT_SECRETS"] = "true"
     return "enabled"
+
+
+def write_dev_gateway_runtime_state(
+    paths: dict[str, Path],
+    *,
+    auth: dict,
+    redact_secrets: bool,
+    log_memory: bool,
+) -> None:
+    state_path = paths["runtime_status_file"]
+    payload, _state = _read_runtime_state(state_path)
+    payload.update(
+        {
+            "mode": "scan-login",
+            "platform": "wechat-dev",
+            "status": "starting",
+            "gateway_state": payload.get("gateway_state", "starting"),
+            "pid": os.getpid(),
+            "started_at": payload.get("started_at") or _now_iso(),
+            "hermes_home": str(paths["home"]),
+            "pid_file": str(paths["pid_file"]),
+            "state_dir": str(paths["state_dir"]),
+            "wechat_state_dir": str(paths["wechat_state_dir"]),
+            "auth": auth,
+            "security": {"redact_secrets": redact_secrets},
+            "memory": {
+                "runtime_injection": True,
+                "log_summary": log_memory,
+            },
+        }
+    )
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_json_write(state_path, payload)
 
 
 def assert_dev_gateway_safe(home: Path | None = None) -> dict[str, Path]:
@@ -230,6 +334,10 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
             state = "running" if _looks_like_dev_gateway(pid, home) else "foreign pid"
         else:
             state = "stale pid file"
+    runtime_payload, runtime_state = _read_runtime_state(paths["runtime_status_file"])
+    runtime_auth_status = _auth_status_from_state(runtime_payload) if state == "running" else None
+    runtime_secret_status = _secret_status_from_state(runtime_payload) if state == "running" else None
+    runtime_memory_status = _memory_log_status_from_state(runtime_payload)
     try:
         assert_dev_gateway_safe(home)
         isolation = "PASS"
@@ -252,10 +360,12 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
         pid=pid,
         isolation=isolation,
         scan_runner="available",
-        dev_user_access=dev_gateway_user_access_status(),
-        secret_redaction=dev_gateway_secret_redaction_status(),
+        dev_user_access=runtime_auth_status or dev_gateway_user_access_status(),
+        secret_redaction=runtime_secret_status or dev_gateway_secret_redaction_status(),
         qr_terminal=dev_gateway_qr_status(),
         auth_controls="available",
+        runtime_state=runtime_state,
+        memory_log_summary=runtime_memory_status or "available with --verbose",
         reason=reason,
     )
 
@@ -274,6 +384,7 @@ def format_dev_gateway_status(status: DevGatewayStatus) -> str:
             f"Port:            {status.port}",
             f"PID file:        {status.pid_file}",
             f"State file:      {status.runtime_status_file}",
+            f"Runtime state:   {status.runtime_state}",
             f"State dir:       {status.state_dir}",
             f"Wechat state:    {status.wechat_state_dir}",
             f"Log file:        {status.log_file}",
@@ -283,6 +394,7 @@ def format_dev_gateway_status(status: DevGatewayStatus) -> str:
             f"Secret redaction: {status.secret_redaction}",
             f"QR terminal:     {status.qr_terminal}",
             f"Auth controls:   {status.auth_controls}",
+            f"Memory logs:     {status.memory_log_summary}",
             "Wechat dry-run:  available via dev-wechat-message",
             f"Isolation:       {status.isolation}",
             *([f"Reason:          {status.reason}"] if status.reason else []),

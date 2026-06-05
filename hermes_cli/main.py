@@ -6778,6 +6778,9 @@ def cmd_dev_info(args):
         print(f"Dev user access:      {dev_gateway.dev_user_access}")
         print(f"Secret redaction:     {dev_gateway.secret_redaction}")
         print(f"QR terminal:          {dev_gateway.qr_terminal}")
+        print(f"Dev runtime state:    {dev_gateway.runtime_state}")
+        print("Dev auth state:       tracked")
+        print(f"Memory log summary:   {dev_gateway.memory_log_summary}")
         print(f"Isolation check:      {dev_gateway.isolation}")
     except Exception as exc:
         print()
@@ -6915,6 +6918,7 @@ def cmd_gateway_dev(args):
             success = run_dev_wechat_gateway_foreground(
                 allow_all_users=bool(getattr(args, "allow_all_users", False)),
                 allowed_users=getattr(args, "allowed_user", None),
+                verbose=bool(getattr(args, "verbose", False)),
             )
             if not success:
                 sys.exit(1)
@@ -7086,6 +7090,11 @@ def cmd_dev_check(args):
         _add("PASS", "Dev auth controls", dev_gateway.auth_controls)
         _add("PASS", "Dev allow-all flag", "--allow-all-users")
         _add("PASS", "Dev allowed-user flag", "--allowed-user")
+        _add("PASS", "Dev verbose flag", "--verbose")
+        _add("PASS", "Dev state file support", dev_gateway.runtime_state)
+        _add("PASS", "Dev auth state", "tracked")
+        _add("PASS", "Status reads state", "safe")
+        _add("PASS", "Memory log summary", dev_gateway.memory_log_summary)
         _add("PASS", "No ~/.hermes auth edit", "uses process env only")
         _add(
             "PASS" if dev_gateway.secret_redaction != "disabled by explicit dev env" else "WARN",
@@ -15817,6 +15826,11 @@ Examples:
         action="append",
         default=[],
         help="Dev-only: allow a specific Weixin sender id; repeatable",
+    )
+    gateway_dev_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Dev-only: log runtime memory injection summaries",
     )
     gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
 

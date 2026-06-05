@@ -170,6 +170,48 @@ To enable terminal QR rendering in the development virtual environment:
 .venv/bin/pip install "qrcode[pil]"
 ```
 
+## Dev Gateway Runtime Status
+
+`gateway-dev run` writes development runtime metadata to:
+
+```text
+<HERMES_HOME>/gateway-dev-state.json
+```
+
+The state file records the dev scan-login mode, platform, pid, Hermes home,
+dev state directories, auth mode, secret-redaction setting, and memory runtime
+settings. `gateway-dev status` is read-only and, when a dev gateway is running,
+prefers this runtime state over the current shell environment so it can show
+the actual process mode, for example:
+
+```text
+Dev user access: allow all users (dev only, running process)
+```
+
+`--allow-all-users` only applies to the current development gateway process.
+Use `--allowed-user` for a narrower test allowlist.
+
+## Dev Gateway Memory Logs
+
+The development Gateway can emit a runtime memory injection summary. Use:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run --allow-all-users --verbose
+```
+
+The summary logs only operational metadata:
+
+```text
+Runtime memory injection: enabled
+Selected categories: hermes
+Loaded memories: MEM-HERMES-002(category=hermes, status=active), MEM-HERMES-001(category=hermes, status=active)
+Skipped memories: MEM-HERMES-003(status=archived)
+Memory context chars: 1234
+```
+
+It does not print full memory records, full prompts, tokens, API keys, or
+Weixin credentials.
+
 ## Recommended Real WeChat Path
 
 Do not start by wiring a personal WeChat hook into production. Personal hooks

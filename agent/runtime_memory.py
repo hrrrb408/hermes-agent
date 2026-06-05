@@ -113,24 +113,70 @@ def _format_runtime_memory_context(result) -> str:
     return "\n".join(parts).strip()
 
 
+def _short_skipped_memory_note(note: str) -> str:
+    memory_id = ""
+    status = ""
+    for part in str(note).replace(":", " ").split():
+        if part.startswith("MEM-"):
+            memory_id = part
+        elif part.startswith("status="):
+            status = part.split("=", 1)[1]
+    if memory_id and status:
+        return f"{memory_id}(status={status})"
+    if memory_id:
+        return memory_id
+    return str(note)[:80]
+
+
+def _log_runtime_memory_summary(
+    memory_context: RuntimeMemoryContext,
+    *,
+    gateway_log: bool = False,
+) -> None:
+    selected = ", ".join(memory_context.selected_categories) or "none"
+    loaded = ", ".join(
+        (
+            f"{item.get('memory_id', '')}"
+            f"(category={item.get('category', '')}, status={item.get('status', '')})"
+        ).strip()
+        for item in memory_context.loaded_memories
+    ) or "none"
+    skipped = ", ".join(_short_skipped_memory_note(note) for note in memory_context.skipped) or "none"
+    if memory_context.error:
+        message = f"Runtime memory injection failed: {memory_context.error[:160]}"
+    elif not memory_context.enabled:
+        message = "Runtime memory injection: disabled"
+    else:
+        message = (
+            "Runtime memory injection: enabled; "
+            f"Selected categories: {selected}; "
+            f"Loaded memories: {loaded}; "
+            f"Skipped memories: {skipped}; "
+            f"Memory context chars: {memory_context.chars}"
+        )
+    logger.info(message)
+    if gateway_log:
+        logging.getLogger("gateway.runtime_memory").info(message)
+
+
 def load_runtime_memory_context(
     user_message: str,
     config: dict | None = None,
 ) -> RuntimeMemoryContext:
     cfg = _runtime_memory_config(config)
     if not cfg["memory_enabled"] or not cfg["context_enabled"]:
-        logger.info(
-            "Memory context loader: disabled memory_enabled=%s context_enabled=%s",
-            cfg["memory_enabled"],
-            cfg["context_enabled"],
-        )
-        return RuntimeMemoryContext(
+        memory_context = RuntimeMemoryContext(
             enabled=False,
             context="",
             selected_categories=[],
             loaded_memories=[],
             skipped=[],
         )
+        _log_runtime_memory_summary(
+            memory_context,
+            gateway_log=_as_bool(os.getenv("HERMES_DEV_GATEWAY_MEMORY_LOGS"), False),
+        )
+        return memory_context
 
     try:
         from hermes_cli.memory_router import load_memory_context
@@ -153,28 +199,21 @@ def load_runtime_memory_context(
             }
             for entry in result.loaded_memories
         ]
-        if cfg["log_loaded_memories"]:
-            skipped_ids = []
-            for note in result.skipped:
-                parts = str(note).split()
-                skipped_ids.extend(part for part in parts if part.startswith("MEM-"))
-            logger.info(
-                "Memory context loader: enabled selected=%s loaded=%s skipped=%s chars=%d",
-                ", ".join(selected) or "none",
-                ", ".join(item["memory_id"] for item in loaded) or "none",
-                ", ".join(skipped_ids) or str(len(result.skipped)),
-                len(context),
-            )
-        return RuntimeMemoryContext(
+        memory_context = RuntimeMemoryContext(
             enabled=True,
             context=context,
             selected_categories=selected,
             loaded_memories=loaded,
             skipped=result.skipped,
         )
+        if cfg["log_loaded_memories"]:
+            _log_runtime_memory_summary(
+                memory_context,
+                gateway_log=_as_bool(os.getenv("HERMES_DEV_GATEWAY_MEMORY_LOGS"), False),
+            )
+        return memory_context
     except Exception as exc:
-        logger.warning("Failed to load runtime memory context: %s", exc)
-        return RuntimeMemoryContext(
+        memory_context = RuntimeMemoryContext(
             enabled=False,
             context="",
             selected_categories=[],
@@ -182,6 +221,11 @@ def load_runtime_memory_context(
             skipped=[],
             error=str(exc),
         )
+        _log_runtime_memory_summary(
+            memory_context,
+            gateway_log=_as_bool(os.getenv("HERMES_DEV_GATEWAY_MEMORY_LOGS"), False),
+        )
+        return memory_context
 
 
 def build_runtime_prompt_preview(
