@@ -6744,6 +6744,10 @@ def cmd_dev_info(args):
             f"{_count_summary(items, ('active', 'archived', 'deprecated', 'superseded', 'conflict'))}"
         )
         print(f"Context loader:   {_availability(features.get('context_loader', False))}")
+        print(
+            "Runtime memory injection: "
+            f"{_availability(features.get('runtime_memory_injection', False))}"
+        )
         print(f"Writer commands:  {_availability(features.get('writer_commands', False))}")
         print(f"Category commands:{_availability(features.get('category_commands', False)):>12}")
         print(f"Check status:     {check.get('status', 'unknown')}")
@@ -6752,6 +6756,56 @@ def cmd_dev_info(args):
         print("Hermes memory system")
         print("────────────────────────────────────────")
         print(f"Status:          unknown ({exc})")
+    print()
+
+
+def cmd_dev_build_context(args):
+    """Preview runtime prompt context without calling the model."""
+    try:
+        from agent.runtime_memory import build_runtime_prompt_preview
+        from hermes_cli.config import load_config_readonly
+
+        config = load_config_readonly()
+        memory_context, preview = build_runtime_prompt_preview(
+            args.message,
+            config,
+        )
+    except Exception as exc:
+        print(f"ERROR Failed to build dev context: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print()
+    print("Hermes dev context builder")
+    print("────────────────────────────────────────")
+    print("User message:")
+    print(args.message)
+    print()
+    print("Memory context:")
+    print(f"enabled: {'yes' if memory_context.enabled else 'no'}")
+    if memory_context.error:
+        print(f"error: {memory_context.error}")
+    print("selected categories:")
+    if memory_context.selected_categories:
+        for category in memory_context.selected_categories:
+            print(f"- {category}")
+    else:
+        print("- none")
+    print()
+    print("loaded memories:")
+    if memory_context.loaded_memories:
+        for item in memory_context.loaded_memories:
+            print(f"- {item['memory_id']} {item['title']}")
+    else:
+        print("- none")
+    if memory_context.skipped:
+        print()
+        print("notes:")
+        for note in memory_context.skipped:
+            print(f"- {note}")
+    print()
+    print("Prompt preview:")
+    print("────────────────────────────────────────")
+    print(preview)
     print()
 
 
@@ -15525,6 +15579,13 @@ Examples:
         help="Show development/runtime diagnostics",
     )
     dev_info_parser.set_defaults(func=cmd_dev_info)
+
+    dev_build_context_parser = subparsers.add_parser(
+        "dev-build-context",
+        help="Preview runtime memory context injection without calling the model",
+    )
+    dev_build_context_parser.add_argument("message", help="User message to preview")
+    dev_build_context_parser.set_defaults(func=cmd_dev_build_context)
 
     # =========================================================================
     # dev-check command

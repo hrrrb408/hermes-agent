@@ -1047,6 +1047,7 @@ def init_agent(
         _agent_cfg = _load_agent_config()
     except Exception:
         _agent_cfg = {}
+    agent._runtime_memory_config = _agent_cfg
     try:
         agent._tool_guardrails = ToolCallGuardrailController(
             ToolCallGuardrailConfig.from_mapping(
@@ -1070,8 +1071,11 @@ def init_agent(
     if not skip_memory:
         try:
             mem_config = _agent_cfg.get("memory", {})
-            agent._memory_enabled = mem_config.get("memory_enabled", False)
-            agent._user_profile_enabled = mem_config.get("user_profile_enabled", False)
+            _memory_section_enabled = mem_config.get("enabled", True)
+            if isinstance(_memory_section_enabled, str):
+                _memory_section_enabled = _memory_section_enabled.strip().lower() not in {"0", "false", "no", "off"}
+            agent._memory_enabled = bool(_memory_section_enabled) and mem_config.get("memory_enabled", False)
+            agent._user_profile_enabled = bool(_memory_section_enabled) and mem_config.get("user_profile_enabled", False)
             agent._memory_nudge_interval = int(mem_config.get("nudge_interval", 10))
             if agent._memory_enabled or agent._user_profile_enabled:
                 from tools.memory_tool import MemoryStore

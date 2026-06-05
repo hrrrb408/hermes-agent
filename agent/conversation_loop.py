@@ -784,6 +784,18 @@ def run_conversation(
         except Exception:
             pass
 
+    _runtime_memory_context = None
+    try:
+        from agent.runtime_memory import load_runtime_memory_context
+
+        _query = original_user_message if isinstance(original_user_message, str) else ""
+        _runtime_memory_context = load_runtime_memory_context(
+            _query,
+            getattr(agent, "_runtime_memory_config", None),
+        )
+    except Exception as exc:
+        logger.warning("Runtime memory context setup failed: %s", exc)
+
     # Optional opt-in runtime: if api_mode == codex_app_server, hand the
     # turn to the codex app-server subprocess (terminal/file ops/patching
     # all run inside Codex). Default Hermes path is bypassed entirely.
@@ -947,22 +959,32 @@ def run_conversation(
             api_msg = msg.copy()
 
             # Inject ephemeral context into the current turn's user message.
-            # Sources: memory manager prefetch + plugin pre_llm_call hooks
-            # with target="user_message" (the default).  Both are
+            # Sources: hierarchical runtime memory, memory manager prefetch,
+            # and plugin pre_llm_call hooks with target="user_message" (the
+            # default).  All are
             # API-call-time only — the original message in `messages` is
             # never mutated, so nothing leaks into session persistence.
             if idx == current_turn_user_idx and msg.get("role") == "user":
                 _injections = []
+                _runtime_memory_block = ""
+                if _runtime_memory_context and _runtime_memory_context.context:
+                    _runtime_memory_block = _runtime_memory_context.context
                 if _ext_prefetch_cache:
                     _fenced = build_memory_context_block(_ext_prefetch_cache)
                     if _fenced:
                         _injections.append(_fenced)
                 if _plugin_user_context:
                     _injections.append(_plugin_user_context)
-                if _injections:
-                    _base = api_msg.get("content", "")
-                    if isinstance(_base, str):
-                        api_msg["content"] = _base + "\n\n" + "\n\n".join(_injections)
+                _base = api_msg.get("content", "")
+                if isinstance(_base, str):
+                    if _runtime_memory_block:
+                        api_msg["content"] = (
+                            _runtime_memory_block
+                            + "\n\n[Current User Message]\n\n"
+                            + _base
+                        )
+                    if _injections:
+                        api_msg["content"] = api_msg.get("content", _base) + "\n\n" + "\n\n".join(_injections)
 
             # For ALL assistant messages, pass reasoning back to the API
             # This ensures multi-turn reasoning context is preserved

@@ -660,6 +660,7 @@ def get_memory_system_summary(home: Path | None = None) -> dict:
             "category_commands": True,
             "writer_commands": True,
             "context_loader": True,
+            "runtime_memory_injection": True,
         },
         "check": {
             "status": "PASS" if check.ok else "FAIL",
