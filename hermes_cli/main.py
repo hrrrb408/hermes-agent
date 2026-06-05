@@ -6702,6 +6702,138 @@ def cmd_dev_info(args):
     print()
 
 
+def cmd_dev_check(args):
+    """Check that this Hermes invocation is isolated to the dev environment."""
+    expected_source_root = Path("/Users/huangruibang/Code/hermes-agent-dev")
+    expected_hermes_home = Path("/Users/huangruibang/Code/hermes-home-dev")
+    original_hermes_home = Path("/Users/huangruibang/.hermes")
+    expected_venv = expected_source_root / ".venv"
+
+    checks: list[tuple[str, str, str]] = []
+
+    def _resolve(path: Path) -> Path:
+        try:
+            return path.resolve()
+        except Exception:
+            return path
+
+    def _add(status: str, label: str, value: str) -> None:
+        checks.append((status, label, value))
+
+    def _path_status(label: str, path: Path) -> None:
+        _add("PASS" if path.exists() else "FAIL", label, "exists" if path.exists() else "missing")
+
+    def _git_value(*git_args: str) -> tuple[str, int]:
+        try:
+            result = subprocess.run(
+                ["git", *git_args],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            return "unknown", 1
+        return result.stdout.strip(), result.returncode
+
+    source_root = _resolve(PROJECT_ROOT)
+    expected_source = _resolve(expected_source_root)
+    _add(
+        "PASS" if source_root == expected_source else "FAIL",
+        "Source root",
+        str(source_root),
+    )
+
+    try:
+        from hermes_constants import get_hermes_home
+
+        hermes_home = get_hermes_home()
+    except Exception:
+        hermes_home = Path("unknown")
+    resolved_home = _resolve(hermes_home)
+    expected_home = _resolve(expected_hermes_home)
+    original_home = _resolve(original_hermes_home)
+
+    _add(
+        "PASS" if resolved_home == expected_home else "FAIL",
+        "HERMES_HOME",
+        str(hermes_home),
+    )
+    avoids_original = resolved_home != original_home
+    _add("PASS" if avoids_original else "FAIL", "Avoids ~/.hermes", "yes" if avoids_original else "no")
+
+    _add(
+        "PASS" if expected_venv.is_dir() else "FAIL",
+        ".venv",
+        "exists" if expected_venv.is_dir() else "missing",
+    )
+
+    expected_venv_path = _resolve(expected_venv)
+    python_prefix = _resolve(Path(sys.prefix))
+    python_from_venv = python_prefix == expected_venv_path
+    _add(
+        "PASS" if python_from_venv else "FAIL",
+        "Python from .venv",
+        "yes" if python_from_venv else str(python_prefix),
+    )
+
+    _path_status("config.yaml", expected_hermes_home / "config.yaml")
+    _path_status(".env", expected_hermes_home / ".env")
+    _path_status("SOUL.md", expected_hermes_home / "SOUL.md")
+    _path_status("MEMORY.md", expected_hermes_home / "memories" / "MEMORY.md")
+    _path_status("USER.md", expected_hermes_home / "memories" / "USER.md")
+    _path_status("state.db", expected_hermes_home / "state.db")
+
+    branch, branch_rc = _git_value("rev-parse", "--abbrev-ref", "HEAD")
+    _add("PASS" if branch_rc == 0 and branch else "FAIL", "Git branch", branch or "unknown")
+
+    git_status, git_status_rc = _git_value("status", "--porcelain")
+    if git_status_rc != 0:
+        _add("FAIL", "Git worktree", "unknown")
+    elif git_status:
+        _add("WARN", "Git worktree", "dirty")
+    else:
+        _add("PASS", "Git worktree", "clean")
+
+    try:
+        from hermes_cli.profiles import _check_gateway_running
+
+        gateway_running = _check_gateway_running(expected_hermes_home)
+        _add("FAIL" if gateway_running else "PASS", "Gateway", "running" if gateway_running else "stopped")
+    except Exception:
+        pid_exists = (expected_hermes_home / "gateway.pid").exists()
+        state_exists = (expected_hermes_home / "gateway_state.json").exists()
+        value = "unknown"
+        if pid_exists:
+            value = "gateway.pid present"
+        elif state_exists:
+            value = "state file present, no pid"
+        _add("WARN", "Gateway", value)
+
+    has_fail = any(status == "FAIL" for status, _label, _value in checks)
+    has_warn = any(status == "WARN" for status, _label, _value in checks)
+    result = "FAIL" if has_fail else "WARN" if has_warn else "PASS"
+
+    print()
+    print("Hermes dev check")
+    print("────────────────────────────────────────")
+    for status, label, value in checks:
+        print(f"{status:<4} {label + ':':<22} {value}")
+    print("────────────────────────────────────────")
+    print(f"Result: {result}")
+    if resolved_home == original_home:
+        print()
+        print(
+            "Do not use the development Hermes directly with "
+            "/Users/huangruibang/.hermes."
+        )
+    print()
+
+    if result == "FAIL":
+        sys.exit(1)
+
+
 def cmd_uninstall(args):
     """Uninstall Hermes Agent."""
     _require_tty("uninstall")
@@ -15329,6 +15461,15 @@ Examples:
         help="Show development/runtime diagnostics",
     )
     dev_info_parser.set_defaults(func=cmd_dev_info)
+
+    # =========================================================================
+    # dev-check command
+    # =========================================================================
+    dev_check_parser = subparsers.add_parser(
+        "dev-check",
+        help="Check development environment isolation",
+    )
+    dev_check_parser.set_defaults(func=cmd_dev_check)
 
     # =========================================================================
     # update command
