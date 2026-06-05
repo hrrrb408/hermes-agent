@@ -6609,6 +6609,99 @@ def cmd_version(args):
     _print_version_info(check_updates=True)
 
 
+def cmd_dev_info(args):
+    """Show development/runtime diagnostics for this Hermes invocation."""
+
+    def _unknown_on_error(fn):
+        try:
+            value = fn()
+        except Exception:
+            return "unknown"
+        if value is None:
+            return "unknown"
+        text = str(value).strip()
+        return text if text else "unknown"
+
+    def _git_value(*git_args: str) -> str:
+        try:
+            result = subprocess.run(
+                ["git", *git_args],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            return "unknown"
+        if result.returncode != 0:
+            return "unknown"
+        value = result.stdout.strip()
+        return value or "unknown"
+
+    def _model_provider() -> tuple[str, str]:
+        try:
+            from hermes_cli.config import load_config_readonly
+
+            cfg = load_config_readonly()
+            model_cfg = cfg.get("model", {}) if isinstance(cfg, dict) else {}
+            if isinstance(model_cfg, str):
+                return model_cfg or "unknown", "unknown"
+            if isinstance(model_cfg, dict):
+                model = (
+                    model_cfg.get("default")
+                    or model_cfg.get("model")
+                    or model_cfg.get("name")
+                    or "unknown"
+                )
+                provider = model_cfg.get("provider") or "unknown"
+                return str(model), str(provider)
+        except Exception:
+            pass
+        return "unknown", "unknown"
+
+    def _hermes_home():
+        from hermes_constants import get_hermes_home
+
+        return get_hermes_home()
+
+    def _display_hermes_home():
+        from hermes_constants import display_hermes_home
+
+        return display_hermes_home()
+
+    def _active_profile_name():
+        from hermes_cli.profiles import get_active_profile_name
+
+        return get_active_profile_name()
+
+    source_root = PROJECT_ROOT
+    dev_source_root = Path("/Users/huangruibang/Code/hermes-agent-dev")
+    try:
+        dev_source = "yes" if source_root == dev_source_root.resolve() else "no"
+    except Exception:
+        dev_source = "unknown"
+
+    model, provider = _model_provider()
+
+    print()
+    print("Hermes dev info")
+    print("────────────────────────────────────────")
+    print(f"Executable:      {sys.argv[0]}")
+    print(f"Python:          {sys.executable}")
+    print(f"Source root:     {source_root}")
+    print(f"Working dir:     {Path.cwd()}")
+    print(f"HERMES_HOME:     {_unknown_on_error(_hermes_home)}")
+    print(f"Display home:    {_unknown_on_error(_display_hermes_home)}")
+    print(f"Profile:         {_unknown_on_error(_active_profile_name)}")
+    print(f"Model:           {model}")
+    print(f"Provider:        {provider}")
+    print(f"Git branch:      {_git_value('rev-parse', '--abbrev-ref', 'HEAD')}")
+    print(f"Git commit:      {_git_value('rev-parse', '--short', 'HEAD')}")
+    print(f"Dev source:      {dev_source}")
+    print()
+
+
 def cmd_uninstall(args):
     """Uninstall Hermes Agent."""
     _require_tty("uninstall")
@@ -15227,6 +15320,15 @@ Examples:
     # =========================================================================
     version_parser = subparsers.add_parser("version", help="Show version information")
     version_parser.set_defaults(func=cmd_version)
+
+    # =========================================================================
+    # dev-info command
+    # =========================================================================
+    dev_info_parser = subparsers.add_parser(
+        "dev-info",
+        help="Show development/runtime diagnostics",
+    )
+    dev_info_parser.set_defaults(func=cmd_dev_info)
 
     # =========================================================================
     # update command
