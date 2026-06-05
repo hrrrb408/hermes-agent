@@ -600,6 +600,73 @@ def find_item(memory_id: str, home: Path | None = None) -> MemoryItem | None:
     return None
 
 
+def get_memory_system_summary(home: Path | None = None) -> dict:
+    home = home or get_hermes_home()
+    mem_dir = memory_dir(home)
+    categories = parse_root_sections(home) if memory_root(home).exists() else []
+    category_counts: dict[str, int] = {}
+    for category in categories:
+        status = category.fields.get("status", "active")
+        category_counts[status] = category_counts.get(status, 0) + 1
+
+    item_counts: dict[str, int] = {}
+    total_items = 0
+    for category in categories:
+        try:
+            items = parse_index(category.name, home)
+        except Exception:
+            continue
+        total_items += len(items)
+        for item in items:
+            status = item.fields.get("status", "active")
+            item_counts[status] = item_counts.get(status, 0) + 1
+
+    check = validate_memory(home)
+    return {
+        "root_router": "MEMORY.md",
+        "categories": {
+            "total": len(categories),
+            "active": category_counts.get("active", 0),
+            "archived": category_counts.get("archived", 0),
+            "deprecated": category_counts.get("deprecated", 0),
+        },
+        "memory_items": {
+            "total": total_items,
+            "active": item_counts.get("active", 0),
+            "archived": item_counts.get("archived", 0),
+            "deprecated": item_counts.get("deprecated", 0),
+            "superseded": item_counts.get("superseded", 0),
+            "conflict": item_counts.get("conflict", 0),
+        },
+        "paths": {
+            "indexes": {
+                "label": "memory/indexes/",
+                "exists": (mem_dir / "indexes").is_dir(),
+            },
+            "records": {
+                "label": "memory/records/",
+                "exists": (mem_dir / "records").is_dir(),
+            },
+            "events": {
+                "label": "memory/events.jsonl",
+                "exists": (mem_dir / "events.jsonl").exists(),
+            },
+            "snapshots": {
+                "label": "memory/snapshots/",
+                "exists": (mem_dir / "snapshots").is_dir(),
+            },
+        },
+        "features": {
+            "category_commands": True,
+            "writer_commands": True,
+            "context_loader": True,
+        },
+        "check": {
+            "status": "PASS" if check.ok else "FAIL",
+        },
+    }
+
+
 def _record_uri_for(category: str, memory_id: str, title: str) -> str:
     if category == "hermes":
         return f"memory://records/projects/hermes/{memory_id.casefold()}.md"

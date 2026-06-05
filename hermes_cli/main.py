@@ -6675,6 +6675,26 @@ def cmd_dev_info(args):
 
         return get_active_profile_name()
 
+    def _memory_summary():
+        from hermes_cli.memory_router import get_memory_system_summary
+
+        return get_memory_system_summary()
+
+    def _count_summary(summary: dict, keys: tuple[str, ...]) -> str:
+        parts = [f"{summary.get('total', 0)} total"]
+        for key in keys:
+            count = summary.get(key, 0)
+            if count:
+                parts.append(f"{count} {key}")
+        return ", ".join(parts)
+
+    def _path_summary(path_info: dict) -> str:
+        status = "exists" if path_info.get("exists") else "missing"
+        return f"{path_info.get('label', 'unknown')} ({status})"
+
+    def _availability(value: bool) -> str:
+        return "available" if value else "unavailable"
+
     source_root = PROJECT_ROOT
     dev_source_root = Path("/Users/huangruibang/Code/hermes-agent-dev")
     try:
@@ -6699,6 +6719,39 @@ def cmd_dev_info(args):
     print(f"Git branch:      {_git_value('rev-parse', '--abbrev-ref', 'HEAD')}")
     print(f"Git commit:      {_git_value('rev-parse', '--short', 'HEAD')}")
     print(f"Dev source:      {dev_source}")
+
+    try:
+        memory_summary = _memory_summary()
+        categories = memory_summary.get("categories", {})
+        items = memory_summary.get("memory_items", {})
+        paths = memory_summary.get("paths", {})
+        features = memory_summary.get("features", {})
+        check = memory_summary.get("check", {})
+        print()
+        print("Hermes memory system")
+        print("────────────────────────────────────────")
+        print(f"Root router:      {memory_summary.get('root_router', 'unknown')}")
+        print(
+            "Root categories:  "
+            f"{_count_summary(categories, ('active', 'archived', 'deprecated'))}"
+        )
+        print(f"Memory indexes:   {_path_summary(paths.get('indexes', {}))}")
+        print(f"Memory records:   {_path_summary(paths.get('records', {}))}")
+        print(f"Events log:       {_path_summary(paths.get('events', {}))}")
+        print(f"Snapshots:        {_path_summary(paths.get('snapshots', {}))}")
+        print(
+            "Memory items:     "
+            f"{_count_summary(items, ('active', 'archived', 'deprecated', 'superseded', 'conflict'))}"
+        )
+        print(f"Context loader:   {_availability(features.get('context_loader', False))}")
+        print(f"Writer commands:  {_availability(features.get('writer_commands', False))}")
+        print(f"Category commands:{_availability(features.get('category_commands', False)):>12}")
+        print(f"Check status:     {check.get('status', 'unknown')}")
+    except Exception as exc:
+        print()
+        print("Hermes memory system")
+        print("────────────────────────────────────────")
+        print(f"Status:          unknown ({exc})")
     print()
 
 
