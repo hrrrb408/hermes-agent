@@ -122,6 +122,54 @@ hermes gateway run --replace
 Those commands manage the normal Gateway surface and can affect the production
 Gateway when pointed at the production environment.
 
+## Dev Gateway User Access
+
+`gateway-dev` defaults to safe local testing behavior: it does not open access
+to every sender unless explicitly requested.
+
+For quick local testing, run:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run --allow-all-users
+```
+
+This sets the existing Gateway allow-all environment only inside the
+development Gateway process. It does not write `~/.hermes/.env`, does not
+modify production config, and does not affect the production Gateway.
+
+The safer option is to allow only known Weixin sender IDs:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run --allowed-user "sender-id"
+```
+
+`--allowed-user` is repeatable. The equivalent development-only environment
+variables are:
+
+```bash
+HERMES_DEV_GATEWAY_ALLOW_ALL_USERS=true
+HERMES_DEV_GATEWAY_ALLOWED_USERS="user1,user2"
+```
+
+Do not modify `~/.hermes/.env` to test the development Gateway, and do not use
+allow-all for the production Gateway.
+
+`gateway-dev run` also forces secret redaction on for the dev process by
+default. Only the dev-specific `HERMES_DEV_GATEWAY_REDACT_SECRETS=false`
+override disables it.
+
+## Terminal QR Rendering
+
+The Weixin scan-login flow always prints the QR URL. If terminal QR rendering
+fails because the optional `qrcode` package is missing, open the printed URL in
+a browser or scan it directly.
+
+To enable terminal QR rendering in the development virtual environment:
+
+```bash
+.venv/bin/pip install "qrcode[pil]"
+```
+
 ## Recommended Real WeChat Path
 
 Do not start by wiring a personal WeChat hook into production. Personal hooks

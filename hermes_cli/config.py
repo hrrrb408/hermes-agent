@@ -2173,6 +2173,9 @@ DEFAULT_CONFIG = {
             "state_file": "gateway-dev-state.json",
             "log_file": "logs/gateway-dev.log",
             "state_dir": "gateway/dev",
+            "allow_all_users": False,
+            "allowed_users": [],
+            "redact_secrets": True,
         },
         "wechat": {
             "dev": {

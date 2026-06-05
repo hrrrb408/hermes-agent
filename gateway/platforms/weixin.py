@@ -1047,7 +1047,10 @@ async def qr_login(
             qr.make(fit=True)
             qr.print_ascii(invert=True)
         except Exception as _qr_exc:
-            print(f"（终端二维码渲染失败: {_qr_exc}，请直接打开上面的二维码链接）")
+            print("Terminal QR rendering is unavailable.")
+            print(f"Reason: {_qr_exc}")
+            print("Open the URL above to scan.")
+            print('To enable terminal QR rendering in dev env: .venv/bin/pip install "qrcode[pil]"')
 
         deadline = time.monotonic() + timeout_seconds
         current_base_url = ILINK_BASE_URL
@@ -1102,8 +1105,11 @@ async def qr_login(
                         qr.add_data(qr_scan_data)
                         qr.make(fit=True)
                         qr.print_ascii(invert=True)
-                    except Exception:
-                        pass
+                    except Exception as _qr_exc:
+                        print("Terminal QR rendering is unavailable.")
+                        print(f"Reason: {_qr_exc}")
+                        print("Open the URL above to scan.")
+                        print('To enable terminal QR rendering in dev env: .venv/bin/pip install "qrcode[pil]"')
                 except Exception as exc:
                     logger.error("weixin: QR refresh failed: %s", exc)
                     return None

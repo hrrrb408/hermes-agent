@@ -6774,6 +6774,10 @@ def cmd_dev_info(args):
         print(f"Wechat state dir:     {dev_gateway.wechat_state_dir.relative_to(dev_gateway.home)}")
         print("Wechat dry-run:       available")
         print(f"Wechat scan runner:   {dev_gateway.scan_runner}")
+        print(f"Dev auth controls:    {dev_gateway.auth_controls}")
+        print(f"Dev user access:      {dev_gateway.dev_user_access}")
+        print(f"Secret redaction:     {dev_gateway.secret_redaction}")
+        print(f"QR terminal:          {dev_gateway.qr_terminal}")
         print(f"Isolation check:      {dev_gateway.isolation}")
     except Exception as exc:
         print()
@@ -6908,7 +6912,10 @@ def cmd_gateway_dev(args):
         if args.action == "run":
             from gateway.platforms.wechat_dev import run_dev_wechat_gateway_foreground
 
-            success = run_dev_wechat_gateway_foreground()
+            success = run_dev_wechat_gateway_foreground(
+                allow_all_users=bool(getattr(args, "allow_all_users", False)),
+                allowed_users=getattr(args, "allowed_user", None),
+            )
             if not success:
                 sys.exit(1)
             return
@@ -7076,6 +7083,16 @@ def cmd_dev_check(args):
         _add("PASS" if dev_gateway.scan_runner == "available" else "WARN", "Gateway-dev run", dev_gateway.scan_runner)
         _add("PASS", "Gateway-dev status", "available")
         _add("PASS", "Gateway-dev stop", "available")
+        _add("PASS", "Dev auth controls", dev_gateway.auth_controls)
+        _add("PASS", "Dev allow-all flag", "--allow-all-users")
+        _add("PASS", "Dev allowed-user flag", "--allowed-user")
+        _add("PASS", "No ~/.hermes auth edit", "uses process env only")
+        _add(
+            "PASS" if dev_gateway.secret_redaction != "disabled by explicit dev env" else "WARN",
+            "Dev secret redaction",
+            dev_gateway.secret_redaction,
+        )
+        _add("PASS", "QR fallback", dev_gateway.qr_terminal)
     except Exception as exc:
         _add("FAIL", "Dev gateway", str(exc))
 
@@ -15789,6 +15806,17 @@ Examples:
         default="status",
         choices=["status", "run", "stop"],
         help="Development gateway action",
+    )
+    gateway_dev_parser.add_argument(
+        "--allow-all-users",
+        action="store_true",
+        help="Dev-only: allow all users for this gateway-dev run process",
+    )
+    gateway_dev_parser.add_argument(
+        "--allowed-user",
+        action="append",
+        default=[],
+        help="Dev-only: allow a specific Weixin sender id; repeatable",
     )
     gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
 

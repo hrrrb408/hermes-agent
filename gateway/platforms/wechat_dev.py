@@ -88,7 +88,11 @@ def _load_first_weixin_account(state_home: Path) -> dict | None:
     return None
 
 
-async def run_dev_wechat_gateway() -> bool:
+async def run_dev_wechat_gateway(
+    *,
+    allow_all_users: bool = False,
+    allowed_users: list[str] | None = None,
+) -> bool:
     """Run the foreground dev WeChat scan-login gateway.
 
     This reuses the production Weixin iLink adapter but points all runtime
@@ -97,6 +101,8 @@ async def run_dev_wechat_gateway() -> bool:
     """
     from gateway.config import GatewayConfig, Platform, PlatformConfig
     from gateway.dev_isolation import (
+        apply_dev_gateway_auth_environment,
+        apply_dev_gateway_redaction_default,
         assert_dev_gateway_safe,
         configure_dev_gateway_environment,
         get_dev_gateway_status,
@@ -118,6 +124,11 @@ async def run_dev_wechat_gateway() -> bool:
     paths["state_dir"].mkdir(parents=True, exist_ok=True)
     paths["wechat_state_dir"].mkdir(parents=True, exist_ok=True)
     configure_dev_gateway_environment(home)
+    secret_redaction = apply_dev_gateway_redaction_default()
+    dev_user_access = apply_dev_gateway_auth_environment(
+        allow_all_users=allow_all_users,
+        allowed_users=allowed_users,
+    )
 
     account = _load_first_weixin_account(paths["wechat_state_dir"])
     if account is None:
@@ -156,6 +167,14 @@ async def run_dev_wechat_gateway() -> bool:
     print(f"Wechat state dir:  {paths['wechat_state_dir']}")
     print("Production PID:    not touched")
     print("Memory injection:  enabled")
+    print(f"Secret redaction:  {secret_redaction}")
+    print(f"Dev user access:   {dev_user_access}")
+    if allow_all_users:
+        print()
+        print("WARNING: gateway-dev is running with --allow-all-users.")
+        print("This only applies to the dev gateway process.")
+    elif dev_user_access.startswith("deny by default"):
+        print("Hint: use --allow-all-users for local dev testing, or --allowed-user <id>.")
     print()
     print("Please scan QR code with a test WeChat account if prompted.")
     print("Press Ctrl+C to stop dev gateway.")
@@ -164,5 +183,14 @@ async def run_dev_wechat_gateway() -> bool:
     return await start_gateway(config=config, replace=False, verbosity=0)
 
 
-def run_dev_wechat_gateway_foreground() -> bool:
-    return asyncio.run(run_dev_wechat_gateway())
+def run_dev_wechat_gateway_foreground(
+    *,
+    allow_all_users: bool = False,
+    allowed_users: list[str] | None = None,
+) -> bool:
+    return asyncio.run(
+        run_dev_wechat_gateway(
+            allow_all_users=allow_all_users,
+            allowed_users=allowed_users,
+        )
+    )

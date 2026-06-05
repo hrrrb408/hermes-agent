@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import importlib.util
 import os
 import time
 from pathlib import Path
@@ -39,6 +40,10 @@ class DevGatewayStatus:
     pid: int | None
     isolation: str
     scan_runner: str
+    dev_user_access: str
+    secret_redaction: str
+    qr_terminal: str
+    auth_controls: str
     reason: str = ""
 
 
@@ -77,6 +82,73 @@ def configure_dev_gateway_environment(home: Path | None = None) -> dict[str, Pat
     os.environ["HERMES_GATEWAY_STATE_FILE"] = str(paths["runtime_status_file"])
     os.environ["HERMES_GATEWAY_LOG_FILE"] = str(paths["log_file"])
     return paths
+
+
+def _truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def dev_gateway_secret_redaction_status() -> str:
+    raw = os.getenv("HERMES_DEV_GATEWAY_REDACT_SECRETS")
+    if raw is None or raw.strip() == "":
+        return "enabled by default"
+    return "enabled by dev env" if _truthy(raw) else "disabled by explicit dev env"
+
+
+def dev_gateway_qr_status() -> str:
+    if importlib.util.find_spec("qrcode") is not None:
+        return "available"
+    return "unavailable, optional dependency qrcode missing"
+
+
+def dev_gateway_user_access_status() -> str:
+    if _truthy(os.getenv("HERMES_DEV_GATEWAY_ALLOW_ALL_USERS")):
+        return "allow all users (dev env)"
+    allowed = os.getenv("HERMES_DEV_GATEWAY_ALLOWED_USERS", "").strip()
+    if allowed:
+        return f"allowed users configured ({allowed})"
+    return "deny by default, no dev allowlist configured"
+
+
+def apply_dev_gateway_auth_environment(
+    *,
+    allow_all_users: bool = False,
+    allowed_users: list[str] | None = None,
+) -> str:
+    env_allow_all = _truthy(os.getenv("HERMES_DEV_GATEWAY_ALLOW_ALL_USERS"))
+    env_allowed = [
+        item.strip()
+        for item in os.getenv("HERMES_DEV_GATEWAY_ALLOWED_USERS", "").split(",")
+        if item.strip()
+    ]
+    cli_allowed = [str(item).strip() for item in (allowed_users or []) if str(item).strip()]
+    resolved_allowed = cli_allowed or env_allowed
+
+    if allow_all_users or env_allow_all:
+        os.environ["WEIXIN_ALLOW_ALL_USERS"] = "true"
+        os.environ["GATEWAY_ALLOW_ALL_USERS"] = "true"
+        return "allow all users (dev only)"
+
+    os.environ["WEIXIN_ALLOW_ALL_USERS"] = "false"
+    os.environ["GATEWAY_ALLOW_ALL_USERS"] = "false"
+    if resolved_allowed:
+        allowed_value = ",".join(resolved_allowed)
+        os.environ["WEIXIN_ALLOWED_USERS"] = allowed_value
+        return f"allowed users: {allowed_value}"
+
+    # Keep the gateway startup diagnostic from pointing developers at
+    # ~/.hermes/.env while preserving default-deny behavior.
+    os.environ["WEIXIN_ALLOWED_USERS"] = "__hermes_dev_gateway_no_users__"
+    return "deny by default, no dev allowlist configured"
+
+
+def apply_dev_gateway_redaction_default() -> str:
+    raw = os.getenv("HERMES_DEV_GATEWAY_REDACT_SECRETS")
+    if raw is not None and raw.strip() and not _truthy(raw):
+        os.environ["HERMES_REDACT_SECRETS"] = "false"
+        return "disabled by explicit dev env"
+    os.environ["HERMES_REDACT_SECRETS"] = "true"
+    return "enabled"
 
 
 def assert_dev_gateway_safe(home: Path | None = None) -> dict[str, Path]:
@@ -180,6 +252,10 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
         pid=pid,
         isolation=isolation,
         scan_runner="available",
+        dev_user_access=dev_gateway_user_access_status(),
+        secret_redaction=dev_gateway_secret_redaction_status(),
+        qr_terminal=dev_gateway_qr_status(),
+        auth_controls="available",
         reason=reason,
     )
 
@@ -203,6 +279,10 @@ def format_dev_gateway_status(status: DevGatewayStatus) -> str:
             f"Log file:        {status.log_file}",
             "Production PID:  not managed by dev gateway",
             f"Scan runner:     {status.scan_runner}",
+            f"Dev user access: {status.dev_user_access}",
+            f"Secret redaction: {status.secret_redaction}",
+            f"QR terminal:     {status.qr_terminal}",
+            f"Auth controls:   {status.auth_controls}",
             "Wechat dry-run:  available via dev-wechat-message",
             f"Isolation:       {status.isolation}",
             *([f"Reason:          {status.reason}"] if status.reason else []),
