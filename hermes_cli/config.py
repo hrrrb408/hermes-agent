@@ -2162,6 +2162,15 @@ DEFAULT_CONFIG = {
         # multi-tool agent turn. Bridged to HERMES_MEDIA_TRUST_RECENT_SECONDS.
         # Only consulted when ``strict`` is true.
         "trust_recent_files_seconds": 600,
+        # Development-only gateway isolation defaults. These are used by
+        # `gateway-dev status` and dry-run tooling; they do not start a real
+        # gateway or affect the production gateway.
+        "dev": {
+            "host": "127.0.0.1",
+            "port": 18080,
+            "pid_file": "gateway-dev.pid",
+            "log_file": "gateway-dev.log",
+        },
     },
 
     # Real-time token streaming to messaging platforms (Telegram, Discord,

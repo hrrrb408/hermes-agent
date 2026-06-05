@@ -213,3 +213,6 @@ The next steps should stay incremental:
 
 Automatic memory writes are high risk. The safer route is candidate generation
 first, followed by explicit human confirmation before anything is written.
+
+WeChat integration should go through Agent Runtime memory injection. The
+WeChat/Gateway layer should not call or modify `memory_router` directly.

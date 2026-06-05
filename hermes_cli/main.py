@@ -6756,6 +6756,28 @@ def cmd_dev_info(args):
         print("Hermes memory system")
         print("────────────────────────────────────────")
         print(f"Status:          unknown ({exc})")
+
+    try:
+        from gateway.dev_isolation import get_dev_gateway_status
+
+        dev_gateway = get_dev_gateway_status()
+        print()
+        print("Hermes gateway")
+        print("────────────────────────────────────────")
+        print("Production/global gateway: not managed by dev environment")
+        print(f"Dev gateway:                {dev_gateway.state}")
+        print(f"Dev gateway home:           {dev_gateway.home}")
+        print(f"Dev gateway host:           {dev_gateway.host}")
+        print(f"Dev gateway port:           {dev_gateway.port}")
+        print(f"Dev gateway pid file:       {dev_gateway.pid_file.name}")
+        print(f"Dev gateway log file:       {dev_gateway.log_file.name}")
+        print("Wechat adapter:             available")
+        print("Wechat dry-run:             available")
+    except Exception as exc:
+        print()
+        print("Hermes gateway")
+        print("────────────────────────────────────────")
+        print(f"Status:                    unknown ({exc})")
     print()
 
 
@@ -6807,6 +6829,85 @@ def cmd_dev_build_context(args):
     print("────────────────────────────────────────")
     print(preview)
     print()
+
+
+def cmd_dev_wechat_message(args):
+    """Preview a WeChat text message entering Agent Runtime."""
+    try:
+        from gateway.platforms.wechat_dev import handle_dev_wechat_text_message
+        from hermes_cli.config import load_config_readonly
+
+        result = handle_dev_wechat_text_message(
+            args.message,
+            sender_id=args.sender,
+            config=load_config_readonly(),
+            no_llm=args.no_llm,
+        )
+    except Exception as exc:
+        print(f"ERROR Failed to build dev WeChat message: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    memory_context = result.memory_context
+    print()
+    print("Hermes dev wechat message")
+    print("────────────────────────────────────────")
+    print("Mode: dry-run")
+    print("Channel: wechat")
+    print(f"Sender: {result.message.sender_id}")
+    print(f"Message ID: {result.message.message_id}")
+    print(f"Created at: {result.message.created_at}")
+    print()
+    print("Inbound text:")
+    print(result.message.text)
+    print()
+    print("Runtime:")
+    print("Agent Runtime: available")
+    print(f"Runtime memory injection: {'enabled' if memory_context.enabled else 'disabled'}")
+    print(f"LLM call: {result.llm_call}")
+    print()
+    print("Memory context:")
+    print("selected categories:")
+    if memory_context.selected_categories:
+        for category in memory_context.selected_categories:
+            print(f"- {category}")
+    else:
+        print("- none")
+    print()
+    print("loaded memories:")
+    if memory_context.loaded_memories:
+        for item in memory_context.loaded_memories:
+            print(f"- {item['memory_id']} {item['title']}")
+    else:
+        print("- none")
+    if memory_context.skipped:
+        print()
+        print("Skipped memories:")
+        for note in memory_context.skipped:
+            print(f"- {note}")
+    print()
+    print("Reply preview:")
+    print(result.reply_preview)
+    print()
+    print("Prompt preview:")
+    print("────────────────────────────────────────")
+    print(result.prompt_preview)
+    print()
+
+
+def cmd_gateway_dev(args):
+    """Show dev gateway isolation status."""
+    if args.action != "status":
+        print("ERROR gateway-dev currently supports status only.", file=sys.stderr)
+        print("Use dev-wechat-message for safe WeChat runtime dry-run.", file=sys.stderr)
+        sys.exit(1)
+    try:
+        from gateway.dev_isolation import format_dev_gateway_status, get_dev_gateway_status
+
+        print()
+        print(format_dev_gateway_status(get_dev_gateway_status()))
+    except Exception as exc:
+        print(f"ERROR Failed to read dev gateway status: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_dev_check(args):
@@ -6917,6 +7018,42 @@ def cmd_dev_check(args):
         elif state_exists:
             value = "state file present, no pid"
         _add("WARN", "Gateway", value)
+
+    try:
+        from gateway.dev_isolation import get_dev_gateway_status
+
+        dev_gateway = get_dev_gateway_status(expected_hermes_home)
+        _add(
+            "PASS" if resolved_home != original_home else "FAIL",
+            "Dev gateway home",
+            str(dev_gateway.home),
+        )
+        _add(
+            "PASS" if dev_gateway.pid_file != dev_gateway.production_pid_file else "FAIL",
+            "Dev gateway pid file",
+            dev_gateway.pid_file.name,
+        )
+        _add(
+            "PASS" if dev_gateway.host == "127.0.0.1" else "FAIL",
+            "Dev gateway host",
+            dev_gateway.host,
+        )
+        _add(
+            "PASS" if dev_gateway.port == 18080 else "WARN",
+            "Dev gateway port",
+            str(dev_gateway.port),
+        )
+        _add("PASS", "Dev gateway status", dev_gateway.state)
+    except Exception as exc:
+        _add("FAIL", "Dev gateway", str(exc))
+
+    try:
+        from gateway.platforms.wechat_dev import handle_dev_wechat_text_message  # noqa: F401
+
+        _add("PASS", "Wechat adapter", "importable")
+    except Exception as exc:
+        _add("FAIL", "Wechat adapter", str(exc))
+    _add("PASS", "dev-wechat-message", "available")
 
     try:
         from hermes_cli.memory_router import validate_memory
@@ -15586,6 +15723,36 @@ Examples:
     )
     dev_build_context_parser.add_argument("message", help="User message to preview")
     dev_build_context_parser.set_defaults(func=cmd_dev_build_context)
+
+    dev_wechat_parser = subparsers.add_parser(
+        "dev-wechat-message",
+        help="Preview a WeChat text message entering Agent Runtime",
+    )
+    dev_wechat_parser.add_argument("message", help="Inbound WeChat text")
+    dev_wechat_parser.add_argument(
+        "--sender",
+        default="dev-wechat-user",
+        help="Dry-run sender id (default: dev-wechat-user)",
+    )
+    dev_wechat_parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Skip model calls and show prompt preview only",
+    )
+    dev_wechat_parser.set_defaults(func=cmd_dev_wechat_message)
+
+    gateway_dev_parser = subparsers.add_parser(
+        "gateway-dev",
+        help="Show development gateway isolation status",
+    )
+    gateway_dev_parser.add_argument(
+        "action",
+        nargs="?",
+        default="status",
+        choices=["status"],
+        help="Development gateway action (status only)",
+    )
+    gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
 
     # =========================================================================
     # dev-check command
