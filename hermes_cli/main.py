@@ -15486,6 +15486,11 @@ Examples:
     # hierarchical memory router commands
     # =========================================================================
     from hermes_cli.memory_router import (
+        cmd_memory_category_add,
+        cmd_memory_category_archive,
+        cmd_memory_category_list,
+        cmd_memory_category_show,
+        cmd_memory_category_update,
         cmd_memory_check,
         cmd_memory_index,
         cmd_memory_list,
@@ -15497,6 +15502,11 @@ Examples:
     memory_root_parser = subparsers.add_parser(
         "memory-root",
         help="Show hierarchical memory root router",
+    )
+    memory_root_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include archived and deprecated categories",
     )
     memory_root_parser.set_defaults(func=cmd_memory_root)
 
@@ -15510,6 +15520,11 @@ Examples:
     memory_list_parser = subparsers.add_parser(
         "memory-list",
         help="List hierarchical memory items",
+    )
+    memory_list_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include archived and deprecated categories",
     )
     memory_list_parser.set_defaults(func=cmd_memory_list)
 
@@ -15532,6 +15547,67 @@ Examples:
         help="Check hierarchical memory structure and references",
     )
     memory_check_parser.set_defaults(func=cmd_memory_check)
+
+    memory_category_list_parser = subparsers.add_parser(
+        "memory-category-list",
+        help="List memory root categories",
+    )
+    memory_category_list_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include archived and deprecated categories",
+    )
+    memory_category_list_parser.set_defaults(func=cmd_memory_category_list)
+
+    memory_category_show_parser = subparsers.add_parser(
+        "memory-category-show",
+        help="Show a memory root category",
+    )
+    memory_category_show_parser.add_argument("category", help="Memory category name")
+    memory_category_show_parser.set_defaults(func=cmd_memory_category_show)
+
+    memory_category_add_parser = subparsers.add_parser(
+        "memory-category-add",
+        help="Add a memory root category",
+    )
+    memory_category_add_parser.add_argument("category", help="New memory category name")
+    memory_category_add_parser.add_argument("--scope", required=True, help="Category scope")
+    memory_category_add_parser.add_argument(
+        "--priority",
+        required=True,
+        choices=["P0", "P1", "P2", "P3"],
+        help="Category priority",
+    )
+    memory_category_add_parser.add_argument("--keywords", required=True, help="Comma-separated keywords")
+    memory_category_add_parser.add_argument("--description", required=True, help="Category description")
+    memory_category_add_parser.set_defaults(func=cmd_memory_category_add)
+
+    memory_category_update_parser = subparsers.add_parser(
+        "memory-category-update",
+        help="Update memory root category metadata",
+    )
+    memory_category_update_parser.add_argument("category", help="Memory category name")
+    memory_category_update_parser.add_argument("--scope", help="Category scope")
+    memory_category_update_parser.add_argument(
+        "--priority",
+        choices=["P0", "P1", "P2", "P3"],
+        help="Category priority",
+    )
+    memory_category_update_parser.add_argument(
+        "--status",
+        choices=["active", "archived", "deprecated"],
+        help="Category status",
+    )
+    memory_category_update_parser.add_argument("--keywords", help="Comma-separated keywords")
+    memory_category_update_parser.add_argument("--description", help="Category description")
+    memory_category_update_parser.set_defaults(func=cmd_memory_category_update)
+
+    memory_category_archive_parser = subparsers.add_parser(
+        "memory-category-archive",
+        help="Archive a memory root category",
+    )
+    memory_category_archive_parser.add_argument("category", help="Memory category name")
+    memory_category_archive_parser.set_defaults(func=cmd_memory_category_archive)
 
     # =========================================================================
     # update command
