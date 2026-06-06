@@ -6722,6 +6722,10 @@ def cmd_dev_info(args):
 
     try:
         memory_summary = _memory_summary()
+        from agent.runtime_memory_writer import get_auto_write_config
+        from hermes_cli.config import load_config_readonly
+
+        auto_memory_cfg = get_auto_write_config(load_config_readonly())
         categories = memory_summary.get("categories", {})
         items = memory_summary.get("memory_items", {})
         paths = memory_summary.get("paths", {})
@@ -6748,7 +6752,25 @@ def cmd_dev_info(args):
             "Runtime memory injection: "
             f"{_availability(features.get('runtime_memory_injection', False))}"
         )
-        print(f"Auto Memory Writer: {_availability(features.get('auto_memory_writer', False))}")
+        print(
+            "Auto Memory Writer: "
+            f"{_availability(features.get('auto_memory_writer', False))}, "
+            f"{'enabled' if auto_memory_cfg.enabled else 'disabled'} "
+            "(default: disabled)"
+        )
+        print(
+            "Auto Memory Update: "
+            f"available, {'enabled' if auto_memory_cfg.allow_updates else 'disabled'} "
+            "(default: disabled)"
+        )
+        print("Auto Memory Review: available")
+        print("Protected Memory Guard: available")
+        print(
+            "Auto Category Creation: "
+            f"{'enabled' if auto_memory_cfg.auto_create_categories else 'disabled'} "
+            "(default: disabled)"
+        )
+        print("Dedup Strategy: SequenceMatcher + tags + protection rules")
         print(f"Auto Memory Dedup:  {_availability(features.get('auto_memory_dedup', False))}")
         print(f"Writer commands:  {_availability(features.get('writer_commands', False))}")
         print(f"Category commands:{_availability(features.get('category_commands', False)):>12}")
@@ -6910,6 +6932,7 @@ def cmd_memory_auto_test(args):
     try:
         from agent.runtime_memory_writer import (
             evaluate_memory_auto_write,
+            format_memory_auto_json,
             format_memory_auto_test,
         )
         from hermes_cli.config import load_config_readonly
@@ -6924,7 +6947,10 @@ def cmd_memory_auto_test(args):
         print(f"ERROR Failed to evaluate automatic memory writer: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    print(format_memory_auto_test(decision))
+    if args.format == "json":
+        print(format_memory_auto_json(decision))
+        return
+    print(format_memory_auto_test(decision, input_text=args.message))
 
 
 def cmd_gateway_dev(args):
@@ -7145,26 +7171,88 @@ def cmd_dev_check(args):
 
     try:
         from agent.runtime_memory_writer import (
+            MemoryDecision,
             auto_write_enabled,
+            auto_update_enabled,
+            auto_create_categories_enabled,
             evaluate_memory_auto_write,
+            format_memory_auto_test,
         )
 
         dry_run = evaluate_memory_auto_write(
-            "已完成开发版微信 Gateway 并推送",
+            "已完成 Hermes 开发版微信 Gateway 运行态日志增强，commit 65e8d40df，dev-check PASS，memory-check PASS，并已推送。",
+            "",
+            config={},
+            write=False,
+        )
+        review_run = evaluate_memory_auto_write(
+            "Hermes 微信 Gateway 已接入",
             "",
             config={},
             write=False,
         )
         _add("PASS", "Auto memory writer", "available")
         _add(
+            "PASS" if MemoryDecision.REVIEW.value == "REVIEW" else "FAIL",
+            "Memory decision enum",
+            "available",
+        )
+        _add(
+            "PASS" if review_run.decision == MemoryDecision.REVIEW else "FAIL",
+            "REVIEW safeguard",
+            review_run.decision.value,
+        )
+        _add(
+            "PASS" if MemoryDecision.SKIP_DUPLICATE.value == "SKIP_DUPLICATE" else "FAIL",
+            "SKIP_DUPLICATE",
+            "available",
+        )
+        _add(
             "PASS" if auto_write_enabled({}) is False else "FAIL",
             "Auto memory config",
             "default disabled" if auto_write_enabled({}) is False else "unexpected enabled",
         )
         _add(
-            "PASS" if dry_run.decision in {"WRITE", "UPDATE"} and dry_run.score >= 70 else "FAIL",
+            "PASS" if auto_update_enabled({}) is False else "FAIL",
+            "Auto update config",
+            "separate, default disabled" if auto_update_enabled({}) is False else "unexpected enabled",
+        )
+        _add(
+            "PASS" if "TARGET_P0_PROTECTED" in review_run.reason_codes else "FAIL",
+            "P0 protection",
+            "available",
+        )
+        permanent_run = evaluate_memory_auto_write(
+            "MEMORY.md 作为根记忆路由表，分类索引文件保存某类记忆索引，records 保存详细记忆正文，events.jsonl 保存变更流水。",
+            "",
+            config={},
+            write=False,
+        )
+        _add(
+            "PASS" if "TARGET_PERMANENT_PROTECTED" in permanent_run.reason_codes else "FAIL",
+            "Permanent protection",
+            "available",
+        )
+        _add(
+            "PASS" if auto_create_categories_enabled({}) is False else "FAIL",
+            "Auto category create",
+            "default disabled" if auto_create_categories_enabled({}) is False else "unexpected enabled",
+        )
+        _add(
+            "PASS" if dry_run.decision in {MemoryDecision.WRITE, MemoryDecision.REVIEW, MemoryDecision.SKIP_DUPLICATE} and dry_run.score >= 80 else "FAIL",
             "Auto memory dry-run",
-            f"{dry_run.decision} score={dry_run.score}",
+            f"{dry_run.decision.value} score={dry_run.score}",
+        )
+        _add(
+            "PASS" if not dry_run.would_modify_files else "FAIL",
+            "Dry-run no writes",
+            "yes" if not dry_run.would_modify_files else "no",
+        )
+        explain_output = format_memory_auto_test(review_run, input_text="Hermes 微信 Gateway 已接入")
+        _add(
+            "PASS" if "Reason codes:" in explain_output and "Would modify files:" in explain_output else "FAIL",
+            "Auto test explain",
+            "available",
         )
     except Exception as exc:
         _add("FAIL", "Auto memory writer", str(exc))
@@ -16012,6 +16100,12 @@ Examples:
     memory_auto_test_parser.add_argument(
         "--assistant-response",
         help="Optional assistant response to include in candidate extraction",
+    )
+    memory_auto_test_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
     )
     memory_auto_test_parser.set_defaults(func=cmd_memory_auto_test)
 

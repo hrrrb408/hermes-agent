@@ -1,25 +1,44 @@
-# Automatic Memory Writer V2
+# Automatic Memory Writer V2.1
 
 ## Architecture
 
-Automatic memory writing runs after Agent Runtime has produced a reply:
+Automatic memory evaluation runs after Agent Runtime produces a reply:
 
 ```text
 user message
--> assistant response
 -> Memory Candidate Extractor
 -> Memory Scorer
--> Dedup
--> Memory Writer
+-> Similarity and Tag Analysis
+-> Safety Decision
+-> Optional Memory Writer
 ```
 
-The first version is rule-based. It does not call an LLM, does not use
-embeddings, and does not use a vector database. Runtime failures are logged as
-warnings and must not fail the user-facing reply.
+The implementation is rule-based. It does not call an LLM, use embeddings, or
+use a vector database. Existing `memory-add` and `memory-update` writer paths
+remain responsible for persistence.
+
+## Memory Writer V2.1 Safety Model
+
+The safety model separates candidate evaluation from file modification. A
+dry-run always evaluates with the production rules but never writes files.
+Runtime writes require explicit configuration and a safe `WRITE` or `UPDATE`
+decision.
+
+The candidate is based primarily on the user message. Assistant output is
+supplemental context and cannot independently authorize a write.
+
+## Decision Types
+
+- `WRITE`: high-confidence new fact with no related existing memory.
+- `UPDATE`: high-confidence match satisfying every update safety condition.
+- `REVIEW`: useful but ambiguous, related, protected, or disabled by policy.
+- `SKIP`: low-value, temporary, casual, one-off, or explicitly excluded.
+- `SKIP_DUPLICATE`: existing memory already contains essentially identical
+  information.
+
+`REVIEW`, `SKIP`, and `SKIP_DUPLICATE` never modify memory files.
 
 ## MemoryCandidate
-
-The runtime writer evaluates a lightweight structure:
 
 ```text
 summary
@@ -29,81 +48,161 @@ title
 type
 importance
 ttl
+source_confidence
 ```
 
-Categories are inferred from message content. Hermes development terms such as
-`gateway`, `wechat`, `memory`, `runtime`, and `agent` map to `hermes`. Travel
-terms such as `travel`, `flight`, and `hotel` map to `travel`.
+`source_confidence` distinguishes user-confirmed facts from assistant-only
+inferences.
 
 ## Scoring
 
-Candidates are scored from 0 to 100.
+Candidates are scored from 0 to 100. Progress terms, commit hashes, completion
+phrases, verification results, and project-specific terms add points. Casual
+chat, one-off questions, short messages, and assistant-only inference reduce
+the score.
 
-Positive signals:
+Defaults:
 
-- completion or implementation keywords: +20
-- git commit hash: +20
-- `已完成`, `已推送`, `验证通过`, or `PASS`: +15
-- `修改文件`, `新增命令`, or `验收结果`: +15
+- write threshold: 80
+- review threshold: 65
 
-Negative signals:
+## WRITE Rules
 
-- casual chatter such as `你好`, `哈哈`, `谢谢`: -100
-- one-off questions such as `天气` or `今天几点`: -100
-- messages shorter than 20 characters: -20
+`WRITE` requires a score of at least 80, an active existing category, valid
+candidate fields, and no existing memory above the candidate similarity
+threshold. Actual persistence additionally requires auto-write to be enabled
+and a non-dry-run runtime call.
 
-The default write threshold is `score >= 70`.
+## UPDATE Rules
 
-## Dedup
+Automatic update requires all of the following:
 
-Before writing, the candidate is compared with existing memory items in the
-same category using `difflib.SequenceMatcher`. The writer checks titles,
-summaries, tags, and a bounded prefix of record text.
+- score at least 80
+- auto-write enabled
+- auto-update enabled separately
+- same category
+- active target
+- overall similarity at least 90%
+- at least one non-generic core tag overlap
+- title similarity at least 85% or summary similarity at least 90%
+- target is not protected
 
-If similarity is at least 80%, the decision is `UPDATE`; otherwise the decision
-is `WRITE`.
+Failure of any update condition produces `REVIEW`, not a lower-confidence
+update.
 
-## Auto Update
+## REVIEW Rules
 
-When enabled and a similar memory exists, the writer reuses the existing
-`memory-update` path through `hermes_cli.memory_router.update_memory_item`.
-New memories reuse the memory router writer path through
-`create_memory_item` and `allocate_memory_id`.
+Review is used for scores between 65 and 79, related memories between the
+candidate and update thresholds, protected targets, missing categories,
+generic-only tag overlap, disabled updates, or other ambiguous matches.
 
-Events are appended to `memory/events.jsonl` with:
+No review queue is created in V2.1. The decision is logged and shown in dry-run
+output only.
 
-```json
-{"event":"memory_auto_add","source":"runtime"}
-{"event":"memory_auto_update","source":"runtime"}
-```
+## SKIP Rules
 
-## Config
+Candidates are skipped for low scores, casual chat, one-off questions,
+assistant-only unsupported claims, invalid fields, and explicit user requests
+such as `不要记住`, `别保存`, or `这只是临时的`.
 
-Automatic writes are disabled by default.
+## SKIP_DUPLICATE Rules
+
+An existing same-category memory is considered a duplicate when overall
+similarity is at least 98% and title or summary similarity is at least 95%.
+Duplicates are neither added nor updated.
+
+## P0 Protection
+
+Memories with `importance: P0` cannot be automatically updated. Related
+candidates produce `REVIEW` with `TARGET_P0_PROTECTED`, unless they are near
+identical and safely skipped as duplicates.
+
+## Permanent Memory Protection
+
+Memories with `ttl: permanent` cannot be automatically updated. Related
+candidates produce `REVIEW` with `TARGET_PERMANENT_PROTECTED`, unless they are
+near-identical duplicates.
+
+## Auto Update Switch
+
+Automatic updates are riskier than automatic additions because they can
+overwrite important historical facts. They therefore use a separate switch and
+are disabled by default.
 
 ```yaml
 memory:
   auto_write:
     enabled: false
+    allow_updates: false
 ```
 
-The environment variable overrides config:
+Environment overrides:
 
 ```bash
 HERMES_MEMORY_AUTO_WRITE=true
+HERMES_MEMORY_AUTO_UPDATE=true
 ```
 
-When disabled, runtime evaluation can still log a candidate decision, but it
-does not modify `MEMORY.md`, category indexes, records, snapshots, or events.
+Enabling auto-write alone does not enable updates.
 
-## Dry Run
+## Category Creation Guard
 
-Use `memory-auto-test` to evaluate extraction, scoring, and dedup without
-writing:
+Automatic category creation is disabled by default:
+
+```yaml
+memory:
+  auto_write:
+    auto_create_categories: false
+```
 
 ```bash
-./scripts/run-dev-hermes.sh memory-auto-test "已完成开发版微信 Gateway 并推送"
+HERMES_MEMORY_AUTO_CREATE_CATEGORIES=true
 ```
 
-The output includes candidate summary, inferred category, score, decision,
-auto-write enablement, and the nearest existing memory if any.
+When a category is missing and creation is disabled, the decision is `REVIEW`.
+
+## Similarity Breakdown
+
+Text is normalized by lowercasing English, removing common punctuation, and
+collapsing whitespace while preserving Chinese text. `SequenceMatcher`
+calculates:
+
+- title similarity
+- summary similarity
+- combined title and summary similarity
+
+Similarity values are stored as ratios from 0 to 1 and displayed as
+percentages.
+
+## Core Tag Overlap
+
+Tag comparison reports all overlap and core overlap. Generic tags such as
+`hermes`, `project`, `status`, `memory`, and `system` do not independently
+authorize updates. At least one specific tag such as `wechat`, `gateway`,
+`runtime`, `scan-login`, `auth`, or `context-loader` must overlap.
+
+## Dry-run Examples
+
+```bash
+./scripts/run-dev-hermes.sh memory-auto-test "Hermes 微信 Gateway 已接入"
+./scripts/run-dev-hermes.sh memory-auto-test "谢谢哈哈"
+./scripts/run-dev-hermes.sh memory-auto-test "Hermes 微信 Gateway 已接入" --format json
+```
+
+Dry-run output includes score breakdown, match details, similarity breakdown,
+tag overlap, protection status, configuration switches, decision reasons, and
+whether files would be modified.
+
+## Runtime Failure Isolation
+
+The runtime integration remains best-effort. Evaluation and persistence are
+wrapped in exception handling after `post_llm_call`. Any failure records a
+warning and cannot fail the user reply, session history, Agent Runtime, or
+Gateway.
+
+## Why Auto Update Is Disabled by Default
+
+Adding a new record preserves existing history. Updating an old record can
+silently replace a high-value or permanent fact. V2.1 therefore requires a
+higher similarity threshold, core tag overlap, protection checks, and a
+separate explicit update switch.
