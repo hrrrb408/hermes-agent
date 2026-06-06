@@ -200,6 +200,16 @@ wrapped in exception handling after `post_llm_call`. Any failure records a
 warning and cannot fail the user reply, session history, Agent Runtime, or
 Gateway.
 
+## Memory Review Queue
+
+When explicitly enabled, `REVIEW` decisions and `WRITE` or `UPDATE` decisions
+blocked by disabled automatic actions can enter the Memory Review Queue.
+`SKIP` and `SKIP_DUPLICATE` never enter the queue.
+
+The Review Queue is not formal long-term memory. A candidate reaches
+`memory/indexes/`, `memory/records/`, and formal `memory/events.jsonl` only
+after successful human approval and current-state revalidation.
+
 ## Why Auto Update Is Disabled by Default
 
 Adding a new record preserves existing history. Updating an old record can

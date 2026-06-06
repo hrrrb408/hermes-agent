@@ -830,6 +830,32 @@ def maybe_auto_write_memory(
     )
     if evaluation.reason_codes:
         logger.info("Memory auto-write reasons: %s", ", ".join(evaluation.reason_codes))
+    try:
+        from agent.memory_review_queue import (
+            enqueue_review_item,
+            get_review_queue_config,
+            should_enqueue_evaluation,
+        )
+
+        queue_cfg = get_review_queue_config(config)
+        if queue_cfg.enabled and should_enqueue_evaluation(evaluation, queue_cfg):
+            item, created, message = enqueue_review_item(
+                evaluation,
+                source_kind="runtime",
+                config=config,
+                require_enabled=True,
+            )
+            logger.info(
+                "Memory review queue: review_id=%s created=%s decision=%s category=%s score=%s result=%s",
+                item.get("review_id") if item else "none",
+                created,
+                evaluation.decision.value,
+                candidate.category if candidate else "unknown",
+                evaluation.score,
+                message,
+            )
+    except Exception as exc:
+        logger.warning("memory review queue enqueue failed: %s", exc)
     return evaluation
 
 
@@ -843,7 +869,19 @@ def _pct(value: float) -> str:
     return f"{value * 100:.0f}%"
 
 
-def format_memory_auto_test(evaluation: MemoryEvaluation, *, input_text: str = "") -> str:
+def format_memory_auto_test(
+    evaluation: MemoryEvaluation,
+    *,
+    input_text: str = "",
+    config: dict | None = None,
+) -> str:
+    from agent.memory_review_queue import (
+        get_review_queue_config,
+        should_enqueue_evaluation,
+    )
+
+    queue_cfg = get_review_queue_config(config)
+    would_enqueue = queue_cfg.enabled and should_enqueue_evaluation(evaluation, queue_cfg)
     candidate = evaluation.candidate
     lines = [
         "",
@@ -905,6 +943,7 @@ def format_memory_auto_test(evaluation: MemoryEvaluation, *, input_text: str = "
             f"auto-write enabled: {'yes' if evaluation.auto_write_enabled else 'no'}",
             f"auto-update enabled: {'yes' if evaluation.auto_update_enabled else 'no'}",
             f"auto-create categories enabled: {'yes' if evaluation.auto_create_categories_enabled else 'no'}",
+            f"review queue enabled: {'yes' if queue_cfg.enabled else 'no'}",
             "",
             "Decision:",
             evaluation.decision.value,
@@ -915,9 +954,35 @@ def format_memory_auto_test(evaluation: MemoryEvaluation, *, input_text: str = "
     lines.extend(evaluation.reason_codes or ["none"])
     lines.extend(["", "Reasons:"])
     lines.extend(evaluation.reasons or ["none"])
-    lines.extend(["", "Would modify files:", "yes" if evaluation.would_modify_files else "no", ""])
+    lines.extend(
+        [
+            "",
+            "Would modify files:",
+            "yes" if evaluation.would_modify_files else "no",
+            "",
+            "Would enqueue:",
+            "yes" if would_enqueue else "no",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
-def format_memory_auto_json(evaluation: MemoryEvaluation) -> str:
-    return json.dumps(memory_evaluation_to_dict(evaluation), ensure_ascii=False, indent=2)
+def format_memory_auto_json(
+    evaluation: MemoryEvaluation,
+    *,
+    config: dict | None = None,
+) -> str:
+    from agent.memory_review_queue import (
+        get_review_queue_config,
+        should_enqueue_evaluation,
+    )
+
+    queue_cfg = get_review_queue_config(config)
+    data = memory_evaluation_to_dict(evaluation)
+    data["review_queue_enabled"] = queue_cfg.enabled
+    data["would_enqueue"] = queue_cfg.enabled and should_enqueue_evaluation(
+        evaluation,
+        queue_cfg,
+    )
+    return json.dumps(data, ensure_ascii=False, indent=2)

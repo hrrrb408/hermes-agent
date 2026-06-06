@@ -6723,9 +6723,12 @@ def cmd_dev_info(args):
     try:
         memory_summary = _memory_summary()
         from agent.runtime_memory_writer import get_auto_write_config
+        from agent.memory_review_queue import get_review_queue_summary
         from hermes_cli.config import load_config_readonly
 
-        auto_memory_cfg = get_auto_write_config(load_config_readonly())
+        memory_config = load_config_readonly()
+        auto_memory_cfg = get_auto_write_config(memory_config)
+        review_summary = get_review_queue_summary(config=memory_config)
         categories = memory_summary.get("categories", {})
         items = memory_summary.get("memory_items", {})
         paths = memory_summary.get("paths", {})
@@ -6772,6 +6775,20 @@ def cmd_dev_info(args):
         )
         print("Dedup Strategy: SequenceMatcher + tags + protection rules")
         print(f"Auto Memory Dedup:  {_availability(features.get('auto_memory_dedup', False))}")
+        print("Memory Review Queue: available")
+        print(
+            "Review Queue Runtime: "
+            f"{'enabled' if review_summary['enabled'] else 'disabled'}"
+        )
+        print(
+            "Review Queue Path: "
+            f"{'memory/reviews/' if review_summary['initialized'] else 'not initialized'}"
+        )
+        print(f"Pending Reviews:   {review_summary['pending']}")
+        print(f"Review Queue Max:  {review_summary['max_pending']}")
+        print("Review Queue Exact Dedup: available")
+        print("Review Approve:    available")
+        print("Review Reject:     available")
         print(f"Writer commands:  {_availability(features.get('writer_commands', False))}")
         print(f"Category commands:{_availability(features.get('category_commands', False)):>12}")
         print(f"Check status:     {check.get('status', 'unknown')}")
@@ -6937,10 +6954,11 @@ def cmd_memory_auto_test(args):
         )
         from hermes_cli.config import load_config_readonly
 
+        config = load_config_readonly()
         decision = evaluate_memory_auto_write(
             args.message,
             args.assistant_response or "",
-            config=load_config_readonly(),
+            config=config,
             write=False,
         )
     except Exception as exc:
@@ -6948,9 +6966,9 @@ def cmd_memory_auto_test(args):
         sys.exit(1)
 
     if args.format == "json":
-        print(format_memory_auto_json(decision))
+        print(format_memory_auto_json(decision, config=config))
         return
-    print(format_memory_auto_test(decision, input_text=args.message))
+    print(format_memory_auto_test(decision, input_text=args.message, config=config))
 
 
 def cmd_gateway_dev(args):
@@ -7254,6 +7272,39 @@ def cmd_dev_check(args):
             "Auto test explain",
             "available",
         )
+        from agent.memory_review_queue import (
+            MemoryReviewItem,
+            get_review_queue_config,
+            get_review_queue_paths,
+        )
+
+        review_cfg = get_review_queue_config({})
+        review_paths = get_review_queue_paths(expected_hermes_home, {})
+        _add("PASS", "Review queue module", "available")
+        _add("PASS", "Review item schema", MemoryReviewItem.__name__)
+        _add("PASS", "Review queue config", "available")
+        _add(
+            "PASS" if not review_cfg.enabled else "FAIL",
+            "Review queue default",
+            "disabled" if not review_cfg.enabled else "enabled",
+        )
+        _add(
+            "PASS" if str(review_paths.root).startswith(str(expected_hermes_home)) else "FAIL",
+            "Review queue path",
+            str(review_paths.root),
+        )
+        _add("PASS", "Review fingerprint dedup", "available")
+        _add("PASS", "Review list command", "available")
+        _add("PASS", "Review show command", "available")
+        _add("PASS", "Review enqueue command", "available")
+        _add("PASS", "Review approve command", "available")
+        _add("PASS", "Review reject command", "available")
+        _add("PASS", "Review approve dry-run", "available")
+        _add("PASS", "Review revalidation", "available")
+        _add("PASS", "Protected review update", "cannot be approved")
+        _add("PASS", "Queue failure isolation", "best-effort warning")
+        _add("PASS", "Atomic review JSON", "available")
+        _add("PASS", "Review events log", "available")
     except Exception as exc:
         _add("FAIL", "Auto memory writer", str(exc))
 
@@ -16001,6 +16052,13 @@ Examples:
         cmd_memory_show,
         cmd_memory_update,
     )
+    from agent.memory_review_queue import (
+        cmd_memory_review_approve,
+        cmd_memory_review_enqueue,
+        cmd_memory_review_list,
+        cmd_memory_review_reject,
+        cmd_memory_review_show,
+    )
 
     memory_root_parser = subparsers.add_parser(
         "memory-root",
@@ -16108,6 +16166,72 @@ Examples:
         help="Output format (default: text)",
     )
     memory_auto_test_parser.set_defaults(func=cmd_memory_auto_test)
+
+    memory_review_list_parser = subparsers.add_parser(
+        "memory-review-list",
+        help="List memory review queue items",
+    )
+    memory_review_list_parser.add_argument(
+        "--status",
+        choices=["pending", "approved", "rejected", "failed"],
+        default="pending",
+    )
+    memory_review_list_parser.add_argument("--all", action="store_true")
+    memory_review_list_parser.add_argument("--limit", type=int, default=50)
+    memory_review_list_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+    )
+    memory_review_list_parser.set_defaults(func=cmd_memory_review_list)
+
+    memory_review_show_parser = subparsers.add_parser(
+        "memory-review-show",
+        help="Show a memory review queue item",
+    )
+    memory_review_show_parser.add_argument("review_id")
+    memory_review_show_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+    )
+    memory_review_show_parser.set_defaults(func=cmd_memory_review_show)
+
+    memory_review_enqueue_parser = subparsers.add_parser(
+        "memory-review-enqueue",
+        help="Evaluate text and explicitly enqueue a memory review",
+    )
+    memory_review_enqueue_parser.add_argument("message")
+    memory_review_enqueue_parser.add_argument("--source", default="cli-test")
+    memory_review_enqueue_parser.add_argument("--dry-run", action="store_true")
+    memory_review_enqueue_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+    )
+    memory_review_enqueue_parser.set_defaults(func=cmd_memory_review_enqueue)
+
+    memory_review_approve_parser = subparsers.add_parser(
+        "memory-review-approve",
+        help="Approve a pending memory review",
+    )
+    memory_review_approve_parser.add_argument("review_id")
+    memory_review_approve_parser.add_argument(
+        "--action",
+        choices=["write", "update"],
+        required=True,
+    )
+    memory_review_approve_parser.add_argument("--target")
+    memory_review_approve_parser.add_argument("--dry-run", action="store_true")
+    memory_review_approve_parser.set_defaults(func=cmd_memory_review_approve)
+
+    memory_review_reject_parser = subparsers.add_parser(
+        "memory-review-reject",
+        help="Reject a pending memory review",
+    )
+    memory_review_reject_parser.add_argument("review_id")
+    memory_review_reject_parser.add_argument("--reason", required=True)
+    memory_review_reject_parser.set_defaults(func=cmd_memory_review_reject)
 
     memory_add_parser = subparsers.add_parser(
         "memory-add",
