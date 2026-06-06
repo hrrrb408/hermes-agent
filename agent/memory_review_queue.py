@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import threading
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -16,6 +17,7 @@ from types import SimpleNamespace
 from typing import Any, Iterator
 
 from hermes_constants import get_hermes_home
+from hermes_constants import reset_hermes_home_override, set_hermes_home_override
 from utils import atomic_json_write
 
 try:
@@ -84,6 +86,7 @@ class MemoryReviewItem:
 
 
 REVIEW_ID_RE = re.compile(r"^MR-\d{8}T\d{6}-[0-9a-f]{8}$")
+_THREAD_LOCK = threading.RLock()
 
 
 def _now() -> str:
@@ -164,14 +167,25 @@ def _ensure_paths(paths: ReviewQueuePaths) -> None:
 @contextmanager
 def review_queue_lock(paths: ReviewQueuePaths) -> Iterator[None]:
     _ensure_paths(paths)
-    with paths.lock.open("a+", encoding="utf-8") as handle:
-        if fcntl is not None:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
+    with _THREAD_LOCK:
+        with paths.lock.open("a+", encoding="utf-8") as handle:
             if fcntl is not None:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def _hermes_home_scope(home: Path | None) -> Iterator[None]:
+    token = set_hermes_home_override(home) if home is not None else None
+    try:
+        yield
+    finally:
+        if token is not None:
+            reset_hermes_home_override(token)
 
 
 def atomic_write_review_json(path: Path, payload: dict[str, Any]) -> None:
@@ -554,85 +568,115 @@ def approve_review_item(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     action = action.upper()
     paths = get_review_queue_paths(home, config)
-    if dry_run:
-        item = load_review_item(review_id, home=home, config=config)
-        return item, revalidate_review_approval(item, action=action, target=target)
+    with _hermes_home_scope(home):
+        if dry_run:
+            item = load_review_item(review_id, home=home, config=config)
+            return item, revalidate_review_approval(item, action=action, target=target)
 
-    with review_queue_lock(paths):
-        item = load_review_item(review_id, home=home, config=config)
-        if item["status"] == ReviewStatus.APPROVED.value:
-            return item, {"valid": True, "already_approved": True}
-        if item["status"] != ReviewStatus.PENDING.value:
-            raise ValueError(f"Review item is not pending: {item['status']}")
-        validation = revalidate_review_approval(item, action=action, target=target)
-        if not validation["valid"]:
-            error = ", ".join(validation["errors"])
-            item["last_error"] = error
-            item["updated_at"] = _now()
+        with review_queue_lock(paths):
+            item = load_review_item(review_id, home=home, config=config)
+            if item["status"] == ReviewStatus.APPROVED.value:
+                return item, {"valid": True, "already_approved": True}
+            if item["status"] != ReviewStatus.PENDING.value:
+                raise ValueError(f"Review item is not pending: {item['status']}")
+            validation = revalidate_review_approval(item, action=action, target=target)
+            if not validation["valid"]:
+                error = ", ".join(validation["errors"])
+                now = _now()
+                if "BECAME_DUPLICATE" in validation["errors"]:
+                    item["status"] = ReviewStatus.REJECTED.value
+                    item["rejection"] = {
+                        "rejected_at": now,
+                        "reason": "became_duplicate",
+                    }
+                item["last_error"] = error
+                item["updated_at"] = now
+                atomic_write_review_json(_item_path(paths, review_id), item)
+                if "BECAME_DUPLICATE" in validation["errors"]:
+                    append_review_event(
+                        paths,
+                        "review_rejected",
+                        review_id=review_id,
+                        reason="became_duplicate",
+                    )
+                else:
+                    append_review_event(
+                        paths,
+                        "review_approval_failed",
+                        review_id=review_id,
+                        error=error,
+                    )
+                raise ValueError(error)
+
+            from hermes_cli.memory_router import (
+                allocate_memory_id,
+                create_memory_item,
+                update_memory_item,
+            )
+
+            candidate = _candidate_from_item(item)
+            try:
+                if action == ProposedAction.WRITE.value:
+                    memory_id = allocate_memory_id(candidate.category)
+                    memory, _index = create_memory_item(
+                        SimpleNamespace(
+                            category=candidate.category,
+                            memory_id=memory_id,
+                            title=candidate.title,
+                            type=candidate.memory_type,
+                            importance=candidate.importance,
+                            ttl=candidate.ttl,
+                            tags=", ".join(candidate.tags),
+                            summary=candidate.summary,
+                            body=candidate.summary,
+                            record_path=None,
+                        )
+                    )
+                else:
+                    memory = update_memory_item(
+                        SimpleNamespace(
+                            memory_id=target,
+                            title=None,
+                            type=candidate.memory_type,
+                            importance=candidate.importance,
+                            ttl=candidate.ttl,
+                            status="active",
+                            tags=", ".join(candidate.tags),
+                            summary=candidate.summary,
+                            body=candidate.summary,
+                        )
+                    )
+            except Exception as exc:
+                error = str(exc)[:500]
+                item["last_error"] = error
+                item["updated_at"] = _now()
+                atomic_write_review_json(_item_path(paths, review_id), item)
+                append_review_event(
+                    paths,
+                    "review_approval_failed",
+                    review_id=review_id,
+                    error=error,
+                )
+                raise
+
+            now = _now()
+            item["status"] = ReviewStatus.APPROVED.value
+            item["updated_at"] = now
+            item["approval"] = {
+                "approved_at": now,
+                "action": action,
+                "memory_id": memory.memory_id,
+            }
+            item["last_error"] = None
             atomic_write_review_json(_item_path(paths, review_id), item)
             append_review_event(
                 paths,
-                "review_approval_failed",
+                "review_approved",
                 review_id=review_id,
-                error=error,
+                action=action,
+                memory_id=memory.memory_id,
             )
-            raise ValueError(error)
-
-        from hermes_cli.memory_router import (
-            allocate_memory_id,
-            create_memory_item,
-            update_memory_item,
-        )
-
-        candidate = _candidate_from_item(item)
-        if action == ProposedAction.WRITE.value:
-            memory_id = allocate_memory_id(candidate.category)
-            memory, _index = create_memory_item(
-                SimpleNamespace(
-                    category=candidate.category,
-                    memory_id=memory_id,
-                    title=candidate.title,
-                    type=candidate.memory_type,
-                    importance=candidate.importance,
-                    ttl=candidate.ttl,
-                    tags=", ".join(candidate.tags),
-                    summary=candidate.summary,
-                    body=candidate.summary,
-                    record_path=None,
-                )
-            )
-        else:
-            memory = update_memory_item(
-                SimpleNamespace(
-                    memory_id=target,
-                    title=None,
-                    type=candidate.memory_type,
-                    importance=candidate.importance,
-                    ttl=candidate.ttl,
-                    status="active",
-                    tags=", ".join(candidate.tags),
-                    summary=candidate.summary,
-                    body=candidate.summary,
-                )
-            )
-        now = _now()
-        item["status"] = ReviewStatus.APPROVED.value
-        item["updated_at"] = now
-        item["approval"] = {
-            "approved_at": now,
-            "action": action,
-            "memory_id": memory.memory_id,
-        }
-        item["last_error"] = None
-        atomic_write_review_json(_item_path(paths, review_id), item)
-        append_review_event(
-            paths,
-            "review_approved",
-            review_id=review_id,
-            action=action,
-            memory_id=memory.memory_id,
-        )
-        return item, validation
+            return item, validation
 
 
 def get_review_queue_summary(

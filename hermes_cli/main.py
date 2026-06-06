@@ -7305,6 +7305,25 @@ def cmd_dev_check(args):
         _add("PASS", "Queue failure isolation", "best-effort warning")
         _add("PASS", "Atomic review JSON", "available")
         _add("PASS", "Review events log", "available")
+
+        review_e2e_path = PROJECT_ROOT / "tests" / "test_memory_review_queue_e2e.py"
+        review_e2e_text = (
+            review_e2e_path.read_text(encoding="utf-8")
+            if review_e2e_path.is_file()
+            else ""
+        )
+        review_e2e_checks = (
+            ("E2E test module", review_e2e_path.is_file(), str(review_e2e_path)),
+            ("Isolated fixture", "def isolated_home(" in review_e2e_text, "tmp_path HERMES_HOME"),
+            ("Review approve WRITE coverage", "test_real_write_approval_and_idempotency" in review_e2e_text, "available"),
+            ("Review approve UPDATE coverage", "test_real_update_approval_and_idempotency" in review_e2e_text, "available"),
+            ("Protected update coverage", "test_protected_or_missing_update_stays_pending" in review_e2e_text, "P0, permanent, missing target"),
+            ("Idempotency coverage", "already_approved" in review_e2e_text, "WRITE and UPDATE"),
+            ("Failure rollback coverage", "test_formal_write_failure_rolls_back_review_state" in review_e2e_text, "available"),
+            ("Temporary HERMES_HOME guard", "home.resolve() != Path(\"/Users/huangruibang/Code/hermes-home-dev\").resolve()" in review_e2e_text, "available"),
+        )
+        for label, available, value in review_e2e_checks:
+            _add("PASS" if available else "FAIL", label, value if available else "missing")
     except Exception as exc:
         _add("FAIL", "Auto memory writer", str(exc))
 

@@ -168,6 +168,23 @@ candidate fields needed for review.
 Queue capacity, lock, serialization, and filesystem errors do not affect the
 user-facing response. Runtime catches and logs failures as warnings.
 
+## End-to-End Isolated Validation
+
+`tests/test_memory_review_queue_e2e.py` exercises real approval writes and
+updates against a pytest `tmp_path` Hermes home. It covers protected and
+missing update targets, duplicate races, dry-run behavior, idempotency,
+failure state preservation, event integrity, and concurrent approval.
+
+The fixture sets `HERMES_HOME` to the temporary directory and asserts that it
+is not the real development home. It never uses the production or persistent
+development memory data.
+
+Run it with:
+
+```bash
+.venv/bin/python -m pytest tests/test_memory_review_queue_e2e.py -v
+```
+
 ## Dry-run Examples
 
 Approval dry-run reloads current memory and reports what would happen without
