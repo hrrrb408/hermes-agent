@@ -17,7 +17,7 @@ describe('Theme Manager', () => {
   it('sets data-density attribute', () => {
     const theme = getTheme('ink')
     applyTheme(theme)
-    expect(document.documentElement.getAttribute('data-density')).toBe('compact')
+    expect(document.documentElement.getAttribute('data-density')).toBe('comfortable')
   })
 
   it('sets data-message-style attribute', () => {
@@ -47,12 +47,12 @@ describe('Theme Manager', () => {
   it('sets data-font-style attribute', () => {
     const theme = getTheme('song')
     applyTheme(theme)
-    expect(document.documentElement.getAttribute('data-font-style')).toBe('serif')
+    expect(document.documentElement.getAttribute('data-font-style')).toBe('system')
   })
 
   it('sets data-surface-texture attribute', () => {
     applyTheme(getTheme('song'))
-    expect(document.documentElement.getAttribute('data-surface-texture')).toBe('xuan-paper')
+    expect(document.documentElement.getAttribute('data-surface-texture')).toBe('lacquer-screen')
 
     applyTheme(getTheme('ink'))
     expect(document.documentElement.getAttribute('data-surface-texture')).toBe('ink-wash')
@@ -63,7 +63,7 @@ describe('Theme Manager', () => {
 
   it('sets data-ornament-style attribute', () => {
     applyTheme(getTheme('song'))
-    expect(document.documentElement.getAttribute('data-ornament-style')).toBe('seal')
+    expect(document.documentElement.getAttribute('data-ornament-style')).toBe('garden-shadow')
 
     applyTheme(getTheme('ink'))
     expect(document.documentElement.getAttribute('data-ornament-style')).toBe('brush')
@@ -74,7 +74,7 @@ describe('Theme Manager', () => {
 
   it('sets data-divider-style attribute', () => {
     applyTheme(getTheme('song'))
-    expect(document.documentElement.getAttribute('data-divider-style')).toBe('book-rule')
+    expect(document.documentElement.getAttribute('data-divider-style')).toBe('architectural-beam')
 
     applyTheme(getTheme('ink'))
     expect(document.documentElement.getAttribute('data-divider-style')).toBe('brush-fade')
@@ -82,7 +82,7 @@ describe('Theme Manager', () => {
 
   it('sets data-heading-style attribute', () => {
     applyTheme(getTheme('song'))
-    expect(document.documentElement.getAttribute('data-heading-style')).toBe('song-book')
+    expect(document.documentElement.getAttribute('data-heading-style')).toBe('framed-title')
 
     applyTheme(getTheme('ink'))
     expect(document.documentElement.getAttribute('data-heading-style')).toBe('ink-inscription')
@@ -92,13 +92,17 @@ describe('Theme Manager', () => {
   })
 
   it('sets color-scheme to dark for dark themes', () => {
-    applyTheme(getTheme('obsidian'))
-    expect(document.documentElement.style.colorScheme).toBe('dark')
+    for (const id of ['obsidian', 'song', 'sakura-night'] as const) {
+      applyTheme(getTheme(id))
+      expect(document.documentElement.style.colorScheme).toBe('dark')
+    }
   })
 
   it('sets color-scheme to light for light themes', () => {
-    applyTheme(getTheme('paper'))
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    for (const id of ['paper', 'ink'] as const) {
+      applyTheme(getTheme(id))
+      expect(document.documentElement.style.colorScheme).toBe('light')
+    }
   })
 
   it('applyThemeById works with valid IDs', () => {

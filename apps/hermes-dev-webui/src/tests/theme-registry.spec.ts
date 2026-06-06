@@ -78,8 +78,8 @@ describe('Theme Registry', () => {
     const schemeMap: Record<ThemeId, ThemeColorScheme> = {
       obsidian: 'dark',
       paper: 'light',
-      song: 'light',
-      ink: 'dark',
+      song: 'dark',
+      ink: 'light',
       'sakura-night': 'dark',
     }
 
@@ -119,16 +119,16 @@ describe('Theme Registry', () => {
   /* ===== Structural type completeness checks ===== */
 
   const validSurfaceTextures: SurfaceTexture[] = [
-    'clean', 'paper', 'xuan-paper', 'ink-wash', 'night-silk',
+    'clean', 'paper', 'xuan-paper', 'ink-wash', 'night-silk', 'lacquer-screen',
   ]
   const validOrnamentStyles: OrnamentStyle[] = [
-    'none', 'seal', 'brush', 'sakura',
+    'none', 'seal', 'brush', 'sakura', 'garden-shadow',
   ]
   const validDividerStyles: DividerStyle[] = [
-    'hairline', 'book-rule', 'brush-fade',
+    'hairline', 'book-rule', 'brush-fade', 'architectural-beam',
   ]
   const validHeadingStyles: HeadingStyle[] = [
-    'modern', 'document', 'song-book', 'ink-inscription', 'night-title',
+    'modern', 'document', 'song-book', 'ink-inscription', 'night-title', 'framed-title',
   ]
 
   it('every theme has a valid surfaceTexture', () => {
@@ -172,27 +172,81 @@ describe('Theme Registry', () => {
   })
 
   it('Eastern themes use non-default surface textures', () => {
-    expect(themeRegistry.song.surfaceTexture).toBe('xuan-paper')
+    expect(themeRegistry.song.surfaceTexture).toBe('lacquer-screen')
     expect(themeRegistry.ink.surfaceTexture).toBe('ink-wash')
     expect(themeRegistry['sakura-night'].surfaceTexture).toBe('night-silk')
   })
 
   it('Eastern themes use non-none ornament styles', () => {
-    expect(themeRegistry.song.ornamentStyle).toBe('seal')
+    expect(themeRegistry.song.ornamentStyle).toBe('garden-shadow')
     expect(themeRegistry.ink.ornamentStyle).toBe('brush')
     expect(themeRegistry['sakura-night'].ornamentStyle).toBe('sakura')
   })
 
   it('Eastern themes use non-hairline divider styles (except sakura-night)', () => {
-    expect(themeRegistry.song.dividerStyle).toBe('book-rule')
+    expect(themeRegistry.song.dividerStyle).toBe('architectural-beam')
     expect(themeRegistry.ink.dividerStyle).toBe('brush-fade')
     expect(themeRegistry['sakura-night'].dividerStyle).toBe('hairline')
   })
 
   it('Eastern themes use distinct heading styles', () => {
-    expect(themeRegistry.song.headingStyle).toBe('song-book')
+    expect(themeRegistry.song.headingStyle).toBe('framed-title')
     expect(themeRegistry.ink.headingStyle).toBe('ink-inscription')
     expect(themeRegistry['sakura-night'].headingStyle).toBe('night-title')
+  })
+
+  it('Song uses the lacquered architectural signature', () => {
+    expect(themeRegistry.song).toMatchObject({
+      colorScheme: 'dark',
+      panelStyle: 'lattice-window',
+      messageStyle: 'framed-document',
+      toolCardStyle: 'lacquer-label',
+      fontStyle: 'system',
+      surfaceTexture: 'lacquer-screen',
+      ornamentStyle: 'garden-shadow',
+      dividerStyle: 'architectural-beam',
+      headingStyle: 'framed-title',
+    })
+  })
+
+  it('Ink uses the light modern ink-wash signature', () => {
+    expect(themeRegistry.ink).toMatchObject({
+      category: 'eastern',
+      colorScheme: 'light',
+      density: 'comfortable',
+      radius: 'small',
+      panelStyle: 'minimal',
+      messageStyle: 'minimal',
+      toolCardStyle: 'ink',
+      fontStyle: 'system',
+      surfaceTexture: 'ink-wash',
+      ornamentStyle: 'brush',
+      dividerStyle: 'brush-fade',
+      headingStyle: 'ink-inscription',
+    })
+  })
+
+  it('Sakura Night keeps its cinematic spring-night signature', () => {
+    expect(themeRegistry['sakura-night']).toMatchObject({
+      category: 'eastern',
+      colorScheme: 'dark',
+      density: 'comfortable',
+      radius: 'large',
+      panelStyle: 'soft-card',
+      messageStyle: 'bubble',
+      toolCardStyle: 'soft',
+      fontStyle: 'humanist',
+      surfaceTexture: 'night-silk',
+      ornamentStyle: 'sakura',
+      dividerStyle: 'hairline',
+      headingStyle: 'night-title',
+      previewColors: {
+        background: '#101528',
+        foreground: '#eeeaf3',
+        accent: '#d3acbf',
+        secondary: '#e0ae8e',
+      },
+    })
   })
 
   it('modern themes use clean surface and none ornament', () => {

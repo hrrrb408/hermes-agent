@@ -1,93 +1,481 @@
 /**
- * Song - Modern Song Dynasty book workbench.
- * Xuan paper warm-white, ink black, dai-blue, vermilion (朱砂), Ru ware celadon (汝窑青).
- * Distinct from Paper through: 版心 layout, book-header rules, seal ornaments,
- * book-column panel borders, annotation-slip tool cards, scroll messages,
- * vermilion bookmark lines for active/focus states, serif typography.
+ * Song - lacquered garden workbench.
  *
- * Visual identity: even in grayscale, recognizable by narrow type column,
- * double-rule dividers, vertical left borders on panels, and serif headings.
+ * A dark architectural foreground frames half-lit work surfaces and localized
+ * amber garden windows. All scenery is generated with CSS; no image assets,
+ * remote resources, or antique-book motifs are used.
  */
 [data-theme='song'] {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --color-app-bg: #f2ece0;
-  --color-panel-bg: #f7f2e8;
-  --color-elevated-bg: #ebe4d6;
-  --color-hover-bg: rgba(0, 0, 0, 0.04);
-  --color-active-bg: rgba(0, 0, 0, 0.07);
+  --color-app-bg: #100e0d;
+  --color-panel-bg: rgba(31, 29, 26, 0.94);
+  --color-elevated-bg: rgba(107, 88, 61, 0.54);
+  --color-hover-bg: rgba(212, 184, 129, 0.08);
+  --color-active-bg: rgba(212, 184, 129, 0.13);
 
-  --color-text-primary: #2a2a2e;
-  --color-text-secondary: #5a5a5e;
-  --color-text-muted: #8a8a80;
-  --color-text-inverse: #f2ece0;
+  --color-text-primary: #f3ede4;
+  --color-text-secondary: #d0c7ba;
+  --color-text-muted: #9e9588;
+  --color-text-inverse: #17120e;
 
-  /* 汝窑青 (celadon) as primary accent - not blue, not brown */
-  --color-accent: #5a8070;
-  --color-accent-hover: #4a7060;
-  --color-accent-soft: rgba(90, 128, 112, 0.10);
-  /* 朱砂 (vermilion) for focus, seals, and key states */
-  --color-secondary-accent: #b85c38;
+  --color-accent: #bea16e;
+  --color-accent-hover: #cdb382;
+  --color-accent-soft: rgba(190, 161, 110, 0.15);
+  --color-secondary-accent: #52715e;
 
-  --color-success: #5a8a5e;
-  --color-success-soft: rgba(90, 138, 94, 0.08);
-  --color-warning: #a88030;
-  --color-warning-soft: rgba(168, 128, 48, 0.08);
-  --color-error: #a84030;
-  --color-error-soft: rgba(168, 64, 48, 0.08);
-  --color-neutral: #7a7a72;
-  --color-neutral-soft: rgba(122, 122, 114, 0.08);
+  --color-success: #7f9d7f;
+  --color-success-soft: rgba(127, 157, 127, 0.13);
+  --color-warning: #c39a59;
+  --color-warning-soft: rgba(195, 154, 89, 0.13);
+  --color-error: #b85d4d;
+  --color-error-soft: rgba(184, 93, 77, 0.13);
+  --color-neutral: #938a7c;
+  --color-neutral-soft: rgba(147, 138, 124, 0.12);
 
-  --color-border: rgba(42, 42, 46, 0.12);
-  --color-border-strong: rgba(42, 42, 46, 0.22);
-  --color-divider: rgba(42, 42, 46, 0.07);
+  --color-border: rgba(224, 204, 166, 0.13);
+  --color-border-strong: rgba(228, 197, 142, 0.25);
+  --color-divider: rgba(224, 204, 166, 0.08);
+  --color-focus-ring: #d4ad6c;
+  --color-selection-bg: rgba(184, 148, 93, 0.30);
+  --color-selection-text: #fff8eb;
+  --color-scrollbar: rgba(190, 160, 109, 0.20);
+  --color-scrollbar-hover: rgba(203, 172, 117, 0.34);
 
-  /* 朱砂 focus ring - the bookmark line */
-  --color-focus-ring: #b85c38;
-  --color-selection-bg: rgba(184, 92, 56, 0.14);
-  --color-selection-text: #2a2a2e;
+  --color-code-bg: rgba(7, 10, 9, 0.68);
+  --color-code-border: rgba(146, 166, 145, 0.16);
+  --color-code-text: #d9dfd3;
+  --color-user-message-bg: rgba(58, 39, 31, 0.82);
+  --color-assistant-message-bg: rgba(111, 86, 52, 0.18);
 
-  --color-scrollbar: rgba(42, 42, 46, 0.14);
-  --color-scrollbar-hover: rgba(42, 42, 46, 0.24);
+  --color-ornament: #526f59;
+  --color-ornament-soft: rgba(82, 111, 89, 0.16);
+  --color-heading-mark: #c09a60;
+  --color-rule-primary: rgba(136, 91, 55, 0.55);
+  --color-rule-secondary: rgba(205, 175, 119, 0.16);
 
-  --color-code-bg: rgba(0, 0, 0, 0.04);
-  --color-code-border: rgba(42, 42, 46, 0.08);
-  --color-code-text: #3a3a3e;
-
-  --color-user-message-bg: rgba(184, 92, 56, 0.06);
-  --color-assistant-message-bg: transparent;
-
-  /* Song-specific ornament and heading colors */
-  --color-ornament: #b85c38;
-  --color-ornament-soft: rgba(184, 92, 56, 0.12);
-  --color-paper-fiber: rgba(180, 160, 120, 0.45);
-  --color-heading-mark: #b85c38;
-  --color-rule-primary: rgba(42, 42, 46, 0.20);
-  --color-rule-secondary: rgba(42, 42, 46, 0.10);
-
-  /* Minimal shadows - book pages do not float */
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-floating: 0 2px 6px rgba(0, 0, 0, 0.06);
-  --shadow-focus: 0 0 0 2px rgba(184, 92, 56, 0.35);
+  --shadow-panel:
+    inset 0 1px 0 rgba(235, 211, 170, 0.08),
+    0 14px 36px rgba(3, 2, 2, 0.22);
+  --shadow-floating:
+    inset 0 1px 0 rgba(255, 229, 177, 0.12),
+    0 20px 52px rgba(2, 2, 2, 0.38);
+  --shadow-focus:
+    0 0 0 2px rgba(16, 14, 13, 0.95),
+    0 0 0 4px rgba(212, 173, 108, 0.72);
 
   --border-width: 1px;
-  --rule-width: 1px;
-  --heading-letter-spacing: 0.06em;
-  --content-line-height: 1.75;
+  --heading-letter-spacing: 0.045em;
+  --content-line-height: 1.72;
+  --content-max-width: 72ch;
+  --lab-content-max-width: 1120px;
+  --lab-content-padding-inline: clamp(2.5rem, 7vw, 7rem);
+  --lab-header-border: 1px solid rgba(205, 175, 119, 0.12);
+  --message-indent: 0;
+  --tool-card-header-bg: rgba(9, 12, 10, 0.36);
+}
 
-  /* Song structural overrides */
-  --texture-opacity: 0.035;
-  --ornament-opacity: 1;
-  --content-max-width: 62ch;
+/* Far garden light and half-lit work plane. */
+[data-theme='song'] body {
+  background:
+    radial-gradient(ellipse 42% 24% at 73% 5%, rgba(178, 142, 80, 0.13), transparent 72%),
+    linear-gradient(180deg, #0c0b0a 0%, #151310 48%, #0d0e0c 100%);
+}
 
-  /* Page layout: 版心 (type column) */
-  --lab-content-max-width: 720px;
-  --lab-content-padding-inline: var(--space-10);
-  --lab-header-border: 1px solid var(--color-rule-primary);
+[data-theme='song'] .theme-lab {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 4, 0.88) 0 5.5%, transparent 5.5% 93%, rgba(5, 5, 4, 0.9) 93%),
+    radial-gradient(ellipse 44% 30% at 78% 18%, rgba(186, 205, 196, 0.12), transparent 72%),
+    radial-gradient(ellipse 34% 30% at 17% 36%, rgba(48, 86, 62, 0.20), transparent 76%),
+    linear-gradient(145deg, #17120f 0%, #211a14 42%, #11130f 100%);
+}
 
-  /* User message: vermilion bookmark left */
-  --message-indent: var(--space-4);
+/* Architectural foreground: eave beam, two columns, and lacquer highlights. */
+[data-theme='song'] .theme-lab::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #080706 0 18px, #2a1912 19px 25px, #0a0908 26px 48px, transparent 49px),
+    linear-gradient(90deg, #090807 0 28px, #351d14 29px 34px, #110d0b 35px 5.5%, transparent 5.6% 93%, #100d0b 93.1% 96.5%, #321c14 96.6% 97%, #080706 97.1%),
+    linear-gradient(180deg, transparent 0 78%, rgba(7, 7, 6, 0.44) 88%, rgba(4, 4, 3, 0.82) 100%);
+  box-shadow: inset 0 1px 0 rgba(212, 172, 107, 0.08);
+}
 
-  /* Tool card: annotation slip left accent */
-  --tool-card-header-bg: transparent;
+/* Local garden shadow: abstract bamboo and maple-like leaf clusters. */
+[data-theme='song'] .theme-lab::after {
+  content: '';
+  position: fixed;
+  top: 7%;
+  right: 3.5%;
+  width: min(30vw, 430px);
+  height: min(60vh, 590px);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.24;
+  background: linear-gradient(135deg, #78907c, #304d3b 72%);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 430 590'%3E%3Cg fill='none' stroke='black' stroke-linecap='round'%3E%3Cpath stroke-width='7' d='M410 28C330 112 288 188 246 292S148 472 34 572'/%3E%3Cpath stroke-width='3' d='M318 126c-68 5-121-14-166-55M265 248c62-9 108-39 149-87M209 347c-58 2-105-21-145-63M145 456c50-9 91-34 126-76'/%3E%3C/g%3E%3Cg fill='black'%3E%3Cellipse cx='164' cy='68' rx='9' ry='31' transform='rotate(-58 164 68)'/%3E%3Cellipse cx='197' cy='89' rx='8' ry='29' transform='rotate(-36 197 89)'/%3E%3Cellipse cx='120' cy='55' rx='8' ry='27' transform='rotate(-72 120 55)'/%3E%3Cellipse cx='355' cy='151' rx='9' ry='32' transform='rotate(47 355 151)'/%3E%3Cellipse cx='390' cy='128' rx='8' ry='28' transform='rotate(68 390 128)'/%3E%3Cellipse cx='305' cy='182' rx='8' ry='28' transform='rotate(30 305 182)'/%3E%3Cpath d='M80 267l14 11 17-5-4 18 12 13-18 2-10 15-8-17-18-5 14-12z'/%3E%3Cpath d='M130 306l12 9 15-4-4 15 10 12-15 2-9 13-7-15-15-4 12-10z'/%3E%3Cellipse cx='194' cy='395' rx='8' ry='29' transform='rotate(58 194 395)'/%3E%3Cellipse cx='231' cy='372' rx='8' ry='27' transform='rotate(35 231 372)'/%3E%3Cpath d='M255 419l13 10 16-5-4 17 11 12-17 2-9 14-8-16-16-5 13-11z'/%3E%3Cellipse cx='94' cy='492' rx='8' ry='28' transform='rotate(52 94 492)'/%3E%3Cellipse cx='58' cy='522' rx='8' ry='30' transform='rotate(67 58 522)'/%3E%3C/g%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 430 590'%3E%3Cg fill='none' stroke='black' stroke-linecap='round'%3E%3Cpath stroke-width='7' d='M410 28C330 112 288 188 246 292S148 472 34 572'/%3E%3Cpath stroke-width='3' d='M318 126c-68 5-121-14-166-55M265 248c62-9 108-39 149-87M209 347c-58 2-105-21-145-63M145 456c50-9 91-34 126-76'/%3E%3C/g%3E%3Cg fill='black'%3E%3Cellipse cx='164' cy='68' rx='9' ry='31' transform='rotate(-58 164 68)'/%3E%3Cellipse cx='197' cy='89' rx='8' ry='29' transform='rotate(-36 197 89)'/%3E%3Cellipse cx='120' cy='55' rx='8' ry='27' transform='rotate(-72 120 55)'/%3E%3Cellipse cx='355' cy='151' rx='9' ry='32' transform='rotate(47 355 151)'/%3E%3Cellipse cx='390' cy='128' rx='8' ry='28' transform='rotate(68 390 128)'/%3E%3Cellipse cx='305' cy='182' rx='8' ry='28' transform='rotate(30 305 182)'/%3E%3Cpath d='M80 267l14 11 17-5-4 18 12 13-18 2-10 15-8-17-18-5 14-12z'/%3E%3Cpath d='M130 306l12 9 15-4-4 15 10 12-15 2-9 13-7-15-15-4 12-10z'/%3E%3Cellipse cx='194' cy='395' rx='8' ry='29' transform='rotate(58 194 395)'/%3E%3Cellipse cx='231' cy='372' rx='8' ry='27' transform='rotate(35 231 372)'/%3E%3Cpath d='M255 419l13 10 16-5-4 17 11 12-17 2-9 14-8-16-16-5 13-11z'/%3E%3Cellipse cx='94' cy='492' rx='8' ry='28' transform='rotate(52 94 492)'/%3E%3Cellipse cx='58' cy='522' rx='8' ry='30' transform='rotate(67 58 522)'/%3E%3C/g%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transform: rotate(-5deg);
+}
+
+[data-theme='song'] .theme-lab__header {
+  z-index: 2;
+  padding-inline: clamp(2.5rem, 7vw, 7rem);
+  background:
+    linear-gradient(180deg, rgba(10, 8, 7, 0.97), rgba(24, 17, 13, 0.93)),
+    #120e0c;
+  border-bottom: 8px solid #0a0908;
+  box-shadow:
+    inset 0 -1px 0 rgba(205, 166, 100, 0.18),
+    0 12px 30px rgba(2, 2, 2, 0.34);
+}
+
+[data-theme='song'] .theme-lab__header::before {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: -8px;
+  height: 8px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #28150f, #5a3020 18%, #1b110d 62%, #4a291d 84%, #21140f);
+  opacity: 0.72;
+}
+
+[data-theme='song'] .theme-lab__title {
+  font-family: "Songti SC", "STSong", "Hiragino Mincho ProN", Georgia, serif;
+  letter-spacing: 0.055em;
+}
+
+[data-theme='song'] .theme-lab__badge {
+  color: #d7bd8c;
+  background: rgba(102, 72, 39, 0.34);
+  border: 1px solid rgba(210, 177, 116, 0.18);
+}
+
+[data-theme='song'] .theme-lab__main {
+  z-index: 1;
+  margin-block: clamp(1rem, 2.5vw, 2.5rem);
+  background:
+    linear-gradient(90deg, rgba(12, 10, 9, 0.96) 0 9px, transparent 9px 98.6%, rgba(10, 9, 8, 0.88) 98.6%),
+    linear-gradient(
+      90deg,
+      rgba(34, 31, 27, 0.82) 0 76%,
+      rgba(27, 28, 25, 0.72) 88%,
+      rgba(18, 20, 18, 0.16) 100%
+    );
+  border: 0;
+  border-top: 9px solid #0b0908;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 211, 174, 0.10),
+    inset 10px 0 0 rgba(84, 49, 31, 0.24),
+    inset -5px 0 0 rgba(73, 47, 32, 0.14),
+    0 32px 72px rgba(2, 2, 2, 0.34);
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 96%, transparent 100%),
+    linear-gradient(90deg, #000 0 96%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(180deg, #000 0 96%, transparent 100%),
+    linear-gradient(90deg, #000 0 96%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* Warm screen window, limited to one side of the middle plane. */
+[data-theme='song'] .theme-lab__main::before {
+  content: '';
+  position: absolute;
+  top: clamp(13rem, 20vw, 16rem);
+  right: -1.5%;
+  width: min(45%, 490px);
+  height: clamp(17rem, 25vw, 22rem);
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(10, 9, 8, 0.96) 0 13px, transparent 13px 94%, rgba(11, 10, 9, 0.91) 94%),
+    linear-gradient(180deg, rgba(12, 10, 9, 0.96) 0 12px, transparent 12px 91%, rgba(12, 10, 9, 0.74) 91%),
+    radial-gradient(ellipse 60% 42% at 58% 25%, rgba(241, 238, 220, 0.46), transparent 68%),
+    radial-gradient(ellipse 72% 64% at 65% 48%, rgba(157, 188, 169, 0.34), transparent 72%),
+    radial-gradient(ellipse 66% 70% at 26% 72%, rgba(61, 102, 73, 0.42), transparent 75%),
+    linear-gradient(145deg, rgba(203, 205, 184, 0.28), rgba(123, 151, 137, 0.20) 44%, rgba(181, 145, 86, 0.18) 78%, rgba(47, 66, 55, 0.24));
+  box-shadow:
+    inset 0 0 56px rgba(245, 240, 218, 0.12),
+    -20px 16px 60px rgba(129, 163, 144, 0.08);
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 88% 100%, 8% 97%, 0 84%);
+  opacity: 0.94;
+}
+
+/* A small geometric lattice, deliberately not repeated across cards. */
+[data-theme='song'] .theme-lab__main::after {
+  content: '';
+  position: absolute;
+  top: clamp(13rem, 20vw, 16rem);
+  right: 3.5%;
+  width: min(31%, 330px);
+  height: clamp(12rem, 18vw, 17rem);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.24;
+  background:
+    linear-gradient(45deg, transparent 43%, #211712 44% 54%, transparent 55%),
+    linear-gradient(-45deg, transparent 43%, #211712 44% 54%, transparent 55%);
+  background-size: 28px 28px;
+  -webkit-mask-image:
+    linear-gradient(180deg, #000 0 42%, rgba(0, 0, 0, 0.68) 64%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(180deg, #000 0 42%, rgba(0, 0, 0, 0.68) 64%, transparent 100%),
+    linear-gradient(90deg, transparent 0, #000 18%, #000 82%, transparent 100%);
+  mask-composite: intersect;
+}
+
+[data-theme='song'] .showcase {
+  gap: var(--space-10);
+}
+
+[data-theme='song'] .showcase__section {
+  position: relative;
+  padding-inline: clamp(0rem, 1.2vw, 1rem);
+}
+
+[data-theme='song'] .showcase__section:nth-child(3n + 2) {
+  margin-inline-end: clamp(2rem, 10vw, 8rem);
+}
+
+[data-theme='song'] .showcase__section:nth-child(4n) {
+  margin-inline-start: clamp(0rem, 4vw, 3rem);
+}
+
+[data-theme='song'] .showcase__heading {
+  width: fit-content;
+  padding: 0.35rem 0.75rem 0.4rem 1rem;
+  color: #d8c6a8;
+  font-family: "Songti SC", "STSong", "Hiragino Mincho ProN", Georgia, serif;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--heading-letter-spacing);
+  text-transform: none;
+  border-left: 5px solid #321c14;
+  border-bottom: 1px solid rgba(207, 172, 111, 0.18);
+  background: linear-gradient(90deg, rgba(82, 52, 31, 0.35), transparent);
+}
+
+[data-theme='song'] .showcase__heading::before {
+  content: '';
+  width: 11px;
+  height: 15px;
+  margin-right: var(--space-2);
+  display: inline-block;
+  vertical-align: -2px;
+  background:
+    linear-gradient(66deg, transparent 42%, #58705c 43% 57%, transparent 58%),
+    linear-gradient(114deg, transparent 42%, #405b49 43% 57%, transparent 58%);
+  opacity: 0.72;
+}
+
+[data-theme='song'] .showcase__divider {
+  height: 7px;
+  margin-top: var(--space-4);
+  background:
+    linear-gradient(180deg, #0b0908 0 3px, #4b2a1d 3px 4px, rgba(212, 176, 111, 0.13) 4px 5px, transparent 5px);
+}
+
+[data-theme='song'] .theme-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 92px;
+  border: 7px solid #17100d;
+  border-radius: 2px;
+  background:
+    radial-gradient(ellipse at 72% 24%, rgba(70, 109, 76, 0.18), transparent 58%),
+    rgba(27, 28, 24, 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(222, 188, 128, 0.13),
+    var(--shadow-panel);
+}
+
+[data-theme='song'] .theme-panel::after {
+  content: '';
+  position: absolute;
+  inset: auto 8% 7px 8%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(207, 174, 116, 0.30), transparent);
+}
+
+[data-theme='song'] .theme-panel--elevated {
+  background:
+    radial-gradient(ellipse at 72% 22%, rgba(239, 232, 205, 0.28), transparent 50%),
+    linear-gradient(105deg, rgba(91, 87, 70, 0.28), rgba(164, 149, 111, 0.30) 56%, rgba(52, 61, 53, 0.76));
+  box-shadow:
+    inset 0 0 34px rgba(244, 238, 215, 0.10),
+    var(--shadow-floating);
+}
+
+[data-theme='song'] .theme-panel--hover {
+  border-color: #25160f;
+  background:
+    radial-gradient(ellipse at 24% 38%, rgba(69, 104, 72, 0.24), transparent 62%),
+    rgba(31, 31, 26, 0.94);
+}
+
+[data-theme='song'] .message--user {
+  border: 1px solid rgba(197, 154, 96, 0.16);
+  border-radius: 6px 6px 2px 6px;
+  box-shadow: inset 0 1px 0 rgba(236, 199, 142, 0.05);
+}
+
+[data-theme='song'] .message--assistant {
+  max-width: var(--content-max-width);
+  padding: var(--space-5);
+  border: 1px solid rgba(220, 190, 137, 0.12);
+  border-left: 5px solid #2c1912;
+  border-radius: 2px 6px 6px 2px;
+  background:
+    linear-gradient(105deg, rgba(110, 77, 43, 0.15), rgba(65, 82, 63, 0.08)),
+    rgba(38, 34, 28, 0.72);
+  box-shadow: inset 0 1px 0 rgba(245, 217, 168, 0.05);
+}
+
+[data-theme='song'] .assistant-content {
+  font-family: var(--font-ui);
+  color: var(--color-text-primary);
+}
+
+[data-theme='song'] .assistant-content h3 {
+  color: #e7d6b9;
+  font-family: "Songti SC", "STSong", "Hiragino Mincho ProN", Georgia, serif;
+  letter-spacing: 0.025em;
+}
+
+[data-theme='song'] .tool-card {
+  overflow: hidden;
+  border: 1px solid rgba(214, 180, 121, 0.13);
+  border-left: 6px solid #321b12;
+  border-radius: 2px 5px 5px 2px;
+  background: rgba(24, 25, 22, 0.92);
+  box-shadow: inset 0 1px 0 rgba(236, 210, 166, 0.04);
+}
+
+[data-theme='song'] .tool-card__header {
+  margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background:
+    linear-gradient(90deg, rgba(91, 55, 31, 0.38), rgba(31, 38, 31, 0.28));
+  border-bottom: 1px solid rgba(215, 181, 121, 0.10);
+}
+
+[data-theme='song'] .code-block,
+[data-theme='song'] .memory-entry,
+[data-theme='song'] .context-summary {
+  border-color: rgba(208, 177, 122, 0.13);
+  border-left: 4px solid #2b1912;
+  border-radius: 2px 5px 5px 2px;
+  background:
+    linear-gradient(110deg, rgba(82, 55, 34, 0.10), transparent 42%),
+    rgba(21, 24, 21, 0.88);
+  box-shadow: inset 0 1px 0 rgba(232, 206, 164, 0.04);
+}
+
+[data-theme='song'] .signature__item {
+  color: var(--color-text-secondary);
+  background: rgba(118, 111, 99, 0.18);
+  border: 1px solid rgba(221, 205, 178, 0.08);
+}
+
+[data-theme='song'] .signature__key {
+  color: #aaa195;
+}
+
+[data-theme='song'] .signature__value {
+  color: #ddd4c7;
+}
+
+[data-theme='song'] .tabs {
+  border-bottom: 5px solid #130e0b;
+  box-shadow: inset 0 -1px 0 rgba(205, 169, 108, 0.14);
+}
+
+[data-theme='song'] .tabs__item--active {
+  color: #dec38f;
+  border-bottom-color: #a9834e;
+  background: linear-gradient(180deg, transparent, rgba(159, 117, 67, 0.13));
+}
+
+[data-theme='song'] .theme-lab__footer {
+  position: relative;
+  z-index: 2;
+  min-height: 72px;
+  padding-inline: clamp(2.5rem, 7vw, 7rem);
+  border-top: 8px solid #090807;
+  background:
+    linear-gradient(180deg, rgba(25, 19, 15, 0.94), rgba(7, 8, 7, 0.99)),
+    #0b0a09;
+  box-shadow:
+    inset 0 1px 0 rgba(210, 173, 109, 0.14),
+    0 -18px 40px rgba(4, 4, 3, 0.38);
+}
+
+/* Low-contrast lacquer reflection at the base. */
+[data-theme='song'] .theme-lab__footer::before {
+  content: '';
+  position: absolute;
+  inset: 9px 8% 8px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(83, 116, 88, 0.10) 22%, rgba(192, 146, 78, 0.12) 67%, transparent),
+    repeating-linear-gradient(90deg, transparent 0 11%, rgba(226, 190, 127, 0.045) 11% 11.25%);
+  filter: blur(2px);
+  transform: scaleY(-1);
+  opacity: 0.78;
+}
+
+[data-theme='song'] :focus-visible {
+  outline: 1px solid rgba(238, 208, 151, 0.82);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  [data-theme='song'] {
+    --lab-content-padding-inline: var(--space-5);
+  }
+
+  [data-theme='song'] .theme-lab {
+    background:
+      radial-gradient(ellipse 55% 18% at 78% 14%, rgba(197, 149, 79, 0.14), transparent 75%),
+      linear-gradient(145deg, #17120f, #11130f);
+  }
+
+  [data-theme='song'] .theme-lab::after,
+  [data-theme='song'] .theme-lab__main::after {
+    opacity: 0.18;
+  }
+
+  [data-theme='song'] .theme-lab__main {
+    margin-block: var(--space-3);
+  }
+
+  [data-theme='song'] .showcase__section:nth-child(n) {
+    margin-inline: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='song'] .theme-lab::before,
+  [data-theme='song'] .theme-lab::after,
+  [data-theme='song'] .theme-lab__main::before,
+  [data-theme='song'] .theme-lab__main::after,
+  [data-theme='song'] .theme-lab__footer::before {
+    animation: none !important;
+  }
 }

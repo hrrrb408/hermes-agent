@@ -18,11 +18,27 @@ export type ThemeDensity = 'compact' | 'comfortable' | 'spacious'
 
 export type ThemeRadius = 'sharp' | 'small' | 'medium' | 'large'
 
-export type PanelStyle = 'bordered' | 'paper' | 'minimal' | 'soft-card'
+export type PanelStyle =
+  | 'bordered'
+  | 'paper'
+  | 'minimal'
+  | 'soft-card'
+  | 'lattice-window'
 
-export type MessageStyle = 'minimal' | 'document' | 'scroll' | 'bubble'
+export type MessageStyle =
+  | 'minimal'
+  | 'document'
+  | 'scroll'
+  | 'bubble'
+  | 'framed-document'
 
-export type ToolCardStyle = 'ide' | 'paper' | 'ink' | 'record' | 'soft'
+export type ToolCardStyle =
+  | 'ide'
+  | 'paper'
+  | 'ink'
+  | 'record'
+  | 'soft'
+  | 'lacquer-label'
 
 export type MotionStyle = 'none' | 'reduced' | 'subtle' | 'smooth'
 
@@ -35,6 +51,7 @@ export type SurfaceTexture =
   | 'xuan-paper'
   | 'ink-wash'
   | 'night-silk'
+  | 'lacquer-screen'
 
 /** Ornament style controls small decorative accents (seal, mark, motif) */
 export type OrnamentStyle =
@@ -42,12 +59,14 @@ export type OrnamentStyle =
   | 'seal'
   | 'brush'
   | 'sakura'
+  | 'garden-shadow'
 
 /** Divider style controls how section dividers and rule lines appear */
 export type DividerStyle =
   | 'hairline'
   | 'book-rule'
   | 'brush-fade'
+  | 'architectural-beam'
 
 /** Heading style controls heading typography and decoration */
 export type HeadingStyle =
@@ -56,6 +75,7 @@ export type HeadingStyle =
   | 'song-book'
   | 'ink-inscription'
   | 'night-title'
+  | 'framed-title'
 
 export interface ThemePreviewColors {
   readonly background: string

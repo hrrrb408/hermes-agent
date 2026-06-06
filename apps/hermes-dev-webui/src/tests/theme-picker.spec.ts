@@ -90,6 +90,36 @@ describe('Theme Picker', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('song')
   })
 
+  it('Song is labeled as a dark theme', async () => {
+    const wrapper = mountPicker()
+    await wrapper.find('.theme-picker__trigger').trigger('click')
+
+    const cards = wrapper.findAllComponents(ThemePreviewCard)
+    const songCard = cards.find((c) => getThemeId(c) === 'song')
+    expect(songCard).toBeTruthy()
+    expect(songCard!.find('.theme-preview-card__scheme').text()).toBe('Dark')
+  })
+
+  it('Ink is labeled as a light theme', async () => {
+    const wrapper = mountPicker()
+    await wrapper.find('.theme-picker__trigger').trigger('click')
+
+    const cards = wrapper.findAllComponents(ThemePreviewCard)
+    const inkCard = cards.find((c) => getThemeId(c) === 'ink')
+    expect(inkCard).toBeTruthy()
+    expect(inkCard!.find('.theme-preview-card__scheme').text()).toBe('Light')
+  })
+
+  it('Sakura Night is labeled as a dark theme', async () => {
+    const wrapper = mountPicker()
+    await wrapper.find('.theme-picker__trigger').trigger('click')
+
+    const cards = wrapper.findAllComponents(ThemePreviewCard)
+    const sakuraCard = cards.find((c) => getThemeId(c) === 'sakura-night')
+    expect(sakuraCard).toBeTruthy()
+    expect(sakuraCard!.find('.theme-preview-card__scheme').text()).toBe('Dark')
+  })
+
   it('current theme shows selected state', async () => {
     const wrapper = mountPicker()
     await wrapper.find('.theme-picker__trigger').trigger('click')

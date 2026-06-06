@@ -232,8 +232,8 @@ The Dev WebUI ships with **five built-in themes**. Aurora and Terminal are NOT i
 |-------|----|----------|-------------|
 | Obsidian | `obsidian` | Modern | Dark |
 | Paper | `paper` | Modern | Light |
-| 宋韵 Song | `song` | Eastern | Light |
-| 墨境 Ink | `ink` | Eastern | Dark |
+| 宋韵 Song | `song` | Eastern | Dark |
+| 墨境 Ink | `ink` | Eastern | Light |
 | 夜樱 Sakura Night | `sakura-night` | Eastern | Dark |
 
 - Default theme: `obsidian`
@@ -259,26 +259,51 @@ The Dev WebUI ships with **five built-in themes**. Aurora and Terminal are NOT i
 - Assistant replies use document-style layout.
 
 **宋韵 Song**
-- Light. Song dynasty literati, Song edition books, and Xuan paper aesthetic.
-- Xuan paper warm-white, ink black, dai-blue (黛青), vermilion (朱砂), Ru ware celadon (汝窑青).
-- Comfortable density, small border-radius, almost no shadows.
-- Active session may use a thin vermilion bookmark line.
-- Messages use scroll-and-document layout.
-- No direct decoration: no dragons, palaces, or auspicious clouds.
+- Dark. An immersive Eastern luxury workbench shaped by Song garden architecture,
+  dark lacquered-wood framing, warm amber screens, borrowed bamboo views,
+  rain-misted tile eaves, and restrained lacquer reflections.
+- Ebony, deep chestnut lacquer, and wet-tile gray form the architectural shell;
+  warm amber and pale silk light the framed windows; bamboo green, moss green,
+  and mist blue remain localized garden layers.
+- Horizontal beams, columns, and limited latticework create a dark foreground,
+  a half-lit content plane, and bright framed views.
+- Comfortable density, small border-radius, broad desktop workbench width, and
+  asymmetric composition governed by an architectural grid.
+- User messages use deep lacquer surfaces; assistant content uses softly
+  translucent reading surfaces. Body text remains a highly legible system sans-serif.
+- Quiet, humid, deep, and restrained. Vermilion is reserved for rare status emphasis.
+- No full-screen Xuan paper, antique-book reader layout, narrow type column,
+  Song-edition rules, scroll messages, stacked seals, artificial aging, palaces,
+  dragons, auspicious clouds, reference photos, watermarked images, or realistic
+  architectural illustrations.
 
 **墨境 Ink**
-- Dark. Chinese ink-wash night aesthetic.
-- Ink black, deep dai, moon-white, celadon green, trace vermilion.
-- Medium-high density, small-medium border-radius, weak borders, no heavy shadows.
-- Assistant replies use minimal document layout.
-- No large-area ink-wash background images.
+- Light. A modern ink-wash workbench composed from moon-white negative space,
+  mist gray, pale mountain layers, bamboo shadow, water rhythm, and restrained ink density.
+- Moon-white and fog-white occupy the largest area; pale and mid ink establish distance;
+  deep ink is reserved for text, code surfaces, and a small amount of foreground structure.
+- Open content planes, fading boundaries, asymmetric whitespace, and distinct foreground,
+  middle-ground, and distant layers replace uniform cards and dark SaaS surfaces.
+- Gray-celadon and muted bamboo green provide limited interaction emphasis.
+  Low-saturation cinnabar is reserved for errors or a very small focal mark.
+- Comfortable density, small border-radius, system sans-serif body text, and restrained
+  inscription-like serif treatment only where a short heading benefits from it.
+- No deep-black SaaS theme, green Obsidian variant, ink-painting wallpaper, full bamboo
+  illustration, large calligraphy, martial-arts game styling, or antique-book page.
 
 **夜樱 Sakura Night**
-- Dark. Restrained Japanese night aesthetic.
-- Deep night blue, indigo, moon-white, gray-pink, cherry blossom pink.
-- Medium density, larger border-radius, soft shadows.
-- Light card and bubble style.
-- No animated cherry blossom backgrounds, anime characters, or large-area pink.
+- Dark. A cinematic Japanese spring-night workbench composed from deep indigo sky,
+  foreground and distant blossom branches, pink-white blossom crowns, cool moonlight,
+  one restrained warm light, night mist, and depth of field.
+- Deep indigo occupies the largest area. Blue-gray and violet-gray build atmospheric
+  depth; moon-white, frost pink, and gray-pink form localized highlights; warm apricot
+  is reserved for a single small light anchor.
+- Asymmetric branches frame the page, clustered blossoms stay near limited edge regions,
+  and large quiet areas of night sky preserve a clear, readable content workbench.
+- Comfortable density, large border-radius, soft-card panels, bubble messages, system
+  UI typography, and restrained motion.
+- No girlie pink, anime, festival styling, realistic lanterns, full-screen petals,
+  pink-purple cyberpunk, cherry-blossom photo wallpaper, or generic purple dark theme.
 
 #### Theme Difference Requirements
 
@@ -373,8 +398,7 @@ Phase 0 must cover:
 - All five themes define all required CSS Variables
 - Theme switch does not reload the page
 - `prefers-reduced-motion` is respected
-- Light themes correctly set `color-scheme: light`
-- Dark themes correctly set `color-scheme: dark`
+- Each theme correctly applies its registered `color-scheme`
 
 ### P0 Tool Execution Policy
 
