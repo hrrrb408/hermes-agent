@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import threading
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Iterator
 
 import pytest
 
@@ -163,7 +165,10 @@ def _render_record(item: MemoryItem) -> str:
 
 
 @pytest.fixture
-def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def isolated_home(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[Path]:
     home = tmp_path / "hermes-review-e2e"
     for name in (
         "HERMES_MEMORY_AUTO_WRITE",
@@ -203,7 +208,10 @@ def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     assert get_hermes_home().resolve() == home.resolve()
     assert home.resolve() != Path("/Users/huangruibang/Code/hermes-home-dev").resolve()
     assert validate_memory(home).ok
-    return home
+    try:
+        yield home
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
 
 
 def _evaluation(
