@@ -72,6 +72,7 @@ class DevGatewayStatus:
     pilot_auto_update: bool
     pilot_auto_create_categories: bool
     review_pilot_safety: str
+    wechat_review_commands: str
     reason: str = ""
 
 
@@ -539,6 +540,11 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
             if pilot_running
             else "disabled"
         ),
+        wechat_review_commands=(
+            "read-only enabled"
+            if pilot_running and pilot_state_safe
+            else "available, pilot disabled"
+        ),
         reason=reason,
     )
 
@@ -583,6 +589,7 @@ def format_dev_gateway_status(status: DevGatewayStatus) -> str:
                 f"{'enabled' if status.pilot_auto_create_categories else 'disabled'}"
             ),
             f"Review pilot safety: {status.review_pilot_safety}",
+            f"Wechat review commands: {status.wechat_review_commands}",
             "Wechat dry-run:  available via dev-wechat-message",
             f"Isolation:       {status.isolation}",
             *([f"Reason:          {status.reason}"] if status.reason else []),

@@ -165,6 +165,8 @@ async def run_dev_wechat_gateway(
         raise RuntimeError("Weixin credentials are incomplete")
 
     config = GatewayConfig()
+    allow_all = auth_state.get("allow_all_users") is True
+    allowed_senders = list(auth_state.get("allowed_users") or [])
     config.platforms[Platform.WEIXIN] = PlatformConfig(
         enabled=True,
         token=token,
@@ -173,8 +175,13 @@ async def run_dev_wechat_gateway(
             "token": token,
             "base_url": base_url,
             "state_dir": str(paths["wechat_state_dir"]),
-            "dm_policy": "open",
+            "dm_policy": "open" if allow_all else "allowlist",
+            "allow_from": allowed_senders,
             "group_policy": "disabled",
+            "dev_wechat_review_commands": True,
+            "dev_review_pilot_enabled": review_pilot.enabled,
+            "dev_review_pilot_safety": review_pilot.pilot_safety,
+            "dev_review_max_pending": review_pilot.max_pending,
         },
     )
 

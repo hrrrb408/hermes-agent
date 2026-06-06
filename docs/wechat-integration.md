@@ -252,6 +252,37 @@ Approval against the real development home must remain a dry-run:
 Finish test candidates with `memory-review-reject`. Stop the pilot with
 `gateway-dev stop`, never with the normal `hermes gateway stop` command.
 
+## Dev WeChat Read-only Review Commands
+
+When the development Review Queue pilot is active, an authorized test WeChat
+user can run:
+
+```text
+/memory-review status
+/memory-review list
+/memory-review list 1-10
+/memory-review show <review_id>
+/memory-review help
+```
+
+These commands are enabled only by the dev Weixin configuration created by
+`gateway-dev run --memory-review-queue`. Production Gateway configurations do
+not enable them.
+
+Authorization occurs before the review handler. `--allowed-user` configures
+the dev Weixin intake allowlist; `--allow-all-users` switches the dev adapter
+to open access and should be used only briefly.
+
+Review commands return directly from Gateway dispatch. They do not invoke the
+LLM, enter the ordinary Agent Runtime conversation path, enqueue candidates,
+or modify queue and formal memory files. Ordinary WeChat messages remain
+unchanged and continue into Agent Runtime.
+
+The WeChat surface is read-only. Approve, reject, write, update, delete, clear,
+and archive operations are rejected. Output uses bounded, whitelisted fields
+and never returns prompts, credentials, cookies, sessions, or complete formal
+memory records.
+
 ## Recommended Real WeChat Path
 
 Do not start by wiring a personal WeChat hook into production. Personal hooks

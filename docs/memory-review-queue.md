@@ -283,6 +283,50 @@ Pilot logs contain decision, score, category, proposed action, review ID,
 occurrence count, and reason codes. They do not contain complete messages,
 assistant replies, candidate summaries, prompts, records, cookies, or secrets.
 
+## Dev WeChat Read-only Review Commands
+
+The first WeChat review command surface is intentionally read-only. It is
+available only in `gateway-dev`, requires an active Review Queue pilot with
+Safety `PASS`, and runs after Gateway user authorization.
+
+Supported commands:
+
+```text
+/memory-review status
+/memory-review list
+/memory-review list 10
+/memory-review show <review_id>
+/memory-review help
+```
+
+`list` defaults to five pending candidates and accepts limits from 1 through
+10. `show` uses a strict Review ID pattern and reads only the corresponding
+queue item. Paths, shell syntax, subprocesses, and arbitrary JSON filenames
+are not accepted.
+
+The handler returns directly from the authorized gateway dispatch path. It
+does not call the LLM, enter Agent Runtime, enqueue another candidate, update
+occurrence counts, or write Review or formal memory events. Normal messages
+continue through Agent Runtime unchanged.
+
+WeChat does not support review `approve`, `reject`, `write`, `update`,
+`delete`, `clear`, or `archive`. Formal review remains a terminal workflow.
+For the real development home, start with:
+
+```bash
+./scripts/run-dev-hermes.sh memory-review-approve \
+  <review_id> --action write --dry-run
+```
+
+Replies are limited to 2000 characters. Detail output is formatted from an
+explicit field allowlist; prompts, original messages, assistant replies,
+tokens, cookies, API keys, sessions, and complete formal records are never
+returned. Titles, summaries, tags, and reason codes are individually bounded.
+
+If the pilot is disabled, `/memory-review ...` is still intercepted by the
+development Gateway and returns a pilot-disabled message without reaching the
+LLM. Production Weixin configuration does not include this dev-only handler.
+
 ## Dry-run Examples
 
 Approval dry-run reloads current memory and reports what would happen without

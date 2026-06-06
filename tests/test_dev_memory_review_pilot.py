@@ -269,6 +269,7 @@ def test_gateway_status_uses_running_state_and_dynamic_pending_count(
     assert "Auto memory update: disabled" in output
     assert "Auto category creation: disabled" in output
     assert "Review pilot safety: PASS" in output
+    assert "Wechat review commands: read-only enabled" in output
 
 
 def test_stale_state_does_not_report_pilot_running(

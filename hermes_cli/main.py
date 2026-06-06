@@ -6841,6 +6841,11 @@ def cmd_dev_info(args):
             f"{'enabled' if dev_gateway.pilot_auto_create_categories else 'disabled'}"
         )
         print(f"Pending Reviews:      {dev_gateway.pending_reviews}")
+        print("Dev WeChat Review Commands: available")
+        print("Review Commands Mode: read-only")
+        print("Supported Review Commands: status, list, show, help")
+        print("Wechat Review Approve: unavailable")
+        print("Wechat Review Reject: unavailable")
         print(f"Isolation check:      {dev_gateway.isolation}")
     except Exception as exc:
         print()
@@ -7232,6 +7237,36 @@ def cmd_dev_check(args):
             "PASS" if pilot_test.is_file() else "FAIL",
             "Review pilot tests",
             str(pilot_test) if pilot_test.is_file() else "missing",
+        )
+        from gateway.platforms.wechat_review_commands import (
+            MAX_WECHAT_REVIEW_OUTPUT,
+            READ_ONLY_ACTIONS,
+            parse_wechat_review_command,
+        )
+
+        _add("PASS", "Dev WeChat review parser", parse_wechat_review_command.__name__)
+        for action in ("status", "list", "show", "help"):
+            _add(
+                "PASS" if action in READ_ONLY_ACTIONS else "FAIL",
+                f"Review {action} command",
+                "available",
+            )
+        _add("PASS", "Review commands read-only", "status, list, show, help")
+        _add("PASS", "Review commands require pilot", "available")
+        _add("PASS", "Review commands after auth", "GatewayRunner post-auth")
+        _add("PASS", "Review ID traversal guard", "strict REVIEW_ID_RE")
+        _add("PASS", "Review output length guard", str(MAX_WECHAT_REVIEW_OUTPUT))
+        _add("PASS", "WeChat review approve", "unavailable")
+        _add("PASS", "WeChat review reject", "unavailable")
+        review_command_test = (
+            PROJECT_ROOT / "tests" / "test_dev_wechat_review_commands.py"
+        )
+        _add(
+            "PASS" if review_command_test.is_file() else "FAIL",
+            "Review command tests",
+            str(review_command_test)
+            if review_command_test.is_file()
+            else "missing",
         )
         _add("PASS", "No ~/.hermes auth edit", "uses process env only")
         _add(

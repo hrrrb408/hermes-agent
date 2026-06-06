@@ -7478,6 +7478,40 @@ class GatewayRunner:
                     # Record rate limit so subsequent messages are silently ignored
                     self.pairing_store._record_rate_limit(platform_name, source.user_id)
             return None
+
+        # Dev-only WeChat Review Queue commands. This runs after both adapter
+        # intake authorization and the shared Gateway authorization check.
+        # Production Weixin configs do not set dev_wechat_review_commands.
+        if source.platform == Platform.WEIXIN:
+            platform_config = self.config.platforms.get(Platform.WEIXIN)
+            extra = getattr(platform_config, "extra", {}) if platform_config else {}
+            if isinstance(extra, dict) and extra.get("dev_wechat_review_commands") is True:
+                try:
+                    from gateway.platforms.wechat_review_commands import (
+                        handle_wechat_review_command,
+                    )
+                    from hermes_constants import get_hermes_home
+
+                    review_result = handle_wechat_review_command(
+                        event.text or "",
+                        hermes_home=get_hermes_home(),
+                        pilot_enabled=extra.get("dev_review_pilot_enabled") is True,
+                        pilot_safety=str(
+                            extra.get("dev_review_pilot_safety") or "disabled"
+                        ),
+                        max_pending=int(extra.get("dev_review_max_pending") or 20),
+                    )
+                    if review_result.handled:
+                        return review_result.response
+                except Exception as exc:
+                    logger.warning(
+                        "Dev wechat review command dispatch failed: %s",
+                        type(exc).__name__,
+                    )
+                    if (event.text or "").strip().casefold().startswith(
+                        "/memory-review"
+                    ):
+                        return "暂时无法读取审核队列，请稍后重试。"
         
         # Intercept messages that are responses to a pending /update prompt.
         # The update process (detached) wrote .update_prompt.json; the watcher
