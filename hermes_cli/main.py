@@ -6748,6 +6748,8 @@ def cmd_dev_info(args):
             "Runtime memory injection: "
             f"{_availability(features.get('runtime_memory_injection', False))}"
         )
+        print(f"Auto Memory Writer: {_availability(features.get('auto_memory_writer', False))}")
+        print(f"Auto Memory Dedup:  {_availability(features.get('auto_memory_dedup', False))}")
         print(f"Writer commands:  {_availability(features.get('writer_commands', False))}")
         print(f"Category commands:{_availability(features.get('category_commands', False)):>12}")
         print(f"Check status:     {check.get('status', 'unknown')}")
@@ -6901,6 +6903,28 @@ def cmd_dev_wechat_message(args):
     print("────────────────────────────────────────")
     print(result.prompt_preview)
     print()
+
+
+def cmd_memory_auto_test(args):
+    """Dry-run automatic memory candidate extraction and scoring."""
+    try:
+        from agent.runtime_memory_writer import (
+            evaluate_memory_auto_write,
+            format_memory_auto_test,
+        )
+        from hermes_cli.config import load_config_readonly
+
+        decision = evaluate_memory_auto_write(
+            args.message,
+            args.assistant_response or "",
+            config=load_config_readonly(),
+            write=False,
+        )
+    except Exception as exc:
+        print(f"ERROR Failed to evaluate automatic memory writer: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(format_memory_auto_test(decision))
 
 
 def cmd_gateway_dev(args):
@@ -7118,6 +7142,32 @@ def cmd_dev_check(args):
         _add("PASS", "Runtime memory injection", "available")
     except Exception as exc:
         _add("FAIL", "Runtime memory injection", str(exc))
+
+    try:
+        from agent.runtime_memory_writer import (
+            auto_write_enabled,
+            evaluate_memory_auto_write,
+        )
+
+        dry_run = evaluate_memory_auto_write(
+            "已完成开发版微信 Gateway 并推送",
+            "",
+            config={},
+            write=False,
+        )
+        _add("PASS", "Auto memory writer", "available")
+        _add(
+            "PASS" if auto_write_enabled({}) is False else "FAIL",
+            "Auto memory config",
+            "default disabled" if auto_write_enabled({}) is False else "unexpected enabled",
+        )
+        _add(
+            "PASS" if dry_run.decision in {"WRITE", "UPDATE"} and dry_run.score >= 70 else "FAIL",
+            "Auto memory dry-run",
+            f"{dry_run.decision} score={dry_run.score}",
+        )
+    except Exception as exc:
+        _add("FAIL", "Auto memory writer", str(exc))
 
     try:
         from hermes_cli.memory_router import validate_memory
@@ -15953,6 +16003,17 @@ Examples:
         help="Output format (default: text)",
     )
     memory_context_parser.set_defaults(func=cmd_memory_context)
+
+    memory_auto_test_parser = subparsers.add_parser(
+        "memory-auto-test",
+        help="Dry-run automatic memory candidate scoring and dedup",
+    )
+    memory_auto_test_parser.add_argument("message", help="User message to evaluate")
+    memory_auto_test_parser.add_argument(
+        "--assistant-response",
+        help="Optional assistant response to include in candidate extraction",
+    )
+    memory_auto_test_parser.set_defaults(func=cmd_memory_auto_test)
 
     memory_add_parser = subparsers.add_parser(
         "memory-add",

@@ -197,23 +197,29 @@ def append_event(
     memory_id: str | None = None,
     index: str | None = None,
     storage: str | None = None,
+    source: str | None = None,
+    event: str | None = None,
 ) -> None:
     home = home or get_hermes_home()
     ensure_memory_scaffold(home)
-    event = {
+    payload = {
         "time": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         "action": action,
         "category": category,
         "summary": summary,
     }
     if memory_id:
-        event["memory_id"] = memory_id
+        payload["memory_id"] = memory_id
     if index:
-        event["index"] = index
+        payload["index"] = index
     if storage:
-        event["storage"] = storage
+        payload["storage"] = storage
+    if source:
+        payload["source"] = source
+    if event:
+        payload["event"] = event
     with (memory_dir(home) / "events.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
 
 def _parse_bullet_fields(lines: Iterable[str]) -> dict[str, str]:
@@ -600,6 +606,20 @@ def find_item(memory_id: str, home: Path | None = None) -> MemoryItem | None:
     return None
 
 
+def allocate_memory_id(category: str, home: Path | None = None) -> str:
+    validate_category_name(category)
+    prefix = f"MEM-{category.replace('-', '_').upper()}-"
+    highest = 0
+    for item in list_items(home, include_all=True):
+        if not item.memory_id.startswith(prefix):
+            continue
+        try:
+            highest = max(highest, int(item.memory_id.removeprefix(prefix)))
+        except ValueError:
+            continue
+    return f"{prefix}{highest + 1:03d}"
+
+
 def get_memory_system_summary(home: Path | None = None) -> dict:
     home = home or get_hermes_home()
     mem_dir = memory_dir(home)
@@ -661,6 +681,8 @@ def get_memory_system_summary(home: Path | None = None) -> dict:
             "writer_commands": True,
             "context_loader": True,
             "runtime_memory_injection": True,
+            "auto_memory_writer": True,
+            "auto_memory_dedup": True,
         },
         "check": {
             "status": "PASS" if check.ok else "FAIL",

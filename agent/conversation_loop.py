@@ -4731,6 +4731,21 @@ def run_conversation(
         except Exception as exc:
             logger.warning("post_llm_call hook failed: %s", exc)
 
+    # Rule-based automatic long-term memory writer. It is disabled by default
+    # and must never interrupt the user-facing reply path.
+    if final_response and not interrupted:
+        try:
+            from agent.runtime_memory_writer import maybe_auto_write_memory
+            from hermes_cli.config import load_config_readonly
+
+            maybe_auto_write_memory(
+                original_user_message,
+                final_response,
+                config=load_config_readonly(),
+            )
+        except Exception as exc:
+            logger.warning("memory auto-write evaluation failed: %s", exc)
+
     # Extract reasoning from the CURRENT turn only.  Walk backwards
     # but stop at the user message that started this turn — anything
     # earlier is from a prior turn and must not leak into the reasoning
