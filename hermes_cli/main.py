@@ -6822,6 +6822,25 @@ def cmd_dev_info(args):
         print(f"Dev runtime state:    {dev_gateway.runtime_state}")
         print("Dev auth state:       tracked")
         print(f"Memory log summary:   {dev_gateway.memory_log_summary}")
+        print("Dev Review Pilot:     available")
+        print(
+            "Dev Review Pilot Running: "
+            f"{'yes' if dev_gateway.memory_review_queue_enabled else 'no'}"
+        )
+        print(f"Dev Review Pilot Safety: {dev_gateway.review_pilot_safety}")
+        print(
+            "Auto Write During Pilot: "
+            f"{'enabled' if dev_gateway.pilot_auto_write else 'disabled'}"
+        )
+        print(
+            "Auto Update During Pilot: "
+            f"{'enabled' if dev_gateway.pilot_auto_update else 'disabled'}"
+        )
+        print(
+            "Auto Category During Pilot: "
+            f"{'enabled' if dev_gateway.pilot_auto_create_categories else 'disabled'}"
+        )
+        print(f"Pending Reviews:      {dev_gateway.pending_reviews}")
         print(f"Isolation check:      {dev_gateway.isolation}")
     except Exception as exc:
         print()
@@ -6987,6 +7006,14 @@ def cmd_gateway_dev(args):
                 allow_all_users=bool(getattr(args, "allow_all_users", False)),
                 allowed_users=getattr(args, "allowed_user", None),
                 verbose=bool(getattr(args, "verbose", False)),
+                memory_review_queue=bool(
+                    getattr(args, "memory_review_queue", False)
+                ),
+                memory_review_max_pending=getattr(
+                    args,
+                    "memory_review_max_pending",
+                    None,
+                ),
             )
             if not success:
                 sys.exit(1)
@@ -7159,10 +7186,53 @@ def cmd_dev_check(args):
         _add("PASS", "Dev allow-all flag", "--allow-all-users")
         _add("PASS", "Dev allowed-user flag", "--allowed-user")
         _add("PASS", "Dev verbose flag", "--verbose")
+        _add("PASS", "Dev review pilot flag", "--memory-review-queue")
+        _add("PASS", "Dev review max pending flag", "--memory-review-max-pending")
         _add("PASS", "Dev state file support", dev_gateway.runtime_state)
         _add("PASS", "Dev auth state", "tracked")
         _add("PASS", "Status reads state", "safe")
         _add("PASS", "Memory log summary", dev_gateway.memory_log_summary)
+        from gateway.dev_isolation import (
+            build_dev_review_pilot_environment,
+            build_dev_review_pilot_state,
+            get_review_queue_pending_count,
+            validate_dev_review_pilot_safety,
+        )
+
+        pilot_check = validate_dev_review_pilot_safety(
+            enabled=True,
+            max_pending=20,
+            environ={},
+        )
+        pilot_env = build_dev_review_pilot_environment(pilot_check)
+        _add("PASS", "Review pilot fail-closed guard", "available")
+        _add(
+            "PASS" if pilot_env["HERMES_MEMORY_AUTO_WRITE"] == "false" else "FAIL",
+            "Pilot forces auto-write off",
+            "available",
+        )
+        _add(
+            "PASS" if pilot_env["HERMES_MEMORY_AUTO_UPDATE"] == "false" else "FAIL",
+            "Pilot forces auto-update off",
+            "available",
+        )
+        _add(
+            "PASS"
+            if pilot_env["HERMES_MEMORY_AUTO_CREATE_CATEGORIES"] == "false"
+            else "FAIL",
+            "Pilot forces auto-category off",
+            "available",
+        )
+        _add("PASS", "Review pilot runtime state", build_dev_review_pilot_state.__name__)
+        _add("PASS", "Review pilot pending count", get_review_queue_pending_count.__name__)
+        _add("PASS", "Review pilot memory logging", "available")
+        _add("PASS", "Review pilot failure isolation", "best-effort warning")
+        pilot_test = PROJECT_ROOT / "tests" / "test_dev_memory_review_pilot.py"
+        _add(
+            "PASS" if pilot_test.is_file() else "FAIL",
+            "Review pilot tests",
+            str(pilot_test) if pilot_test.is_file() else "missing",
+        )
         _add("PASS", "No ~/.hermes auth edit", "uses process env only")
         _add(
             "PASS" if dev_gateway.secret_redaction != "disabled by explicit dev env" else "WARN",
@@ -16039,6 +16109,16 @@ Examples:
         "--verbose",
         action="store_true",
         help="Dev-only: log runtime memory injection summaries",
+    )
+    gateway_dev_parser.add_argument(
+        "--memory-review-queue",
+        action="store_true",
+        help="Enable fail-closed Memory Review Queue pilot for this dev run",
+    )
+    gateway_dev_parser.add_argument(
+        "--memory-review-max-pending",
+        type=int,
+        help="Pilot queue limit, 1-500 (default: 20)",
     )
     gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
 

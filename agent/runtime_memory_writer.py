@@ -834,26 +834,55 @@ def maybe_auto_write_memory(
         from agent.memory_review_queue import (
             enqueue_review_item,
             get_review_queue_config,
+            proposed_action_for,
             should_enqueue_evaluation,
         )
 
         queue_cfg = get_review_queue_config(config)
-        if queue_cfg.enabled and should_enqueue_evaluation(evaluation, queue_cfg):
+        should_enqueue = (
+            queue_cfg.enabled
+            and should_enqueue_evaluation(evaluation, queue_cfg)
+        )
+        item = None
+        created = False
+        message = "Evaluation does not require review."
+        if should_enqueue:
             item, created, message = enqueue_review_item(
                 evaluation,
                 source_kind="runtime",
                 config=config,
                 require_enabled=True,
             )
-            logger.info(
-                "Memory review queue: review_id=%s created=%s decision=%s category=%s score=%s result=%s",
-                item.get("review_id") if item else "none",
-                created,
-                evaluation.decision.value,
-                candidate.category if candidate else "unknown",
-                evaluation.score,
-                message,
+        if queue_cfg.enabled:
+            enqueue_result = (
+                "yes"
+                if item and created
+                else "deduplicated"
+                if item
+                else "no"
             )
+            if _as_bool(os.getenv("HERMES_DEV_GATEWAY_MEMORY_LOGS"), False):
+                logger.info(
+                    "Memory review evaluation: decision=%s score=%s "
+                    "category=%s proposed_action=%s enqueue=%s review_id=%s "
+                    "occurrence_count=%s reason_codes=%s",
+                    evaluation.decision.value,
+                    evaluation.score,
+                    candidate.category if candidate else "unknown",
+                    proposed_action_for(evaluation).value,
+                    enqueue_result,
+                    item.get("review_id") if item else "none",
+                    item.get("occurrence_count", 0) if item else 0,
+                    ",".join(evaluation.reason_codes) or "none",
+                )
+            elif item:
+                logger.info(
+                    "Review item enqueued %s (%s)",
+                    item.get("review_id"),
+                    message,
+                )
+            else:
+                logger.info("Review queue enabled; candidate not enqueued")
     except Exception as exc:
         logger.warning("memory review queue enqueue failed: %s", exc)
     return evaluation

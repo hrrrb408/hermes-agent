@@ -9,6 +9,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Mapping
 
 from hermes_constants import get_hermes_home
 from utils import atomic_json_write
@@ -25,6 +26,20 @@ EXPECTED_DEV_HOME = Path("/Users/huangruibang/Code/hermes-home-dev")
 EXPECTED_SOURCE_ROOT = Path("/Users/huangruibang/Code/hermes-agent-dev")
 ORIGINAL_HERMES_HOME = Path("/Users/huangruibang/.hermes")
 PRODUCTION_GATEWAY_PID = 1717
+DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING = 20
+DEV_REVIEW_PILOT_MAX_PENDING = 500
+DEV_REVIEW_PILOT_UNSAFE_ENV = (
+    "HERMES_MEMORY_AUTO_WRITE",
+    "HERMES_MEMORY_AUTO_UPDATE",
+    "HERMES_MEMORY_AUTO_CREATE_CATEGORIES",
+)
+
+
+@dataclass(frozen=True)
+class DevReviewPilotConfig:
+    enabled: bool
+    max_pending: int
+    pilot_safety: str = "disabled"
 
 
 @dataclass
@@ -49,6 +64,14 @@ class DevGatewayStatus:
     auth_controls: str
     runtime_state: str
     memory_log_summary: str
+    memory_review_queue_enabled: bool
+    memory_review_queue_path: Path
+    memory_review_queue_max: int
+    pending_reviews: int
+    pilot_auto_write: bool
+    pilot_auto_update: bool
+    pilot_auto_create_categories: bool
+    review_pilot_safety: str
     reason: str = ""
 
 
@@ -95,6 +118,103 @@ def configure_dev_gateway_environment(home: Path | None = None) -> dict[str, Pat
 
 def _truthy(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def validate_dev_review_pilot_safety(
+    *,
+    enabled: bool,
+    max_pending: int | str | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> DevReviewPilotConfig:
+    if not enabled:
+        if max_pending is not None:
+            raise ValueError(
+                "REVIEW_PILOT_FLAG_REQUIRED: "
+                "--memory-review-max-pending requires --memory-review-queue"
+            )
+        return DevReviewPilotConfig(
+            enabled=False,
+            max_pending=DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING,
+        )
+
+    env = os.environ if environ is None else environ
+    unsafe = [
+        f"{name}={env.get(name)}"
+        for name in DEV_REVIEW_PILOT_UNSAFE_ENV
+        if _truthy(env.get(name))
+    ]
+    if unsafe:
+        raise RuntimeError(
+            "DEV_REVIEW_PILOT_UNSAFE_ENV: Dev memory review pilot refused "
+            f"to start; unsafe environment detected: {', '.join(unsafe)}"
+        )
+
+    raw_max = (
+        DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING
+        if max_pending is None
+        else max_pending
+    )
+    try:
+        parsed_max = int(raw_max)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "DEV_REVIEW_PILOT_INVALID_MAX_PENDING: "
+            "memory review max pending must be an integer"
+        ) from exc
+    if not 1 <= parsed_max <= DEV_REVIEW_PILOT_MAX_PENDING:
+        raise ValueError(
+            "DEV_REVIEW_PILOT_INVALID_MAX_PENDING: "
+            f"memory review max pending must be between 1 and "
+            f"{DEV_REVIEW_PILOT_MAX_PENDING}"
+        )
+    return DevReviewPilotConfig(
+        enabled=True,
+        max_pending=parsed_max,
+        pilot_safety="PASS",
+    )
+
+
+def build_dev_review_pilot_environment(
+    config: DevReviewPilotConfig,
+) -> dict[str, str]:
+    if not config.enabled:
+        return {"HERMES_MEMORY_REVIEW_QUEUE": "false"}
+    return {
+        "HERMES_MEMORY_REVIEW_QUEUE": "true",
+        "HERMES_MEMORY_REVIEW_MAX_PENDING": str(config.max_pending),
+        "HERMES_MEMORY_AUTO_WRITE": "false",
+        "HERMES_MEMORY_AUTO_UPDATE": "false",
+        "HERMES_MEMORY_AUTO_CREATE_CATEGORIES": "false",
+    }
+
+
+def apply_dev_review_pilot_environment(config: DevReviewPilotConfig) -> None:
+    os.environ.update(build_dev_review_pilot_environment(config))
+
+
+def get_review_queue_pending_count(home: Path) -> int:
+    try:
+        from agent.memory_review_queue import get_review_queue_summary
+
+        return int(get_review_queue_summary(home=home, config={}).get("pending", 0))
+    except Exception:
+        return 0
+
+
+def build_dev_review_pilot_state(
+    paths: Mapping[str, Path],
+    config: DevReviewPilotConfig,
+) -> dict:
+    return {
+        "enabled": config.enabled,
+        "path": str(paths["home"] / "memory" / "reviews"),
+        "max_pending": config.max_pending,
+        "pending_count_at_start": get_review_queue_pending_count(paths["home"]),
+        "auto_write": False,
+        "auto_update": False,
+        "auto_create_categories": False,
+        "pilot_safety": config.pilot_safety,
+    }
 
 
 def dev_gateway_secret_redaction_status() -> str:
@@ -228,6 +348,7 @@ def write_dev_gateway_runtime_state(
     auth: dict,
     redact_secrets: bool,
     log_memory: bool,
+    review_pilot: DevReviewPilotConfig | None = None,
 ) -> None:
     state_path = paths["runtime_status_file"]
     payload, _state = _read_runtime_state(state_path)
@@ -249,6 +370,14 @@ def write_dev_gateway_runtime_state(
                 "runtime_injection": True,
                 "log_summary": log_memory,
             },
+            "memory_review_queue": build_dev_review_pilot_state(
+                paths,
+                review_pilot
+                or DevReviewPilotConfig(
+                    enabled=False,
+                    max_pending=DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING,
+                ),
+            ),
         }
     )
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -338,6 +467,28 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
     runtime_auth_status = _auth_status_from_state(runtime_payload) if state == "running" else None
     runtime_secret_status = _secret_status_from_state(runtime_payload) if state == "running" else None
     runtime_memory_status = _memory_log_status_from_state(runtime_payload)
+    pilot_payload = runtime_payload.get("memory_review_queue", {})
+    if not isinstance(pilot_payload, dict):
+        pilot_payload = {}
+    pilot_running = state == "running" and pilot_payload.get("enabled") is True
+    review_path = home / "memory" / "reviews"
+    try:
+        review_max = int(
+            pilot_payload.get(
+                "max_pending",
+                DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING,
+            )
+        )
+    except (TypeError, ValueError):
+        review_max = DEV_REVIEW_PILOT_DEFAULT_MAX_PENDING
+    pilot_auto_write = bool(pilot_payload.get("auto_write", False))
+    pilot_auto_update = bool(pilot_payload.get("auto_update", False))
+    pilot_auto_create = bool(
+        pilot_payload.get("auto_create_categories", False)
+    )
+    pilot_state_safe = not (
+        pilot_auto_write or pilot_auto_update or pilot_auto_create
+    )
     try:
         assert_dev_gateway_safe(home)
         isolation = "PASS"
@@ -366,6 +517,28 @@ def get_dev_gateway_status(home: Path | None = None) -> DevGatewayStatus:
         auth_controls="available",
         runtime_state=runtime_state,
         memory_log_summary=runtime_memory_status or "available with --verbose",
+        memory_review_queue_enabled=pilot_running,
+        memory_review_queue_path=review_path,
+        memory_review_queue_max=review_max,
+        pending_reviews=get_review_queue_pending_count(home),
+        pilot_auto_write=(
+            pilot_auto_write if pilot_running else False
+        ),
+        pilot_auto_update=(
+            pilot_auto_update if pilot_running else False
+        ),
+        pilot_auto_create_categories=(
+            pilot_auto_create if pilot_running else False
+        ),
+        review_pilot_safety=(
+            (
+                str(pilot_payload.get("pilot_safety", "unknown"))
+                if pilot_state_safe
+                else "FAIL"
+            )
+            if pilot_running
+            else "disabled"
+        ),
         reason=reason,
     )
 
@@ -395,6 +568,21 @@ def format_dev_gateway_status(status: DevGatewayStatus) -> str:
             f"QR terminal:     {status.qr_terminal}",
             f"Auth controls:   {status.auth_controls}",
             f"Memory logs:     {status.memory_log_summary}",
+            (
+                "Memory review queue: enabled"
+                if status.memory_review_queue_enabled
+                else "Memory review queue: disabled by default"
+            ),
+            f"Review queue path: {status.memory_review_queue_path}",
+            f"Pending reviews: {status.pending_reviews}",
+            f"Review queue max: {status.memory_review_queue_max}",
+            f"Auto memory write: {'enabled' if status.pilot_auto_write else 'disabled'}",
+            f"Auto memory update: {'enabled' if status.pilot_auto_update else 'disabled'}",
+            (
+                "Auto category creation: "
+                f"{'enabled' if status.pilot_auto_create_categories else 'disabled'}"
+            ),
+            f"Review pilot safety: {status.review_pilot_safety}",
             "Wechat dry-run:  available via dev-wechat-message",
             f"Isolation:       {status.isolation}",
             *([f"Reason:          {status.reason}"] if status.reason else []),

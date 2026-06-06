@@ -93,6 +93,8 @@ async def run_dev_wechat_gateway(
     allow_all_users: bool = False,
     allowed_users: list[str] | None = None,
     verbose: bool = False,
+    memory_review_queue: bool = False,
+    memory_review_max_pending: int | None = None,
 ) -> bool:
     """Run the foreground dev WeChat scan-login gateway.
 
@@ -104,9 +106,11 @@ async def run_dev_wechat_gateway(
     from gateway.dev_isolation import (
         apply_dev_gateway_auth_environment,
         apply_dev_gateway_redaction_default,
+        apply_dev_review_pilot_environment,
         assert_dev_gateway_safe,
         configure_dev_gateway_environment,
         get_dev_gateway_status,
+        validate_dev_review_pilot_safety,
         write_dev_gateway_runtime_state,
     )
     from gateway.platforms.weixin import qr_login
@@ -120,6 +124,11 @@ async def run_dev_wechat_gateway(
         raise RuntimeError(f"Dev gateway already running with PID {status.pid}")
     if status.state == "foreign pid":
         raise RuntimeError(f"Refusing to run with foreign PID in {status.pid_file}")
+    review_pilot = validate_dev_review_pilot_safety(
+        enabled=memory_review_queue,
+        max_pending=memory_review_max_pending,
+    )
+    apply_dev_review_pilot_environment(review_pilot)
 
     for key in ("state_dir", "wechat_state_dir", "log_file"):
         paths[key].parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +149,7 @@ async def run_dev_wechat_gateway(
         auth=auth_state,
         redact_secrets=secret_redaction == "enabled",
         log_memory=verbose,
+        review_pilot=review_pilot,
     )
 
     account = _load_first_weixin_account(paths["wechat_state_dir"])
@@ -182,6 +192,21 @@ async def run_dev_wechat_gateway(
     print(f"Secret redaction:  {secret_redaction}")
     print(f"Dev user access:   {dev_user_access}")
     print(f"Memory logs:       {'enabled' if verbose else 'basic'}")
+    print(
+        "Memory review queue: "
+        f"{'enabled' if review_pilot.enabled else 'disabled'}"
+    )
+    if review_pilot.enabled:
+        print(f"Review queue path: {home / 'memory' / 'reviews'}")
+        print(f"Review queue max:  {review_pilot.max_pending}")
+        print("Auto memory write: disabled")
+        print("Auto memory update: disabled")
+        print("Auto category creation: disabled")
+        print(f"Review pilot safety: {review_pilot.pilot_safety}")
+        print()
+        print("WARNING:")
+        print("Memory Review Queue pilot only stores review candidates.")
+        print("It does not automatically write or update formal long-term memories.")
     if allow_all_users:
         print()
         print("WARNING: gateway-dev is running with --allow-all-users.")
@@ -201,11 +226,15 @@ def run_dev_wechat_gateway_foreground(
     allow_all_users: bool = False,
     allowed_users: list[str] | None = None,
     verbose: bool = False,
+    memory_review_queue: bool = False,
+    memory_review_max_pending: int | None = None,
 ) -> bool:
     return asyncio.run(
         run_dev_wechat_gateway(
             allow_all_users=allow_all_users,
             allowed_users=allowed_users,
             verbose=verbose,
+            memory_review_queue=memory_review_queue,
+            memory_review_max_pending=memory_review_max_pending,
         )
     )

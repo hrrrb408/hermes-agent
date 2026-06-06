@@ -212,6 +212,46 @@ Memory context chars: 1234
 It does not print full memory records, full prompts, tokens, API keys, or
 Weixin credentials.
 
+## Dev WeChat Memory Review Queue Pilot
+
+The scan-login development Gateway can opt into the Memory Review Queue pilot.
+It remains disabled by default.
+
+```text
+WeChat message
+→ Agent Runtime
+→ Memory Writer
+→ Review Queue
+→ Human review
+```
+
+Recommended startup:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run \
+  --allowed-user "<test-wechat-user-id>" \
+  --memory-review-queue \
+  --memory-review-max-pending 20 \
+  --verbose
+```
+
+Use `--allow-all-users` only for a short development test. The pilot fails
+closed if inherited environment variables enable automatic writes, updates, or
+category creation. During a valid pilot, all three modes are forced off in the
+current dev process and the Gateway only creates Review Queue candidates.
+
+Use `gateway-dev status` and `dev-info` to inspect pilot safety and pending
+counts. Use `memory-review-list` and `memory-review-show` to inspect candidates.
+Approval against the real development home must remain a dry-run:
+
+```bash
+./scripts/run-dev-hermes.sh memory-review-approve \
+  <review_id> --action write --dry-run
+```
+
+Finish test candidates with `memory-review-reject`. Stop the pilot with
+`gateway-dev stop`, never with the normal `hermes gateway stop` command.
+
 ## Recommended Real WeChat Path
 
 Do not start by wiring a personal WeChat hook into production. Personal hooks

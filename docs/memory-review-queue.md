@@ -185,6 +185,104 @@ Run it with:
 .venv/bin/python -m pytest tests/test_memory_review_queue_e2e.py -v
 ```
 
+## Dev WeChat Review Queue Pilot
+
+The development WeChat pilot enables automatic candidate enqueue while keeping
+all formal memory mutation disabled. It does not approve candidates, create
+memory IDs, update records, or create categories.
+
+Use a narrow sender allowlist:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev run \
+  --allowed-user "<test-wechat-user-id>" \
+  --memory-review-queue \
+  --memory-review-max-pending 20 \
+  --verbose
+```
+
+`--allow-all-users` is available for short development sessions, but it grants
+all senders access to that dev process. Prefer `--allowed-user`.
+
+The pilot defaults to 20 pending candidates and accepts values from 1 through
+500. It sets these values only in the current gateway-dev process:
+
+```text
+HERMES_MEMORY_REVIEW_QUEUE=true
+HERMES_MEMORY_REVIEW_MAX_PENDING=20
+HERMES_MEMORY_AUTO_WRITE=false
+HERMES_MEMORY_AUTO_UPDATE=false
+HERMES_MEMORY_AUTO_CREATE_CATEGORIES=false
+```
+
+It does not edit `.env`, `~/.hermes`, or persistent global configuration. If
+any formal mutation variable is already truthy (`true`, `1`, `yes`, or `on`),
+startup fails closed instead of silently overriding the unsafe environment.
+
+Status and review inspection commands:
+
+```bash
+./scripts/run-dev-hermes.sh gateway-dev status
+./scripts/run-dev-hermes.sh dev-info
+./scripts/run-dev-hermes.sh memory-review-list
+./scripts/run-dev-hermes.sh memory-review-show <review_id>
+./scripts/run-dev-hermes.sh memory-review-approve \
+  <review_id> --action write --dry-run
+./scripts/run-dev-hermes.sh memory-review-reject \
+  <review_id> --reason "Development WeChat review queue pilot completed"
+```
+
+Do not omit `--dry-run` for approval against the real development home.
+Rejected pilot candidates remain auditable; there is intentionally no
+review-delete or clear-all command.
+
+### Manual Pilot Runbook
+
+1. Confirm the development Gateway is stopped:
+
+   ```bash
+   ./scripts/run-dev-hermes.sh gateway-dev status
+   ```
+
+2. Remove inherited formal-write switches without editing any `.env` file:
+
+   ```bash
+   unset HERMES_MEMORY_AUTO_WRITE
+   unset HERMES_MEMORY_AUTO_UPDATE
+   unset HERMES_MEMORY_AUTO_CREATE_CATEGORIES
+   ```
+
+3. Start the pilot with `--allowed-user` as shown above. For a short test when
+   the sender ID is unknown, replace it with `--allow-all-users`.
+
+4. Send a durable project progress message from the test WeChat account, for
+   example: `已完成 Hermes Memory Review Queue 端到端隔离测试，10 项测试全部通过。`
+
+5. In another terminal, run `gateway-dev status`. Confirm the review queue is
+   enabled, all three formal mutation modes are disabled, and pilot safety is
+   `PASS`.
+
+6. Run `memory-review-list`, then `memory-review-show <review_id>`.
+
+7. Run approval only with `--dry-run`.
+
+8. End the candidate with `memory-review-reject` and a clear audit reason.
+
+9. Stop only the development Gateway:
+
+   ```bash
+   ./scripts/run-dev-hermes.sh gateway-dev stop
+   ```
+
+   Never use `hermes gateway stop` for this workflow.
+
+10. Confirm the production Gateway remains running with a read-only process
+    check such as `ps -p 1717 -f`.
+
+Pilot logs contain decision, score, category, proposed action, review ID,
+occurrence count, and reason codes. They do not contain complete messages,
+assistant replies, candidate summaries, prompts, records, cookies, or secrets.
+
 ## Dry-run Examples
 
 Approval dry-run reloads current memory and reports what would happen without
