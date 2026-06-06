@@ -1,0 +1,83 @@
+/**
+ * Ink - Modern ink-wash night workbench.
+ * Ink black layers, deep dai, moon-white (月白) text, celadon green (青瓷) accent.
+ * Distinct from Obsidian through: layered ink-wash background gradients,
+ * asymmetric left borders, serif headings with sans-serif body,
+ * brush-fade dividers, inscription-style headings, fading panel edges,
+ * ink-stick tool cards, minimal document message layout.
+ *
+ * Visual identity: even in grayscale, recognizable by radial gradient background,
+ * left-only panel borders with fading right edges, brush-fade dividers,
+ * and inscription-style left-accented headings.
+ */
+[data-theme='ink'] {
+  color-scheme: dark;
+
+  /* Layered ink backgrounds - not a single flat color */
+  --color-app-bg: #141418;
+  --color-panel-bg: #1a1a22;
+  --color-elevated-bg: #22222a;
+  --color-hover-bg: rgba(214, 210, 200, 0.04);
+  --color-active-bg: rgba(214, 210, 200, 0.07);
+
+  /* 月白 (moon-white) text - warm, not cold */
+  --color-text-primary: #d6d2c8;
+  --color-text-secondary: #9e9a90;
+  --color-text-muted: #6a665e;
+  --color-text-inverse: #141418;
+
+  /* 青瓷 (celadon green) accent */
+  --color-accent: #6b9e8a;
+  --color-accent-hover: #7ab098;
+  --color-accent-soft: rgba(107, 158, 138, 0.14);
+  /* 朱砂 (vermilion) only for errors and minimal seal marks */
+  --color-secondary-accent: #a04030;
+
+  --color-success: #6baa7e;
+  --color-success-soft: rgba(107, 170, 126, 0.10);
+  --color-warning: #b89040;
+  --color-warning-soft: rgba(184, 144, 64, 0.10);
+  --color-error: #b85050;
+  --color-error-soft: rgba(184, 80, 80, 0.10);
+  --color-neutral: #7e7a72;
+  --color-neutral-soft: rgba(126, 122, 114, 0.10);
+
+  --color-border: rgba(214, 210, 200, 0.08);
+  --color-border-strong: rgba(214, 210, 200, 0.16);
+  --color-divider: rgba(214, 210, 200, 0.04);
+
+  --color-focus-ring: #6b9e8a;
+  --color-selection-bg: rgba(107, 158, 138, 0.20);
+  --color-selection-text: #d6d2c8;
+
+  --color-scrollbar: rgba(214, 210, 200, 0.10);
+  --color-scrollbar-hover: rgba(214, 210, 200, 0.18);
+
+  --color-code-bg: rgba(0, 0, 0, 0.32);
+  --color-code-border: rgba(214, 210, 200, 0.06);
+  --color-code-text: #b8b4aa;
+
+  --color-user-message-bg: rgba(107, 158, 138, 0.08);
+  --color-assistant-message-bg: transparent;
+
+  /* Ink-specific: wash layer colors */
+  --color-ornament: #6b9e8a;
+  --color-ornament-soft: rgba(107, 158, 138, 0.12);
+  --color-ink-wash: rgba(80, 80, 100, 0.18);
+  --color-heading-mark: #6b9e8a;
+  --color-rule-primary: rgba(214, 210, 200, 0.14);
+  --color-rule-secondary: rgba(214, 210, 200, 0.06);
+
+  --shadow-panel: none;
+  --shadow-floating: 0 2px 8px rgba(0, 0, 0, 0.20);
+  --shadow-focus: 0 0 0 2px rgba(107, 158, 138, 0.40);
+
+  --border-width: 1px;
+  --rule-width: 1px;
+  --heading-letter-spacing: 0.04em;
+  --content-line-height: 1.7;
+
+  --texture-opacity: 1;
+  --ornament-opacity: 1;
+  --content-max-width: 66ch;
+}

@@ -1,0 +1,755 @@
+/**
+ * Base CSS - Semantic variable contract and structural theme differences.
+ * All components reference these variables. Theme files override them.
+ * Data-attribute selectors drive structural differences between themes.
+ *
+ * Each Eastern theme must be visually identifiable through:
+ * - Page layout rhythm (margins, content column, asymmetry)
+ * - Panel anatomy (border style, corners, shadows, edges)
+ * - Section heading structure (font, decoration, spacing)
+ * - Divider character (thickness, gradient, offset, double-line)
+ * - Message anatomy (bubble vs document vs scroll vs minimal)
+ * - Tool card anatomy (header strip, border weight, background treatment)
+ * - Tab and button character (capsule vs underline)
+ * - Surface texture (grain, gradient layers, fiber)
+ * - Ornament mark (seal, brush stroke, petal)
+ */
+
+:root {
+  /* --- Colors: Surfaces --- */
+  --color-app-bg: #1c1c22;
+  --color-panel-bg: #26262e;
+  --color-elevated-bg: #2e2e38;
+  --color-hover-bg: rgba(255, 255, 255, 0.06);
+  --color-active-bg: rgba(255, 255, 255, 0.10);
+
+  /* --- Colors: Text --- */
+  --color-text-primary: #e4e4e8;
+  --color-text-secondary: #a0a0aa;
+  --color-text-muted: #6a6a74;
+  --color-text-inverse: #1c1c22;
+
+  /* --- Colors: Accent --- */
+  --color-accent: #7c8adb;
+  --color-accent-hover: #8e9ae5;
+  --color-accent-soft: rgba(124, 138, 219, 0.15);
+  --color-secondary-accent: #5a6b9e;
+
+  /* --- Colors: Semantic --- */
+  --color-success: #5eb87a;
+  --color-success-soft: rgba(94, 184, 122, 0.12);
+  --color-warning: #d4a843;
+  --color-warning-soft: rgba(212, 168, 67, 0.12);
+  --color-error: #d45656;
+  --color-error-soft: rgba(212, 86, 86, 0.12);
+  --color-neutral: #7a7a84;
+  --color-neutral-soft: rgba(122, 122, 132, 0.12);
+
+  /* --- Colors: Borders and Dividers --- */
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-divider: rgba(255, 255, 255, 0.06);
+
+  /* --- Colors: Focus and Selection --- */
+  --color-focus-ring: var(--color-accent);
+  --color-selection-bg: rgba(124, 138, 219, 0.25);
+  --color-selection-text: #e4e4e8;
+
+  /* --- Colors: Scrollbar --- */
+  --color-scrollbar: rgba(255, 255, 255, 0.12);
+  --color-scrollbar-hover: rgba(255, 255, 255, 0.22);
+
+  /* --- Colors: Code --- */
+  --color-code-bg: rgba(0, 0, 0, 0.25);
+  --color-code-border: rgba(255, 255, 255, 0.08);
+  --color-code-text: #c8c8d0;
+
+  /* --- Colors: Messages --- */
+  --color-user-message-bg: rgba(124, 138, 219, 0.12);
+  --color-assistant-message-bg: transparent;
+
+  /* --- Colors: Tool Status --- */
+  --color-tool-running: var(--color-warning);
+  --color-tool-success: var(--color-success);
+  --color-tool-error: var(--color-error);
+
+  /* --- Theme-specific colors --- */
+  --color-ornament: transparent;
+  --color-ornament-soft: transparent;
+  --color-paper-fiber: transparent;
+  --color-ink-wash: transparent;
+  --color-heading-mark: transparent;
+  --color-rule-primary: var(--color-border);
+  --color-rule-secondary: var(--color-divider);
+
+  /* --- Radius --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.20);
+  --shadow-focus: 0 0 0 2px var(--color-focus-ring);
+
+  /* --- Spacing and Layout --- */
+  --spacing-density: 1;
+  --content-line-height: 1.6;
+  --content-max-width: 72ch;
+
+  /* --- Borders --- */
+  --border-width: 1px;
+  --panel-opacity: 1;
+
+  /* --- Transitions --- */
+  --transition-fast: 120ms ease;
+  --transition-normal: 180ms ease;
+
+  /* --- Theme structural controls --- */
+  --texture-opacity: 0;
+  --ornament-opacity: 0;
+  --rule-width: 1px;
+  --heading-letter-spacing: 0;
+  --heading-line-height: 1.3;
+
+  /* --- Message and panel anatomy --- */
+  --message-indent: 0;
+  --panel-cut-size: 0;
+  --tool-header-height: auto;
+
+  /* --- Page layout controls --- */
+  --lab-content-max-width: 960px;
+  --lab-content-padding-inline: var(--space-8);
+  --lab-header-border: var(--border-width) solid var(--color-divider);
+  --section-heading-margin-top: 0;
+
+  /* --- Tab style controls --- */
+  --tab-indicator-width: 2px;
+  --tab-indicator-style: border-bottom;
+  --tab-active-radius: var(--radius-md) var(--radius-md) 0 0;
+
+  /* --- Tool card header --- */
+  --tool-card-header-bg: transparent;
+  --tool-card-header-radius: var(--radius-md) var(--radius-md) 0 0;
+  --tool-card-body-bg: transparent;
+
+  /* --- Fonts --- */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-reading:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-code: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* --- Font Sizes --- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-md: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.25rem;
+
+  /* --- Font Weights --- */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* --- Density scaling --- */
+  --space-1: calc(0.25rem * var(--spacing-density));
+  --space-2: calc(0.5rem * var(--spacing-density));
+  --space-3: calc(0.75rem * var(--spacing-density));
+  --space-4: calc(1rem * var(--spacing-density));
+  --space-5: calc(1.25rem * var(--spacing-density));
+  --space-6: calc(1.5rem * var(--spacing-density));
+  --space-8: calc(2rem * var(--spacing-density));
+  --space-10: calc(2.5rem * var(--spacing-density));
+  --space-12: calc(3rem * var(--spacing-density));
+  --space-16: calc(4rem * var(--spacing-density));
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== DENSITY MAPPING ===== */
+[data-density='compact'] {
+  --spacing-density: 0.85;
+  --content-line-height: 1.55;
+}
+[data-density='comfortable'] {
+  --spacing-density: 1;
+  --content-line-height: 1.6;
+}
+[data-density='spacious'] {
+  --spacing-density: 1.25;
+  --content-line-height: 1.75;
+}
+
+/* ===== RADIUS MAPPING ===== */
+[data-radius='sharp'] {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 2px;
+  --radius-pill: 9999px;
+}
+[data-radius='small'] {
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+}
+/* medium is default in :root */
+[data-radius='large'] {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+}
+
+/* ===== FONT STYLE MAPPING ===== */
+[data-font-style='serif'] {
+  --font-reading:
+    "Songti SC", "STSong", "Hiragino Mincho ProN", "Yu Mincho",
+    "Noto Serif CJK SC", "PingFang SC", Georgia, serif;
+  --font-ui:
+    "Songti SC", "STSong", "Hiragino Mincho ProN", "Yu Mincho",
+    "Noto Serif CJK SC", "PingFang SC", Georgia, serif;
+}
+[data-font-style='humanist'] {
+  --font-ui:
+    "Hiragino Sans", "Yu Gothic", "Noto Sans CJK JP",
+    -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-reading:
+    "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP",
+    Georgia, serif;
+}
+[data-font-style='mono-accent'] {
+  --font-ui: var(--font-code);
+  --font-reading: var(--font-code);
+}
+/* system is default in :root */
+
+/* ===== MOTION MAPPING ===== */
+[data-motion='none'] {
+  --transition-fast: 0ms;
+  --transition-normal: 0ms;
+}
+[data-motion='reduced'] {
+  --transition-fast: 60ms ease;
+  --transition-normal: 100ms ease;
+}
+/* subtle is default in :root */
+[data-motion='smooth'] {
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ================================================================
+   SURFACE TEXTURE - Page layout, background layers, panel surfaces
+   ================================================================ */
+
+/* xuan-paper: Song dynasty book-page with fiber texture and 版心 margins */
+[data-surface-texture='xuan-paper'] {
+  --texture-opacity: 0.035;
+  --color-paper-fiber: rgba(180, 160, 120, 0.45);
+  --lab-content-max-width: 720px;
+  --lab-content-padding-inline: var(--space-10);
+}
+[data-surface-texture='xuan-paper'] .theme-lab__main {
+  position: relative;
+}
+[data-surface-texture='xuan-paper'] .theme-lab__main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--texture-opacity);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      var(--color-paper-fiber) 2px,
+      var(--color-paper-fiber) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 4px,
+      var(--color-paper-fiber) 4px,
+      var(--color-paper-fiber) 5px
+    );
+}
+/* 版心 side rules - vertical lines framing the type column */
+[data-surface-texture='xuan-paper'] .theme-lab__main::after {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  left: calc(50% - var(--lab-content-max-width) / 2 - var(--space-3));
+  border-left: 1px solid var(--color-rule-secondary);
+  border-right: 1px solid var(--color-rule-secondary);
+  width: calc(var(--lab-content-max-width) + var(--space-6));
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ink-wash: Layered ink gradients on page background */
+[data-surface-texture='ink-wash'] {
+  --texture-opacity: 1;
+  --color-ink-wash: rgba(80, 80, 100, 0.18);
+}
+[data-surface-texture='ink-wash'] .theme-lab__main::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 700px 500px at 10% 15%, var(--color-ink-wash), transparent),
+    radial-gradient(ellipse 500px 600px at 85% 75%, rgba(50, 60, 50, 0.12), transparent),
+    radial-gradient(ellipse 300px 200px at 50% 50%, rgba(70, 70, 90, 0.06), transparent);
+}
+
+/* night-silk: Moon glow radial gradient on background */
+[data-surface-texture='night-silk'] {
+  --texture-opacity: 1;
+}
+[data-surface-texture='night-silk'] .theme-lab__main::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 350px at 78% 12%, rgba(180, 160, 200, 0.07), transparent),
+    radial-gradient(circle 200px at 15% 85%, rgba(140, 120, 170, 0.04), transparent),
+    radial-gradient(circle 120px at 60% 40%, rgba(160, 150, 180, 0.03), transparent);
+}
+
+/* ================================================================
+   ORNAMENT STYLE - Decorative marks on headings and accents
+   ================================================================ */
+
+/* seal: Small square seal mark - Song dynasty 印章 */
+[data-ornament-style='seal'] {
+  --ornament-opacity: 1;
+  --color-ornament: var(--color-secondary-accent, #b85c38);
+  --color-ornament-soft: rgba(184, 92, 56, 0.12);
+}
+[data-ornament-style='seal'] .showcase__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+[data-ornament-style='seal'] .showcase__heading::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--color-ornament);
+  margin-right: 0;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+/* brush: Horizontal ink-brush stroke accent */
+[data-ornament-style='brush'] {
+  --ornament-opacity: 1;
+  --color-ornament: var(--color-accent);
+  --color-ornament-soft: rgba(107, 158, 138, 0.12);
+}
+[data-ornament-style='brush'] .showcase__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+[data-ornament-style='brush'] .showcase__heading::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  background: var(--color-ornament);
+  border-radius: 1.5px;
+  margin-right: 0;
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+/* sakura: Abstract five-petal dot cluster - very restrained */
+[data-ornament-style='sakura'] {
+  --ornament-opacity: 1;
+  --color-ornament: var(--color-accent);
+  --color-ornament-soft: rgba(168, 144, 168, 0.10);
+}
+[data-ornament-style='sakura'] .showcase__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+[data-ornament-style='sakura'] .showcase__heading::before {
+  content: '';
+  display: inline-flex;
+  gap: 2px;
+  width: 12px;
+  height: 12px;
+  margin-right: 0;
+  flex-shrink: 0;
+  background:
+    radial-gradient(circle 2px at 50% 25%, var(--color-ornament), transparent),
+    radial-gradient(circle 1.5px at 25% 55%, var(--color-ornament), transparent),
+    radial-gradient(circle 1.5px at 75% 55%, var(--color-ornament), transparent),
+    radial-gradient(circle 1.5px at 35% 82%, var(--color-ornament), transparent),
+    radial-gradient(circle 1.5px at 65% 82%, var(--color-ornament), transparent);
+  opacity: 0.4;
+}
+
+/* ================================================================
+   DIVIDER STYLE - How sections are separated
+   ================================================================ */
+
+/* book-rule: Double horizontal lines (宋版书栏线) */
+[data-divider-style='book-rule'] .showcase__divider {
+  height: 5px;
+  background: none;
+  border-top: 1px solid var(--color-rule-primary);
+  border-bottom: 1px solid var(--color-rule-primary);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+/* brush-fade: Fading gradient from left */
+[data-divider-style='brush-fade'] .showcase__divider {
+  height: 1px;
+  background: linear-gradient(to right, var(--color-rule-primary), transparent 75%);
+}
+
+/* ================================================================
+   HEADING STYLE - Section heading typography and decoration
+   ================================================================ */
+
+/* song-book: Serif heading with book-header rule above */
+[data-heading-style='song-book'] .showcase__heading {
+  font-family: var(--font-reading);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--color-rule-secondary);
+  padding-bottom: var(--space-1);
+  padding-top: var(--space-3);
+  margin-bottom: var(--space-3);
+  text-transform: none;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+/* Book-header eyebrow line above heading */
+[data-heading-style='song-book'] .showcase__section::before {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--color-rule-primary);
+  margin-bottom: var(--space-2);
+  max-width: 200px;
+  opacity: 0.6;
+}
+
+/* ink-inscription: Serif heading with left accent (题跋) */
+[data-heading-style='ink-inscription'] .showcase__heading {
+  font-family: var(--font-reading);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-accent);
+  text-transform: none;
+  color: var(--color-text-secondary);
+}
+
+/* night-title: Calm heading with subtle weight */
+[data-heading-style='night-title'] .showcase__heading {
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-text-muted);
+}
+
+/* ================================================================
+   PANEL STYLE - Container anatomy
+   ================================================================ */
+
+/* xuan-paper panels: Book-column vertical rule on left (书页栏线) */
+[data-surface-texture='xuan-paper'] .theme-panel {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-left: 2px solid var(--color-rule-primary);
+  box-shadow: none;
+  border-radius: 2px;
+  background: var(--color-panel-bg);
+}
+[data-surface-texture='xuan-paper'] .theme-panel--elevated {
+  border-left: 2px solid var(--color-heading-mark, var(--color-accent));
+}
+
+/* ink-wash panels: Asymmetric ink-layer, fading edges */
+[data-surface-texture='ink-wash'] .theme-panel {
+  border: none;
+  border-left: 2px solid var(--color-border-strong);
+  box-shadow: none;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  position: relative;
+}
+[data-surface-texture='ink-wash'] .theme-panel--elevated {
+  border-left: 3px solid var(--color-accent);
+  background: rgba(0, 0, 0, 0.22);
+}
+/* Fading right edge via mask */
+[data-surface-texture='ink-wash'] .theme-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--color-app-bg));
+  opacity: 0.3;
+  border-radius: inherit;
+}
+
+/* night-silk panels: Soft edges with gentle shadow */
+[data-surface-texture='night-silk'] .theme-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ================================================================
+   MESSAGE STYLE - Chat message anatomy
+   ================================================================ */
+
+/* scroll: Book-scroll style with left accent, no bubble (卷轴/书页) */
+[data-message-style='scroll'] .message--assistant {
+  border-inline-start: 2px solid var(--color-accent);
+  padding-inline-start: var(--space-5);
+  padding-block: var(--space-3);
+  border-radius: 0;
+  background: transparent;
+  max-width: var(--content-max-width);
+  font-family: var(--font-reading);
+}
+[data-message-style='scroll'] .message--user {
+  border-inline-end: 2px solid var(--color-secondary-accent);
+  border-radius: 2px;
+  background: var(--color-user-message-bg);
+  border-inline-start: none;
+}
+
+/* minimal: No background, no border, just text */
+[data-message-style='minimal'] .message--assistant {
+  padding: var(--space-3) 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  max-width: var(--content-max-width);
+}
+
+/* document: Max-width constrained, document-style (文書) */
+[data-message-style='document'] .message--assistant {
+  max-width: var(--content-max-width);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+/* bubble: Chat bubble with background and radius (Obsidian/Sakura) */
+/* Default - no override needed */
+
+/* ================================================================
+   TOOL CARD STYLE - Tool call card anatomy
+   ================================================================ */
+
+/* ink: Asymmetric left ink line, dark bg (墨条) */
+[data-tool-card-style='ink'] .tool-card {
+  border: none;
+  border-left: 3px solid var(--color-border-strong);
+  box-shadow: none;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+[data-tool-card-style='ink'] .tool-card__header {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: none;
+}
+
+/* soft: No border, elevated bg */
+[data-tool-card-style='soft'] .tool-card {
+  border: none;
+  background: var(--color-elevated-bg);
+  box-shadow: var(--shadow-panel);
+  border-radius: var(--radius-md);
+}
+[data-tool-card-style='soft'] .tool-card__header {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* paper: Annotation slip with left accent (批注笺) */
+[data-tool-card-style='paper'] .tool-card {
+  border: 1px solid var(--color-border);
+  border-left: 2.5px solid var(--color-accent);
+  box-shadow: none;
+  border-radius: 2px;
+}
+[data-tool-card-style='paper'] .tool-card__header {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* record: Bookmark-style left accent */
+[data-tool-card-style='record'] .tool-card {
+  border-left: 2px solid var(--color-accent);
+}
+
+/* ================================================================
+   TAB STYLE VARIATIONS
+   ================================================================ */
+
+/* Seal-style tabs: thin underline with accent */
+[data-ornament-style='seal'] .tabs__item--active {
+  border-bottom-width: 1px;
+  border-bottom-color: var(--color-secondary-accent);
+  color: var(--color-secondary-accent);
+}
+
+/* ================================================================
+   HEADER STYLE VARIATIONS - Page header character
+   ================================================================ */
+
+/* Song header: book-header annotation style */
+[data-heading-style='song-book'] .theme-lab__header {
+  border-bottom: 1px solid var(--color-rule-primary);
+}
+[data-heading-style='song-book'] .theme-lab__header::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--color-rule-secondary);
+  margin-top: -1px;
+  max-width: 300px;
+}
+
+/* Ink header: minimal, left-aligned, fading */
+[data-heading-style='ink-inscription'] .theme-lab__header {
+  border-bottom: none;
+  border-left: 3px solid var(--color-accent);
+  padding-left: var(--space-4);
+}
+
+/* Night header: soft, calm */
+[data-heading-style='night-title'] .theme-lab__header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ================================================================
+   MEMORY ENTRY VARIATIONS
+   ================================================================ */
+[data-ornament-style='seal'] .memory-entry {
+  border-left: 2px solid var(--color-rule-primary);
+  border-radius: 2px;
+}
+[data-ornament-style='seal'] .memory-entry:not(.memory-entry--archived) {
+  border-left-color: var(--color-heading-mark, var(--color-secondary-accent));
+}
+
+/* Brush-style memory: ink-layer look */
+[data-ornament-style='brush'] .memory-entry {
+  border: none;
+  border-left: 2px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ================================================================
+   CONTEXT SUMMARY VARIATIONS
+   ================================================================ */
+
+/* Seal context: vertical rule left */
+[data-ornament-style='seal'] .context-summary {
+  border-left: 2px solid var(--color-rule-primary);
+  border-radius: 2px;
+}
+
+/* Brush context: ink accent */
+[data-ornament-style='brush'] .context-summary {
+  border-left: 2px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ================================================================
+   STATUS BADGE VARIATIONS
+   ================================================================ */
+
+/* Seal badges: small square feel */
+[data-ornament-style='seal'] .status-badge--active {
+  color: var(--color-secondary-accent);
+  background: var(--color-ornament-soft);
+}
+
+/* ================================================================
+   CODE BLOCK VARIATIONS
+   ================================================================ */
+
+/* Brush code: ink accent */
+[data-ornament-style='brush'] .code-block {
+  border-left: 2px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ================================================================
+   PANEL STYLE MAPPING - Via data-panel-style
+   ================================================================ */
+
+/* bordered: Standard bordered card */
+[data-panel-style='bordered'] .showcase__panel {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-bg);
+  box-shadow: var(--shadow-panel);
+}
+
+/* paper: Paper-like card */
+[data-panel-style='paper'] .showcase__panel {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-bg);
+  box-shadow: none;
+}
+
+/* minimal: Nearly borderless */
+[data-panel-style='minimal'] .showcase__panel {
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+/* soft-card: Soft elevated card */
+[data-panel-style='soft-card'] .showcase__panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-bg);
+  box-shadow: var(--shadow-panel);
+}

@@ -1,0 +1,80 @@
+/**
+ * Obsidian - Modern dark professional developer tool aesthetic.
+ * Default theme. Neutral-cool dark, low-sat blue-purple accent.
+ * Surface: clean. No texture or ornament.
+ * Modern headings, standard panels, bubble messages, IDE tool cards.
+ */
+[data-theme='obsidian'] {
+  color-scheme: dark;
+
+  --color-app-bg: #1c1c22;
+  --color-panel-bg: #24242c;
+  --color-elevated-bg: #2c2c36;
+  --color-hover-bg: rgba(255, 255, 255, 0.055);
+  --color-active-bg: rgba(255, 255, 255, 0.09);
+
+  --color-text-primary: #e0e0e6;
+  --color-text-secondary: #9898a4;
+  --color-text-muted: #62626e;
+  --color-text-inverse: #1c1c22;
+
+  --color-accent: #7c8adb;
+  --color-accent-hover: #909ae6;
+  --color-accent-soft: rgba(124, 138, 219, 0.14);
+  --color-secondary-accent: #5c6cae;
+
+  --color-success: #5cb87a;
+  --color-success-soft: rgba(92, 184, 122, 0.10);
+  --color-warning: #d4a843;
+  --color-warning-soft: rgba(212, 168, 67, 0.10);
+  --color-error: #d45656;
+  --color-error-soft: rgba(212, 86, 86, 0.10);
+  --color-neutral: #76767e;
+  --color-neutral-soft: rgba(118, 118, 126, 0.10);
+
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+  --color-divider: rgba(255, 255, 255, 0.05);
+
+  --color-focus-ring: #7c8adb;
+  --color-selection-bg: rgba(124, 138, 219, 0.22);
+  --color-selection-text: #e0e0e6;
+
+  --color-scrollbar: rgba(255, 255, 255, 0.10);
+  --color-scrollbar-hover: rgba(255, 255, 255, 0.20);
+
+  --color-code-bg: rgba(0, 0, 0, 0.28);
+  --color-code-border: rgba(255, 255, 255, 0.07);
+  --color-code-text: #c6c6ce;
+
+  --color-user-message-bg: rgba(124, 138, 219, 0.10);
+  --color-assistant-message-bg: transparent;
+
+  /* Modern: no ornament colors */
+  --color-ornament: transparent;
+  --color-ornament-soft: transparent;
+  --color-paper-fiber: transparent;
+  --color-ink-wash: transparent;
+  --color-heading-mark: transparent;
+  --color-rule-primary: var(--color-border);
+  --color-rule-secondary: var(--color-divider);
+
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.10);
+  --shadow-floating: 0 4px 16px rgba(0, 0, 0, 0.22);
+  --shadow-focus: 0 0 0 2px rgba(124, 138, 219, 0.5);
+
+  --border-width: 1px;
+  --rule-width: 1px;
+  --heading-letter-spacing: 0;
+  --heading-line-height: 1.3;
+  --content-line-height: 1.55;
+
+  --texture-opacity: 0;
+  --ornament-opacity: 0;
+  --content-max-width: 72ch;
+
+  /* Modern page layout */
+  --lab-content-max-width: 960px;
+  --lab-content-padding-inline: var(--space-8);
+  --lab-header-border: var(--border-width) solid var(--color-divider);
+}

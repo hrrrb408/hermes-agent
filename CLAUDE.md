@@ -224,7 +224,7 @@ Current development goal: building a modern AI workbench WebUI for the Hermes de
 
 ### Built-in Theme System (Frozen)
 
-The Dev WebUI ships with **seven built-in themes**. Aurora and Terminal are NOT included.
+The Dev WebUI ships with **five built-in themes**. Aurora and Terminal are NOT included.
 
 #### Theme IDs and Default
 
@@ -232,11 +232,9 @@ The Dev WebUI ships with **seven built-in themes**. Aurora and Terminal are NOT 
 |-------|----|----------|-------------|
 | Obsidian | `obsidian` | Modern | Dark |
 | Paper | `paper` | Modern | Light |
-| 宋韵 Song | `song` | Chinese | Light |
-| 墨境 Ink | `ink` | Chinese | Dark |
-| 禅庭 Zen | `zen` | Japanese | Light |
-| 夜樱 Sakura Night | `sakura-night` | Japanese | Dark |
-| 浮世 Ukiyo | `ukiyo` | Japanese | Light |
+| 宋韵 Song | `song` | Eastern | Light |
+| 墨境 Ink | `ink` | Eastern | Dark |
+| 夜樱 Sakura Night | `sakura-night` | Eastern | Dark |
 
 - Default theme: `obsidian`
 - `ThemeId` must be a strict union type — no arbitrary strings
@@ -244,8 +242,7 @@ The Dev WebUI ships with **seven built-in themes**. Aurora and Terminal are NOT 
 #### Theme Grouping (for Theme Picker)
 
 - **Modern:** Obsidian, Paper
-- **Chinese (中式):** 宋韵 Song, 墨境 Ink
-- **Japanese (日式):** 禅庭 Zen, 夜樱 Sakura Night, 浮世 Ukiyo
+- **Eastern (东方):** 宋韵 Song, 墨境 Ink, 夜樱 Sakura Night
 
 #### Theme Positioning
 
@@ -276,25 +273,12 @@ The Dev WebUI ships with **seven built-in themes**. Aurora and Terminal are NOT 
 - Assistant replies use minimal document layout.
 - No large-area ink-wash background images.
 
-**禅庭 Zen**
-- Light. Japanese wabi-sabi minimalism.
-- Warm gray-white, sand/stone tones, charcoal, moss green, deadwood brown.
-- Loose density, small border-radius, no or minimal shadows, generous whitespace.
-- Ideal for reading long replies. Fewest motion effects.
-
 **夜樱 Sakura Night**
 - Dark. Restrained Japanese night aesthetic.
 - Deep night blue, indigo, moon-white, gray-pink, cherry blossom pink.
 - Medium density, larger border-radius, soft shadows.
 - Light card and bubble style.
 - No animated cherry blossom backgrounds, anime characters, or large-area pink.
-
-**浮世 Ukiyo**
-- Light. Ukiyo-e color palette and woodblock print zoning.
-- Aged paper cream, indigo-blue, vermilion red, mustard yellow.
-- Medium-high density, small or near-square border-radius.
-- More prominent borders than other themes. Tool cards have woodblock-zone feel.
-- No direct copies of specific Ukiyo-e works or complex background illustrations.
 
 #### Theme Difference Requirements
 
@@ -309,7 +293,7 @@ Themes must differ beyond background and accent colors. Every theme must control
 - Border-radius
 - Shadows
 - UI density
-- `messageStyle` (bubble, document, scroll, minimal, card, zone)
+- `messageStyle` (bubble, document, scroll, minimal)
 - `panelStyle`
 - `toolCardStyle`
 - `motion` (animation intensity)
@@ -325,13 +309,13 @@ interface ThemeDefinition {
   name: string;
   localizedName: string;
   description: string;
-  category: "modern" | "chinese" | "japanese";
+  category: "modern" | "eastern";
   colorScheme: "light" | "dark";
   previewColors: { bg: string; fg: string; accent: string; };
   density: "compact" | "comfortable" | "loose";
   radius: "none" | "small" | "medium" | "large";
   panelStyle: string;
-  messageStyle: "bubble" | "document" | "scroll" | "minimal" | "card" | "zone";
+  messageStyle: "bubble" | "document" | "scroll" | "minimal";
   toolCardStyle: string;
   motion: "none" | "reduced" | "normal" | "expressive";
   fontStyle: string;
@@ -340,7 +324,7 @@ interface ThemeDefinition {
 
 #### Theme Technical Rules
 
-- The same Vue components must adapt to all seven themes.
+- The same Vue components must adapt to all five themes.
 - Root element uses: `data-theme`, `data-density`, `data-message-style`, `data-panel-style`, `data-tool-card-style`, `data-motion`.
 - All components use semantic CSS Variables.
 - Font stack: system font fallback only. No remote fonts, no committed font files.
@@ -366,9 +350,7 @@ apps/hermes-dev-webui/src/themes/
     ├── paper.css
     ├── song.css
     ├── ink.css
-    ├── zen.css
-    ├── sakura-night.css
-    └── ukiyo.css
+    └── sakura-night.css
 
 apps/hermes-dev-webui/src/stores/theme.ts
 
@@ -382,13 +364,13 @@ apps/hermes-dev-webui/src/components/theme/
 
 Phase 0 must cover:
 - Default theme is Obsidian
-- All seven themes are registered
-- All seven Theme IDs are valid
+- All five themes are registered
+- All five Theme IDs are valid
 - Invalid ID falls back to Obsidian
 - `setTheme` correctly updates root element attributes
 - `localStorage` correctly saves and restores theme
-- Theme Picker groups by Modern, Chinese, Japanese
-- All seven themes define all required CSS Variables
+- Theme Picker groups by Modern, Eastern
+- All five themes define all required CSS Variables
 - Theme switch does not reload the page
 - `prefers-reduced-motion` is respected
 - Light themes correctly set `color-scheme: light`
@@ -493,9 +475,9 @@ Phase 0 implements the **frontend mock workbench only**. No real Agent integrati
 - `ThemeDefinition` type and `ThemeId` strict union
 - Theme Registry (`themes/registry.ts`)
 - Theme Store (`stores/theme.ts`) with localStorage persistence
-- Seven theme base CSS token files
+- Five theme base CSS token files
 - `base.css` with all semantic CSS Variables
-- Theme Picker component (grouped: Modern, Chinese, Japanese)
+- Theme Picker component (grouped: Modern, Eastern)
 - Theme Preview Card component
 - Theme Switcher component
 - Theme unit tests (12 cases per test requirements above)
@@ -503,7 +485,7 @@ Phase 0 implements the **frontend mock workbench only**. No real Agent integrati
 **Phase 0B — Layout & Theme Integration:**
 - Three-column responsive layout (session sidebar | chat area | workspace panel)
 - Top status bar (connection status, model info, environment indicator)
-- All seven themes adapted to the main layout
+- All five themes adapted to the main layout
 - Root element data attributes wired to theme system
 
 **Phase 0C — Mock Content Components:**
@@ -513,7 +495,7 @@ Phase 0 implements the **frontend mock workbench only**. No real Agent integrati
 - Mock tool call cards (collapsible cards showing tool name, input, output)
 - Mock Memory panel (displaying mock memory hits and categories)
 - Mock Context panel (displaying mock context injection info)
-- Verify all seven themes render correctly across different content components
+- Verify all five themes render correctly across different content components
 
 **Phase 0D — Quality & Verification:**
 - Responsive breakpoints and mobile adaptation
@@ -523,7 +505,7 @@ Phase 0 implements the **frontend mock workbench only**. No real Agent integrati
 - ESLint pass
 - Vitest unit tests for all stores and components
 - Production build (`vite build`)
-- Browser visual verification of all seven themes
+- Browser visual verification of all five themes
 
 **Phase 0 overall does NOT include:**
 - Real Agent conversation API (no `AIAgent.chat()` calls)

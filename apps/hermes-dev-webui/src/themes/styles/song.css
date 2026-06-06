@@ -1,0 +1,93 @@
+/**
+ * Song - Modern Song Dynasty book workbench.
+ * Xuan paper warm-white, ink black, dai-blue, vermilion (朱砂), Ru ware celadon (汝窑青).
+ * Distinct from Paper through: 版心 layout, book-header rules, seal ornaments,
+ * book-column panel borders, annotation-slip tool cards, scroll messages,
+ * vermilion bookmark lines for active/focus states, serif typography.
+ *
+ * Visual identity: even in grayscale, recognizable by narrow type column,
+ * double-rule dividers, vertical left borders on panels, and serif headings.
+ */
+[data-theme='song'] {
+  color-scheme: light;
+
+  --color-app-bg: #f2ece0;
+  --color-panel-bg: #f7f2e8;
+  --color-elevated-bg: #ebe4d6;
+  --color-hover-bg: rgba(0, 0, 0, 0.04);
+  --color-active-bg: rgba(0, 0, 0, 0.07);
+
+  --color-text-primary: #2a2a2e;
+  --color-text-secondary: #5a5a5e;
+  --color-text-muted: #8a8a80;
+  --color-text-inverse: #f2ece0;
+
+  /* 汝窑青 (celadon) as primary accent - not blue, not brown */
+  --color-accent: #5a8070;
+  --color-accent-hover: #4a7060;
+  --color-accent-soft: rgba(90, 128, 112, 0.10);
+  /* 朱砂 (vermilion) for focus, seals, and key states */
+  --color-secondary-accent: #b85c38;
+
+  --color-success: #5a8a5e;
+  --color-success-soft: rgba(90, 138, 94, 0.08);
+  --color-warning: #a88030;
+  --color-warning-soft: rgba(168, 128, 48, 0.08);
+  --color-error: #a84030;
+  --color-error-soft: rgba(168, 64, 48, 0.08);
+  --color-neutral: #7a7a72;
+  --color-neutral-soft: rgba(122, 122, 114, 0.08);
+
+  --color-border: rgba(42, 42, 46, 0.12);
+  --color-border-strong: rgba(42, 42, 46, 0.22);
+  --color-divider: rgba(42, 42, 46, 0.07);
+
+  /* 朱砂 focus ring - the bookmark line */
+  --color-focus-ring: #b85c38;
+  --color-selection-bg: rgba(184, 92, 56, 0.14);
+  --color-selection-text: #2a2a2e;
+
+  --color-scrollbar: rgba(42, 42, 46, 0.14);
+  --color-scrollbar-hover: rgba(42, 42, 46, 0.24);
+
+  --color-code-bg: rgba(0, 0, 0, 0.04);
+  --color-code-border: rgba(42, 42, 46, 0.08);
+  --color-code-text: #3a3a3e;
+
+  --color-user-message-bg: rgba(184, 92, 56, 0.06);
+  --color-assistant-message-bg: transparent;
+
+  /* Song-specific ornament and heading colors */
+  --color-ornament: #b85c38;
+  --color-ornament-soft: rgba(184, 92, 56, 0.12);
+  --color-paper-fiber: rgba(180, 160, 120, 0.45);
+  --color-heading-mark: #b85c38;
+  --color-rule-primary: rgba(42, 42, 46, 0.20);
+  --color-rule-secondary: rgba(42, 42, 46, 0.10);
+
+  /* Minimal shadows - book pages do not float */
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-floating: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 2px rgba(184, 92, 56, 0.35);
+
+  --border-width: 1px;
+  --rule-width: 1px;
+  --heading-letter-spacing: 0.06em;
+  --content-line-height: 1.75;
+
+  /* Song structural overrides */
+  --texture-opacity: 0.035;
+  --ornament-opacity: 1;
+  --content-max-width: 62ch;
+
+  /* Page layout: 版心 (type column) */
+  --lab-content-max-width: 720px;
+  --lab-content-padding-inline: var(--space-10);
+  --lab-header-border: 1px solid var(--color-rule-primary);
+
+  /* User message: vermilion bookmark left */
+  --message-indent: var(--space-4);
+
+  /* Tool card: annotation slip left accent */
+  --tool-card-header-bg: transparent;
+}

@@ -1,0 +1,79 @@
+/**
+ * Paper - Clean light document-reading aesthetic.
+ * Warm white, gray-blue accent. Modern editor feel.
+ * Surface: paper. No ornament. Document messages, paper panels.
+ */
+[data-theme='paper'] {
+  color-scheme: light;
+
+  --color-app-bg: #f7f5f2;
+  --color-panel-bg: #ffffff;
+  --color-elevated-bg: #f0eeeb;
+  --color-hover-bg: rgba(0, 0, 0, 0.04);
+  --color-active-bg: rgba(0, 0, 0, 0.07);
+
+  --color-text-primary: #2c2c30;
+  --color-text-secondary: #5c5c64;
+  --color-text-muted: #8c8c94;
+  --color-text-inverse: #f7f5f2;
+
+  --color-accent: #4a7aab;
+  --color-accent-hover: #3e6a98;
+  --color-accent-soft: rgba(74, 122, 171, 0.10);
+  --color-secondary-accent: #3a5a80;
+
+  --color-success: #3a8a56;
+  --color-success-soft: rgba(58, 138, 86, 0.08);
+  --color-warning: #a07828;
+  --color-warning-soft: rgba(160, 120, 40, 0.08);
+  --color-error: #b84040;
+  --color-error-soft: rgba(184, 64, 64, 0.08);
+  --color-neutral: #78787e;
+  --color-neutral-soft: rgba(120, 120, 126, 0.08);
+
+  --color-border: rgba(0, 0, 0, 0.10);
+  --color-border-strong: rgba(0, 0, 0, 0.18);
+  --color-divider: rgba(0, 0, 0, 0.06);
+
+  --color-focus-ring: #4a7aab;
+  --color-selection-bg: rgba(74, 122, 171, 0.18);
+  --color-selection-text: #2c2c30;
+
+  --color-scrollbar: rgba(0, 0, 0, 0.12);
+  --color-scrollbar-hover: rgba(0, 0, 0, 0.22);
+
+  --color-code-bg: rgba(0, 0, 0, 0.04);
+  --color-code-border: rgba(0, 0, 0, 0.07);
+  --color-code-text: #3a3a42;
+
+  --color-user-message-bg: rgba(74, 122, 171, 0.08);
+  --color-assistant-message-bg: transparent;
+
+  /* Modern: no ornament colors */
+  --color-ornament: transparent;
+  --color-ornament-soft: transparent;
+  --color-paper-fiber: transparent;
+  --color-ink-wash: transparent;
+  --color-heading-mark: transparent;
+  --color-rule-primary: var(--color-border);
+  --color-rule-secondary: var(--color-divider);
+
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-floating: 0 4px 12px rgba(0, 0, 0, 0.10);
+  --shadow-focus: 0 0 0 2px rgba(74, 122, 171, 0.4);
+
+  --border-width: 1px;
+  --rule-width: 1px;
+  --heading-letter-spacing: 0;
+  --heading-line-height: 1.3;
+  --content-line-height: 1.6;
+
+  --texture-opacity: 0;
+  --ornament-opacity: 0;
+  --content-max-width: 72ch;
+
+  /* Modern page layout */
+  --lab-content-max-width: 960px;
+  --lab-content-padding-inline: var(--space-8);
+  --lab-header-border: var(--border-width) solid var(--color-divider);
+}
