@@ -968,11 +968,14 @@ class TestSessionOpenAPIRoutes:
         assert "/api/dev/v1/sessions" in paths
         assert "/api/dev/v1/sessions/{sessionId}" in paths
 
-    def test_openapi_no_message_routes(self, seeded_client):
+    def test_openapi_has_message_route(self, seeded_client):
+        """Phase 0C-04: messages route now exists in OpenAPI."""
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
-        for path in paths:
-            assert "messages" not in path
+        msg_path = "/api/dev/v1/sessions/{sessionId}/messages"
+        assert msg_path in paths
+        assert "get" in paths[msg_path]
+        assert "post" not in paths[msg_path]
 
     def test_openapi_no_memory_routes(self, seeded_client):
         resp = seeded_client.get("/openapi.json")
@@ -986,11 +989,11 @@ class TestSessionOpenAPIRoutes:
         for path in paths:
             assert "agent" not in path.lower() or "agent" in path and "/api/dev/v1/agent" not in path
 
-    def test_openapi_has_four_business_paths(self, seeded_client):
+    def test_openapi_has_five_business_paths(self, seeded_client):
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
         business = [p for p in paths if p.startswith("/api/dev/v1")]
-        assert len(business) == 4
+        assert len(business) == 5
 
 
 # ── 16. SessionDB close read-only behavior ──

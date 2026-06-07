@@ -221,3 +221,84 @@ class SessionDetailResponse(BaseModel):
 
     data: SessionDetail
     meta: ResponseMeta
+
+
+# ── Messages ──
+
+
+class TextContent(BaseModel):
+    """Text message content."""
+
+    type: str = "text"
+    text: str
+    truncated: bool | None = None
+
+
+class EmptyContent(BaseModel):
+    """Empty message content."""
+
+    type: str = "empty"
+
+
+class UnsupportedContent(BaseModel):
+    """Unsupported message content placeholder."""
+
+    type: str = "unsupported"
+
+
+class ToolCallFunction(BaseModel):
+    """Function call within a tool call."""
+
+    name: str
+    arguments: str
+
+
+class ToolCallItem(BaseModel):
+    """A single tool call in an assistant message."""
+
+    id: str
+    type: str = "function"
+    function: ToolCallFunction
+
+
+class MessageItem(BaseModel):
+    """A single message in the messages response."""
+
+    id: int
+    role: str
+    content: dict[str, Any]
+    timestamp: str | None = None
+    token_count: int | None = Field(default=None, alias="tokenCount")
+    finish_reason: str | None = Field(default=None, alias="finishReason")
+    tool_calls: list[ToolCallItem] | None = Field(default=None, alias="toolCalls")
+    tool_call_id: str | None = Field(default=None, alias="toolCallId")
+    tool_name: str | None = Field(default=None, alias="toolName")
+
+    model_config = {"populate_by_name": True}
+
+
+class MessagePage(BaseModel):
+    """Pagination metadata for message list."""
+
+    offset: int = 0
+    limit: int
+    total: int
+    has_more: bool = Field(alias="hasMore")
+    messages_before: int | None = Field(default=None, alias="messagesBefore")
+    messages_after: int | None = Field(default=None, alias="messagesAfter")
+
+    model_config = {"populate_by_name": True}
+
+
+class MessageListData(BaseModel):
+    """Response data for GET /sessions/{sessionId}/messages."""
+
+    items: list[MessageItem]
+    page: MessagePage
+
+
+class MessageListResponse(BaseModel):
+    """Response envelope for GET /sessions/{sessionId}/messages."""
+
+    data: MessageListData
+    meta: ResponseMeta

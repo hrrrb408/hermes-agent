@@ -517,11 +517,11 @@ class TestCORS:
 
 
 class TestRouteBoundary:
-    """Phase 0C-03: /status, /files/status, /sessions, /sessions/{id} exist.
-    All other planned endpoints remain unimplemented (404)."""
+    """Phase 0C-04: /status, /files/status, /sessions, /sessions/{id},
+    /sessions/{id}/messages exist. All other planned endpoints remain
+    unimplemented (404)."""
 
     @pytest.mark.parametrize("path", [
-        "/api/dev/v1/sessions/test-id/messages",
         "/api/dev/v1/memory/status",
         "/api/dev/v1/memory/categories",
         "/api/dev/v1/memory/items",
@@ -541,6 +541,11 @@ class TestRouteBoundary:
     def test_sessions_detail_exists(self, client):
         """GET /sessions/{id} is implemented (returns 503 without hermes_home)."""
         resp = client.get("/api/dev/v1/sessions/test-id")
+        assert resp.status_code == 503
+
+    def test_session_messages_exists(self, client):
+        """GET /sessions/{id}/messages is implemented (returns 503 without hermes_home)."""
+        resp = client.get("/api/dev/v1/sessions/test-id/messages")
         assert resp.status_code == 503
 
     def test_no_session_write_routes(self, client):
