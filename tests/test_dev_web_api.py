@@ -517,11 +517,10 @@ class TestCORS:
 
 
 class TestRouteBoundary:
-    """Only the two Phase 0C-02 endpoints should exist."""
+    """Phase 0C-03: /status, /files/status, /sessions, /sessions/{id} exist.
+    All other planned endpoints remain unimplemented (404)."""
 
     @pytest.mark.parametrize("path", [
-        "/api/dev/v1/sessions",
-        "/api/dev/v1/sessions/test-id",
         "/api/dev/v1/sessions/test-id/messages",
         "/api/dev/v1/memory/status",
         "/api/dev/v1/memory/categories",
@@ -534,9 +533,19 @@ class TestRouteBoundary:
         resp = client.get(path)
         assert resp.status_code == 404
 
+    def test_sessions_list_exists(self, client):
+        """GET /sessions is implemented (returns 503 without hermes_home)."""
+        resp = client.get("/api/dev/v1/sessions")
+        assert resp.status_code == 503
+
+    def test_sessions_detail_exists(self, client):
+        """GET /sessions/{id} is implemented (returns 503 without hermes_home)."""
+        resp = client.get("/api/dev/v1/sessions/test-id")
+        assert resp.status_code == 503
+
     def test_no_session_write_routes(self, client):
         resp = client.post("/api/dev/v1/sessions", json={})
-        assert resp.status_code == 404
+        assert resp.status_code == 405
 
     def test_no_memory_write_routes(self, client):
         resp = client.post("/api/dev/v1/memory/items", json={})
@@ -552,7 +561,7 @@ class TestRouteBoundary:
 
     def test_no_delete_routes(self, client):
         resp = client.delete("/api/dev/v1/sessions/test-id")
-        assert resp.status_code == 404
+        assert resp.status_code == 405
 
 
 # ── 12. Side-effect verification ──

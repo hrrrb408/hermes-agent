@@ -1,10 +1,12 @@
 """Hermes Dev Web API — independent read-only FastAPI application.
 
 This module provides the ``create_dev_web_api_app()`` factory and the
-two Phase 0C-02 endpoints:
+Phase 0C-03 endpoints:
 
 - ``GET /api/dev/v1/status``
 - ``GET /api/dev/v1/files/status``
+- ``GET /api/dev/v1/sessions``
+- ``GET /api/dev/v1/sessions/{sessionId}``
 
 Importing this module has **no side effects**: no server is started, no
 files are read, no database connections are opened.
@@ -12,13 +14,47 @@ files are read, no database connections are opened.
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+from enum import Enum
+from pathlib import Path
+
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from hermes_cli.dev_web_config import DevWebApiConfig
-from hermes_cli.dev_web_errors import register_error_handlers
+from hermes_cli.dev_web_errors import (
+    register_error_handlers,
+    SESSION_NOT_FOUND,
+    SESSION_STORE_UNAVAILABLE,
+)
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
+from hermes_cli.dev_web_session_service import (
+    DevSessionQueryService,
+    SessionNotFoundError,
+    SessionStoreUnavailableError,
+)
+
+
+# ── Query parameter enums ──
+
+
+class OrderOption(str, Enum):
+    """Sort order for session list."""
+
+    recent = "recent"
+    created = "created"
+
+
+class ArchivedOption(str, Enum):
+    """Archive filter for session list."""
+
+    exclude = "exclude"
+    include = "include"
+    only = "only"
+
+
+# ── App factory ──
 
 
 def create_dev_web_api_app(
@@ -39,11 +75,19 @@ def create_dev_web_api_app(
         openapi_url="/openapi.json",
         openapi_tags=[
             {"name": "System", "description": "System status and health"},
+            {"name": "Sessions", "description": "Session list and detail"},
             {"name": "Files", "description": "File browsing status"},
         ],
     )
 
     app.state.dev_api_config = config
+
+    # Build session service if hermes_home is configured
+    session_service: DevSessionQueryService | None = None
+    if config.hermes_home is not None:
+        state_db_path = config.hermes_home / "state.db"
+        session_service = DevSessionQueryService(state_db_path)
+    app.state.session_service = session_service
 
     # ── Middleware (order matters: outermost first) ──
     app.add_middleware(RequestIdMiddleware)
@@ -60,15 +104,40 @@ def create_dev_web_api_app(
     register_error_handlers(app)
 
     # ── Routes ──
-    _register_routes(app, config)
+    _register_routes(app, config, session_service)
 
     return app
 
 
-def _register_routes(app: FastAPI, config: DevWebApiConfig) -> None:
-    """Register Phase 0C-02 routes."""
+def _make_error_json(
+    *,
+    status_code: int,
+    code: str,
+    message: str,
+    request_id: str,
+) -> JSONResponse:
+    """Build a standardised JSON error response."""
+    from hermes_cli.dev_web_errors import make_error_response
+
+    body, status = make_error_response(
+        status_code=status_code,
+        code=code,
+        message=message,
+        request_id=request_id,
+    )
+    return JSONResponse(content=body, status_code=status)
+
+
+def _register_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+    session_service: DevSessionQueryService | None,
+) -> None:
+    """Register Phase 0C-03 routes."""
 
     prefix = config.api_prefix
+
+    # ── GET /status ──
 
     @app.get(
         f"{prefix}/status",
@@ -80,6 +149,13 @@ def _register_routes(app: FastAPI, config: DevWebApiConfig) -> None:
         ts = _utc_now_iso()
         hermes_home = config.hermes_home
         has_dev_home = hermes_home is not None
+
+        # Check real session availability
+        sessions_available = (
+            session_service.is_available()
+            if session_service is not None
+            else False
+        )
 
         return {
             "data": {
@@ -95,7 +171,10 @@ def _register_routes(app: FastAPI, config: DevWebApiConfig) -> None:
                 },
                 "services": {
                     "api": {"available": True, "readOnly": True},
-                    "sessions": {"available": False, "readOnly": True, "phase": "0C-03"},
+                    "sessions": {
+                        "available": sessions_available,
+                        "readOnly": True,
+                    },
                     "memory": {"available": False, "readOnly": True, "phase": "0C-05"},
                     "agent": {"available": False, "readOnly": True, "phase": "0C-05"},
                     "files": {"available": False, "readOnly": True},
@@ -103,6 +182,8 @@ def _register_routes(app: FastAPI, config: DevWebApiConfig) -> None:
             },
             "meta": {"requestId": rid, "timestamp": ts},
         }
+
+    # ── GET /files/status ──
 
     @app.get(
         f"{prefix}/files/status",
@@ -123,5 +204,110 @@ def _register_routes(app: FastAPI, config: DevWebApiConfig) -> None:
                 "deleteEnabled": False,
                 "reason": "Files integration is not available in Phase 0C.",
             },
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /sessions ──
+
+    @app.get(
+        f"{prefix}/sessions",
+        tags=["Sessions"],
+        summary="List sessions with pagination",
+    )
+    def list_sessions(
+        request: Request,
+        limit: int = Query(default=30, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        query: str | None = Query(default=None, max_length=500),
+        source: str | None = Query(default=None),
+        order: OrderOption = Query(default=OrderOption.recent),
+        archived: ArchivedOption = Query(default=ArchivedOption.exclude),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if session_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=SESSION_STORE_UNAVAILABLE,
+                message="Session storage is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = session_service.list_sessions(
+                query=query,
+                offset=offset,
+                limit=limit,
+                order=order.value,
+                source=source,
+                archived=archived.value,
+            )
+        except SessionStoreUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=SESSION_STORE_UNAVAILABLE,
+                message="Session storage is unavailable.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /sessions/{sessionId} ──
+
+    @app.get(
+        f"{prefix}/sessions/{{sessionId}}",
+        tags=["Sessions"],
+        summary="Get session detail",
+    )
+    def get_session_detail(
+        request: Request,
+        sessionId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate session ID
+        validation_error = DevSessionQueryService.validate_session_id(
+            sessionId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_PARAMETER",
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if session_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=SESSION_STORE_UNAVAILABLE,
+                message="Session storage is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = session_service.get_session(sessionId)
+        except SessionNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=SESSION_NOT_FOUND,
+                message="Session was not found.",
+                request_id=rid,
+            )
+        except SessionStoreUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=SESSION_STORE_UNAVAILABLE,
+                message="Session storage is unavailable.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
             "meta": {"requestId": rid, "timestamp": ts},
         }

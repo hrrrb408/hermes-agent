@@ -148,3 +148,76 @@ class FilesStatusResponse(BaseModel):
 
     data: FilesStatusData
     meta: ResponseMeta
+
+
+# ── Sessions ──
+
+
+class SessionListItem(BaseModel):
+    """A single session in the list response."""
+
+    id: str
+    title: str | None = None
+    source: str
+    model: str | None = None
+    message_count: int = Field(alias="messageCount")
+    tool_call_count: int = Field(default=0, alias="toolCallCount")
+    archived: bool
+    started_at: str = Field(alias="startedAt")
+    ended_at: str | None = Field(default=None, alias="endedAt")
+    last_active_at: str | None = Field(default=None, alias="lastActiveAt")
+    preview: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+class SessionPage(BaseModel):
+    """Pagination metadata for session list."""
+
+    offset: int = 0
+    limit: int
+    total: int
+    has_more: bool = Field(alias="hasMore")
+
+    model_config = {"populate_by_name": True}
+
+
+class SessionListData(BaseModel):
+    """Response data for GET /sessions."""
+
+    items: list[SessionListItem]
+    page: SessionPage
+
+
+class SessionListResponse(BaseModel):
+    """Response envelope for GET /sessions."""
+
+    data: SessionListData
+    meta: ResponseMeta
+
+
+class SessionDetail(BaseModel):
+    """Full session detail."""
+
+    id: str
+    title: str | None = None
+    source: str
+    model: str | None = None
+    message_count: int = Field(alias="messageCount")
+    tool_call_count: int = Field(default=0, alias="toolCallCount")
+    input_tokens: int | None = Field(default=None, alias="inputTokens")
+    output_tokens: int | None = Field(default=None, alias="outputTokens")
+    archived: bool
+    started_at: str = Field(alias="startedAt")
+    ended_at: str | None = Field(default=None, alias="endedAt")
+    last_active_at: str | None = Field(default=None, alias="lastActiveAt")
+    end_reason: str | None = Field(default=None, alias="endReason")
+
+    model_config = {"populate_by_name": True}
+
+
+class SessionDetailResponse(BaseModel):
+    """Response envelope for GET /sessions/{sessionId}."""
+
+    data: SessionDetail
+    meta: ResponseMeta
