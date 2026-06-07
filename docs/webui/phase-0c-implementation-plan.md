@@ -1,7 +1,7 @@
 # Phase 0C Implementation Plan
 
 **Date:** 2026-06-07
-**Status:** Proposed
+**Status:** In Progress
 **Depends on:** Phase 0C-01 API Contract (accepted)
 
 ---
@@ -12,7 +12,9 @@ Phase 0C replaces static mock data with real data from the Hermes development in
 
 ---
 
-## Phase 0C-02: Dev API Server Skeleton
+## Phase 0C-02: Dev API Server Skeleton — Completed
+
+**Implementation commit:** `ccf8320c1`
 
 ### Goal
 
