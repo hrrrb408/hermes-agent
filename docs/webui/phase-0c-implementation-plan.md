@@ -311,7 +311,7 @@ Wire the messages endpoint to real SessionDB and display messages in the chat ar
 
 ---
 
-## Phase 0C-05: Memory / Context / Agent Panel Integration
+## Phase 0C-05: Memory / Context / Agent Panel Integration — Completed
 
 ### Goal
 
@@ -334,22 +334,29 @@ Wire the memory, context preview, and agent status endpoints to real backend ser
 
 - Phase 0C-04
 
-### Modification Scope
+### Modification Scope (Actual)
 
 | File | Action |
 |------|--------|
-| `hermes_cli/dev_web_services/memory_query_service.py` | **New** |
-| `hermes_cli/dev_web_services/memory_dto.py` | **New** |
-| `hermes_cli/dev_web_services/context_preview_service.py` | **New** |
-| `hermes_cli/dev_web_services/agent_status_service.py` | **New** |
-| `hermes_cli/dev_web_api.py` | **Modify** — Add all new routes |
-| `apps/hermes-dev-webui/src/api/` | **New** — API clients |
-| `apps/hermes-dev-webui/src/types/api/` | **New** — TypeScript types |
-| `apps/hermes-dev-webui/src/stores/` | **New** — Pinia stores |
-| `apps/hermes-dev-webui/src/components/workspace/` | **Modify** — Real data |
-| `tests/test_dev_web_api_memory.py` | **New** |
-| `tests/test_dev_web_api_context.py` | **New** |
-| `tests/test_dev_web_api_agent.py` | **New** |
+| `hermes_cli/dev_web_memory_service.py` | **New** — Memory query service with DTO whitelist |
+| `hermes_cli/dev_web_agent_service.py` | **New** — Agent status service with safe field extraction |
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 6 new routes (memory/status, memory/categories, memory/items, memory/items/{id}, context/preview, agent/status) |
+| `hermes_cli/dev_web_errors.py` | **Modify** — Add new error codes (MEMORY_UNAVAILABLE, MEMORY_NOT_FOUND, INVALID_MEMORY_ID, etc.) |
+| `apps/hermes-dev-webui/src/api/client.ts` | **Modify** — Add apiPost and shared apiRequest |
+| `apps/hermes-dev-webui/src/api/memory.ts` | **New** — Memory API client |
+| `apps/hermes-dev-webui/src/api/context.ts` | **New** — Context preview API client |
+| `apps/hermes-dev-webui/src/api/agent.ts` | **New** — Agent status API client |
+| `apps/hermes-dev-webui/src/types/api/memory.ts` | **New** — Memory types |
+| `apps/hermes-dev-webui/src/types/api/context.ts` | **New** — Context types |
+| `apps/hermes-dev-webui/src/types/api/agent.ts` | **New** — Agent types |
+| `apps/hermes-dev-webui/src/stores/workspacePanel.ts` | **New** — Memory, Context, Agent Pinia stores |
+| `apps/hermes-dev-webui/src/components/workspace/MemoryPanel.vue` | **New** — Real Memory panel |
+| `apps/hermes-dev-webui/src/components/workspace/ContextPanel.vue` | **New** — Real Context panel |
+| `apps/hermes-dev-webui/src/components/workspace/AgentPanel.vue` | **New** — Real Agent panel |
+| `apps/hermes-dev-webui/src/components/layout/WorkspacePanel.vue` | **Modify** — Use real panels instead of placeholders |
+| `apps/hermes-dev-webui/src/styles/workspace.css` | **Modify** — Add panel component styles |
+| `tests/test_dev_web_memory.py` | **New** — 59 backend tests for Memory/Context/Agent |
+| `apps/hermes-dev-webui/src/tests/memory-api.spec.ts` | **New** — 18 frontend API tests |
 
 ### Test Requirements
 

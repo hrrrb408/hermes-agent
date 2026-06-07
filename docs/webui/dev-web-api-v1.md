@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0-draft
 **Date:** 2026-06-07
-**Status:** Proposed (Phase 0C-01)
+**Status:** Implemented (Phase 0C-05)
 **Base URL:** `http://127.0.0.1:5181/api/dev/v1`
 **Transport:** HTTP/1.1 over localhost only
 
