@@ -8,12 +8,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { fetchSessions, fetchSessionDetail } from '@/api/sessions'
+import { fetchSessionMessages } from '@/api/messages'
 import type {
   SessionListItem,
   SessionDetail,
   SessionSortOrder,
   SessionArchivedFilter,
 } from '@/types/api/session'
+import type { SessionMessage } from '@/types/api/message'
 import { isDevApiError } from '@/api/client'
 
 // ── Types ──
@@ -39,6 +41,14 @@ export interface SessionStoreState {
   detailStatus: LoadingStatus
   detailError: string | null
   detailRequestId: string | null
+  // Messages
+  messages: SessionMessage[]
+  messageStatus: LoadingStatus
+  messageError: string | null
+  messageRequestId: string | null
+  messageOffset: number
+  messageHasMore: boolean
+  messageTotal: number
   // Sort & filter
   sortOrder: SessionSortOrder
   archivedFilter: SessionArchivedFilter
@@ -91,6 +101,7 @@ function clearStorageKey(key: string): void {
 
 let _listRequestId = 0
 let _detailRequestId = 0
+let _messageRequestId = 0
 
 // ── Debounce helper ──
 
@@ -128,9 +139,19 @@ export const useSessionStore = defineStore('session', () => {
   const sortOrder = ref<SessionSortOrder>('recent')
   const archivedFilter = ref<SessionArchivedFilter>('exclude')
 
+  // Message state
+  const messages = ref<SessionMessage[]>([])
+  const messageStatus = ref<LoadingStatus>('idle')
+  const messageError = ref<string | null>(null)
+  const messageRequestId = ref<string | null>(null)
+  const messageOffset = ref(0)
+  const messageHasMore = ref(false)
+  const messageTotal = ref(0)
+
   // Active abort controllers
   let _listAbortController: AbortController | null = null
   let _detailAbortController: AbortController | null = null
+  let _messageAbortController: AbortController | null = null
 
   // ── Computed ──
 
@@ -140,6 +161,10 @@ export const useSessionStore = defineStore('session', () => {
   const hasError = computed(() => listStatus.value === 'error')
   const isDetailLoading = computed(() => detailStatus.value === 'loading')
   const hasDetailError = computed(() => detailStatus.value === 'error')
+  const isMessageLoading = computed(() => messageStatus.value === 'loading')
+  const isMessageLoadingMore = computed(() => messageStatus.value === 'loadingMore')
+  const hasMessageError = computed(() => messageStatus.value === 'error')
+  const isMessageEmpty = computed(() => messageStatus.value === 'empty')
 
   // ── Actions ──
 
@@ -154,6 +179,13 @@ export const useSessionStore = defineStore('session', () => {
     if (_detailAbortController) {
       _detailAbortController.abort()
       _detailAbortController = null
+    }
+  }
+
+  function cancelPendingMessages(): void {
+    if (_messageAbortController) {
+      _messageAbortController.abort()
+      _messageAbortController = null
     }
   }
 
@@ -314,9 +346,18 @@ export const useSessionStore = defineStore('session', () => {
     selectedSessionId.value = sessionId
     selectedSession.value = null
     detailError.value = null
+    // Reset message state for new session
+    messages.value = []
+    messageStatus.value = 'idle'
+    messageError.value = null
+    messageOffset.value = 0
+    messageHasMore.value = false
+    messageTotal.value = 0
     writeStorageString(STORAGE_KEY_SELECTED_ID, sessionId)
 
     await loadSessionDetail(sessionId)
+    // Load messages after detail is loaded
+    loadMessages(sessionId)
   }
 
   /**
@@ -366,14 +407,118 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /**
+   * Load messages for the currently selected session.
+   */
+  async function loadMessages(sessionId?: string): Promise<void> {
+    const targetId = sessionId ?? selectedSessionId.value
+    if (!targetId) return
+
+    cancelPendingMessages()
+
+    const thisRequestId = ++_messageRequestId
+    const controller = new AbortController()
+    _messageAbortController = controller
+
+    messageStatus.value = 'loading'
+    messageError.value = null
+    messageOffset.value = 0
+
+    try {
+      const response = await fetchSessionMessages(
+        targetId,
+        { limit: 50, offset: 0 },
+        controller.signal,
+      )
+
+      // Discard stale response
+      if (thisRequestId !== _messageRequestId) return
+
+      messages.value = [...response.data.items]
+      messageTotal.value = response.data.page.total
+      messageHasMore.value = response.data.page.hasMore
+      messageOffset.value = response.data.page.offset
+      messageRequestId.value = response.meta.requestId
+      messageStatus.value = response.data.items.length === 0 ? 'empty' : 'success'
+    } catch (err: unknown) {
+      if (thisRequestId !== _messageRequestId) return
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+
+      messageStatus.value = 'error'
+      messageError.value = isDevApiError(err) ? err.message : 'Unable to load messages.'
+      messageRequestId.value = isDevApiError(err) ? err.requestId ?? null : null
+    } finally {
+      if (_messageAbortController === controller) {
+        _messageAbortController = null
+      }
+    }
+  }
+
+  /**
+   * Load more messages (next page) for the current session.
+   */
+  async function loadMoreMessages(): Promise<void> {
+    if (!messageHasMore.value || messageStatus.value === 'loadingMore') return
+    if (!selectedSessionId.value) return
+
+    cancelPendingMessages()
+
+    const thisRequestId = ++_messageRequestId
+    const controller = new AbortController()
+    _messageAbortController = controller
+
+    messageStatus.value = 'loadingMore'
+
+    const nextOffset = messageOffset.value + 50
+
+    try {
+      const response = await fetchSessionMessages(
+        selectedSessionId.value,
+        { limit: 50, offset: nextOffset },
+        controller.signal,
+      )
+
+      if (thisRequestId !== _messageRequestId) return
+
+      // Append and deduplicate by ID
+      const existing = new Set(messages.value.map(m => m.id))
+      const newItems = response.data.items.filter(m => !existing.has(m.id))
+      messages.value = [...messages.value, ...newItems]
+      messageTotal.value = response.data.page.total
+      messageHasMore.value = response.data.page.hasMore
+      messageOffset.value = nextOffset
+      messageRequestId.value = response.meta.requestId
+      messageStatus.value = 'success'
+    } catch (err: unknown) {
+      if (thisRequestId !== _messageRequestId) return
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+
+      messageStatus.value = 'error'
+      messageError.value = isDevApiError(err) ? err.message : 'Unable to load more messages.'
+    } finally {
+      if (_messageAbortController === controller) {
+        _messageAbortController = null
+      }
+    }
+  }
+
+  /**
    * Clear the current session selection.
    */
   function clearSelection(): void {
     cancelPendingDetail()
+    cancelPendingMessages()
     selectedSessionId.value = null
     selectedSession.value = null
     detailStatus.value = 'idle'
     detailError.value = null
+    // Clear message state
+    messages.value = []
+    messageStatus.value = 'idle'
+    messageError.value = null
+    messageRequestId.value = null
+    messageOffset.value = 0
+    messageHasMore.value = false
+    messageTotal.value = 0
     clearStorageKey(STORAGE_KEY_SELECTED_ID)
   }
 
@@ -404,6 +549,7 @@ export const useSessionStore = defineStore('session', () => {
     // If we have a saved session ID, load its detail
     if (savedId) {
       loadSessionDetail(savedId)
+      loadMessages(savedId)
     }
   }
 
@@ -413,8 +559,10 @@ export const useSessionStore = defineStore('session', () => {
   function $reset(): void {
     cancelPendingList()
     cancelPendingDetail()
+    cancelPendingMessages()
     _listRequestId = 0
     _detailRequestId = 0
+    _messageRequestId = 0
     sessions.value = []
     listStatus.value = 'idle'
     listError.value = null
@@ -429,6 +577,14 @@ export const useSessionStore = defineStore('session', () => {
     detailStatus.value = 'idle'
     detailError.value = null
     detailRequestId.value = null
+    // Message state
+    messages.value = []
+    messageStatus.value = 'idle'
+    messageError.value = null
+    messageRequestId.value = null
+    messageOffset.value = 0
+    messageHasMore.value = false
+    messageTotal.value = 0
     sortOrder.value = 'recent'
     archivedFilter.value = 'exclude'
   }
@@ -449,6 +605,14 @@ export const useSessionStore = defineStore('session', () => {
     detailStatus,
     detailError,
     detailRequestId,
+    // Messages
+    messages,
+    messageStatus,
+    messageError,
+    messageRequestId,
+    messageOffset,
+    messageHasMore,
+    messageTotal,
     sortOrder,
     archivedFilter,
 
@@ -459,6 +623,11 @@ export const useSessionStore = defineStore('session', () => {
     hasError,
     isDetailLoading,
     hasDetailError,
+    // Message computed
+    isMessageLoading,
+    isMessageLoadingMore,
+    hasMessageError,
+    isMessageEmpty,
 
     // Actions
     loadSessions,
@@ -471,6 +640,9 @@ export const useSessionStore = defineStore('session', () => {
     selectSession,
     loadSessionDetail,
     clearSelection,
+    // Message actions
+    loadMessages,
+    loadMoreMessages,
     initialize,
     $reset,
   }
