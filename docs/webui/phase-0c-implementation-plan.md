@@ -78,7 +78,57 @@ Create the FastAPI application skeleton with environment validation, CORS, error
 
 ---
 
-## Phase 0C-03: Session List Real Integration
+## Phase 0C-03: Session List and Detail Read-only Integration — Completed
+
+**Implementation commits:** backend + frontend + docs (3 commits)
+
+### Goal
+
+Wire the session list and session detail endpoints to real SessionDB read-only queries. Connect the frontend Session Sidebar to the live API.
+
+### Input
+
+- Phase 0C-02 skeleton (running)
+- SessionDB audit results from Phase 0C-01
+
+### Output
+
+- `hermes_cli/dev_web_session_service.py` — Session query service with DTO whitelist
+- Routes: `GET /api/dev/v1/sessions`, `GET /api/dev/v1/sessions/{sessionId}`
+- Frontend API client, session store, updated sidebar
+- 92 backend tests, 43 new frontend tests
+
+### Dependencies
+
+- Phase 0C-02
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_session_service.py` | **New** — Session query service, DTO transformers, validation |
+| `hermes_cli/dev_web_api.py` | **Modify** — Add session routes, update status |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add session Pydantic models |
+| `hermes_cli/dev_web_errors.py` | **Modify** — Add SESSION_NOT_FOUND, SESSION_STORE_UNAVAILABLE codes |
+| `apps/hermes-dev-webui/src/api/client.ts` | **New** — Unified fetch client |
+| `apps/hermes-dev-webui/src/api/sessions.ts` | **New** — Session API functions |
+| `apps/hermes-dev-webui/src/types/api/session.ts` | **New** — TypeScript types |
+| `apps/hermes-dev-webui/src/stores/session.ts` | **New** — Pinia session store |
+| `apps/hermes-dev-webui/src/components/layout/SessionSidebar.vue` | **Modify** — Uses store |
+| `apps/hermes-dev-webui/src/components/layout/AppLayout.vue` | **Modify** — Uses store |
+| `apps/hermes-dev-webui/src/components/layout/ChatWorkspaceShell.vue` | **Modify** — Session detail/placeholder |
+| `tests/test_dev_web_sessions.py` | **New** — 92 session API tests |
+
+### Acceptance Criteria
+
+- ✅ Session sidebar shows real sessions from development instance
+- ✅ Clicking a session shows session detail
+- ✅ Search/filter works
+- ✅ All sensitive fields absent from API responses
+- ✅ SessionDB opened in read_only mode, database hash unchanged after requests
+- ✅ All 192 backend tests pass (100 existing + 92 new)
+- ✅ All 172 frontend tests pass (129 existing + 43 new)
+- ✅ Production Gateway PID 1717 unaffected
 
 ### Goal
 
