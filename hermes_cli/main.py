@@ -7466,6 +7466,53 @@ def cmd_dev_check(args):
         sys.exit(1)
 
 
+def cmd_dev_webui_api(args):
+    """Start the Hermes Dev Web API server (read-only, dev-only)."""
+    try:
+        import fastapi  # noqa: F401
+        import uvicorn  # noqa: F401
+    except ImportError as exc:
+        print(
+            "Dev Web API dependencies not installed (need fastapi + uvicorn).\n"
+            f"  cd {PROJECT_ROOT}\n"
+            f"  {sys.executable} -m pip install -e '.[web]'"
+        )
+        print(f"Import error: {exc}")
+        sys.exit(1)
+
+    from hermes_cli.dev_web_api import create_dev_web_api_app
+    from hermes_cli.dev_web_config import build_config, DevApiConfigurationError
+
+    try:
+        config = build_config(
+            host=getattr(args, "host", None),
+            port=getattr(args, "port", None),
+        )
+    except DevApiConfigurationError as exc:
+        print(f"Refusing to start Hermes Dev Web API:\n  {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    app = create_dev_web_api_app(config)
+
+    print("Hermes Dev Web API")
+    print("─" * 48)
+    print(f"  Environment:     development")
+    print(f"  Host:            {config.host}")
+    print(f"  Port:            {config.port}")
+    print(f"  API base:        {config.api_prefix}")
+    print(f"  WebUI origin:    {config.cors_origins[0] if config.cors_origins else 'none'}")
+    print(f"  Read only:       yes")
+    print(f"  Isolation:       PASS")
+    print(f"  Session access:  disabled")
+    print(f"  Memory access:   disabled")
+    print(f"  Agent execution: disabled")
+    print(f"  Tool execution:  disabled")
+    print()
+
+    import uvicorn as _uvicorn
+    _uvicorn.run(app, host=config.host, port=config.port, log_level="info")
+
+
 def cmd_uninstall(args):
     """Uninstall Hermes Agent."""
     _require_tty("uninstall")
@@ -16156,6 +16203,25 @@ Examples:
         help="Pilot queue limit, 1-500 (default: 20)",
     )
     gateway_dev_parser.set_defaults(func=cmd_gateway_dev)
+
+    # ── dev-webui-api ──────────────────────────────────────────────────────
+    dev_webui_api_parser = subparsers.add_parser(
+        "dev-webui-api",
+        help="Start the read-only Dev Web API server (dev-only)",
+        description="Start the Hermes Dev Web API — a read-only FastAPI server for the Dev WebUI frontend.",
+    )
+    dev_webui_api_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host (default: 127.0.0.1, only 127.0.0.1 allowed)",
+    )
+    dev_webui_api_parser.add_argument(
+        "--port",
+        type=int,
+        default=5181,
+        help="Bind port (default: 5181)",
+    )
+    dev_webui_api_parser.set_defaults(func=cmd_dev_webui_api)
 
     # =========================================================================
     # dev-check command
