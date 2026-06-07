@@ -977,23 +977,32 @@ class TestSessionOpenAPIRoutes:
         assert "get" in paths[msg_path]
         assert "post" not in paths[msg_path]
 
-    def test_openapi_no_memory_routes(self, seeded_client):
+    def test_openapi_has_memory_read_routes(self, seeded_client):
+        """Phase 0C-05: memory read routes exist in OpenAPI."""
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
-        for path in paths:
-            assert "memory" not in path
+        assert "/api/dev/v1/memory/status" in paths
+        assert "/api/dev/v1/memory/categories" in paths
+        assert "/api/dev/v1/memory/items" in paths
+        assert "/api/dev/v1/memory/items/{memoryId}" in paths
 
-    def test_openapi_no_agent_routes(self, seeded_client):
+    def test_openapi_has_agent_status_route(self, seeded_client):
+        """Phase 0C-05: agent status route exists in OpenAPI."""
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
-        for path in paths:
-            assert "agent" not in path.lower() or "agent" in path and "/api/dev/v1/agent" not in path
+        assert "/api/dev/v1/agent/status" in paths
 
-    def test_openapi_has_five_business_paths(self, seeded_client):
+    def test_openapi_has_context_preview_route(self, seeded_client):
+        """Phase 0C-05: context preview route exists in OpenAPI."""
+        resp = seeded_client.get("/openapi.json")
+        paths = resp.json()["paths"]
+        assert "/api/dev/v1/context/preview" in paths
+
+    def test_openapi_has_eleven_business_paths(self, seeded_client):
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
         business = [p for p in paths if p.startswith("/api/dev/v1")]
-        assert len(business) == 5
+        assert len(business) == 11
 
 
 # ── 16. SessionDB close read-only behavior ──

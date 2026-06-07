@@ -1091,26 +1091,24 @@ class TestOpenAPIRouteBoundary:
         assert "delete" not in paths[msg_key]
 
     def test_no_forbidden_routes(self, client_with_db):
+        """Phase 0C-05: reviews, send, upload, delete routes are absent."""
         resp = client_with_db.get("/openapi.json")
         spec = resp.json()
         paths = spec.get("paths", {})
         path_strs = " ".join(paths.keys()).lower()
-        assert "/memory" not in path_strs
-        assert "/context" not in path_strs
-        assert "/agent" not in path_strs
         assert "/reviews" not in path_strs
         assert "/send" not in path_strs
         assert "/upload" not in path_strs
+        assert "/delete" not in path_strs
 
     def test_business_routes_count(self, client_with_db):
-        """Runtime should have exactly 5 business routes."""
+        """Phase 0C-05: runtime should have exactly 11 business routes."""
         resp = client_with_db.get("/openapi.json")
         spec = resp.json()
         paths = spec.get("paths", {})
-        # Filter to business paths (under /api/dev/v1)
         business = [p for p in paths if p.startswith("/api/dev/v1")]
-        assert len(business) == 5, (
-            f"Expected 5 business routes, got {len(business)}: {business}"
+        assert len(business) == 11, (
+            f"Expected 11 business routes, got {len(business)}: {business}"
         )
 
 

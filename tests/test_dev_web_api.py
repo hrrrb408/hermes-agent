@@ -517,17 +517,15 @@ class TestCORS:
 
 
 class TestRouteBoundary:
-    """Phase 0C-04: /status, /files/status, /sessions, /sessions/{id},
-    /sessions/{id}/messages exist. All other planned endpoints remain
-    unimplemented (404)."""
+    """Phase 0C-05: 11 business routes exist. Write routes, reviews,
+    and agent run remain unimplemented (404 or 405)."""
 
     @pytest.mark.parametrize("path", [
-        "/api/dev/v1/memory/status",
-        "/api/dev/v1/memory/categories",
-        "/api/dev/v1/memory/items",
-        "/api/dev/v1/context/preview",
-        "/api/dev/v1/agent/status",
         "/api/dev/v1/reviews",
+        "/api/dev/v1/reviews/pending",
+        "/api/dev/v1/agent/run",
+        "/api/dev/v1/agent/messages",
+        "/api/dev/v1/tools",
     ])
     def test_unimplemented_endpoints_return_404(self, client, path):
         resp = client.get(path)
@@ -554,7 +552,25 @@ class TestRouteBoundary:
 
     def test_no_memory_write_routes(self, client):
         resp = client.post("/api/dev/v1/memory/items", json={})
-        assert resp.status_code == 404
+        assert resp.status_code == 405
+
+    def test_memory_routes_exist(self, client):
+        """Phase 0C-05: memory read routes are implemented (503 without hermes_home)."""
+        assert client.get("/api/dev/v1/memory/status").status_code == 200
+        assert client.get("/api/dev/v1/memory/categories").status_code == 503
+        assert client.get("/api/dev/v1/memory/items").status_code == 503
+
+    def test_agent_status_route_exists(self, client):
+        """Phase 0C-05: agent status is implemented."""
+        assert client.get("/api/dev/v1/agent/status").status_code == 200
+
+    def test_context_preview_route_exists(self, client):
+        """Phase 0C-05: context preview is implemented (503 without hermes_home)."""
+        resp = client.post(
+            "/api/dev/v1/context/preview",
+            json={"query": "test"},
+        )
+        assert resp.status_code == 503
 
     def test_no_review_routes(self, client):
         resp = client.get("/api/dev/v1/reviews")
