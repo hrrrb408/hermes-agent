@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted } from 'vue'
 import ChatWorkspaceShell from './ChatWorkspaceShell.vue'
 import SessionSidebar from './SessionSidebar.vue'
 import TopStatusBar from './TopStatusBar.vue'
 import WorkspacePanel from './WorkspacePanel.vue'
-import { defaultShellSession, type ShellSessionItem } from '@/mocks/workspace-shell'
+import { useSessionStore } from '@/stores/session'
 import { useUiStore } from '@/stores/ui'
 
 const uiStore = useUiStore()
-const selectedSession = ref<ShellSessionItem>(defaultShellSession)
+const sessionStore = useSessionStore()
+
+onMounted(() => {
+  if (sessionStore.listStatus === 'idle') {
+    sessionStore.initialize()
+  }
+})
 </script>
 
 <template>
@@ -23,11 +29,9 @@ const selectedSession = ref<ShellSessionItem>(defaultShellSession)
     <div class="workspace-body">
       <SessionSidebar
         :collapsed="uiStore.sidebarCollapsed"
-        :selected-session-id="selectedSession.id"
         @toggle="uiStore.toggleSidebar"
-        @select="selectedSession = $event"
       />
-      <ChatWorkspaceShell :session="selectedSession" />
+      <ChatWorkspaceShell />
       <WorkspacePanel :collapsed="uiStore.workspaceCollapsed" @toggle="uiStore.toggleWorkspace" />
     </div>
   </div>

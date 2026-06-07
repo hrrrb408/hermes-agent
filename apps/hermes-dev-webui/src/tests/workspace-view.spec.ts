@@ -57,21 +57,25 @@ describe('WorkspaceView', () => {
     expect(wrapper.find('.chat-workspace').exists()).toBe(true)
   })
 
-  it('updates the static chat title after session selection', async () => {
+  it('shows default workspace title when no session is selected', () => {
     const wrapper = mountWorkspace()
-    await wrapper.findAll('.session-item')[1]?.trigger('click')
-    expect(wrapper.get('.chat-workspace__header h1').text()).toBe('Memory context notes')
+    expect(wrapper.get('.chat-workspace__header h1').text()).toBe('Hermes Dev Workspace')
   })
 
-  it('states that the Agent is not connected', () => {
+  it('shows read-only indicator in composer', () => {
     const text = mountWorkspace().text()
-    expect(text).toContain('Agent connection will be added in Phase 1.')
-    expect(text).toContain('Preview shell · Agent not connected')
+    expect(text).toContain('Read only')
+    expect(text).toContain('Messages not available')
   })
 
   it('does not expose production paths or running claims', () => {
     const text = mountWorkspace().text()
     expect(text).not.toContain('/Users/huangruibang')
     expect(text).not.toContain('Gateway running')
+  })
+
+  it('shows session selection prompt when no session is selected', () => {
+    const text = mountWorkspace().text()
+    expect(text).toContain('Select a session from the sidebar')
   })
 })
