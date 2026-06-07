@@ -22,7 +22,7 @@ const mockedApiGet = apiGet as unknown as ReturnType<typeof vi.fn>
 
 // ── Test data ──
 
-function makeMessageListData(items: any[] = [], total = 0) {
+function makeMessageListData(items: Record<string, unknown>[] = [], total = 0) {
   return {
     data: {
       items,

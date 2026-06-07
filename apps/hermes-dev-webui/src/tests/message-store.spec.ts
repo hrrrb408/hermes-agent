@@ -326,7 +326,7 @@ describe('MessageStore — cancel and stale response', () => {
     const store = useSessionStore()
 
     // First call will be slow
-    let resolveFirst: (v: any) => void
+    let resolveFirst: (v: unknown) => void
     const firstPromise = new Promise(resolve => { resolveFirst = resolve })
     mockedFetchSessionMessages.mockReturnValueOnce(firstPromise)
 
