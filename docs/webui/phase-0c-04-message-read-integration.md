@@ -189,3 +189,73 @@ Phase 0C-05 should implement:
 - Context preview panel
 - Agent status display
 - Workspace panel tabs with real data
+
+---
+
+## Browser Smoke Test (Phase 0C-04A Closure)
+
+**Date:** 2026-06-08
+**Browser:** Chromium (Playwright headless)
+
+### Environment
+
+- WebUI: `http://127.0.0.1:5180`
+- API: `http://127.0.0.1:5181`
+
+### Network Verification
+
+| Route | Status |
+|-------|--------|
+| `GET /api/dev/v1/sessions` | ✅ Called on page load |
+| `GET /api/dev/v1/sessions/{id}` | ✅ Called on session click |
+| `GET /api/dev/v1/sessions/{id}/messages` | ✅ Called after detail loads |
+| POST /messages | ✅ Not called |
+| /memory, /context, /agent, /reviews | ✅ Not called |
+
+### Message Display
+
+- ✅ Real messages displayed (user, assistant, unknown/empty)
+- ✅ No mock messages
+- ✅ No sensitive fields visible
+- ✅ HTML escaped (no `<script>` execution)
+- ✅ Composer/Attach/Send all disabled
+- ✅ Read-only notice visible
+
+### Console & CORS
+
+- Console project errors: **0**
+- Console project warnings: **0**
+- Unhandled rejections: **0**
+- CORS errors: **0**
+
+### Viewport Overflow
+
+- 1440×900: **No horizontal overflow** ✅
+- 1280×800: **No horizontal overflow** ✅
+
+### Five-Theme Regression
+
+| Theme | data-theme | Messages | Overflow | Send Disabled |
+|-------|-----------|----------|----------|---------------|
+| Obsidian | obsidian | 3 | None | Yes |
+| Paper | paper | 3 | None | Yes |
+| 宋韵 Song | song | 3 | None | Yes |
+| 墨境 Ink | ink | 3 | None | Yes |
+| 夜樱 Sakura Night | sakura-night | 3 | None | Yes |
+
+### Database Read-Only Verification
+
+- DB hash before: `6bccb704...`
+- DB hash after: `6bccb704...` (unchanged)
+- DB size: unchanged
+- DB mtime: unchanged
+
+### Process Cleanup
+
+- 5180: freed
+- 5181: freed
+- No leftover processes
+
+### Production Gateway
+
+- PID 1717: running, untouched
