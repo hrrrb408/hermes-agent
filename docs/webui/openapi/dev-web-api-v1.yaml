@@ -1,0 +1,1091 @@
+openapi: 3.1.0
+info:
+  title: Hermes Dev WebUI API
+  description: >
+    Read-only API for the Hermes Dev WebUI. Provides session, memory, context preview,
+    and agent status data from the development Hermes instance. All endpoints are
+    side-effect-free and restricted to localhost access only.
+  version: 1.0.0-draft
+  contact:
+    name: Hermes Dev Team
+
+servers:
+  - url: http://127.0.0.1:5181/api/dev/v1
+    description: Local development only
+
+security: []
+
+tags:
+  - name: System
+    description: System status and health
+  - name: Sessions
+    description: Session list and detail
+  - name: Messages
+    description: Session messages
+  - name: Memory
+    description: Memory categories, items, and status
+  - name: Context
+    description: Runtime memory context preview
+  - name: Agent
+    description: Agent configuration status
+  - name: Files
+    description: File browsing status
+
+paths:
+  /status:
+    get:
+      operationId: getSystemStatus
+      tags: [System]
+      summary: System status and environment verification
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+  /sessions:
+    get:
+      operationId: listSessions
+      tags: [Sessions]
+      summary: List sessions with pagination
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: query
+          in: query
+          description: FTS5 search in message content
+          schema:
+            type: string
+            maxLength: 500
+        - name: source
+          in: query
+          description: Filter by source platform
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [recent, created]
+            default: recent
+        - name: archived
+          in: query
+          description: Archive filter
+          schema:
+            type: string
+            enum: [exclude, include, only]
+            default: exclude
+      responses:
+        "200":
+          description: Session list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Session store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [Sessions]
+      summary: Get session detail
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetailResponse"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{sessionId}/messages:
+    get:
+      operationId: getSessionMessages
+      tags: [Messages]
+      summary: Get messages for a session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: before
+          in: query
+          description: Message ID anchor - return messages before this ID
+          schema:
+            type: integer
+        - name: after
+          in: query
+          description: Message ID anchor - return messages after this ID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Session store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /memory/status:
+    get:
+      operationId: getMemoryStatus
+      tags: [Memory]
+      summary: Memory system status
+      responses:
+        "200":
+          description: Memory status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryStatusResponse"
+        "503":
+          description: Memory store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /memory/categories:
+    get:
+      operationId: listMemoryCategories
+      tags: [Memory]
+      summary: List memory categories
+      parameters:
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Category list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryListResponse"
+
+  /memory/items:
+    get:
+      operationId: listMemoryItems
+      tags: [Memory]
+      summary: List memory items
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: Memory items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryItemListResponse"
+
+  /memory/items/{memoryId}:
+    get:
+      operationId: getMemoryItem
+      tags: [Memory]
+      summary: Get memory item detail
+      parameters:
+        - name: memoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MEM-[A-Z]+-\\d+$"
+      responses:
+        "200":
+          description: Memory item detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryItemDetailResponse"
+        "404":
+          description: Memory item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /context/preview:
+    post:
+      operationId: previewContext
+      tags: [Context]
+      summary: Preview runtime memory context for a query
+      description: >
+        Returns the memory context that would be loaded for a given user message.
+        This endpoint is completely side-effect-free: no LLM calls, no persistence,
+        no session writes, no memory writes, no file modifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextPreviewRequest"
+      responses:
+        "200":
+          description: Context preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextPreviewResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Preview validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Context loader unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /agent/status:
+    get:
+      operationId: getAgentStatus
+      tags: [Agent]
+      summary: Agent configuration and runtime status
+      responses:
+        "200":
+          description: Agent status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentStatusResponse"
+        "503":
+          description: Agent status unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /files/status:
+    get:
+      operationId: getFilesStatus
+      tags: [Files]
+      summary: File browsing availability
+      responses:
+        "200":
+          description: Files status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilesStatusResponse"
+
+components:
+  schemas:
+    # ── Common ──
+    Meta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId:
+          type: string
+          maxLength: 64
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC
+
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable business error code
+          examples:
+            - SESSION_NOT_FOUND
+            - INVALID_LIMIT
+        message:
+          type: string
+          description: Human-readable error description
+        details:
+          type: string
+          nullable: true
+
+    Page:
+      type: object
+      required: [limit, total, hasMore]
+      properties:
+        offset:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasMore:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error, meta]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Status ──
+    Isolation:
+      type: object
+      required: [passed, usesDevelopmentHome, productionHomeUntouched, bindHost]
+      properties:
+        passed:
+          type: boolean
+        usesDevelopmentHome:
+          type: boolean
+        productionHomeUntouched:
+          type: boolean
+        bindHost:
+          type: string
+          enum: ["127.0.0.1"]
+
+    ServiceStatus:
+      type: object
+      required: [available, readOnly]
+      properties:
+        available:
+          type: boolean
+        readOnly:
+          type: boolean
+
+    GatewayStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [running, stopped, unknown]
+
+    Services:
+      type: object
+      required: [sessions, memory, agent, gateway]
+      properties:
+        sessions:
+          $ref: "#/components/schemas/ServiceStatus"
+        memory:
+          $ref: "#/components/schemas/ServiceStatus"
+        agent:
+          $ref: "#/components/schemas/ServiceStatus"
+        gateway:
+          $ref: "#/components/schemas/GatewayStatus"
+
+    StatusData:
+      type: object
+      required: [environment, apiVersion, status, isolation, services]
+      properties:
+        environment:
+          type: string
+          enum: [development]
+        apiVersion:
+          type: string
+          enum: ["v1"]
+        status:
+          type: string
+          enum: [ok, degraded, error]
+        isolation:
+          $ref: "#/components/schemas/Isolation"
+        services:
+          $ref: "#/components/schemas/Services"
+
+    StatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/StatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Sessions ──
+    SessionListItem:
+      type: object
+      required: [id, source, messageCount, archived, startedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        source:
+          type: string
+        model:
+          type: string
+          nullable: true
+        messageCount:
+          type: integer
+        toolCallCount:
+          type: integer
+        archived:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActiveAt:
+          type: string
+          format: date-time
+          nullable: true
+        preview:
+          type: string
+          nullable: true
+          maxLength: 63
+
+    SessionListData:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionListItem"
+        page:
+          $ref: "#/components/schemas/Page"
+
+    SessionListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/SessionListData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    SessionDetail:
+      type: object
+      required: [id, source, messageCount, archived, startedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        source:
+          type: string
+        model:
+          type: string
+          nullable: true
+        messageCount:
+          type: integer
+        toolCallCount:
+          type: integer
+        inputTokens:
+          type: integer
+          nullable: true
+        outputTokens:
+          type: integer
+          nullable: true
+        archived:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActiveAt:
+          type: string
+          format: date-time
+          nullable: true
+        endReason:
+          type: string
+          nullable: true
+
+    SessionDetailResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/SessionDetail"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Messages ──
+    TextContent:
+      type: object
+      required: [type, text]
+      properties:
+        type:
+          type: string
+          enum: [text]
+        text:
+          type: string
+
+    StructuredContent:
+      type: object
+      required: [type, parts]
+      properties:
+        type:
+          type: string
+          enum: [structured]
+        parts:
+          type: array
+          items:
+            type: object
+
+    EmptyContent:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [empty]
+
+    MessageContent:
+      oneOf:
+        - $ref: "#/components/schemas/TextContent"
+        - $ref: "#/components/schemas/StructuredContent"
+        - $ref: "#/components/schemas/EmptyContent"
+
+    ToolCall:
+      type: object
+      required: [id, type, function]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [function]
+        function:
+          type: object
+          required: [name, arguments]
+          properties:
+            name:
+              type: string
+            arguments:
+              type: string
+              description: JSON-encoded arguments (truncated at 200 chars)
+
+    MessageItem:
+      type: object
+      required: [id, role, content, timestamp]
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant, tool, system]
+        content:
+          $ref: "#/components/schemas/MessageContent"
+        timestamp:
+          type: string
+          format: date-time
+        tokenCount:
+          type: integer
+          nullable: true
+        finishReason:
+          type: string
+          nullable: true
+        toolCalls:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolCall"
+          nullable: true
+        toolCallId:
+          type: string
+          nullable: true
+        toolName:
+          type: string
+          nullable: true
+
+    MessagePage:
+      allOf:
+        - $ref: "#/components/schemas/Page"
+        - type: object
+          properties:
+            messagesBefore:
+              type: integer
+              nullable: true
+            messagesAfter:
+              type: integer
+              nullable: true
+
+    MessageListData:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageItem"
+        page:
+          $ref: "#/components/schemas/MessagePage"
+
+    MessageListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/MessageListData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Memory ──
+    MemoryStatusData:
+      type: object
+      required: [enabled, categories, memories, capabilities, exposedCapabilities]
+      properties:
+        enabled:
+          type: boolean
+        categories:
+          type: object
+          required: [total, active, archived]
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            archived:
+              type: integer
+        memories:
+          type: object
+          required: [total, active, archived]
+          properties:
+            total:
+              type: integer
+            active:
+              type: integer
+            archived:
+              type: integer
+        capabilities:
+          type: object
+          required: [contextLoader, reviewQueue]
+          properties:
+            contextLoader:
+              type: boolean
+            reviewQueue:
+              type: boolean
+        exposedCapabilities:
+          type: object
+          required: [read, write, review, approve, reject]
+          properties:
+            read:
+              type: boolean
+            write:
+              type: boolean
+            review:
+              type: boolean
+            approve:
+              type: boolean
+            reject:
+              type: boolean
+
+    MemoryStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/MemoryStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    CategoryItem:
+      type: object
+      required: [key, status]
+      properties:
+        key:
+          type: string
+        scope:
+          type: string
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+          enum: [P0, P1, P2, P3]
+        status:
+          type: string
+          enum: [active, archived, deprecated, UNKNOWN]
+        keywords:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+          nullable: true
+        memoryCount:
+          type: integer
+
+    CategoryListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryItem"
+
+    CategoryListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/CategoryListData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    MemoryItemSummary:
+      type: object
+      required: [id, title, category, status]
+      properties:
+        id:
+          type: string
+          pattern: "^MEM-[A-Z]+-\\d+$"
+        title:
+          type: string
+        category:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        importance:
+          type: string
+          nullable: true
+          enum: [P0, P1, P2, P3]
+        ttl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, archived, deprecated, UNKNOWN]
+        updatedAt:
+          type: string
+          nullable: true
+
+    MemoryItemListData:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryItemSummary"
+        page:
+          $ref: "#/components/schemas/Page"
+
+    MemoryItemListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/MemoryItemListData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    MemoryItemDetail:
+      allOf:
+        - $ref: "#/components/schemas/MemoryItemSummary"
+        - type: object
+          properties:
+            type:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              nullable: true
+            record:
+              type: string
+              nullable: true
+              description: Full record text, truncated to maxRecordChars
+            truncated:
+              type: boolean
+              default: false
+
+    MemoryItemDetailResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/MemoryItemDetail"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Context Preview ──
+    ContextPreviewOptions:
+      type: object
+      properties:
+        maxCategories:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+        maxMemories:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+        maxRecordChars:
+          type: integer
+          minimum: 100
+          maximum: 5000
+          default: 2000
+        includeArchived:
+          type: boolean
+          default: false
+
+    ContextPreviewRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          maxLength: 500
+        options:
+          $ref: "#/components/schemas/ContextPreviewOptions"
+
+    MatchedCategory:
+      type: object
+      required: [key, score]
+      properties:
+        key:
+          type: string
+        score:
+          type: integer
+        scope:
+          type: string
+          nullable: true
+
+    PreviewMemory:
+      type: object
+      required: [id, category, title, score]
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        score:
+          type: integer
+        truncated:
+          type: boolean
+          default: false
+        recordPreview:
+          type: string
+          nullable: true
+
+    ContextPreviewLimits:
+      type: object
+      required: [maxCategories, maxMemories, maxRecordChars]
+      properties:
+        maxCategories:
+          type: integer
+        maxMemories:
+          type: integer
+        maxRecordChars:
+          type: integer
+
+    ContextPreviewData:
+      type: object
+      required: [query, matchedCategories, memories, skipped, limits, sideEffects]
+      properties:
+        query:
+          type: string
+        matchedCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchedCategory"
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviewMemory"
+        skipped:
+          type: array
+          items:
+            type: string
+        limits:
+          $ref: "#/components/schemas/ContextPreviewLimits"
+        sideEffects:
+          type: boolean
+          enum: [false]
+
+    ContextPreviewResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ContextPreviewData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Agent ──
+    AgentModel:
+      type: object
+      required: [configured]
+      properties:
+        provider:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        configured:
+          type: boolean
+
+    AgentMemory:
+      type: object
+      required: [enabled, contextLoaderEnabled]
+      properties:
+        enabled:
+          type: boolean
+        contextLoaderEnabled:
+          type: boolean
+
+    AgentExecution:
+      type: object
+      required: [readOnly, messageSendEnabled, toolExecutionEnabled, streamingEnabled]
+      properties:
+        readOnly:
+          type: boolean
+          enum: [true]
+        messageSendEnabled:
+          type: boolean
+          enum: [false]
+        toolExecutionEnabled:
+          type: boolean
+          enum: [false]
+        streamingEnabled:
+          type: boolean
+          enum: [false]
+
+    AgentStatusData:
+      type: object
+      required: [available, model, memory, execution]
+      properties:
+        available:
+          type: boolean
+        model:
+          $ref: "#/components/schemas/AgentModel"
+        memory:
+          $ref: "#/components/schemas/AgentMemory"
+        execution:
+          $ref: "#/components/schemas/AgentExecution"
+
+    AgentStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/AgentStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Files ──
+    FilesStatusData:
+      type: object
+      required: [available, reason]
+      properties:
+        available:
+          type: boolean
+          enum: [false]
+        reason:
+          type: string
+
+    FilesStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/FilesStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
