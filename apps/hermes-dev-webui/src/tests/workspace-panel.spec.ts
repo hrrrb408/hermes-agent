@@ -20,21 +20,31 @@ describe('WorkspacePanel', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
     await wrapper.get('#workspace-tab-memory').trigger('click')
     expect(useUiStore().workspaceTab).toBe('memory')
-    expect(wrapper.text()).toContain('MEM-HERMES-001')
-    expect(wrapper.text()).toContain('Mock preview')
+    // Memory panel shows loading or error state (no mock data)
+    expect(wrapper.text()).not.toContain('MEM-HERMES-001')
+    expect(wrapper.text()).not.toContain('Mock preview')
   })
 
-  it('shows static Context connection state', () => {
+  it('shows Context panel with query input', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    expect(wrapper.text()).toContain('Runtime injection')
-    expect(wrapper.text()).toContain('Not connected')
+    // Context tab is default — shows query form
+    expect(wrapper.find('#context-query-input').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Not connected')
   })
 
-  it('shows static Agent preview state', async () => {
+  it('shows Agent panel with loading state', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
     await wrapper.get('#workspace-tab-agent').trigger('click')
-    expect(wrapper.text()).toContain('Agent state')
-    expect(wrapper.text()).toContain('Preview')
+    // Agent panel shows loading state (tries real API) or error
+    const text = wrapper.text()
+    expect(
+      text.includes('Loading') ||
+      text.includes('Agent status') ||
+      text.includes('Agent') ||
+      text.includes('Retry')
+    ).toBe(true)
+    // Should NOT show old mock content
+    expect(wrapper.text()).not.toContain('Preview')
   })
 
   it('shows a static file tree disclaimer', async () => {

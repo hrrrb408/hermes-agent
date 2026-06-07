@@ -96,79 +96,27 @@ export async function apiGet<T>(
   config?: Partial<DevApiClientConfig>,
   signal?: AbortSignal,
 ): Promise<DevApiResponse<T>> {
-  const { baseUrl, timeoutMs } = resolveConfig(config)
+  return apiRequest<T>('GET', path, config, signal)
+}
 
-  const url = new URL(path, baseUrl)
-  const requestId = crypto.randomUUID?.()?.replace(/-/g, '') ?? Date.now().toString(36)
-
-  // Create timeout abort controller
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
-
-  // Combine signals: external signal + timeout
-  let combinedSignal: AbortSignal
-  if (signal) {
-    // Forward external abort to timeout controller
-    signal.addEventListener('abort', () => timeoutController.abort())
-    combinedSignal = timeoutController.signal
-  } else {
-    combinedSignal = timeoutController.signal
-  }
-
-  try {
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'X-Request-ID': requestId,
-      },
-      signal: combinedSignal,
-    })
-
-    const text = await response.text()
-
-    if (!response.ok) {
-      throw parseApiError(response, text)
-    }
-
-    const parsed = JSON.parse(text) as DevApiResponse<T>
-    return parsed
-  } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      // Distinguish timeout from user-initiated abort
-      if (signal?.aborted) {
-        throw {
-          code: 'REQUEST_CANCELLED',
-          message: 'Request was cancelled.',
-        } satisfies DevApiError
-      }
-      throw {
-        code: 'REQUEST_TIMEOUT',
-        message: 'Request timed out.',
-      } satisfies DevApiError
-    }
-
-    // jsdom may throw a generic TypeError instead of DOMException for abort
-    if (err instanceof TypeError && signal?.aborted) {
-      throw {
-        code: 'REQUEST_CANCELLED',
-        message: 'Request was cancelled.',
-      } satisfies DevApiError
-    }
-
-    // Re-throw if already a DevApiError
-    if (err && typeof err === 'object' && 'code' in err && 'message' in err) {
-      throw err
-    }
-
-    // Network error
-    throw {
-      code: 'NETWORK_ERROR',
-      message: 'Unable to connect to the API.',
-    } satisfies DevApiError
-  } finally {
-    clearTimeout(timeoutId)
-  }
+/**
+ * Make a typed POST request to the Dev API.
+ *
+ * @template T - The expected response data type.
+ * @param path - API path relative to the base URL.
+ * @param body - Request body (will be JSON-serialized).
+ * @param config - Optional client configuration override.
+ * @param signal - Optional AbortSignal for request cancellation.
+ * @returns Parsed response data and metadata.
+ * @throws {DevApiError} On any error (network, HTTP, or business error).
+ */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  config?: Partial<DevApiClientConfig>,
+  signal?: AbortSignal,
+): Promise<DevApiResponse<T>> {
+  return apiRequest<T>('POST', path, config, signal, body)
 }
 
 /**
@@ -187,4 +135,92 @@ export function isDevApiError(err: unknown): err is DevApiError {
 /** Get the default base URL (for testing). */
 export function getDefaultBaseUrl(): string {
   return DEFAULT_BASE_URL
+}
+
+/**
+ * Shared request logic for both GET and POST.
+ *
+ * @internal
+ */
+async function apiRequest<T>(
+  method: 'GET' | 'POST',
+  path: string,
+  config: Partial<DevApiClientConfig> | undefined,
+  signal: AbortSignal | undefined,
+  body?: unknown,
+): Promise<DevApiResponse<T>> {
+  const { baseUrl, timeoutMs } = resolveConfig(config)
+
+  const url = new URL(path, baseUrl)
+  const requestId = crypto.randomUUID?.()?.replace(/-/g, '') ?? Date.now().toString(36)
+
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs)
+
+  let combinedSignal: AbortSignal
+  if (signal) {
+    signal.addEventListener('abort', () => timeoutController.abort())
+    combinedSignal = timeoutController.signal
+  } else {
+    combinedSignal = timeoutController.signal
+  }
+
+  try {
+    const init: RequestInit = {
+      method,
+      headers: {
+        'Accept': 'application/json',
+        'X-Request-ID': requestId,
+      },
+      signal: combinedSignal,
+    }
+    if (body !== undefined) {
+      init.headers = {
+        ...init.headers,
+        'Content-Type': 'application/json',
+      }
+      init.body = JSON.stringify(body)
+    }
+
+    const response = await fetch(url.toString(), init)
+    const text = await response.text()
+
+    if (!response.ok) {
+      throw parseApiError(response, text)
+    }
+
+    const parsed = JSON.parse(text) as DevApiResponse<T>
+    return parsed
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      if (signal?.aborted) {
+        throw {
+          code: 'REQUEST_CANCELLED',
+          message: 'Request was cancelled.',
+        } satisfies DevApiError
+      }
+      throw {
+        code: 'REQUEST_TIMEOUT',
+        message: 'Request timed out.',
+      } satisfies DevApiError
+    }
+
+    if (err instanceof TypeError && signal?.aborted) {
+      throw {
+        code: 'REQUEST_CANCELLED',
+        message: 'Request was cancelled.',
+      } satisfies DevApiError
+    }
+
+    if (err && typeof err === 'object' && 'code' in err && 'message' in err) {
+      throw err
+    }
+
+    throw {
+      code: 'NETWORK_ERROR',
+      message: 'Unable to connect to the API.',
+    } satisfies DevApiError
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }

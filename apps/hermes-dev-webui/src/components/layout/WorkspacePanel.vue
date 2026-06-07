@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Activity, Brain, ChevronLeft, ChevronRight, FolderTree, Layers } from '@lucide/vue'
 import IconButton from '@/components/common/IconButton.vue'
-import AgentPlaceholder from '@/components/workspace/AgentPlaceholder.vue'
-import ContextPlaceholder from '@/components/workspace/ContextPlaceholder.vue'
+import AgentPanel from '@/components/workspace/AgentPanel.vue'
+import ContextPanel from '@/components/workspace/ContextPanel.vue'
 import FilesPlaceholder from '@/components/workspace/FilesPlaceholder.vue'
-import MemoryPlaceholder from '@/components/workspace/MemoryPlaceholder.vue'
+import MemoryPanel from '@/components/workspace/MemoryPanel.vue'
 import { useUiStore, type WorkspaceTab } from '@/stores/ui'
 
 const props = defineProps<{
@@ -104,9 +104,9 @@ function moveTab(event: KeyboardEvent, tab: WorkspaceTab): void {
       tabindex="0"
     >
       <FilesPlaceholder v-if="uiStore.workspaceTab === 'files'" />
-      <MemoryPlaceholder v-else-if="uiStore.workspaceTab === 'memory'" />
-      <ContextPlaceholder v-else-if="uiStore.workspaceTab === 'context'" />
-      <AgentPlaceholder v-else />
+      <MemoryPanel v-else-if="uiStore.workspaceTab === 'memory'" />
+      <ContextPanel v-else-if="uiStore.workspaceTab === 'context'" />
+      <AgentPanel v-else />
     </div>
   </aside>
 </template>
