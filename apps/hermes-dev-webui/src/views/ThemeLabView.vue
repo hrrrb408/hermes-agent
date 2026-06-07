@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ArrowLeft } from '@lucide/vue'
+import { RouterLink } from 'vue-router'
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
 import ThemeShowcase from '@/components/theme/ThemeShowcase.vue'
 </script>
@@ -16,6 +18,10 @@ import ThemeShowcase from '@/components/theme/ThemeShowcase.vue'
       </p>
       <div class="theme-lab__switcher-row">
         <ThemeSwitcher />
+        <RouterLink class="theme-lab__back" to="/">
+          <ArrowLeft :size="15" aria-hidden="true" />
+          Back to Workspace
+        </RouterLink>
       </div>
     </header>
 
@@ -77,6 +83,19 @@ import ThemeShowcase from '@/components/theme/ThemeShowcase.vue'
 .theme-lab__switcher-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.theme-lab__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-secondary);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-panel-bg);
 }
 
 .theme-lab__main {

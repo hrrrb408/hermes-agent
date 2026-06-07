@@ -1,13 +1,25 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import ThemeLabView from '@/views/ThemeLabView.vue'
+import WorkspaceView from '@/views/WorkspaceView.vue'
 
-export const router = createRouter({
-  history: createWebHashHistory(),
-  routes: [
+export const routes: readonly RouteRecordRaw[] = [
     {
       path: '/',
+      name: 'workspace',
+      component: WorkspaceView,
+    },
+    {
+      path: '/theme-lab',
       name: 'theme-lab',
       component: ThemeLabView,
     },
-  ],
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
+    },
+]
+
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
 })

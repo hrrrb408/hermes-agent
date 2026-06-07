@@ -219,7 +219,7 @@ Current development goal: building a modern AI workbench WebUI for the Hermes de
 - **Independent Vue 3 application** at `apps/hermes-dev-webui/`
 - **Does NOT modify existing `web/` React Dashboard**
 - Backend: `hermes_cli/dev_web_server.py`, `dev_web_api.py`, `dev_web_schemas.py`
-- Frontend: Vue 3 + TypeScript + Vite + Vue Router + Pinia + Tailwind CSS
+- Frontend: Vue 3 + TypeScript + Vite + Vue Router + Pinia + native CSS
 - Product form: three-column AI workbench (session sidebar | chat area | workspace panel)
 
 ### Built-in Theme System (Frozen)
@@ -494,7 +494,7 @@ Runtime memory data is stored under `$HERMES_HOME/memory/` (NOT `memories/`):
 
 Phase 0 implements the **frontend mock workbench only**. No real Agent integration.
 
-**Phase 0A — Theme System & Project Scaffold:**
+**Phase 0A — Theme System & Project Scaffold (Complete / Frozen):**
 - `apps/hermes-dev-webui/` Vue 3 + TypeScript + Vite project scaffold
 - `ThemeDefinition` type and `ThemeId` strict union
 - Theme Registry (`themes/registry.ts`)
@@ -506,13 +506,26 @@ Phase 0 implements the **frontend mock workbench only**. No real Agent integrati
 - Theme Switcher component
 - Theme unit tests (12 cases per test requirements above)
 
-**Phase 0B — Layout & Theme Integration:**
-- Three-column responsive layout (session sidebar | chat area | workspace panel)
-- Top status bar (connection status, model info, environment indicator)
-- All five themes adapted to the main layout
-- Root element data attributes wired to theme system
+**Phase 0B — Layout & Theme Integration (Complete):**
+- Three-column workspace shell (session sidebar | chat area | workspace panel)
+- Top status bar with explicitly static Mock / Preview / Not connected states
+- Independently collapsible session sidebar and context workspace
+- Files / Memory / Context / Agent static preview tabs
+- Pinia UI state with localStorage persistence for both panels and active workspace tab
+- All five frozen themes adapted to the shared workspace component tree
+- Static preview content only
+- No real Agent, backend, SSE, SessionDB, tool execution, Memory access, file access, or Gateway control
 
-**Phase 0C — Mock Content Components:**
+**Phase 0B.1 — Workspace Theme Visual Refinement (Complete):**
+- Shared workspace component tree with theme-specific material treatment
+- Minimal refinements for Obsidian and Paper
+- Song lacquer architecture, amber reflection, and localized garden window
+- Ink moon-white workspace, distant ink landscape, fading dividers, and localized bamboo shadow
+- Sakura Night indigo workspace, localized blossom canopy, cool moonlight, and restrained warm anchor
+- No theme-specific functional branching, external assets, real Agent, API, or SSE
+- These five themes form the current Phase 0B baseline; later phases may refine their visuals without changing the Phase 0B static Mock boundary.
+
+**Phase 0C — Mock Content Components (Not started):**
 - Mock session list (sidebar with fake conversation entries)
 - Mock user and assistant messages (static chat bubbles)
 - Mock streaming text (simulated SSE with typewriter effect)

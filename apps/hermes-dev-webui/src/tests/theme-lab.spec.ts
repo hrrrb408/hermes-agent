@@ -10,11 +10,15 @@ describe('Theme Lab', () => {
     setActivePinia(createPinia())
   })
 
-  function mountLab() {
+  function mountLab(stubThemeSwitcher = true) {
     return mount(ThemeLabView, {
       global: {
         stubs: {
-          ThemeSwitcher: true,
+          ThemeSwitcher: stubThemeSwitcher,
+          RouterLink: {
+            props: ['to'],
+            template: '<a class="theme-lab__back" :href="to"><slot /></a>',
+          },
         },
       },
     })
@@ -27,12 +31,12 @@ describe('Theme Lab', () => {
   })
 
   it('Theme Switcher renders', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     expect(wrapper.findComponent(ThemeSwitcher).exists()).toBe(true)
   })
 
   it('user message example exists', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const userMsg = showcase.find('.message--user')
     expect(userMsg.exists()).toBe(true)
@@ -40,7 +44,7 @@ describe('Theme Lab', () => {
   })
 
   it('assistant message example exists', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const assistantMsg = showcase.find('.message--assistant')
     expect(assistantMsg.exists()).toBe(true)
@@ -48,7 +52,7 @@ describe('Theme Lab', () => {
   })
 
   it('running, success, error tool cards exist', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
 
     const runningCard = showcase.find('.tool-card--running')
@@ -65,7 +69,7 @@ describe('Theme Lab', () => {
   })
 
   it('memory example exists', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const memory = showcase.find('.memory-entry')
     expect(memory.exists()).toBe(true)
@@ -73,7 +77,7 @@ describe('Theme Lab', () => {
   })
 
   it('context summary exists', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const context = showcase.find('.context-summary')
     expect(context.exists()).toBe(true)
@@ -82,7 +86,7 @@ describe('Theme Lab', () => {
   })
 
   it('status badges exist', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const badges = showcase.findAll('.status-badge')
     expect(badges.length).toBeGreaterThanOrEqual(8)
@@ -102,14 +106,14 @@ describe('Theme Lab', () => {
   /* ===== Theme Signature tests ===== */
 
   it('Theme Signature section exists', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const signature = showcase.find('.signature')
     expect(signature.exists()).toBe(true)
   })
 
   it('Theme Signature shows all structural properties', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const items = showcase.findAll('.signature__item')
     expect(items.length).toBe(8)
@@ -126,7 +130,7 @@ describe('Theme Lab', () => {
   })
 
   it('Theme Signature shows current theme values', () => {
-    const wrapper = mount(ThemeLabView)
+    const wrapper = mountLab(false)
     const showcase = wrapper.findComponent(ThemeShowcase)
     const items = showcase.findAll('.signature__item')
 

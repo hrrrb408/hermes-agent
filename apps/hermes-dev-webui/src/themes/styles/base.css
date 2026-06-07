@@ -134,6 +134,48 @@
   --tool-card-header-radius: var(--radius-md) var(--radius-md) 0 0;
   --tool-card-body-bg: transparent;
 
+  /* --- Workspace shell --- */
+  --workspace-topbar-height: 46px;
+  --workspace-sidebar-width: 264px;
+  --workspace-sidebar-collapsed-width: 56px;
+  --workspace-panel-width: 328px;
+  --workspace-panel-collapsed-width: 56px;
+  --workspace-topbar-bg: var(--color-panel-bg);
+  --workspace-topbar-border: var(--color-border);
+  --workspace-topbar-highlight: transparent;
+  --workspace-sidebar-bg: var(--color-panel-bg);
+  --workspace-sidebar-border: var(--color-border);
+  --workspace-sidebar-selected-bg: var(--color-active-bg);
+  --workspace-sidebar-selected-border: var(--color-border);
+  --workspace-center-bg: var(--color-app-bg);
+  --workspace-center-overlay: transparent;
+  --workspace-panel-bg: var(--color-panel-bg);
+  --workspace-panel-border: var(--color-border);
+  --workspace-panel-highlight: transparent;
+  --workspace-divider: var(--color-border);
+  --workspace-active-bg: var(--color-active-bg);
+  --workspace-hover-bg: var(--color-hover-bg);
+  --workspace-empty-bg: var(--color-elevated-bg);
+  --workspace-empty-border: var(--color-border);
+  --workspace-empty-shadow: var(--shadow-panel);
+  --workspace-empty-accent: var(--color-accent);
+  --workspace-empty-divider: var(--color-divider);
+  --workspace-composer-bg: var(--color-elevated-bg);
+  --workspace-composer-border: var(--color-border-strong);
+  --workspace-composer-shadow: var(--shadow-panel);
+  --workspace-composer-highlight: transparent;
+  --workspace-tab-bg: transparent;
+  --workspace-tab-active-bg: var(--color-active-bg);
+  --workspace-tab-active-border: var(--color-border);
+  --workspace-card-bg: var(--color-elevated-bg);
+  --workspace-card-border: var(--color-border);
+  --workspace-muted-bg: var(--color-hover-bg);
+  --workspace-shadow: var(--shadow-panel);
+  --workspace-overlay: transparent;
+  --workspace-luminous-surface: transparent;
+  --workspace-ornament-color: transparent;
+  --workspace-ornament-opacity: 0;
+
   /* --- Fonts --- */
   --font-ui:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",

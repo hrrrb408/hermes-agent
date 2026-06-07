@@ -11,6 +11,7 @@ import './themes/styles/song.css'
 import './themes/styles/ink.css'
 import './themes/styles/sakura-night.css'
 import './styles/main.css'
+import './styles/workspace.css'
 
 const app = createApp(App)
 app.use(createPinia())
