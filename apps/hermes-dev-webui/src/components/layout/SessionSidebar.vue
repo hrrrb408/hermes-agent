@@ -95,8 +95,8 @@ onUnmounted(() => {
       <input
         v-model="localSearch"
         type="search"
-        aria-label="Search sessions"
-        placeholder="Search sessions"
+        aria-label="Search session title or ID"
+        placeholder="Search title or ID"
         @input="handleSearchInput"
       />
     </div>

@@ -218,7 +218,12 @@ def _register_routes(
         request: Request,
         limit: int = Query(default=30, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
-        query: str | None = Query(default=None, max_length=500),
+        query: str | None = Query(
+            default=None,
+            max_length=500,
+            description="Search session titles and session identifiers. "
+            "Message contents are not searched in Phase 0C-03.",
+        ),
         source: str | None = Query(default=None),
         order: OrderOption = Query(default=OrderOption.recent),
         archived: ArchivedOption = Query(default=ArchivedOption.exclude),

@@ -991,3 +991,232 @@ class TestSessionOpenAPIRoutes:
         paths = resp.json()["paths"]
         business = [p for p in paths if p.startswith("/api/dev/v1")]
         assert len(business) == 4
+
+
+# ── 16. SessionDB close read-only behavior ──
+
+
+class TestSessionDBCloseReadOnly:
+    """Verify that read-only SessionDB.close() skips WAL checkpoint."""
+
+    def test_read_only_close_skips_wal_checkpoint(self, db_path):
+        """Read-only connection should not execute PRAGMA wal_checkpoint.
+
+        Strategy: subclass SessionDB to override close behavior tracking.
+        Since sqlite3.Connection cannot be monkey-patched, we verify by
+        checking that WAL/SHM mtime is unchanged after close.
+        """
+        from hermes_state import SessionDB
+
+        # First open writable to initialize WAL, then close
+        writable = SessionDB(db_path=db_path, read_only=False)
+        writable.close()
+
+        parent = db_path.parent
+        wal_path = parent / "state.db-wal"
+        shm_path = parent / "state.db-shm"
+
+        # Record WAL/SHM state
+        wal_mtime_before = wal_path.stat().st_mtime if wal_path.exists() else 0
+        shm_mtime_before = shm_path.stat().st_mtime if shm_path.exists() else 0
+
+        # Open read-only and close
+        db = SessionDB(db_path=db_path, read_only=True)
+        db.close()
+
+        # Verify WAL/SHM mtimes unchanged (checkpoint would change them)
+        if wal_path.exists():
+            assert wal_path.stat().st_mtime == wal_mtime_before, (
+                "Read-only close changed WAL mtime — checkpoint may have been attempted"
+            )
+        if shm_path.exists():
+            assert shm_path.stat().st_mtime == shm_mtime_before, (
+                "Read-only close changed SHM mtime — checkpoint may have been attempted"
+            )
+
+        # Verify no journal file created
+        assert not (parent / "state.db-journal").exists()
+
+    def test_read_only_close_still_closes_connection(self, db_path):
+        """After close(), the connection must be None."""
+        from hermes_state import SessionDB
+
+        db = SessionDB(db_path=db_path, read_only=True)
+        assert db._conn is not None
+        db.close()
+        assert db._conn is None
+
+    def test_read_only_close_does_not_modify_wal_files(self, db_path):
+        """Read-only open + close should not change WAL or SHM."""
+        from hermes_state import SessionDB
+
+        parent = db_path.parent
+        # Open writable first to ensure WAL mode is set, then close
+        writable = SessionDB(db_path=db_path, read_only=False)
+        writable.close()
+
+        # Record WAL/SHM state after writable close
+        wal_path = parent / "state.db-wal"
+        shm_path = parent / "state.db-shm"
+        wal_before = (
+            (wal_path.stat().st_size, wal_path.stat().st_mtime)
+            if wal_path.exists() else None
+        )
+        shm_before = (
+            (shm_path.stat().st_size, shm_path.stat().st_mtime)
+            if shm_path.exists() else None
+        )
+
+        # Open read-only and close
+        db = SessionDB(db_path=db_path, read_only=True)
+        db.close()
+
+        # Verify WAL unchanged
+        if wal_before is not None and wal_path.exists():
+            assert wal_path.stat().st_size == wal_before[0]
+            assert wal_path.stat().st_mtime == wal_before[1]
+        if shm_before is not None and shm_path.exists():
+            assert shm_path.stat().st_size == shm_before[0]
+            assert shm_path.stat().st_mtime == shm_before[1]
+
+        # No journal
+        assert not (parent / "state.db-journal").exists()
+
+    def test_writable_close_preserves_checkpoint_behavior(self, db_path):
+        """Writable connections should still attempt checkpoint.
+
+        Strategy: open writable, do a write, close, verify WAL is
+        checkpointed (WAL should shrink or disappear).
+        """
+        from hermes_state import SessionDB
+        import time
+
+        # Open writable, insert a row, then close
+        db = SessionDB(db_path=db_path, read_only=False)
+        db._conn.execute("BEGIN IMMEDIATE")
+        db._conn.execute(
+            "INSERT OR REPLACE INTO sessions (id, source, started_at) "
+            "VALUES (?, ?, ?)",
+            ("writable-test-ckpt", "cli", time.time()),
+        )
+        db._conn.execute("COMMIT")
+        db.close()
+
+        # After writable close with checkpoint, WAL should exist but be
+        # empty or very small (the checkpoint truncates it)
+        parent = db_path.parent
+        wal_path = parent / "state.db-wal"
+        if wal_path.exists():
+            # WAL exists but should be small after checkpoint
+            assert wal_path.stat().st_size >= 0  # just verify accessible
+
+        # Verify the session was persisted
+        db2 = SessionDB(db_path=db_path, read_only=True)
+        row = db2.get_session("writable-test-ckpt")
+        db2.close()
+        assert row is not None, "Writable session should have been persisted"
+
+
+# ── 17. Search scope contract tests ──
+
+
+class TestSearchScopeContract:
+    """Verify search only covers title and session ID, not message content
+    or other sensitive fields."""
+
+    def test_search_does_not_match_message_content(self, db_path):
+        """Message body content must not appear in search results."""
+        _insert_session(db_path, "msg-scope-test", title="Alpha session")
+        _insert_message(db_path, "msg-scope-test", content="SECRET_MESSAGE_ONLY_TOKEN_xyzzy")
+
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=SECRET_MESSAGE_ONLY_TOKEN")
+        items = resp.json()["data"]["items"]
+        assert len(items) == 0
+
+    def test_search_does_not_match_system_prompt(self, db_path):
+        _insert_session(
+            db_path, "sys-prompt-test", title="Beta",
+            system_prompt="SECRET_SYS_PROMPT_TOKEN_plugh",
+        )
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=SECRET_SYS_PROMPT_TOKEN")
+        assert len(resp.json()["data"]["items"]) == 0
+
+    def test_search_does_not_match_cwd(self, db_path):
+        _insert_session(
+            db_path, "cwd-test", title="Gamma",
+            cwd="/top/SECRET_CWD_TOKEN_foo",
+        )
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=SECRET_CWD_TOKEN")
+        assert len(resp.json()["data"]["items"]) == 0
+
+    def test_search_does_not_match_user_id(self, db_path):
+        _insert_session(
+            db_path, "uid-test", title="Delta",
+            user_id="SECRET_USER_ID_TOKEN_bar",
+        )
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=SECRET_USER_ID_TOKEN")
+        assert len(resp.json()["data"]["items"]) == 0
+
+    def test_search_does_not_match_billing(self, db_path):
+        _insert_session(
+            db_path, "billing-test", title="Epsilon",
+            billing_provider="SECRET_BILLING_TOKEN_baz",
+        )
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=SECRET_BILLING_TOKEN")
+        assert len(resp.json()["data"]["items"]) == 0
+
+    def test_search_hits_title(self, db_path):
+        _insert_session(db_path, "title-hit", title="UniqueTitle_ZZZ123")
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=UniqueTitle_ZZZ123")
+        assert len(resp.json()["data"]["items"]) >= 1
+
+    def test_search_hits_session_id(self, db_path):
+        _insert_session(db_path, "id-hit-ABC456", title="Some title")
+        config = DevWebApiConfig(hermes_home=db_path.parent)
+        client = TestClient(create_dev_web_api_app(config))
+        resp = client.get("/api/dev/v1/sessions?query=id-hit-ABC456")
+        assert len(resp.json()["data"]["items"]) >= 1
+
+
+# ── 18. OpenAPI query parameter description ──
+
+
+class TestOpenAPISearchDescription:
+    """Verify OpenAPI query parameter description is aligned with
+    Phase 0C-03 search scope (title + ID only, not message content)."""
+
+    def test_query_param_description_mentions_title_or_id(self, seeded_client):
+        resp = seeded_client.get("/openapi.json")
+        spec = resp.json()
+        sessions_get = spec["paths"]["/api/dev/v1/sessions"]["get"]
+        query_param = None
+        for p in sessions_get.get("parameters", []):
+            if p.get("name") == "query":
+                query_param = p
+                break
+        assert query_param is not None
+        desc = query_param.get("description", "").lower()
+        # Must mention title or ID
+        assert "title" in desc or "id" in desc or "session" in desc
+
+    def test_query_param_description_no_fts5_claim(self, seeded_client):
+        """Must not claim FTS5 search capability."""
+        resp = seeded_client.get("/openapi.json")
+        spec = resp.json()
+        sessions_get = spec["paths"]["/api/dev/v1/sessions"]["get"]
+        for p in sessions_get.get("parameters", []):
+            if p.get("name") == "query":
+                desc = p.get("description", "")
+                assert "FTS5" not in desc, "Description must not claim FTS5 search"

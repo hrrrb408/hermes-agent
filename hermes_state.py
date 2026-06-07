@@ -649,14 +649,16 @@ class SessionDB:
         """Close the database connection.
 
         Attempts a TRUNCATE WAL checkpoint first so that exiting processes
-        help shrink the WAL file.
+        help shrink the WAL file.  Read-only connections skip the checkpoint
+        entirely — they cannot write and should not attempt it.
         """
         with self._lock:
             if self._conn:
-                try:
-                    self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-                except Exception:
-                    pass
+                if not self.read_only:
+                    try:
+                        self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    except Exception:
+                        pass
                 self._conn.close()
                 self._conn = None
 
