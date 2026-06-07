@@ -264,7 +264,7 @@ GET /api/dev/v1/sessions
 |-----------|------|---------|----------|-------------|
 | `limit` | integer | 30 | No | Items per page (1–100) |
 | `offset` | integer | 0 | No | Offset for pagination |
-| `query` | string | — | No | FTS5 search in message content |
+| `query` | string | — | No | Search session titles and session identifiers (message-content search deferred) |
 | `source` | string | — | No | Filter by source (e.g., "cli", "wechat") |
 | `order` | string | "recent" | No | "recent" (last_active DESC) or "created" (started_at DESC) |
 | `archived` | string | "exclude" | No | "exclude", "include", or "only" |

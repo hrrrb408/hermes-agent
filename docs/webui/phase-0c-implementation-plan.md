@@ -193,7 +193,27 @@ Wire the session list and session detail endpoints to real SessionDB read-only q
 
 ---
 
-## Phase 0C-04: Session Messages Read-Only Display
+## Phase 0C-03A: Closure Validation — Completed
+
+**Implementation commit:** hardening + docs (2 commits)
+
+### Fixes Applied
+
+1. **SessionDB read-only close:** Added `if not self.read_only:` guard before WAL checkpoint in `hermes_state.py`. Read-only connections no longer attempt write operations on close.
+2. **Search contract alignment:** Updated OpenAPI, API docs, and frontend placeholder to clearly state search covers session title and ID only. Removed incorrect "FTS5 search in message content" description.
+3. **Browser integration:** Verified real WebUI↔API interaction (40/42 integration checks passed), CORS correct, no sensitive field leaks, DB hash unchanged.
+
+### Additional Tests
+
+- 4 tests: SessionDB close read-only behavior
+- 7 tests: Search scope contract (title/ID hit, sensitive fields don't hit)
+- 2 tests: OpenAPI query parameter description
+- Total backend tests: 205 (was 192)
+- Frontend tests: 172 (unchanged)
+
+---
+
+## Phase 0C-04: Session Messages Read-Only Display — Not Started
 
 ### Goal
 

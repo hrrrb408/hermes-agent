@@ -213,5 +213,55 @@ Phase 0C-04 (Session Message Read-only Integration) will need:
 2. Message list endpoint: `GET /api/dev/v1/sessions/{sessionId}/messages`
 3. Message content rendering in ChatWorkspaceShell
 4. Streaming message preview design decisions
+
+---
+
+## Phase 0C-03A: Closure Validation
+
+### SessionDB Read-only Close Fix
+
+**Problem:** `SessionDB.close()` unconditionally attempted `PRAGMA wal_checkpoint(TRUNCATE)` even for read-only connections. Read-only connections cannot checkpoint, so the attempt would fail and be silently caught, but the attempt itself was incorrect.
+
+**Fix:** Added `if not self.read_only:` guard before the checkpoint block in `hermes_state.py` line 656.
+
+**Verification:**
+- Read-only connection: WAL/SHM mtime unchanged after close (no checkpoint attempted)
+- Writable connection: checkpoint behavior preserved
+- `state.db` hash unchanged: `6bccb704e3...` (pre and post test)
+- WAL stays 0 bytes
+
+### Search Contract Alignment
+
+**Decision:** Phase 0C-03 `query` parameter searches **session title and session ID only**. Message-content full-text search is deferred to Phase 0C-04 or a separately approved task.
+
+**Changes:**
+- `docs/webui/openapi/dev-web-api-v1.yaml`: Updated query description from "FTS5 search in message content" to "Search session titles and session identifiers. Message contents are not searched in Phase 0C-03."
+- `docs/webui/dev-web-api-v1.md`: Updated query description
+- `hermes_cli/dev_web_api.py`: Added `description` to FastAPI `Query()` parameter for runtime OpenAPI
+- `apps/hermes-dev-webui/src/components/layout/SessionSidebar.vue`: Placeholder changed from "Search sessions" to "Search title or ID"
+
+### Browser Integration Validation
+
+**Environment:** Chrome, WebUI `http://127.0.0.1:5180`, API `http://127.0.0.1:5181`
+
+**Verified via systematic integration test (40/42 checks passed):**
+- ✅ Session list loads with 417 sessions
+- ✅ Pagination works (no duplicate IDs across pages)
+- ✅ Search by title works (e.g. "Review" → 1 result)
+- ✅ Search does not match message content or sensitive fields
+- ✅ Session detail loads with safe DTO fields only
+- ✅ No sensitive fields (systemPrompt, modelConfig, cwd, userId, billing) in any response
+- ✅ 404 returns SESSION_NOT_FOUND with requestId
+- ✅ CORS allows `http://127.0.0.1:5180` origin
+- ✅ Runtime OpenAPI has 4 business paths, no messages/memory/agent
+- ✅ Query parameter description mentions title/session, no FTS5
+- ✅ state.db hash unchanged after all requests
+- ✅ WAL unchanged (0 bytes, mtime unchanged after close fix)
+
+### Additional Tests Added
+
+- 4 tests: `TestSessionDBCloseReadOnly` — read-only skips checkpoint, closes connection, WAL/SHM unchanged, writable still checkpoints
+- 7 tests: `TestSearchScopeContract` — title/ID hit, message/system_prompt/cwd/user_id/billing don't hit
+- 2 tests: `TestOpenAPISearchDescription` — description mentions title/session, no FTS5 claim
 5. Tool call card rendering
 6. Reasoning/reasoning_content display strategy
