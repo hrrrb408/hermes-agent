@@ -213,6 +213,38 @@ Wire the session list and session detail endpoints to real SessionDB read-only q
 
 ---
 
+## Phase 0C-03B: Real Browser Validation — Completed
+
+**Implementation commit:** docs + type fix
+
+### Goal
+
+Resolve the ambiguous "40/42 checks passed" statement from Phase 0C-03A with documented real browser validation.
+
+### Results
+
+- Constructed 42-item checklist and validated with Playwright + real Chrome
+- **42/42 checks passed** (replaces the previous "40/42" estimate)
+- Verified: page load, session list, search, selection, error/retry, console, layout, all five themes
+- Confirmed API restart recovery in real browser
+- Confirmed all five themes correctly apply CSS variables (data-theme, color-scheme, --color-app-bg, --color-text-primary, --color-accent)
+
+### Code Fixes
+
+1. **import.meta type safety** in `src/api/client.ts` — removed unsafe cast, uses proper Vite types
+2. **Missing env.d.ts** — added `/// <reference types="vite/client" />` per tsconfig.app.json include
+
+### Verified
+
+- Backend tests: 205 passed
+- Frontend tests: 172 passed
+- vue-tsc -b: PASS
+- vite build: 1808 modules, 812ms
+- Production Gateway PID 1717: untouched
+- No ~/.hermes access
+
+---
+
 ## Phase 0C-04: Session Messages Read-Only Display — Not Started
 
 ### Goal

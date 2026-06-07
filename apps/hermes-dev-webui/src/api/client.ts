@@ -39,7 +39,7 @@ function resolveConfig(config?: Partial<DevApiClientConfig>): DevApiClientConfig
   const baseUrl =
     config?.baseUrl ??
     (typeof import.meta !== 'undefined'
-      ? (import.meta as Record<string, Record<string, string>>).env?.VITE_HERMES_DEV_API_BASE_URL
+      ? import.meta.env?.VITE_HERMES_DEV_API_BASE_URL
       : undefined) ??
     DEFAULT_BASE_URL
 

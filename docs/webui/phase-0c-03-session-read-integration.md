@@ -244,7 +244,7 @@ Phase 0C-04 (Session Message Read-only Integration) will need:
 
 **Environment:** Chrome, WebUI `http://127.0.0.1:5180`, API `http://127.0.0.1:5181`
 
-**Verified via systematic integration test (40/42 checks passed):**
+**Verified via systematic integration test (40/42 checks passed — see Phase 0C-03B for full 42/42 browser validation):**
 - ✅ Session list loads with 417 sessions
 - ✅ Pagination works (no duplicate IDs across pages)
 - ✅ Search by title works (e.g. "Review" → 1 result)
@@ -257,6 +257,8 @@ Phase 0C-04 (Session Message Read-only Integration) will need:
 - ✅ Query parameter description mentions title/session, no FTS5
 - ✅ state.db hash unchanged after all requests
 - ✅ WAL unchanged (0 bytes, mtime unchanged after close fix)
+
+> **Note:** The original "40/42" estimate has been superseded by Phase 0C-03B which performed a documented 42/42 real browser validation with Playwright + Chrome. See `docs/webui/phase-0c-03b-browser-validation.md`.
 
 ### Additional Tests Added
 
