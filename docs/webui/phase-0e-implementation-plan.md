@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00 completed; 0E-01 through 0E-Release not started
+**Status:** Phase 0E-00, 0E-01 completed; 0E-02 through 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -35,10 +35,11 @@ Phase 0E is an engineering governance phase. It resolves build artifact hygiene,
 
 ---
 
-## Phase 0E-01: Build Artifact Policy — Not Started
+## Phase 0E-01: Build Artifact Policy — Completed ✅
 
 **Priority:** P2
 **Estimated scope:** Small (`.gitignore` + `git rm --cached` + verification)
+**Date:** 2026-06-08
 
 ### Goal
 
@@ -46,13 +47,16 @@ Remove `dist/` and `tsconfig.app.tsbuildinfo` from Git tracking for the Dev WebU
 
 ### Context
 
-Currently tracked:
+Currently tracked (before 0E-01):
 ```
 apps/hermes-dev-webui/dist/assets/index-AxamzU0w.js
 apps/hermes-dev-webui/dist/assets/index-CCl_6OPG.css
 apps/hermes-dev-webui/dist/index.html
 apps/hermes-dev-webui/tsconfig.app.tsbuildinfo
+apps/hermes-dev-webui/tsconfig.node.tsbuildinfo
 ```
+
+All 5 files removed from Git tracking via `git rm --cached`. `.gitignore` updated with precise rules.
 
 The `.gitignore` already has patterns for `apps/desktop/dist/`, `apps/desktop/*.tsbuildinfo`, and `hermes_cli/web_dist/` but NOT for `apps/hermes-dev-webui/`.
 
@@ -78,11 +82,11 @@ The `.gitignore` already has patterns for `apps/desktop/dist/`, `apps/desktop/*.
 
 ### Acceptance Criteria
 
-1. `git ls-files apps/hermes-dev-webui/dist` returns empty
-2. `git ls-files apps/hermes-dev-webui/tsconfig.app.tsbuildinfo` returns empty
-3. `pnpm build` produces dist locally without `git status` showing changes
-4. `dev-check` does not report build artifact issues
-5. All existing tests still pass
+1. ✅ `git ls-files apps/hermes-dev-webui/dist` returns empty
+2. ✅ `git ls-files apps/hermes-dev-webui/tsconfig.app.tsbuildinfo` returns empty
+3. ✅ `pnpm build` produces dist locally without `git status` showing changes
+4. ✅ `dev-check` does not report build artifact issues
+5. ✅ All existing tests still pass (324 frontend tests, 0 failures)
 
 ### Dependencies
 
@@ -444,7 +448,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 | Phase | Goal | Status | Dependencies |
 |-------|------|--------|-------------|
 | 0E-00 | Governance scope & freeze | ✅ Completed | None |
-| 0E-01 | Build artifact policy | Not started | None |
+| 0E-01 | Build artifact policy | ✅ Completed | None |
 | 0E-02 | Visual review artifact policy | Not started | None |
 | 0E-03 | Playwright smoke matrix | Not started | 0E-01 preferred |
 | 0E-04 | Dev WebUI smoke runner | Not started | None |
@@ -458,7 +462,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 
 ```
 0E-00 ✅
-├── 0E-01 (no deps)
+├── 0E-01 ✅ (no deps)
 ├── 0E-02 (no deps)
 ├── 0E-03 (prefers 0E-01)
 ├── 0E-04 (no deps)

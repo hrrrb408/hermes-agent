@@ -365,4 +365,6 @@ None.
 
 **Phase 0E-00 completed. Phase 0E scope is frozen.**
 
-The next subphase is **0E-01: Build Artifact Policy**. This task does NOT automatically start 0E-01.
+**Phase 0E-01 completed.** Build artifacts (`dist/` and `*.tsbuildinfo`) are no longer tracked by Git. Dev WebUI `pnpm build` no longer leaves tracked changes. See `docs/webui/phase-0e-01-build-artifact-policy.md` for details.
+
+The next subphase is **0E-02: Visual Review Artifact Policy**. This task does NOT automatically start 0E-02.
