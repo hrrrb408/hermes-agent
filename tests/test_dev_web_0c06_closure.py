@@ -7,6 +7,12 @@ Covers:
 - Context preview edge cases
 - No Mock fallback verification
 - Unified error envelope across all paths
+
+Phase 1A note:
+  Three read-only Review Queue GET routes were added in Phase 1A.
+  The path count increased from 11 to 14. Review GET routes are
+  now allowed; review write routes (approve/reject/enqueue/POST/PATCH/DELETE)
+  remain forbidden.
 """
 
 from __future__ import annotations
@@ -59,20 +65,27 @@ def client_with_home(tmp_path):
 
 
 class TestForbiddenRoutes:
-    """Verify all disallowed business routes return 404."""
+    """Verify all disallowed business routes return 404.
+
+    Phase 1A: Review Queue GET routes (/reviews, /reviews/{reviewId},
+    /reviews/status) are now allowed read-only endpoints.
+    Review write routes (approve/reject/enqueue) remain forbidden.
+    """
 
     @pytest.mark.parametrize("path", [
-        "/api/dev/v1/reviews",
-        "/api/dev/v1/reviews/pending",
-        "/api/dev/v1/reviews/MR-001",
+        # Review write sub-paths remain forbidden
         "/api/dev/v1/reviews/MR-001/approve",
         "/api/dev/v1/reviews/MR-001/reject",
+        # Agent execution
         "/api/dev/v1/agent/run",
         "/api/dev/v1/agent/messages",
+        # Tool execution
         "/api/dev/v1/tools",
         "/api/dev/v1/tools/run",
+        # File modification
         "/api/dev/v1/files/upload",
         "/api/dev/v1/files/delete",
+        # Memory write
         "/api/dev/v1/memory/write",
         "/api/dev/v1/memory/items/test-id/delete",
         "/api/dev/v1/memory/items/test-id/update",
@@ -83,16 +96,26 @@ class TestForbiddenRoutes:
         assert resp.status_code == 404, f"{path} should be 404, got {resp.status_code}"
 
     @pytest.mark.parametrize("method,path", [
+        # Review write routes — must remain forbidden
+        ("POST", "/api/dev/v1/reviews"),
+        ("POST", "/api/dev/v1/reviews/MR-test/approve"),
+        ("POST", "/api/dev/v1/reviews/MR-test/reject"),
+        ("POST", "/api/dev/v1/reviews/enqueue"),
+        ("PATCH", "/api/dev/v1/reviews/MR-test"),
+        # Memory write
         ("POST", "/api/dev/v1/memory/items"),
         ("PATCH", "/api/dev/v1/memory/items/test-id"),
         ("POST", "/api/dev/v1/memory/categories"),
         ("PATCH", "/api/dev/v1/memory/categories/test"),
+        # Agent / tools execution
         ("POST", "/api/dev/v1/agent/run"),
         ("POST", "/api/dev/v1/tools/run"),
+        # Session / message write
         ("POST", "/api/dev/v1/sessions"),
         ("PATCH", "/api/dev/v1/sessions/test-id"),
         ("POST", "/api/dev/v1/sessions/test-id/messages"),
         ("POST", "/api/dev/v1/messages"),
+        # File write
         ("POST", "/api/dev/v1/files/upload"),
     ])
     def test_write_methods_not_allowed(self, client, method, path):
@@ -103,6 +126,7 @@ class TestForbiddenRoutes:
         )
 
     @pytest.mark.parametrize("path", [
+        "/api/dev/v1/reviews/MR-test",
         "/api/dev/v1/memory/items/test-id",
         "/api/dev/v1/sessions/test-id",
         "/api/dev/v1/files/test",
@@ -139,6 +163,10 @@ class TestMethodEnforcement:
         f"{API}/memory/items",
         f"{API}/memory/items/TEST-001",
         f"{API}/agent/status",
+        # Phase 1A: Review Queue read-only GET routes
+        f"{API}/reviews/status",
+        f"{API}/reviews",
+        f"{API}/reviews/MR-001",
     ]
 
     @pytest.mark.parametrize("endpoint", GET_ONLY_ENDPOINTS)
@@ -167,6 +195,7 @@ class TestErrorResponseLeakage:
     ERROR_RESPONSES_PARAMS = [
         # 404
         ("GET", f"{API}/nonexistent"),
+        # Reviews: now a valid route, returns 503 when service unavailable
         ("GET", f"{API}/reviews"),
         # 405
         ("POST", f"{API}/status"),
@@ -373,10 +402,11 @@ class TestOpenAPIContract:
     """Verify static and runtime OpenAPI consistency."""
 
     def test_business_paths_count(self, client):
+        """Phase 1A: 14 implemented business paths (11 + 3 review routes)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 11
+        assert len(paths) == 14
 
     def test_only_one_post_route(self, client):
         resp = client.get("/openapi.json")
