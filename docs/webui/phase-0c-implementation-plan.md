@@ -1,7 +1,7 @@
 # Phase 0C Implementation Plan
 
 **Date:** 2026-06-07
-**Status:** In Progress
+**Status:** Completed — Phase 0C formally sealed (2026-06-08)
 **Depends on:** Phase 0C-01 API Contract (accepted)
 
 ---
@@ -401,7 +401,7 @@ Wire the memory, context preview, and agent status endpoints to real backend ser
 
 ---
 
-## Phase 0C-06: Quality, Testing, and Freeze
+## Phase 0C-06: Error Handling, Testing, Visual Regression, and Freeze — Completed
 
 ### Goal
 
@@ -487,11 +487,21 @@ Comprehensive testing, error handling polish, visual regression across all five 
 
 ## Summary Timeline
 
-| Phase | Goal | Estimated Effort | Dependencies |
-|-------|------|-----------------|-------------|
-| 0C-01 | Audit & API Contract | ✅ Complete | None |
-| 0C-02 | API Server Skeleton | Medium | 0C-01 |
-| 0C-03 | Session List Integration | Medium | 0C-02 |
-| 0C-04 | Session Messages Display | Medium-High | 0C-03 |
-| 0C-05 | Memory/Context/Agent Panels | High | 0C-04 |
-| 0C-06 | Quality & Freeze | Medium | 0C-05 |
+| Phase | Goal | Status | Dependencies |
+|-------|------|--------|-------------|
+| 0C-01 | Audit & API Contract | ✅ Completed | None |
+| 0C-02 | API Server Skeleton | ✅ Completed | 0C-01 |
+| 0C-03 | Session List Integration | ✅ Completed | 0C-02 |
+| 0C-04 | Session Messages Display | ✅ Completed | 0C-03 |
+| 0C-05 | Memory/Context/Agent Panels | ✅ Completed | 0C-04 |
+| 0C-06 | Error Handling, Testing, Visual Regression | ✅ Completed | 0C-05 |
+
+---
+
+## Phase 0C Closure
+
+**Phase 0C is formally sealed as of 2026-06-08.**
+
+See `docs/webui/phase-0c-final-closure.md` for the complete closure report.
+
+**Phase 0D has NOT been started.**
