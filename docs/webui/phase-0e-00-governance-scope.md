@@ -367,4 +367,6 @@ None.
 
 **Phase 0E-01 completed.** Build artifacts (`dist/` and `*.tsbuildinfo`) are no longer tracked by Git. Dev WebUI `pnpm build` no longer leaves tracked changes. See `docs/webui/phase-0e-01-build-artifact-policy.md` for details.
 
-The next subphase is **0E-02: Visual Review Artifact Policy**. This task does NOT automatically start 0E-02.
+**Phase 0E-02 completed.** Visual-review artifacts are local-only and ignored by Git. `dev-check` no longer reports dirty worktree due solely to visual-review artifacts. Plan A (`.gitignore` only) was sufficient — no `dev-check` code changes were needed. See `docs/webui/phase-0e-02-visual-review-artifact-policy.md` for details.
+
+The next subphase is **0E-03: Playwright Smoke Matrix**. This task does NOT automatically start 0E-03.

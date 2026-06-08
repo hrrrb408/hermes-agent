@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00, 0E-01 completed; 0E-02 through 0E-Release not started
+**Status:** Phase 0E-00, 0E-01, 0E-02 completed; 0E-03 through 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -98,10 +98,12 @@ Only after 0E-Release verification.
 
 ---
 
-## Phase 0E-02: Visual Review Artifact Policy — Not Started
+## Phase 0E-02: Visual Review Artifact Policy — Completed ✅
 
+**Status:** Completed
 **Priority:** P2
 **Estimated scope:** Small (`.gitignore` entry + optional dev-check allowlist)
+**Date:** 2026-06-08
 
 ### Goal
 
@@ -135,10 +137,11 @@ These must NOT be deleted. They are local human visual review artifacts.
 
 ### Acceptance Criteria
 
-1. `git status` no longer shows visual-review directories
-2. `dev-check` reports PASS for Git worktree (or WARN only with clear "known whitelisted paths" message)
-3. Existing directories still exist on disk
-4. All existing tests still pass
+1. ✅ `git status` no longer shows visual-review directories
+2. ✅ `dev-check` reports PASS for Git worktree (Plan A sufficient, no dev-check code changes needed)
+3. ✅ Existing directories still exist on disk
+4. ✅ 0E-01 build artifact rules remain effective
+5. ✅ No dev-check code changes required
 
 ### Dependencies
 
@@ -449,7 +452,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 |-------|------|--------|-------------|
 | 0E-00 | Governance scope & freeze | ✅ Completed | None |
 | 0E-01 | Build artifact policy | ✅ Completed | None |
-| 0E-02 | Visual review artifact policy | Not started | None |
+| 0E-02 | Visual review artifact policy | ✅ Completed | None |
 | 0E-03 | Playwright smoke matrix | Not started | 0E-01 preferred |
 | 0E-04 | Dev WebUI smoke runner | Not started | None |
 | 0E-05 | dev-check enhancement | Not started | 0E-01, 0E-02 preferred |
@@ -463,7 +466,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 ```
 0E-00 ✅
 ├── 0E-01 ✅ (no deps)
-├── 0E-02 (no deps)
+├── 0E-02 ✅ (no deps)
 ├── 0E-03 (prefers 0E-01)
 ├── 0E-04 (no deps)
 ├── 0E-05 (prefers 0E-01 + 0E-02)

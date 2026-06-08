@@ -80,6 +80,9 @@ apps/desktop/*.tsbuildinfo
 /apps/hermes-dev-webui/*.tsbuildinfo
 /apps/hermes-dev-webui/tsconfig*.tsbuildinfo
 
+# Hermes Dev WebUI visual review artifacts
+/apps/hermes-dev-webui/visual-review/
+
 # Web UI assets — synced from @nous-research/ui at build time via
 # `npm run sync-assets` (see web/package.json).
 web/public/fonts/
