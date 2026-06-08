@@ -40,9 +40,9 @@ const FORBIDDEN_PATTERNS = [
   /:5182\b/,
   /\/\/localhost(?![:/]|\b)/,         // bare "localhost" host (not 127.0.0.1)
   /\/\/0\.0\.0\.0/,
-  /\/reviews\/.*\/approve(?!\/dry-run)/,   // approve without /dry-run
-  /\/reviews\/.*\/reject(?!\/dry-run)/,    // reject without /dry-run
-  /POST.*\/api\/dev\/v1\/reviews(?!\/.*\/(approve|reject)\/dry-run)/,  // POST to reviews but not dry-run
+  /\/reviews\/.*\/approve(?!\/(dry-run|execute))/,   // approve without /dry-run or /execute
+  /\/reviews\/.*\/reject(?!\/(dry-run|execute))/,    // reject without /dry-run or /execute
+  /POST.*\/api\/dev\/v1\/reviews(?!\/.*\/(approve|reject)\/(dry-run|execute))/,  // POST to reviews but not dry-run or execute
   /PATCH.*\/api\/dev\/v1\/reviews/,
   /DELETE.*\/api\/dev\/v1\/reviews/,
   /POST.*\/api\/dev\/v1\/memory(?!\/status)(?!\/categories)(?!\/items[^/])\b/,
@@ -56,11 +56,13 @@ const FORBIDDEN_PATTERNS = [
   /DELETE.*\/api\/dev\/v1\/files/,
 ] as const
 
-// Allowed POST endpoints: context/preview + review dry-run
+// Allowed POST endpoints: context/preview + review dry-run + review execute
 const ALLOWED_POST_PATTERNS = [
   /POST.*\/api\/dev\/v1\/context\/preview/,
   /POST.*\/api\/dev\/v1\/reviews\/.*\/approve\/dry-run/,
   /POST.*\/api\/dev\/v1\/reviews\/.*\/reject\/dry-run/,
+  /POST.*\/api\/dev\/v1\/reviews\/.*\/approve\/execute/,
+  /POST.*\/api\/dev\/v1\/reviews\/.*\/reject\/execute/,
 ] as const
 
 // ─── Helpers ───────────────────────────────────────────────────────────

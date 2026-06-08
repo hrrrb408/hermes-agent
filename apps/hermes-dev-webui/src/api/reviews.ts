@@ -7,10 +7,13 @@
  * - GET /api/dev/v1/reviews/{reviewId}
  * - POST /api/dev/v1/reviews/{reviewId}/approve/dry-run
  * - POST /api/dev/v1/reviews/{reviewId}/reject/dry-run
+ * - POST /api/dev/v1/reviews/{reviewId}/approve/execute
+ * - POST /api/dev/v1/reviews/{reviewId}/reject/execute
  *
  * Phase 1A: read-only GET endpoints.
  * Phase 1B: dry-run POST endpoints (no side effects).
- * No real approve/reject/enqueue functions are provided.
+ * Phase 1C: dev-only execute POST endpoints (real side effects, gated by kill switch).
+ * No bare approve/reject/enqueue functions are provided.
  */
 
 import { apiGet, apiPost } from './client'
@@ -22,6 +25,9 @@ import type {
   DryRunResult,
   ApproveDryRunRequest,
   RejectDryRunRequest,
+  ApproveExecuteRequest,
+  RejectExecuteRequest,
+  ReviewExecuteResult,
 } from '@/types/api/review'
 
 /** API prefix matching the Dev Web API. */
@@ -97,8 +103,6 @@ export async function fetchReviewDetail(
  *
  * This is a dry-run operation — no files are modified, no events
  * are appended, no memory is written, and no review status changes.
- *
- * Phase 1B only. The real approve endpoint is not implemented.
  */
 export async function dryRunApproveReview(
   reviewId: string,
@@ -119,8 +123,6 @@ export async function dryRunApproveReview(
  *
  * This is a dry-run operation — no files are modified, no events
  * are appended, and no review status changes.
- *
- * Phase 1B only. The real reject endpoint is not implemented.
  */
 export async function dryRunRejectReview(
   reviewId: string,
@@ -130,6 +132,54 @@ export async function dryRunRejectReview(
   const encodedId = encodeURIComponent(reviewId)
   return apiPost<DryRunResult>(
     `${API_PREFIX}/reviews/${encodedId}/reject/dry-run`,
+    payload,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Execute a real approve on a review item (dev-only).
+ *
+ * This endpoint has real side effects: writes memory files,
+ * updates review status, and appends audit events. Gated by
+ * a fail-closed kill switch and dev-only environment guard.
+ *
+ * Requires explicit confirmation, dry-run preview, and
+ * acknowledged effects.
+ */
+export async function executeApproveReview(
+  reviewId: string,
+  payload: ApproveExecuteRequest,
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(reviewId)
+  return apiPost<ReviewExecuteResult>(
+    `${API_PREFIX}/reviews/${encodedId}/approve/execute`,
+    payload,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Execute a real reject on a review item (dev-only).
+ *
+ * This endpoint has real side effects: updates review status
+ * and appends audit events. No memory is written. Gated by
+ * a fail-closed kill switch and dev-only environment guard.
+ *
+ * Requires explicit confirmation, dry-run preview, and
+ * acknowledged effects.
+ */
+export async function executeRejectReview(
+  reviewId: string,
+  payload: RejectExecuteRequest,
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(reviewId)
+  return apiPost<ReviewExecuteResult>(
+    `${API_PREFIX}/reviews/${encodedId}/reject/execute`,
     payload,
     undefined,
     signal,

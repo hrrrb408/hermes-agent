@@ -4,6 +4,7 @@
  * Manages loading, error, and data state for the Review panel.
  * Phase 1A: read-only. No approve/reject/enqueue actions.
  * Phase 1B: dry-run preview only. No real approve/reject/enqueue.
+ * Phase 1C: dev-only execute with kill switch, confirmation, and precondition.
  */
 
 import { defineStore } from 'pinia'
@@ -15,6 +16,8 @@ import {
   fetchReviewDetail,
   dryRunApproveReview,
   dryRunRejectReview,
+  executeApproveReview,
+  executeRejectReview,
 } from '@/api/reviews'
 import { isDevApiError } from '@/api/client'
 
@@ -28,6 +31,7 @@ import type {
   ReviewOrder,
   DryRunResult,
   DryRunAction,
+  ReviewExecuteResult,
 } from '@/types/api/review'
 import type { LoadingState } from '@/stores/workspacePanel'
 
@@ -53,6 +57,13 @@ export const useReviewStore = defineStore('workspace-review', () => {
   const dryRunError = ref('')
   const dryRunAction = ref<DryRunAction | null>(null)
 
+  // Execute state (Phase 1C)
+  const executeState = ref<LoadingState>('idle')
+  const executeError = ref('')
+  const executeResult = ref<ReviewExecuteResult | null>(null)
+  const executeAction = ref<'APPROVE' | 'REJECT' | null>(null)
+  const showConfirmDialog = ref(false)
+
   // Filters
   const statusFilter = ref<ReviewStatusFilter | undefined>(undefined)
   const decisionFilter = ref<ReviewDecisionFilter | undefined>(undefined)
@@ -65,6 +76,7 @@ export const useReviewStore = defineStore('workspace-review', () => {
   let listAbort: AbortController | null = null
   let detailAbort: AbortController | null = null
   let dryRunAbort: AbortController | null = null
+  let executeAbort: AbortController | null = null
 
   // ── Computed ──
 
@@ -74,6 +86,10 @@ export const useReviewStore = defineStore('workspace-review', () => {
 
   const isDryRunLoading = computed(() => dryRunState.value === 'loading')
   const isDryRunAvailable = computed(() => status.value?.dryRunEnabled ?? false)
+
+  const isExecuteEnabled = computed(() => status.value?.executeEnabled ?? false)
+  const isExecuteLoading = computed(() => executeState.value === 'loading')
+  const isKillSwitchActive = computed(() => status.value?.killSwitchActive ?? true)
 
   // ── Helpers ──
 
@@ -245,6 +261,89 @@ export const useReviewStore = defineStore('workspace-review', () => {
     dryRunAction.value = null
   }
 
+  // ── Execute actions (Phase 1C) ──
+
+  async function executeApprove(
+    reviewId: string,
+    payload: {
+      confirmationText: 'APPROVE'
+      expectedAction: 'APPROVE'
+      reviewUpdatedAt: string
+      dryRunPreviewed: true
+      acknowledgedEffects: readonly ('WRITE_MEMORY' | 'UPDATE_REVIEW' | 'APPEND_REVIEW_EVENT')[]
+    },
+  ): Promise<void> {
+    executeAbort?.abort()
+    executeAbort = new AbortController()
+    executeState.value = 'loading'
+    executeError.value = ''
+    executeResult.value = null
+    executeAction.value = 'APPROVE'
+    showConfirmDialog.value = false
+
+    try {
+      const response = await executeApproveReview(reviewId, payload, executeAbort.signal)
+      executeResult.value = response.data
+      executeState.value = 'success'
+      // Refresh to show updated status
+      await Promise.all([loadStatus(), loadReviews(), loadReviewDetail(reviewId)])
+    } catch (err: unknown) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      executeError.value = handleError(err)
+      executeState.value = 'error'
+    }
+  }
+
+  async function executeReject(
+    reviewId: string,
+    payload: {
+      confirmationText: 'REJECT'
+      expectedAction: 'REJECT'
+      reviewUpdatedAt: string
+      dryRunPreviewed: true
+      acknowledgedEffects: readonly ('UPDATE_REVIEW' | 'APPEND_REVIEW_EVENT')[]
+      reason?: string
+    },
+  ): Promise<void> {
+    executeAbort?.abort()
+    executeAbort = new AbortController()
+    executeState.value = 'loading'
+    executeError.value = ''
+    executeResult.value = null
+    executeAction.value = 'REJECT'
+    showConfirmDialog.value = false
+
+    try {
+      const response = await executeRejectReview(reviewId, payload, executeAbort.signal)
+      executeResult.value = response.data
+      executeState.value = 'success'
+      // Refresh to show updated status
+      await Promise.all([loadStatus(), loadReviews(), loadReviewDetail(reviewId)])
+    } catch (err: unknown) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      executeError.value = handleError(err)
+      executeState.value = 'error'
+    }
+  }
+
+  function clearExecute(): void {
+    executeAbort?.abort()
+    executeResult.value = null
+    executeError.value = ''
+    executeState.value = 'idle'
+    executeAction.value = null
+    showConfirmDialog.value = false
+  }
+
+  function openConfirmDialog(action: 'APPROVE' | 'REJECT'): void {
+    executeAction.value = action
+    showConfirmDialog.value = true
+  }
+
+  function closeConfirmDialog(): void {
+    showConfirmDialog.value = false
+  }
+
   async function refresh(): Promise<void> {
     await Promise.all([loadStatus(), loadReviews()])
   }
@@ -266,6 +365,12 @@ export const useReviewStore = defineStore('workspace-review', () => {
     dryRunResult,
     dryRunError,
     dryRunAction,
+    // Execute state
+    executeState,
+    executeError,
+    executeResult,
+    executeAction,
+    showConfirmDialog,
     // Filters
     statusFilter,
     decisionFilter,
@@ -278,6 +383,9 @@ export const useReviewStore = defineStore('workspace-review', () => {
     totalCount,
     isDryRunLoading,
     isDryRunAvailable,
+    isExecuteEnabled,
+    isExecuteLoading,
+    isKillSwitchActive,
     // Actions
     loadStatus,
     loadReviews,
@@ -294,6 +402,12 @@ export const useReviewStore = defineStore('workspace-review', () => {
     runApproveDryRun,
     runRejectDryRun,
     clearDryRun,
+    // Execute actions
+    executeApprove,
+    executeReject,
+    clearExecute,
+    openConfirmDialog,
+    closeConfirmDialog,
     refresh,
   }
 })

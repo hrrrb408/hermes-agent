@@ -20,6 +20,10 @@ export interface ReviewQueueStatus {
   readonly rejectEnabled: false
   readonly enqueueEnabled: false
   readonly dryRunEnabled: true
+  readonly executeEnabled: boolean
+  readonly killSwitchActive: boolean
+  readonly devOnly: true
+  readonly productionBlocked: true
   readonly counts: {
     readonly pending: number
     readonly approved: number
@@ -222,4 +226,54 @@ export interface ApproveDryRunRequest {
 export interface RejectDryRunRequest {
   readonly reason?: string
   readonly includeDiff?: boolean
+}
+
+// ── Execute Types (Phase 1C) ──
+
+/** Target information in execute response. */
+export interface ReviewExecuteTarget {
+  readonly memoryId: string | null
+  readonly category: string
+  readonly operation: string
+}
+
+/** Audit information in execute response. */
+export interface ReviewExecuteAudit {
+  readonly actor: 'dev-webui'
+  readonly timestamp: string
+  readonly devOnly: true
+}
+
+/** Execute result data for approve/reject execute responses. */
+export interface ReviewExecuteResult {
+  readonly reviewId: string
+  readonly executed: true
+  readonly action: 'APPROVE' | 'REJECT'
+  readonly statusBefore: string
+  readonly statusAfter: string
+  readonly memoryChanged: boolean
+  readonly reviewChanged: boolean
+  readonly eventAppended: boolean
+  readonly target: ReviewExecuteTarget
+  readonly audit: ReviewExecuteAudit
+  readonly warnings: readonly string[]
+}
+
+/** Request body for POST /reviews/{reviewId}/approve/execute. */
+export interface ApproveExecuteRequest {
+  readonly confirmationText: 'APPROVE'
+  readonly expectedAction: 'APPROVE'
+  readonly reviewUpdatedAt: string
+  readonly dryRunPreviewed: true
+  readonly acknowledgedEffects: readonly ('WRITE_MEMORY' | 'UPDATE_REVIEW' | 'APPEND_REVIEW_EVENT')[]
+}
+
+/** Request body for POST /reviews/{reviewId}/reject/execute. */
+export interface RejectExecuteRequest {
+  readonly confirmationText: 'REJECT'
+  readonly expectedAction: 'REJECT'
+  readonly reviewUpdatedAt: string
+  readonly dryRunPreviewed: true
+  readonly acknowledgedEffects: readonly ('UPDATE_REVIEW' | 'APPEND_REVIEW_EVENT')[]
+  readonly reason?: string
 }

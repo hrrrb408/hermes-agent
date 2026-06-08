@@ -1,8 +1,17 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { onMounted, watch } from 'vue'
 import { useReviewStore } from '@/stores/review'
 
 const store = useReviewStore()
+
+// Confirmation dialog state
+const confirmText = ref('')
+const ackWriteMemory = ref(false)
+const ackUpdateReview = ref(false)
+const ackAppendEvent = ref(false)
+const ackRejectUpdateReview = ref(false)
+const ackRejectAppendEvent = ref(false)
 
 onMounted(async () => {
   await store.loadStatus()
@@ -50,6 +59,76 @@ function handleRejectDryRun(): void {
 function handleCloseDryRun(): void {
   store.clearDryRun()
 }
+
+// ── Execute handlers ──
+
+function handleApproveExecute(): void {
+  if (!store.detail || store.detail.status !== 'pending') return
+  if (!store.isExecuteEnabled) return
+  if (!store.dryRunResult || store.dryRunAction !== 'APPROVE') return
+  resetConfirmState()
+  store.openConfirmDialog('APPROVE')
+}
+
+function handleRejectExecute(): void {
+  if (!store.detail || store.detail.status !== 'pending') return
+  if (!store.isExecuteEnabled) return
+  if (!store.dryRunResult || store.dryRunAction !== 'REJECT') return
+  resetConfirmState()
+  store.openConfirmDialog('REJECT')
+}
+
+function resetConfirmState(): void {
+  confirmText.value = ''
+  ackWriteMemory.value = false
+  ackUpdateReview.value = false
+  ackAppendEvent.value = false
+  ackRejectUpdateReview.value = false
+  ackRejectAppendEvent.value = false
+}
+
+function handleCancelConfirm(): void {
+  store.closeConfirmDialog()
+}
+
+function handleSubmitConfirm(): void {
+  if (!store.detail) return
+  if (!store.dryRunResult) return
+
+  const updatedAt = store.detail.updatedAt
+
+  if (store.executeAction === 'APPROVE') {
+    if (confirmText.value !== 'APPROVE') return
+    if (!ackWriteMemory.value || !ackUpdateReview.value || !ackAppendEvent.value) return
+    store.executeApprove(store.detail.reviewId, {
+      confirmationText: 'APPROVE',
+      expectedAction: 'APPROVE',
+      reviewUpdatedAt: updatedAt,
+      dryRunPreviewed: true,
+      acknowledgedEffects: ['WRITE_MEMORY', 'UPDATE_REVIEW', 'APPEND_REVIEW_EVENT'],
+    })
+  } else if (store.executeAction === 'REJECT') {
+    if (confirmText.value !== 'REJECT') return
+    if (!ackRejectUpdateReview.value || !ackRejectAppendEvent.value) return
+    store.executeReject(store.detail.reviewId, {
+      confirmationText: 'REJECT',
+      expectedAction: 'REJECT',
+      reviewUpdatedAt: updatedAt,
+      dryRunPreviewed: true,
+      acknowledgedEffects: ['UPDATE_REVIEW', 'APPEND_REVIEW_EVENT'],
+    })
+  }
+}
+
+const canSubmitConfirm = (() => {
+  if (store.executeAction === 'APPROVE') {
+    return confirmText.value === 'APPROVE' && ackWriteMemory.value && ackUpdateReview.value && ackAppendEvent.value
+  }
+  if (store.executeAction === 'REJECT') {
+    return confirmText.value === 'REJECT' && ackRejectUpdateReview.value && ackRejectAppendEvent.value
+  }
+  return false
+})()
 </script>
 
 <template>
@@ -62,7 +141,7 @@ function handleCloseDryRun(): void {
       <span v-if="store.isAvailable" class="panel-count">
         {{ store.totalCount }} items
       </span>
-      <span class="panel-phase-badge" title="Dry-run preview in Phase 1B">1B</span>
+      <span class="panel-phase-badge" title="Dev-only execute in Phase 1C">1C</span>
     </div>
 
     <!-- Error state -->
@@ -376,9 +455,169 @@ function handleCloseDryRun(): void {
 
         <!-- Safety area -->
         <div class="review-safety">
-          <span class="review-safety__badge" title="Read-only with dry-run preview in Phase 1B">
-            🔒 Read-only · Dry-run preview
+          <span class="review-safety__badge" title="Dev-only execute with kill switch">
+            🔒 Dev-only ·
+            <template v-if="store.isKillSwitchActive">Execute disabled (kill switch active)</template>
+            <template v-else-if="store.isExecuteEnabled">Execute enabled</template>
+            <template v-else>Dry-run preview</template>
           </span>
+        </div>
+
+        <!-- Execute capability area (Phase 1C) -->
+        <div v-if="store.detail.status === 'pending'" class="review-execute-area">
+          <h5>Execute controls</h5>
+
+          <div class="review-execute-status">
+            <span v-if="store.isKillSwitchActive" class="review-execute-notice">
+              ⚠️ Execute is disabled by default. Enable with HERMES_REVIEW_EXECUTE_ENABLED=true.
+            </span>
+            <span v-else-if="store.isExecuteEnabled" class="review-execute-notice review-execute-notice--enabled">
+              ✅ Execute enabled (dev-only). This will modify dev memory files.
+            </span>
+            <span v-else class="review-execute-notice">
+              Dry-run first, then execute if kill switch is enabled.
+            </span>
+          </div>
+
+          <!-- Execute buttons -->
+          <div class="review-execute-buttons">
+            <button
+              type="button"
+              class="dry-run-btn dry-run-btn--approve"
+              :disabled="!store.isExecuteEnabled || !store.dryRunResult || store.dryRunAction !== 'APPROVE' || store.isExecuteLoading || store.isDryRunLoading"
+              aria-label="Execute approve action (dev-only)"
+              title="Requires dry-run first and kill switch enabled"
+              @click="handleApproveExecute"
+            >
+              Approve execute
+            </button>
+            <button
+              type="button"
+              class="dry-run-btn dry-run-btn--reject"
+              :disabled="!store.isExecuteEnabled || !store.dryRunResult || store.dryRunAction !== 'REJECT' || store.isExecuteLoading || store.isDryRunLoading"
+              aria-label="Execute reject action (dev-only)"
+              title="Requires dry-run first and kill switch enabled"
+              @click="handleRejectExecute"
+            >
+              Reject execute
+            </button>
+          </div>
+
+          <p v-if="store.isExecuteEnabled" class="review-execute-warning">
+            ⚠️ These buttons will modify dev memory files. This cannot be undone.
+          </p>
+        </div>
+
+        <!-- Execute result panel -->
+        <div v-if="store.executeResult" class="dry-run-result" role="region" aria-label="Execute result">
+          <div class="dry-run-result__header">
+            <strong>{{ store.executeResult.action }} execute</strong>
+            <span class="dry-run-result__status dry-run-result__status--allowed">
+              Executed
+            </span>
+          </div>
+          <dl class="context-list">
+            <div>
+              <dt>Status</dt>
+              <dd>{{ store.executeResult.statusBefore }} → {{ store.executeResult.statusAfter }}</dd>
+            </div>
+            <div>
+              <dt>Memory changed</dt>
+              <dd>{{ store.executeResult.memoryChanged ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Review changed</dt>
+              <dd>{{ store.executeResult.reviewChanged ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Event appended</dt>
+              <dd>{{ store.executeResult.eventAppended ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div v-if="store.executeResult.target.memoryId">
+              <dt>Target</dt>
+              <dd>{{ store.executeResult.target.memoryId }}</dd>
+            </div>
+            <div>
+              <dt>Category</dt>
+              <dd>{{ store.executeResult.target.category }}</dd>
+            </div>
+            <div>
+              <dt>Operation</dt>
+              <dd>{{ store.executeResult.target.operation }}</dd>
+            </div>
+          </dl>
+          <div class="dry-run-result__safety">
+            <span class="review-safety__badge">🔒 Dev-only · {{ store.executeResult.audit.timestamp }}</span>
+          </div>
+        </div>
+
+        <!-- Execute loading -->
+        <div v-if="store.isExecuteLoading" class="panel-loading" aria-busy="true">
+          Executing…
+        </div>
+
+        <!-- Execute error -->
+        <div v-if="store.executeError" class="panel-error" role="alert">
+          <p>{{ store.executeError }}</p>
+          <button type="button" class="panel-retry-btn" @click="store.clearExecute()">Dismiss</button>
+        </div>
+
+        <!-- Confirmation dialog -->
+        <div v-if="store.showConfirmDialog" class="review-confirm-dialog" role="dialog" aria-label="Confirm execute">
+          <h5>⚠️ Confirm {{ store.executeAction }} execute</h5>
+          <p>This will modify dev memory files. This cannot be undone.</p>
+
+          <label class="review-confirm-label">
+            Type {{ store.executeAction }} to confirm:
+            <input
+              v-model="confirmText"
+              type="text"
+              class="review-confirm-input"
+              :placeholder="store.executeAction ?? ''"
+              autocomplete="off"
+            />
+          </label>
+
+          <template v-if="store.executeAction === 'APPROVE'">
+            <p class="review-confirm-effects-label">Acknowledged effects:</p>
+            <label class="review-confirm-checkbox">
+              <input v-model="ackWriteMemory" type="checkbox" />
+              WRITE_MEMORY — Creates memory record
+            </label>
+            <label class="review-confirm-checkbox">
+              <input v-model="ackUpdateReview" type="checkbox" />
+              UPDATE_REVIEW — Changes review status
+            </label>
+            <label class="review-confirm-checkbox">
+              <input v-model="ackAppendEvent" type="checkbox" />
+              APPEND_REVIEW_EVENT — Logs audit event
+            </label>
+          </template>
+
+          <template v-else>
+            <p class="review-confirm-effects-label">Acknowledged effects:</p>
+            <label class="review-confirm-checkbox">
+              <input v-model="ackRejectUpdateReview" type="checkbox" />
+              UPDATE_REVIEW — Changes review status
+            </label>
+            <label class="review-confirm-checkbox">
+              <input v-model="ackRejectAppendEvent" type="checkbox" />
+              APPEND_REVIEW_EVENT — Logs audit event
+            </label>
+          </template>
+
+          <div class="review-confirm-actions">
+            <button type="button" class="panel-retry-btn" @click="handleCancelConfirm">Cancel</button>
+            <button
+              type="button"
+              class="dry-run-btn"
+              :class="store.executeAction === 'APPROVE' ? 'dry-run-btn--approve' : 'dry-run-btn--reject'"
+              :disabled="!canSubmitConfirm || store.isExecuteLoading"
+              @click="handleSubmitConfirm"
+            >
+              Execute {{ store.executeAction }}
+            </button>
+          </div>
         </div>
       </article>
 
