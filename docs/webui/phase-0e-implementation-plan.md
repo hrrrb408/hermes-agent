@@ -539,4 +539,11 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 
 **Phase 0E-00 through 0E-06 are completed.**
 
-See individual subphase sections for status. The next subphase is **0E-Release: Final Verification & Push**.
+**Phase 0E-Release completed.** All Phase 0E commits pushed to `origin/dev-huangruibang` at commit `cc64aa690`.
+
+Phase 0E is formally sealed. Phase 1 planning begins with **Phase 1-00: Planning & Scope Freeze**.
+
+- **Phase 1 planning document:** `docs/webui/phase-1-00-planning-and-scope.md`
+- **Phase 1 implementation plan:** `docs/webui/phase-1-implementation-plan.md`
+
+The next subphase is **Phase 1A: Review Queue Read-Only Panel**.

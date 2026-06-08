@@ -767,3 +767,14 @@ Any future write operation introduced in the Dev WebUI must satisfy the principl
 - **Test-before-enable:** Comprehensive tests are a prerequisite, not an afterthought
 
 The next subphase is **0E-Release: Final Verification & Push**.
+
+---
+
+## 23. Phase 1 Planning Reference
+
+Phase 1 planning and scope freeze is documented at:
+
+- **Planning document:** `docs/webui/phase-1-00-planning-and-scope.md`
+- **Implementation plan:** `docs/webui/phase-1-implementation-plan.md`
+
+Phase 1 follows the safety principles defined in this document. All Phase 1 subphases (1A through 1G) must satisfy the applicable gates defined in Section 16 (Capability-Specific Gates) before proceeding.

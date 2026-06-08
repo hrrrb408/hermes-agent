@@ -1,0 +1,549 @@
+# Phase 1 Implementation Plan
+
+**Date:** 2026-06-08
+**Status:** Phase 1-00 Completed; 1A through 1G Not Started
+**Depends on:** Phase 0E-Release (commit `cc64aa690`)
+**Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
+
+---
+
+## Overview
+
+Phase 1 transitions the Dev WebUI from a purely read-only observability dashboard to a controlled Dev Operations Console. Capabilities are introduced incrementally under strict safety gates defined in `docs/webui/phase-0e-06-phase-1-safety-boundary.md`.
+
+**Progression principle:**
+
+```
+Read-only first → Dry-run second → Dev-only execute third → High-risk last
+```
+
+---
+
+## Phase 1-00: Planning & Scope Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-08
+
+### Deliverables
+
+- `docs/webui/phase-1-00-planning-and-scope.md` — Complete Phase 1 planning document with subphase roadmap, scope, non-goals, safety gates, acceptance criteria, risk register, and release strategy
+- `docs/webui/phase-1-implementation-plan.md` — This document
+- Updated `docs/webui/phase-0e-06-phase-1-safety-boundary.md` — Link to Phase 1-00
+- Updated `docs/webui/phase-0e-implementation-plan.md` — Next-phase pointer
+
+### Acceptance
+
+- ✅ Repository state verified (branch, HEAD, remote sync, clean worktree)
+- ✅ Phase 0E completion confirmed (all subphases completed and pushed at `cc64aa690`)
+- ✅ Phase 1 Safety Boundary reviewed and confirmed
+- ✅ Phase 1 subphase roadmap frozen (1A through 1G)
+- ✅ Each subphase has scope, non-goals, write capability, safety gates, acceptance criteria
+- ✅ Risk register defined (P0, P1, P2)
+- ✅ No business code modified
+- ✅ No new API routes added
+- ✅ memory-check PASS
+- ✅ dev-check PASS
+- ✅ compileall PASS
+- ✅ Local commit created
+- ✅ Not pushed
+- ✅ Production environment unaffected
+
+---
+
+## Phase 1A: Review Queue Read-Only Panel — Not Started
+
+**Status:** Not Started
+**Priority:** P2 (Low risk, no write)
+**Estimated scope:** Medium (3 new GET routes + frontend panel)
+**Dependencies:** Phase 0E-Release completed
+
+### Goal
+
+Display Memory Review Queue items in the Dev WebUI as a read-only panel.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 3 GET review routes |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add review DTOs |
+| New service file (review query service) | **New** — Read-only review queries |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 3 review routes |
+| Frontend Review panel | **New** — Review tab, list, detail |
+| `hermes_cli/main.py` | **Modify** — Update dev-check route count |
+| Test files | **New** — Route tests, DTO tests, forbidden route tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/dev/v1/reviews/status` | Review queue status |
+| GET | `/api/dev/v1/reviews` | List review items |
+| GET | `/api/dev/v1/reviews/{reviewId}` | Review item detail |
+
+### Write Capability
+
+**None.** Strictly read-only.
+
+### Non-Goals
+
+- No approve, reject, or enqueue operations
+- No review item modification
+- No memory write/update/archive
+- No agent run or tool execution
+
+### Acceptance Criteria
+
+1. 3 new GET routes registered and documented in OpenAPI spec
+2. Route count updated in dev-check (12 → 15)
+3. Forbidden route tests updated
+4. Frontend Review panel displays review items
+5. All 5 themes render correctly
+6. No review/memory files modified (SHA-256 hash unchanged)
+7. DTO whitelisting prevents raw content/prompt leakage
+8. Path redaction applied
+9. All quality gates PASS
+10. Production untouched
+
+---
+
+## Phase 1B: Review Queue Approve/Reject Dry-Run — Not Started
+
+**Status:** Not Started
+**Priority:** P2 (Medium risk, no real write)
+**Estimated scope:** Medium (2 dry-run routes + confirmation UI)
+**Dependencies:** Phase 1A completed
+
+### Goal
+
+Enable dry-run preview of Review Queue approve and reject operations without real state mutation.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 2 dry-run POST routes |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add dry-run DTOs |
+| Review service | **Modify** — Add dry-run logic |
+| Frontend confirmation UI | **New** — Dry-run preview dialog |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 2 routes |
+| Test files | **New/Modify** — Dry-run tests, hash tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/dev/v1/reviews/{reviewId}/approve/dry-run` | Preview approve |
+| POST | `/api/dev/v1/reviews/{reviewId}/reject/dry-run` | Preview reject |
+
+### Write Capability
+
+**None.** All operations are dry-run only.
+
+### Non-Goals
+
+- No real approve/reject execution
+- No memory write/update/archive
+- No event append
+
+### Acceptance Criteria
+
+1. 2 new POST routes (dry-run only)
+2. Dry-run response shows `wouldModify`, `wouldWrite`, `affectsMemory`, `affectsProduction`
+3. P0/permanent items blocked in dry-run
+4. All hashes unchanged after dry-run
+5. Kill switch visible
+6. All quality gates PASS
+7. Production untouched
+
+---
+
+## Phase 1C: Review Queue Approve/Reject Dev-Only Execute — Not Started
+
+**Status:** Not Started
+**Priority:** P1 (High risk, real write)
+**Estimated scope:** Large (2 execute routes + audit + confirmation + kill switch)
+**Dependencies:** Phase 1B completed
+
+### Goal
+
+Allow real execution of Review Queue approve/reject in dev-home only.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 2 execute POST routes |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add execute DTOs |
+| Review service | **Modify** — Add execute logic with confirmation |
+| Audit service | **New** — Audit trail implementation |
+| Kill switch configuration | **New** — Environment variable / config flags |
+| Frontend execute flow | **New** — Confirm → execute → audit display |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 2 routes |
+| Test files | **New/Modify** — Execute tests, hash validation, audit tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/dev/v1/reviews/{reviewId}/approve` | Execute approve (dev-only) |
+| POST | `/api/dev/v1/reviews/{reviewId}/reject` | Execute reject (dev-only) |
+
+### Write Capability
+
+**Yes — dev-home only.** First phase with real write operations.
+
+### Non-Goals
+
+- No agent run
+- No tool execution
+- No production execution
+- No batch operations
+
+### Prerequisites (Must Complete Before Starting)
+
+1. Phase 1B completed and accepted
+2. Audit trail design completed
+3. Kill switch implemented
+4. Explicit confirmation mechanism implemented
+5. Production fail-closed verified
+6. Rollback strategy documented
+
+### Acceptance Criteria
+
+1. 2 new execute POST routes
+2. Dry-run first: execute requires showing dry-run result first
+3. Explicit confirmation: backend + UI
+4. Dev-only: production paths rejected
+5. Audit event: timestamp, actor, action, target, before/after, result
+6. State transition verified: PENDING → APPROVED/REJECTED
+7. P0/permanent items: backend rejects
+8. Hash side-effects match expected
+9. Rollback strategy documented
+10. All quality gates PASS
+11. Production untouched
+
+---
+
+## Phase 1D: Memory Writer Dry-Run Panel — Not Started
+
+**Status:** Not Started
+**Priority:** P2 (Medium risk, no real write)
+**Estimated scope:** Medium (3 dry-run routes + preview UI)
+**Dependencies:** Phase 0E-Release (independent of 1A/1B/1C)
+
+### Goal
+
+Display Memory Writer decision previews and dry-run results.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 3 dry-run POST routes |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add memory dry-run DTOs |
+| Memory dry-run service | **New** — Memory writer dry-run wrapper |
+| Frontend memory writer panel | **New** — Decision preview display |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 3 routes |
+| Test files | **New/Modify** — Dry-run tests, hash tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/dev/v1/memory/write/dry-run` | Preview memory write |
+| POST | `/api/dev/v1/memory/update/dry-run` | Preview memory update |
+| POST | `/api/dev/v1/memory/archive/dry-run` | Preview memory archive |
+
+### Write Capability
+
+**None.** All operations are dry-run only.
+
+### Non-Goals
+
+- No real memory write/update/archive
+- No auto-memory
+- No event append
+
+### Acceptance Criteria
+
+1. 3 new POST routes (dry-run only)
+2. Dry-run shows: action, content summary, category, duplicate score, protection status
+3. P0/permanent items show "would be blocked"
+4. All memory files hash unchanged
+5. Path redaction applied
+6. All quality gates PASS
+7. Production untouched
+
+---
+
+## Phase 1E: Agent Prompt Preview / Dry-Run — Not Started
+
+**Status:** Not Started
+**Priority:** P2 (Medium risk, no LLM)
+**Estimated scope:** Medium (2 preview routes + preview UI)
+**Dependencies:** Phase 0E-Release (independent of 1A/1B/1C/1D)
+
+### Goal
+
+Preview Agent prompt construction and context assembly without LLM calls.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 2 preview POST routes |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add prompt preview DTOs |
+| Agent preview service | **New** — Prompt construction wrapper |
+| Frontend prompt preview panel | **New** — Prompt/context visualization |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 2 routes |
+| Test files | **New/Modify** — Preview tests, redaction tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/dev/v1/agent/prompt-preview` | Preview prompt assembly |
+| POST | `/api/dev/v1/agent/dry-run` | Simulate agent run (no LLM) |
+
+### Write Capability
+
+**None.** No LLM calls, no tool execution, no state mutation.
+
+### Non-Goals
+
+- No real agent run
+- No LLM call
+- No SSE streaming
+- No message persistence
+
+### Acceptance Criteria
+
+1. 2 new POST routes (preview only)
+2. No LLM calls made
+3. No tool calls made
+4. Prompt content redacted (no keys/secrets)
+5. Memory auto-write disabled
+6. Production fail-closed
+7. All quality gates PASS
+8. Production untouched
+
+---
+
+## Phase 1F: Agent Run Dev-Only Without Tools — Not Started
+
+**Status:** Not Started
+**Priority:** P1 (High risk, real LLM)
+**Estimated scope:** Large (SSE infrastructure + agent run route + audit + cancellation)
+**Dependencies:** Phase 1E completed
+
+### Goal
+
+Enable real Agent execution in dev-home with tools disabled and Memory auto-write disabled.
+
+### Modification Scope
+
+| File | Action |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | **Modify** — Add agent run POST route + SSE |
+| `hermes_cli/dev_web_schemas.py` | **Modify** — Add agent run DTOs |
+| Agent run service | **New** — Agent run orchestration with SSE bridge |
+| SSE bridge | **New** — Thread pool → async queue bridge |
+| Rate limiter | **New** — Request rate limiting |
+| Kill switch configuration | **Modify** — Agent run kill switch |
+| Frontend agent run UI | **New** — Confirmation, streaming, cancellation |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add agent run route |
+| Test files | **New/Modify** — Agent run tests, SSE tests, cancellation tests |
+
+### New Routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/dev/v1/agent/run` | Execute agent run (dev-only, no tools) |
+
+### Write Capability
+
+**Yes — dev-home only, LLM call.** First phase with LLM invocation.
+
+### P1 Must-Resolve Before Implementation
+
+1. **Double-persist question:** Does `AIAgent.chat()` auto-persist?
+2. **SSE mechanism choice:** `stream_delta_callback` vs `stream_callback`?
+3. **Rate limit / timeout / cancellation:** Specific limits?
+4. **Audit trail design:** Schema for agent run events?
+5. **Kill switch:** Runtime enable/disable mechanism?
+
+### Non-Goals
+
+- No tool execution
+- No Memory auto-write
+- No production execution
+- No unbounded streaming
+
+### Acceptance Criteria
+
+1. 1 new POST route (execute)
+2. SSE follows all CLAUDE.md constraints (thread pool, bridge, single entry, done event, error propagation, disconnect handling, single-generation)
+3. Explicit confirmation required
+4. Timeout enforced
+5. Cancel works (client disconnect → interrupt)
+6. Rate limiting enforced
+7. No tools in context
+8. No memory auto-write
+9. No double-persist
+10. Audit event produced
+11. All quality gates PASS
+12. Production untouched
+
+---
+
+## Phase 1G: Tool Execution Safety Framework — Not Started
+
+**Status:** Not Started
+**Priority:** P1 (High risk, tool execution)
+**Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
+**Dependencies:** Phase 1F completed
+
+### Goal
+
+Establish tool execution safety framework with allowlist, validation, audit, and kill switch.
+
+### Modification Scope
+
+To be determined after full tool audit:
+
+| Task | Description |
+|------|-------------|
+| `tools/registry.py` audit | Document every tool's registered name |
+| `toolsets.py` audit | Document which toolset each tool belongs to |
+| Per-tool audit | Parameters, output format, side effects |
+| Prohibited list | Define permanently prohibited tools |
+| Allowlist | Define initial safe tool list |
+| Schema validation | Per-tool parameter validation |
+| Output redaction | Tool response sanitization |
+| Framework code | Allowlist enforcement, audit, kill switch |
+| Frontend tool UI | Tool execution display |
+| Test files | Per-allowed-tool integration tests |
+
+### Write Capability
+
+**Default: No.** Only explicitly allowlisted, audited tools may be experimentally enabled.
+
+### Permanently Prohibited Tools
+
+- `terminal`, `process` (shell/system execution)
+- `write_file`, `patch` (filesystem write)
+- `execute_code` (code execution)
+- `delegate_task` (subagent spawning)
+- `browser_*` (browser automation)
+- `computer_use` (desktop control)
+- `send_message` (messaging)
+- `cronjob` (cron management)
+- `skill_manage` (skill mutation)
+- `image_generate` (image generation)
+
+### Non-Goals
+
+- No arbitrary tool execution
+- No production operations
+- No unvalidated tools
+
+### Acceptance Criteria
+
+1. Tool audit complete and documented
+2. Default deny enforced
+3. Allowlist is static
+4. Each allowed tool has schema validation, timeout, output redaction, audit
+5. Permanently prohibited tools cannot be enabled
+6. Kill switch functional
+7. All quality gates PASS
+8. Production untouched
+
+---
+
+## Phase 1-Release: Final Verification & Push — Not Started
+
+**Status:** Not Started
+**Priority:** P0 (release gate)
+**Estimated scope:** Small (verification only)
+**Dependencies:** All Phase 1 subphases (1A through 1G) completed
+
+### Goal
+
+Run full quality gate, verify clean working tree, verify production safety, and push all Phase 1 commits to `origin/dev-huangruibang`.
+
+### Verification Checklist
+
+1. `memory-check` — PASS
+2. `dev-check` — PASS (updated route counts, all checks)
+3. `python -m compileall hermes_cli hermes_state.py agent` — PASS
+4. `pnpm --filter @hermes/dev-webui test` — PASS
+5. `./scripts/run_tests.sh` — PASS
+6. `pnpm --filter @hermes/dev-webui exec playwright test` — PASS
+7. `git status --short --branch` — Clean
+8. `git log --oneline -30` — All Phase 1 commits present
+9. Production Gateway PID 1717 still running
+10. Production environment unchanged
+
+### Acceptance Criteria
+
+1. All quality gates pass
+2. Working tree clean
+3. Production environment unchanged
+4. All Phase 1 commits on `dev-huangruibang`
+5. Successfully pushed to `origin/dev-huangruibang`
+
+---
+
+## Summary Timeline
+
+| Phase | Goal | Status | Dependencies | Write? |
+|-------|------|--------|-------------|--------|
+| 1-00 | Planning & scope freeze | ✅ Completed | 0E-Release | No |
+| 1A | Review Queue read-only panel | Not Started | 0E-Release | No |
+| 1B | Review Queue dry-run | Not Started | 1A | No |
+| 1C | Review Queue execute | Not Started | 1B | Yes (dev) |
+| 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
+| 1E | Agent prompt preview | Not Started | 0E-Release | No |
+| 1F | Agent Run without tools | Not Started | 1E | Yes (dev) |
+| 1G | Tool execution framework | Not Started | 1F | Default No |
+| 1-Release | Final verification & push | Not Started | All above | No |
+
+---
+
+## Dependency Graph
+
+```
+0E-Release ✅
+│
+├── 1-00 ✅ (planning only)
+│
+├── 1A (review read-only)
+│   └── 1B (review dry-run)
+│       └── 1C (review execute)
+│
+├── 1D (memory dry-run)
+│
+├── 1E (agent preview)
+│   └── 1F (agent run)
+│       └── 1G (tool framework)
+│
+└── 1-Release (push all)
+```
+
+**Independent tracks:**
+- Track 1: 1A → 1B → 1C (Review Queue)
+- Track 2: 1D (Memory Writer, standalone)
+- Track 3: 1E → 1F → 1G (Agent + Tools)
+
+Tracks can be developed in parallel. Within each track, phases are sequential.
+
+---
+
+## Phase 1 Closure
+
+**Phase 1-00 is completed.** Planning and scope are frozen.
+
+The next subphase is **Phase 1A: Review Queue Read-Only Panel**.
+
+This document does NOT automatically start Phase 1A.
