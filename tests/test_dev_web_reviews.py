@@ -1,9 +1,11 @@
-"""Tests for the Hermes Dev Web API Review Queue read-only endpoints (Phase 1A).
+"""Tests for the Hermes Dev Web API Review Queue endpoints (Phase 1A + 1B).
 
 Covers:
 - GET /reviews/status — queue status and safety flags
 - GET /reviews — paginated list with filters
 - GET /reviews/{reviewId} — detail view
+- POST /reviews/{reviewId}/approve/dry-run — approve dry-run preview
+- POST /reviews/{reviewId}/reject/dry-run — reject dry-run preview
 - Forbidden POST/PATCH/DELETE review routes
 - Side-effect verification (no files changed)
 - DTO whitelist (no forbidden fields in responses)
@@ -118,12 +120,47 @@ def _make_review_item(
 
 @pytest.fixture
 def review_home(tmp_path):
-    """Create a temporary HERMES_HOME with review queue items."""
-    home = tmp_path / "hermes-home"
-    home.mkdir()
+    """Create a temporary HERMES_HOME with review queue items and minimal memory structure.
+
+    Uses the isolated HERMES_HOME path (hermes_test) so that
+    revalidate_review_approval() → parse_root() → get_hermes_home()
+    finds the MEMORY.md created here.
+    """
+    home = tmp_path / "hermes_test"
+    home.mkdir(exist_ok=True)
+
+    # Create directories that the isolation fixture expects
+    for subdir in ("sessions", "cron", "memories", "skills"):
+        (home / subdir).mkdir(exist_ok=True)
+
+    # Create minimal MEMORY.md (required by revalidate_review_approval → parse_root)
+    (home / "MEMORY.md").write_text(
+        "# Test Memory\n\n## hermes\n- test memory note\n",
+        encoding="utf-8",
+    )
+
+    # Create memory directory structure
+    memory_dir = home / "memory"
+    memory_dir.mkdir(exist_ok=True)
+
+    # Create minimal category index (required by parse_root → parse_index)
+    indexes_dir = memory_dir / "indexes"
+    indexes_dir.mkdir(exist_ok=True)
+    (indexes_dir / "hermes.md").write_text(
+        "# hermes\n\n- [[HERMES-001]] Test memory\n",
+        encoding="utf-8",
+    )
+
+    # Create minimal records directory
+    records_dir = memory_dir / "records"
+    records_dir.mkdir(exist_ok=True)
+    (records_dir / "hermes").mkdir(exist_ok=True)
+
+    # Create minimal events.jsonl
+    (memory_dir / "events.jsonl").write_text("", encoding="utf-8")
 
     # Create memory/reviews structure
-    reviews_dir = home / "memory" / "reviews"
+    reviews_dir = memory_dir / "reviews"
     items_dir = reviews_dir / "items"
     items_dir.mkdir(parents=True)
 
@@ -185,8 +222,10 @@ def client_with_reviews(review_home):
 @pytest.fixture
 def empty_review_home(tmp_path):
     """Create a temporary HERMES_HOME without review queue directory."""
-    home = tmp_path / "hermes-home-empty"
-    home.mkdir()
+    home = tmp_path / "hermes_test"
+    home.mkdir(exist_ok=True)
+    for subdir in ("sessions", "cron", "memories", "skills"):
+        (home / subdir).mkdir(exist_ok=True)
     return home
 
 
@@ -227,6 +266,7 @@ class TestReviewStatus:
         assert data["rejectEnabled"] is False
         assert data["enqueueEnabled"] is False
         assert data["queueEnabled"] is False
+        assert data["dryRunEnabled"] is True
 
     def test_status_counts(self, client_with_reviews):
         resp = client_with_reviews.get("/api/dev/v1/reviews/status")
@@ -441,7 +481,7 @@ class TestReviewDetail:
         assert safety["approveAvailable"] is False
         assert safety["rejectAvailable"] is False
         assert safety["writeAvailable"] is False
-        assert safety["dryRunAvailable"] is False
+        assert safety["dryRunAvailable"] is True
 
     def test_detail_has_score_breakdown(self, client_with_reviews):
         resp = client_with_reviews.get("/api/dev/v1/reviews/MR-20260606T080234-1e10c286")
@@ -596,7 +636,7 @@ class TestReviewSideEffects:
         assert before == after
 
     def test_no_file_changes_after_all_endpoints(self, client_with_reviews, review_home):
-        """Call all 3 endpoints and verify no file changes."""
+        """Call all endpoints including dry-run and verify no file changes."""
         reviews_dir = review_home / "memory" / "reviews"
         before = self._hash_dir(reviews_dir)
 
@@ -606,6 +646,312 @@ class TestReviewSideEffects:
         client_with_reviews.get("/api/dev/v1/reviews?decision=REVIEW")
         client_with_reviews.get("/api/dev/v1/reviews/MR-20260606T080234-1e10c286")
         client_with_reviews.get("/api/dev/v1/reviews/MR-20260606T080319-36981352")
+        client_with_reviews.post("/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run")
+        client_with_reviews.post("/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run")
+        client_with_reviews.post("/api/dev/v1/reviews/MR-20260606T080609-ec6a074f/approve/dry-run")
 
+        after = self._hash_dir(reviews_dir)
+        assert before == after
+
+
+# ── Approve dry-run tests ──
+
+
+class TestApproveDryRun:
+    """Tests for POST /reviews/{reviewId}/approve/dry-run."""
+
+    def test_approve_dry_run_returns_200(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        assert resp.status_code == 200
+
+    def test_approve_dry_run_always_true(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["dryRun"] is True
+
+    def test_approve_dry_run_action(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["action"] == "APPROVE"
+
+    def test_approve_dry_run_has_would_flags(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert "wouldModify" in data
+        assert "wouldWriteMemory" in data
+        assert "wouldUpdateReview" in data
+        assert "wouldAppendEvent" in data
+        assert data["wouldCreateSnapshot"] is False
+
+    def test_approve_dry_run_has_target(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert "target" in data
+        assert "memoryId" in data["target"]
+        assert "category" in data["target"]
+        assert "operation" in data["target"]
+
+    def test_approve_dry_run_has_safety(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        safety = data["safety"]
+        assert safety["devOnly"] is True
+        assert safety["productionBlocked"] is True
+
+    def test_approve_dry_run_has_checks(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert "checks" in data
+        assert isinstance(data["checks"], list)
+        assert len(data["checks"]) > 0
+
+    def test_approve_dry_run_has_effects(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert "effects" in data
+        assert "noEffects" in data
+        assert "warnings" in data
+
+    def test_approve_dry_run_no_effects_contains_safety(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        no_effects_text = " ".join(data["noEffects"])
+        assert "No files were modified" in no_effects_text
+
+    def test_approve_dry_run_has_preview(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["preview"] is not None
+        assert data["preview"]["redactedPaths"] is True
+
+    def test_approve_dry_run_paths_redacted(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        text = json.dumps(resp.json())
+        assert "/Users/" not in text
+        assert "/home/" not in text
+
+    def test_approve_dry_run_not_found(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260101T000000-deadbeef/approve/dry-run"
+        )
+        assert resp.status_code == 404
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_FOUND"
+
+    def test_approve_dry_run_invalid_id(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/invalid-id/approve/dry-run"
+        )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_REVIEW_ID"
+
+    def test_approve_dry_run_not_pending(self, client_with_reviews):
+        """Rejected item cannot be dry-run approved."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080319-36981352/approve/dry-run"
+        )
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_PENDING"
+
+    def test_approve_dry_run_no_home(self, client_no_home):
+        resp = client_no_home.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        assert resp.status_code == 503
+        assert resp.json()["error"]["code"] == "REVIEW_DRY_RUN_UNAVAILABLE"
+
+    def test_approve_dry_run_has_meta(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        body = resp.json()
+        assert "meta" in body
+        assert "requestId" in body["meta"]
+
+
+# ── Reject dry-run tests ──
+
+
+class TestRejectDryRun:
+    """Tests for POST /reviews/{reviewId}/reject/dry-run."""
+
+    def test_reject_dry_run_returns_200(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        assert resp.status_code == 200
+
+    def test_reject_dry_run_always_true(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["dryRun"] is True
+
+    def test_reject_dry_run_action(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["action"] == "REJECT"
+
+    def test_reject_dry_run_would_write_memory_false(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["wouldWriteMemory"] is False
+
+    def test_reject_dry_run_would_update_review_true(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["wouldUpdateReview"] is True
+        assert data["wouldAppendEvent"] is True
+        assert data["wouldModify"] is True
+
+    def test_reject_dry_run_has_target(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["target"]["operation"] == "REJECT"
+        assert data["target"]["memoryId"] is None
+
+    def test_reject_dry_run_has_safety(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        safety = data["safety"]
+        assert safety["devOnly"] is True
+        assert safety["productionBlocked"] is True
+
+    def test_reject_dry_run_has_checks(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert len(data["checks"]) > 0
+        # Should have REVIEW_IS_PENDING check with pass status
+        pending_check = [c for c in data["checks"] if c["code"] == "REVIEW_IS_PENDING"]
+        assert len(pending_check) == 1
+        assert pending_check[0]["status"] == "pass"
+
+    def test_reject_dry_run_no_effects_safety(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        no_effects_text = " ".join(data["noEffects"])
+        assert "No files were modified" in no_effects_text
+        assert "No memory was written" in no_effects_text
+
+    def test_reject_dry_run_allowed(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        data = resp.json()["data"]
+        assert data["allowed"] is True
+        assert data["blockedReason"] is None
+
+    def test_reject_dry_run_not_found(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260101T000000-deadbeef/reject/dry-run"
+        )
+        assert resp.status_code == 404
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_FOUND"
+
+    def test_reject_dry_run_invalid_id(self, client_with_reviews):
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/invalid-id/reject/dry-run"
+        )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_REVIEW_ID"
+
+    def test_reject_dry_run_not_pending(self, client_with_reviews):
+        """Rejected item cannot be dry-run rejected again."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080319-36981352/reject/dry-run"
+        )
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_PENDING"
+
+    def test_reject_dry_run_no_home(self, client_no_home):
+        resp = client_no_home.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        assert resp.status_code == 503
+        assert resp.json()["error"]["code"] == "REVIEW_DRY_RUN_UNAVAILABLE"
+
+
+# ── Dry-run side-effect tests ──
+
+
+class TestDryRunSideEffects:
+    """Verify that dry-run calls don't modify any files."""
+
+    def _hash_dir(self, path: Path) -> dict[str, str]:
+        hashes = {}
+        if not path.exists():
+            return hashes
+        for f in sorted(path.rglob("*")):
+            if f.is_file():
+                rel = str(f.relative_to(path))
+                hashes[rel] = hashlib.sha256(f.read_bytes()).hexdigest()
+        return hashes
+
+    def test_approve_dry_run_no_file_changes(self, client_with_reviews, review_home):
+        reviews_dir = review_home / "memory" / "reviews"
+        before = self._hash_dir(reviews_dir)
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        after = self._hash_dir(reviews_dir)
+        assert before == after
+
+    def test_reject_dry_run_no_file_changes(self, client_with_reviews, review_home):
+        reviews_dir = review_home / "memory" / "reviews"
+        before = self._hash_dir(reviews_dir)
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        after = self._hash_dir(reviews_dir)
+        assert before == after
+
+    def test_both_dry_runs_no_file_changes(self, client_with_reviews, review_home):
+        reviews_dir = review_home / "memory" / "reviews"
+        before = self._hash_dir(reviews_dir)
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/dry-run"
+        )
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/dry-run"
+        )
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080609-ec6a074f/approve/dry-run"
+        )
         after = self._hash_dir(reviews_dir)
         assert before == after

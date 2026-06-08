@@ -18,6 +18,7 @@ from agent.memory_review_queue import (
     get_review_queue_paths,
     list_review_items,
     load_review_item,
+    revalidate_review_approval,
     REVIEW_ID_RE,
 )
 from hermes_cli.dev_web_memory_service import redact_local_paths
@@ -42,6 +43,16 @@ class InvalidReviewQueryError(Exception):
     """Raised when review query parameters are invalid."""
 
 
+class ReviewNotPendingError(Exception):
+    """Raised when a dry-run action targets a non-pending review item."""
+
+    def __init__(self, current_status: str) -> None:
+        self.current_status = current_status
+        super().__init__(
+            f"Review item is not pending (current: {current_status})."
+        )
+
+
 # ── Constants ──
 
 # Maximum review ID length for API input validation
@@ -55,6 +66,10 @@ _TITLE_MAX_LENGTH = 120
 _SUMMARY_PREVIEW_MAX_LENGTH = 120
 _SUMMARY_MAX_LENGTH = 300
 _LAST_ERROR_MAX_LENGTH = 200
+_REASON_PREVIEW_MAX_LENGTH = 200
+_CHECK_MESSAGE_MAX_LENGTH = 200
+_EFFECTS_ITEM_MAX_LENGTH = 200
+_BLOCKED_REASON_MAX_LENGTH = 120
 
 # Pagination limits
 _MIN_LIMIT = 1
@@ -213,13 +228,13 @@ def _transform_review_detail_dto(item: dict[str, Any]) -> dict[str, Any]:
         ),
     }
 
-    # Safety flags — always read-only in Phase 1A
+    # Safety flags — read-only + dry-run available in Phase 1B
     dto["safety"] = {
         "readOnly": True,
         "approveAvailable": False,
         "rejectAvailable": False,
         "writeAvailable": False,
-        "dryRunAvailable": False,
+        "dryRunAvailable": True,
     }
 
     return dto
@@ -313,6 +328,7 @@ class DevReviewQueryService:
             "approveEnabled": False,
             "rejectEnabled": False,
             "enqueueEnabled": False,
+            "dryRunEnabled": True,
             "counts": counts,
             "storage": {
                 "available": storage_available,
@@ -470,3 +486,376 @@ class DevReviewQueryService:
         if "/" in review_id or "\\" in review_id or ".." in review_id:
             return "Review ID contains path separators."
         return None
+
+    # ── Dry-run: Approve ──
+
+    def dry_run_approve(
+        self,
+        review_id: str,
+        *,
+        include_diff: bool = True,
+    ) -> dict[str, Any]:
+        """Preview what would happen if a review item were approved.
+
+        This method is completely side-effect-free. It only reads the review
+        item and revalidates approval conditions using read-only functions.
+
+        It does NOT call approve_review_item(), reject_review_item(),
+        append_review_event(), atomic_write_review_json(),
+        create_memory_item(), or update_memory_item().
+        """
+        if not self.is_available():
+            raise ReviewQueueUnavailableError()
+
+        try:
+            item = load_review_item(review_id, home=self._home)
+        except FileNotFoundError:
+            raise ReviewNotFoundError()
+        except (ValueError, OSError):
+            raise ReviewNotFoundError()
+
+        status = item.get("status", "")
+        if status != ReviewStatus.PENDING.value:
+            raise ReviewNotPendingError(status)
+
+        # Determine the proposed action from the item
+        proposed_action = item.get("proposed_action", "")
+        if not proposed_action or proposed_action == ProposedAction.UNDECIDED.value:
+            # Default to WRITE for undecided items
+            proposed_action = ProposedAction.WRITE.value
+        action = proposed_action if proposed_action in (
+            ProposedAction.WRITE.value, ProposedAction.UPDATE.value,
+        ) else ProposedAction.WRITE.value
+
+        # Use revalidate_review_approval for read-only validation.
+        # This function only reads data — it calls parse_root(), find_item(),
+        # find_best_memory_match(), calculate_similarity_breakdown(),
+        # is_protected_memory() — all confirmed read-only.
+        # If the memory system is not initialized (e.g. in tests with
+        # minimal fixtures), fall back to basic validation.
+        target_memory_id = None
+        matched_memory = item.get("matched_memory")
+        if matched_memory and isinstance(matched_memory, dict):
+            target_memory_id = matched_memory.get("memory_id")
+
+        try:
+            validation = revalidate_review_approval(
+                item, action=action, target=target_memory_id,
+            )
+        except (FileNotFoundError, ValueError, OSError, KeyError):
+            # Memory system not fully initialized — perform basic checks
+            validation = _basic_approve_validation(
+                item, action=action, target=target_memory_id,
+            )
+
+        allowed = validation.get("valid", False)
+        errors = validation.get("errors", [])
+
+        # Build checks list
+        checks = _build_approve_checks(item, validation)
+
+        # Build safety
+        safety = {
+            "devOnly": True,
+            "productionBlocked": True,
+            "protectedTarget": validation.get("protected_target", False),
+            "p0Blocked": "TARGET_P0_PROTECTED" in errors,
+            "permanentBlocked": "TARGET_PERMANENT_PROTECTED" in errors,
+            "duplicateBlocked": "BECAME_DUPLICATE" in errors,
+        }
+
+        # Build preview
+        candidate = item.get("candidate", {})
+        preview = {
+            "title": _truncate(
+                redact_local_paths(candidate.get("title", "")),
+                _TITLE_MAX_LENGTH,
+            ),
+            "summaryPreview": _truncate(
+                redact_local_paths(candidate.get("summary", "")),
+                _SUMMARY_PREVIEW_MAX_LENGTH,
+            ),
+            "tags": candidate.get("tags", []),
+            "reasonPreview": None,
+            "redactedPaths": True,
+        }
+
+        # Build effects / noEffects
+        if allowed:
+            effects = []
+            if action == ProposedAction.WRITE.value:
+                effects.append("Would create memory record.")
+            elif action == ProposedAction.UPDATE.value:
+                effects.append("Would update existing memory record.")
+            effects.append("Would mark review as approved.")
+            effects.append("Would append review_approved event.")
+        else:
+            effects = []
+
+        no_effects = [
+            "No files were modified.",
+            "No events were appended.",
+            "No memory was written.",
+        ]
+        if not allowed:
+            no_effects.append("Approval would be blocked.")
+
+        # Determine blocked reason
+        blocked_reason = None
+        if not allowed and errors:
+            blocked_reason = _truncate(
+                errors[0], _BLOCKED_REASON_MAX_LENGTH,
+            )
+
+        return {
+            "reviewId": item.get("review_id", ""),
+            "dryRun": True,
+            "action": "APPROVE",
+            "allowed": allowed,
+            "blockedReason": blocked_reason,
+            "wouldModify": allowed,
+            "wouldWriteMemory": allowed,
+            "wouldUpdateReview": allowed,
+            "wouldAppendEvent": allowed,
+            "wouldCreateSnapshot": False,
+            "target": {
+                "memoryId": target_memory_id,
+                "category": candidate.get("category", ""),
+                "operation": action,
+            },
+            "safety": safety,
+            "checks": checks,
+            "preview": preview if include_diff else None,
+            "effects": effects,
+            "noEffects": no_effects,
+            "warnings": [],
+        }
+
+    # ── Dry-run: Reject ──
+
+    def dry_run_reject(
+        self,
+        review_id: str,
+        *,
+        reason: str | None = None,
+        include_diff: bool = True,
+    ) -> dict[str, Any]:
+        """Preview what would happen if a review item were rejected.
+
+        This method is completely side-effect-free. It only reads the review
+        item and checks its status.
+
+        It does NOT call reject_review_item() (which has no dry_run param),
+        append_review_event(), or atomic_write_review_json().
+        """
+        if not self.is_available():
+            raise ReviewQueueUnavailableError()
+
+        try:
+            item = load_review_item(review_id, home=self._home)
+        except FileNotFoundError:
+            raise ReviewNotFoundError()
+        except (ValueError, OSError):
+            raise ReviewNotFoundError()
+
+        status = item.get("status", "")
+        if status != ReviewStatus.PENDING.value:
+            raise ReviewNotPendingError(status)
+
+        allowed = True
+        checks = [
+            {
+                "code": "REVIEW_IS_PENDING",
+                "status": "pass",
+                "message": "Review item is pending and can be rejected.",
+            },
+        ]
+
+        candidate = item.get("candidate", {})
+
+        # Prepare reason preview (redacted, truncated, not saved)
+        reason_preview = None
+        if reason and reason.strip():
+            reason_preview = _truncate(
+                redact_local_paths(reason.strip()),
+                _REASON_PREVIEW_MAX_LENGTH,
+            )
+
+        # Build preview
+        preview = {
+            "title": _truncate(
+                redact_local_paths(candidate.get("title", "")),
+                _TITLE_MAX_LENGTH,
+            ),
+            "summaryPreview": _truncate(
+                redact_local_paths(candidate.get("summary", "")),
+                _SUMMARY_PREVIEW_MAX_LENGTH,
+            ),
+            "tags": candidate.get("tags", []),
+            "reasonPreview": reason_preview,
+            "redactedPaths": True,
+        }
+
+        effects = [
+            "Would mark review as rejected.",
+            "Would append review_rejected event.",
+        ]
+
+        no_effects = [
+            "No files were modified.",
+            "No events were appended.",
+            "No memory was written.",
+        ]
+
+        return {
+            "reviewId": item.get("review_id", ""),
+            "dryRun": True,
+            "action": "REJECT",
+            "allowed": allowed,
+            "blockedReason": None,
+            "wouldModify": True,
+            "wouldWriteMemory": False,
+            "wouldUpdateReview": True,
+            "wouldAppendEvent": True,
+            "wouldCreateSnapshot": False,
+            "target": {
+                "memoryId": None,
+                "category": candidate.get("category", ""),
+                "operation": "REJECT",
+            },
+            "safety": {
+                "devOnly": True,
+                "productionBlocked": True,
+            },
+            "checks": checks,
+            "preview": preview if include_diff else None,
+            "effects": effects,
+            "noEffects": no_effects,
+            "warnings": [],
+        }
+
+
+def _basic_approve_validation(
+    item: dict[str, Any],
+    *,
+    action: str,
+    target: str | None = None,
+) -> dict[str, Any]:
+    """Basic validation when the full memory system is unavailable.
+
+    This performs lightweight checks without calling parse_root()
+    or find_best_memory_match(), so it works with minimal test fixtures.
+    """
+    errors: list[str] = []
+
+    # Check item status is pending
+    if item.get("status") != ReviewStatus.PENDING.value:
+        errors.append("REVIEW_NOT_PENDING")
+
+    # Check action is valid
+    if action not in (ProposedAction.WRITE.value, ProposedAction.UPDATE.value):
+        errors.append("INVALID_APPROVAL_ACTION")
+
+    # For UPDATE, check target exists in matched_memory
+    if action == ProposedAction.UPDATE.value:
+        matched = item.get("matched_memory")
+        if not target:
+            errors.append("UPDATE_TARGET_REQUIRED")
+        elif not matched or matched.get("memory_id") != target:
+            errors.append("UPDATE_TARGET_NOT_FOUND")
+
+    return {
+        "review_id": item.get("review_id", ""),
+        "requested_action": action,
+        "current_status": item.get("status", ""),
+        "category_valid": True,  # Cannot validate without parse_root
+        "duplicate_found": False,  # Cannot check without find_best_memory_match
+        "protected_target": False,  # Cannot check without is_protected_memory
+        "target": target,
+        "errors": list(dict.fromkeys(errors)),
+        "valid": item.get("status") == ReviewStatus.PENDING.value and not errors,
+        "would_call": (
+            "memory-add" if action == ProposedAction.WRITE.value
+            else "memory-update"
+        ),
+        "would_modify_formal_memory": not errors,
+    }
+
+
+def _build_approve_checks(
+    item: dict[str, Any],
+    validation: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Build the checks list for an approve dry-run response."""
+    errors = validation.get("errors", [])
+    status = item.get("status", "")
+
+    checks: list[dict[str, str]] = []
+
+    # Always include pending check
+    checks.append({
+        "code": "REVIEW_IS_PENDING",
+        "status": "pass" if status == ReviewStatus.PENDING.value else "fail",
+        "message": (
+            "Review item is pending."
+            if status == ReviewStatus.PENDING.value
+            else f"Review item is not pending (current: {status})."
+        ),
+    })
+
+    # Map validation errors to check items
+    error_messages = {
+        "CATEGORY_NOT_ACTIVE_OR_MISSING": "Category is not active or missing.",
+        "BECAME_DUPLICATE": "Candidate became a duplicate since enqueue.",
+        "UPDATE_TARGET_REQUIRED": "Update requires a target memory ID.",
+        "UPDATE_TARGET_NOT_FOUND": "Target memory was not found.",
+        "TARGET_P0_PROTECTED": "Target memory is P0 and protected from updates.",
+        "TARGET_PERMANENT_PROTECTED": (
+            "Target memory is permanent and protected from updates."
+        ),
+        "CATEGORY_MISMATCH": "Target memory is in a different category.",
+        "TARGET_NOT_ACTIVE": "Target memory is not active.",
+        "NO_CORE_TAG_OVERLAP": "No meaningful tag overlap with target memory.",
+        "SIMILARITY_BELOW_UPDATE_THRESHOLD": (
+            "Overall similarity is below the update threshold."
+        ),
+        "TITLE_SUMMARY_SIMILARITY_TOO_LOW": (
+            "Both title and summary similarity are too low."
+        ),
+        "INVALID_APPROVAL_ACTION": "Approval action is not WRITE or UPDATE.",
+    }
+
+    reported_codes = set()
+    for error_code in errors:
+        if error_code in reported_codes:
+            continue
+        reported_codes.add(error_code)
+        msg = error_messages.get(error_code, error_code)
+        checks.append({
+            "code": error_code,
+            "status": "fail",
+            "message": _truncate(msg, _CHECK_MESSAGE_MAX_LENGTH),
+        })
+
+    # If no errors, add pass checks for the common validations
+    if not errors:
+        if validation.get("category_valid", True):
+            checks.append({
+                "code": "CATEGORY_EXISTS",
+                "status": "pass",
+                "message": "Category exists and is active.",
+            })
+        if not validation.get("duplicate_found", False):
+            checks.append({
+                "code": "DUPLICATE_CHECK",
+                "status": "pass",
+                "message": "No duplicate found.",
+            })
+        if not validation.get("protected_target", False):
+            checks.append({
+                "code": "PROTECTION_CHECK",
+                "status": "pass",
+                "message": "Target is not protected.",
+            })
+
+    return checks

@@ -46,6 +46,9 @@ from hermes_cli.dev_web_errors import (
     INVALID_REVIEW_ID,
     INVALID_REVIEW_QUERY,
     REVIEW_STORE_ERROR,
+    REVIEW_DRY_RUN_UNAVAILABLE,
+    REVIEW_NOT_PENDING,
+    REVIEW_APPROVAL_BLOCKED,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -74,6 +77,7 @@ from hermes_cli.dev_web_review_service import (
     ReviewNotFoundError,
     InvalidReviewIdError,
     InvalidReviewQueryError,
+    ReviewNotPendingError,
 )
 
 
@@ -985,6 +989,139 @@ def _register_routes(
                 status_code=503,
                 code=REVIEW_QUEUE_UNAVAILABLE,
                 message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── POST /reviews/{reviewId}/approve/dry-run ──
+
+    @app.post(
+        f"{prefix}/reviews/{{reviewId}}/approve/dry-run",
+        tags=["Reviews"],
+        summary="Preview approve action (dry-run, no side effects)",
+    )
+    def approve_dry_run(
+        request: Request,
+        reviewId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate review ID
+        validation_error = DevReviewQueryService.validate_review_id(
+            reviewId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_ID,
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_DRY_RUN_UNAVAILABLE,
+                message="Review dry-run is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.dry_run_approve(
+                reviewId,
+                include_diff=True,
+            )
+        except ReviewNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=REVIEW_NOT_FOUND,
+                message="Review item was not found.",
+                request_id=rid,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_DRY_RUN_UNAVAILABLE,
+                message="Review dry-run is unavailable.",
+                request_id=rid,
+            )
+        except ReviewNotPendingError as exc:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_NOT_PENDING,
+                message=str(exc),
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── POST /reviews/{reviewId}/reject/dry-run ──
+
+    @app.post(
+        f"{prefix}/reviews/{{reviewId}}/reject/dry-run",
+        tags=["Reviews"],
+        summary="Preview reject action (dry-run, no side effects)",
+    )
+    def reject_dry_run(
+        request: Request,
+        reviewId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate review ID
+        validation_error = DevReviewQueryService.validate_review_id(
+            reviewId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_ID,
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_DRY_RUN_UNAVAILABLE,
+                message="Review dry-run is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.dry_run_reject(
+                reviewId,
+                reason=None,
+                include_diff=True,
+            )
+        except ReviewNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=REVIEW_NOT_FOUND,
+                message="Review item was not found.",
+                request_id=rid,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_DRY_RUN_UNAVAILABLE,
+                message="Review dry-run is unavailable.",
+                request_id=rid,
+            )
+        except ReviewNotPendingError as exc:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_NOT_PENDING,
+                message=str(exc),
                 request_id=rid,
             )
 

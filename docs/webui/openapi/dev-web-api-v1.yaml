@@ -31,7 +31,7 @@ tags:
   - name: Files
     description: File browsing status
   - name: Reviews
-    description: Review queue read-only access
+    description: Review queue read-only access and dry-run preview
 
 paths:
   /status:
@@ -499,6 +499,109 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
           description: Review queue unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{reviewId}/approve/dry-run:
+    post:
+      operationId: approveDryRun
+      tags: [Reviews]
+      summary: Preview approve action (dry-run, no side effects)
+      description: >
+        Preview what would happen if a review item were approved, without
+        executing any real operation. This endpoint is completely side-effect-free:
+        no files are modified, no events are appended, no memory is written,
+        and no review status is changed. Returns validation checks, safety
+        information, and a preview of the effects that would occur in a real
+        approve (Phase 1C).
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MR-\\d{8}T\\d{6}-[0-9a-f]{8}$"
+            maxLength: 256
+      responses:
+        "200":
+          description: Dry-run preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DryRunResponse"
+        "400":
+          description: Invalid review ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Review item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Review item is not pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Review dry-run unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{reviewId}/reject/dry-run:
+    post:
+      operationId: rejectDryRun
+      tags: [Reviews]
+      summary: Preview reject action (dry-run, no side effects)
+      description: >
+        Preview what would happen if a review item were rejected, without
+        executing any real operation. This endpoint is completely side-effect-free:
+        no files are modified, no events are appended, and no review status
+        is changed. Reject does not write memory — it only changes the review
+        item status and appends a rejection event.
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MR-\\d{8}T\\d{6}-[0-9a-f]{8}$"
+            maxLength: 256
+      responses:
+        "200":
+          description: Dry-run preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DryRunResponse"
+        "400":
+          description: Invalid review ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Review item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Review item is not pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Review dry-run unavailable
           content:
             application/json:
               schema:
@@ -1273,6 +1376,7 @@ components:
         - approveEnabled
         - rejectEnabled
         - enqueueEnabled
+        - dryRunEnabled
         - counts
         - storage
       properties:
@@ -1296,6 +1400,9 @@ components:
         enqueueEnabled:
           type: boolean
           enum: [false]
+        dryRunEnabled:
+          type: boolean
+          enum: [true]
         counts:
           $ref: "#/components/schemas/ReviewQueueCounts"
         storage:
@@ -1475,7 +1582,7 @@ components:
           enum: [false]
         dryRunAvailable:
           type: boolean
-          enum: [false]
+          enum: [true]
 
     ReviewDetailData:
       allOf:
@@ -1507,5 +1614,155 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ReviewDetailData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Dry-Run ──
+    DryRunTarget:
+      type: object
+      required: [memoryId, category, operation]
+      properties:
+        memoryId:
+          type: string
+          nullable: true
+        category:
+          type: string
+        operation:
+          type: string
+          enum: [WRITE, UPDATE, REJECT]
+
+    DryRunSafety:
+      type: object
+      required: [devOnly, productionBlocked]
+      properties:
+        devOnly:
+          type: boolean
+          enum: [true]
+        productionBlocked:
+          type: boolean
+          enum: [true]
+        protectedTarget:
+          type: boolean
+        p0Blocked:
+          type: boolean
+        permanentBlocked:
+          type: boolean
+        duplicateBlocked:
+          type: boolean
+
+    DryRunCheck:
+      type: object
+      required: [code, status, message]
+      properties:
+        code:
+          type: string
+        status:
+          type: string
+          enum: [pass, fail]
+        message:
+          type: string
+          maxLength: 200
+
+    DryRunPreview:
+      type: object
+      required: [redactedPaths]
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+        summaryPreview:
+          type: string
+          nullable: true
+          maxLength: 200
+        tags:
+          type: array
+          items:
+            type: string
+        reasonPreview:
+          type: string
+          nullable: true
+          maxLength: 200
+        redactedPaths:
+          type: boolean
+          enum: [true]
+
+    DryRunData:
+      type: object
+      required:
+        - reviewId
+        - dryRun
+        - action
+        - allowed
+        - wouldModify
+        - wouldWriteMemory
+        - wouldUpdateReview
+        - wouldAppendEvent
+        - wouldCreateSnapshot
+        - target
+        - safety
+        - checks
+        - effects
+        - noEffects
+        - warnings
+      properties:
+        reviewId:
+          type: string
+        dryRun:
+          type: boolean
+          enum: [true]
+        action:
+          type: string
+          enum: [APPROVE, REJECT]
+        allowed:
+          type: boolean
+        blockedReason:
+          type: string
+          nullable: true
+          maxLength: 120
+        wouldModify:
+          type: boolean
+        wouldWriteMemory:
+          type: boolean
+        wouldUpdateReview:
+          type: boolean
+        wouldAppendEvent:
+          type: boolean
+        wouldCreateSnapshot:
+          type: boolean
+          enum: [false]
+        target:
+          $ref: "#/components/schemas/DryRunTarget"
+        safety:
+          $ref: "#/components/schemas/DryRunSafety"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DryRunCheck"
+        preview:
+          $ref: "#/components/schemas/DryRunPreview"
+          nullable: true
+        effects:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+        noEffects:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+        warnings:
+          type: array
+          items:
+            type: string
+            maxLength: 200
+
+    DryRunResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/DryRunData"
         meta:
           $ref: "#/components/schemas/Meta"

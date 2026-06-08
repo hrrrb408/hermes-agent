@@ -7091,6 +7091,8 @@ def _webui_check_openapi(
         "/reviews/status": {"get"},
         "/reviews": {"get"},
         "/reviews/{reviewId}": {"get"},
+        "/reviews/{reviewId}/approve/dry-run": {"post"},
+        "/reviews/{reviewId}/reject/dry-run": {"post"},
     }
 
     # Forbidden route path substrings
@@ -7105,7 +7107,7 @@ def _webui_check_openapi(
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 14 else "FAIL",
+        "PASS" if path_count == 16 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )

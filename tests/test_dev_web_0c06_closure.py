@@ -67,13 +67,13 @@ def client_with_home(tmp_path):
 class TestForbiddenRoutes:
     """Verify all disallowed business routes return 404.
 
-    Phase 1A: Review Queue GET routes (/reviews, /reviews/{reviewId},
-    /reviews/status) are now allowed read-only endpoints.
-    Review write routes (approve/reject/enqueue) remain forbidden.
+    Phase 1B: Review Queue dry-run POST routes (approve/dry-run, reject/dry-run)
+    are now allowed. Review execute routes (approve, reject without /dry-run)
+    and enqueue remain forbidden.
     """
 
     @pytest.mark.parametrize("path", [
-        # Review write sub-paths remain forbidden
+        # Review execute sub-paths remain forbidden (no /dry-run)
         "/api/dev/v1/reviews/MR-001/approve",
         "/api/dev/v1/reviews/MR-001/reject",
         # Agent execution
@@ -96,7 +96,7 @@ class TestForbiddenRoutes:
         assert resp.status_code == 404, f"{path} should be 404, got {resp.status_code}"
 
     @pytest.mark.parametrize("method,path", [
-        # Review write routes — must remain forbidden
+        # Review write execute routes — must remain forbidden (no /dry-run)
         ("POST", "/api/dev/v1/reviews"),
         ("POST", "/api/dev/v1/reviews/MR-test/approve"),
         ("POST", "/api/dev/v1/reviews/MR-test/reject"),
@@ -402,21 +402,24 @@ class TestOpenAPIContract:
     """Verify static and runtime OpenAPI consistency."""
 
     def test_business_paths_count(self, client):
-        """Phase 1A: 14 implemented business paths (11 + 3 review routes)."""
+        """Phase 1B: 16 implemented business paths (11 + 3 review + 2 dry-run)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 14
+        assert len(paths) == 16
 
-    def test_only_one_post_route(self, client):
+    def test_post_routes(self, client):
+        """Phase 1B: 3 POST routes (context/preview + 2 review dry-run)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         post_routes = []
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        assert len(post_routes) == 1
-        assert post_routes[0] == "/api/dev/v1/context/preview"
+        assert len(post_routes) == 3
+        assert "/api/dev/v1/context/preview" in post_routes
+        assert "/api/dev/v1/reviews/{reviewId}/approve/dry-run" in post_routes
+        assert "/api/dev/v1/reviews/{reviewId}/reject/dry-run" in post_routes
 
     def test_no_write_schemas(self, client):
         resp = client.get("/openapi.json")

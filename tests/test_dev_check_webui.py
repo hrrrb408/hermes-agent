@@ -98,7 +98,7 @@ def _write_openapi(tmp_path: Path, spec: dict[str, Any]) -> Path:
 
 
 def _minimal_valid_spec() -> dict[str, Any]:
-    """Return a valid 14-path OpenAPI spec matching the Dev WebUI contract."""
+    """Return a valid 16-path OpenAPI spec matching the Dev WebUI contract."""
     paths: dict[str, Any] = {
         "/status": {"get": {"responses": {"200": {"description": "ok"}}}},
         "/files/status": {"get": {"responses": {"200": {"description": "ok"}}}},
@@ -114,28 +114,30 @@ def _minimal_valid_spec() -> dict[str, Any]:
         "/reviews/status": {"get": {"responses": {"200": {"description": "ok"}}}},
         "/reviews": {"get": {"responses": {"200": {"description": "ok"}}}},
         "/reviews/{reviewId}": {"get": {"responses": {"200": {"description": "ok"}}}},
+        "/reviews/{reviewId}/approve/dry-run": {"post": {"responses": {"200": {"description": "ok"}}}},
+        "/reviews/{reviewId}/reject/dry-run": {"post": {"responses": {"200": {"description": "ok"}}}},
     }
     return {"openapi": "3.1.0", "info": {"title": "test", "version": "1.0"}, "paths": paths}
 
 
 class TestWebuiCheckOpenapi:
-    def test_valid_14_paths(self, tmp_path: Path) -> None:
+    def test_valid_16_paths(self, tmp_path: Path) -> None:
         spec = _minimal_valid_spec()
         p = _write_openapi(tmp_path, spec)
         col = CheckCollector()
         _webui_check_openapi(col, p)
-        assert col.by_label("OpenAPI paths") == ("PASS", "OpenAPI paths", "14")
+        assert col.by_label("OpenAPI paths") == ("PASS", "OpenAPI paths", "16")
         assert col.by_label("OpenAPI routes") == ("PASS", "OpenAPI routes", "all present")
         assert col.by_label("Forbidden routes") == ("PASS", "Forbidden routes", "absent")
 
     def test_wrong_path_count(self, tmp_path: Path) -> None:
         spec = _minimal_valid_spec()
-        # Remove one path to get 13
+        # Remove one path to get 15
         del spec["paths"]["/agent/status"]
         p = _write_openapi(tmp_path, spec)
         col = CheckCollector()
         _webui_check_openapi(col, p)
-        assert col.by_label("OpenAPI paths") == ("FAIL", "OpenAPI paths", "13")
+        assert col.by_label("OpenAPI paths") == ("FAIL", "OpenAPI paths", "15")
         # Also should report missing route
         route_check = col.by_label("OpenAPI routes")
         assert route_check is not None
@@ -252,22 +254,22 @@ class TestWebuiCheckOpenapi:
         with pytest.raises(Exception):
             _webui_check_openapi(col, p)
 
-    def test_15_paths(self, tmp_path: Path) -> None:
+    def test_17_paths(self, tmp_path: Path) -> None:
         spec = _minimal_valid_spec()
         spec["paths"]["/extra"] = {"get": {"responses": {"200": {"description": "ok"}}}}
         p = _write_openapi(tmp_path, spec)
         col = CheckCollector()
         _webui_check_openapi(col, p)
-        assert col.by_label("OpenAPI paths") == ("FAIL", "OpenAPI paths", "15")
+        assert col.by_label("OpenAPI paths") == ("FAIL", "OpenAPI paths", "17")
 
-    def test_14_paths_all_present_forbidden_absent(self, tmp_path: Path) -> None:
+    def test_16_paths_all_present_forbidden_absent(self, tmp_path: Path) -> None:
         """The real OpenAPI file should pass all checks."""
         real_openapi = Path("docs/webui/openapi/dev-web-api-v1.yaml")
         if not real_openapi.is_file():
             pytest.skip("OpenAPI file not found (running outside repo root)")
         col = CheckCollector()
         _webui_check_openapi(col, real_openapi)
-        assert col.by_label("OpenAPI paths") == ("PASS", "OpenAPI paths", "14")
+        assert col.by_label("OpenAPI paths") == ("PASS", "OpenAPI paths", "16")
         assert col.by_label("OpenAPI routes") == ("PASS", "OpenAPI routes", "all present")
         assert col.by_label("Forbidden routes") == ("PASS", "Forbidden routes", "absent")
 
