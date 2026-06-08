@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B Completed; 1C through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00 Completed; 1C through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -236,6 +236,54 @@ Enable dry-run preview of Review Queue approve and reject operations without rea
 
 ---
 
+## Phase 1C-00: Review Queue Execute Scope & Safety Boundary Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-09
+
+### Deliverables
+
+- `docs/webui/phase-1c-00-review-queue-execute-scope.md` — Complete scope freeze document with:
+  - Approve/reject real write-effect audit (6 files for WRITE approve, 7 for UPDATE approve, 2 for reject)
+  - Failure modes and half-completion analysis
+  - Lock and concurrency analysis (two-level lock: RLock + fcntl)
+  - Race condition identification (TOCTOU between dry-run and execute)
+  - Proposed execute API routes (2 POST routes with `/execute` suffix)
+  - Request/response DTO contracts with confirmation model
+  - Dry-run-first requirement
+  - Kill switch strategy (disabled by default, configuration-based)
+  - Dev-only environment guard strategy
+  - Audit trail strategy
+  - Revalidation strategy
+  - Rollback/recovery strategy
+  - Frontend information architecture (confirmation dialog, acknowledged effects)
+  - Error model (9 new execute-specific error codes)
+  - OpenAPI strategy (16 → 18 paths, Phase 1C-00 does not change current contract)
+  - dev-check strategy
+  - Playwright smoke strategy
+  - Side-effect validation strategy (disabled mode + temporary fixture mode)
+
+### Acceptance
+
+- ✅ Approve/reject real write effects audited
+- ✅ Failure modes and concurrency audited
+- ✅ Dev-only execute scope frozen
+- ✅ Execute routes草案 frozen (`/approve/execute`, `/reject/execute`)
+- ✅ Explicit confirmation model frozen
+- ✅ Kill switch strategy frozen (disabled by default)
+- ✅ Dev-only guard strategy frozen
+- ✅ Audit trail strategy frozen
+- ✅ Rollback/recovery strategy frozen
+- ✅ OpenAPI strategy: no change to 16-path contract
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS
+- ✅ dev-check PASS
+- ✅ compileall PASS
+- ✅ Local commit created, not pushed
+- ✅ Production environment unaffected
+
+---
+
 ## Phase 1C: Review Queue Approve/Reject Dev-Only Execute — Not Started
 
 **Status:** Not Started
@@ -264,8 +312,8 @@ Allow real execution of Review Queue approve/reject in dev-home only.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/dev/v1/reviews/{reviewId}/approve` | Execute approve (dev-only) |
-| POST | `/api/dev/v1/reviews/{reviewId}/reject` | Execute reject (dev-only) |
+| POST | `/api/dev/v1/reviews/{reviewId}/approve/execute` | Execute approve (dev-only) |
+| POST | `/api/dev/v1/reviews/{reviewId}/reject/execute` | Execute reject (dev-only) |
 
 ### Write Capability
 
@@ -582,7 +630,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1A | Review Queue read-only panel | ✅ Completed | 1A-00 | No |
 | 1B-00 | Review Queue dry-run scope & contract freeze | ✅ Completed | 1A | No |
 | 1B | Review Queue dry-run | ✅ Completed | 1B-00 | No |
-| 1C | Review Queue execute | Not Started | 1B | Yes (dev) |
+| 1C-00 | Review Queue execute scope & safety boundary freeze | ✅ Completed | 1B | No |
+| 1C | Review Queue execute | Not Started | 1C-00 | Yes (dev) |
 | 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
 | 1E | Agent prompt preview | Not Started | 0E-Release | No |
 | 1F | Agent Run without tools | Not Started | 1E | Yes (dev) |
@@ -605,7 +654,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 ├── 1B-00 ✅ (review dry-run scope & contract freeze)
 │
 ├── 1B ✅ (review dry-run)
-│   └── 1C (review execute)
+│   └── 1C-00 ✅ (review execute scope & safety boundary freeze)
+│       └── 1C (review execute)
 │
 ├── 1D (memory dry-run)
 │
@@ -617,7 +667,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 ```
 
 **Independent tracks:**
-- Track 1: 1A → 1B-00 → 1B → 1C (Review Queue)
+- Track 1: 1A → 1B-00 → 1B → 1C-00 → 1C (Review Queue)
 - Track 2: 1D (Memory Writer, standalone)
 - Track 3: 1E → 1F → 1G (Agent + Tools)
 
@@ -644,5 +694,12 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 - Frontend dry-run UI with approve/reject buttons, result panel, safety display
 - OpenAPI 16 paths, dev-check updated, side-effect validated (zero changes)
 - 207 backend tests, 325 frontend tests, all quality gates pass
+
+**Phase 1C-00 is completed.** Review Queue dev-only execute scope and safety boundary are frozen.
+- Complete write-effect audit: 6 files (WRITE approve), 7 files (UPDATE approve), 2 files (reject)
+- Failure modes, concurrency, and race conditions documented
+- Execute routes草案 frozen: /reviews/{reviewId}/approve/execute, /reviews/{reviewId}/reject/execute
+- Confirmation model, kill switch, audit trail, rollback strategy frozen
+- No API implemented, no business code modified
 
 The next subphase is **Phase 1C: Review Queue Approve/Reject Dev-Only Execute**.
