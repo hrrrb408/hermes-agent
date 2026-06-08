@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00 Completed; 1B through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B Completed; 1C through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -184,12 +184,13 @@ Display Memory Review Queue items in the Dev WebUI as a read-only panel.
 
 ---
 
-## Phase 1B: Review Queue Approve/Reject Dry-Run — Not Started
+## Phase 1B: Review Queue Approve/Reject Dry-Run — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** P2 (Medium risk, no real write)
 **Estimated scope:** Medium (2 dry-run routes + confirmation UI)
 **Dependencies:** Phase 1A completed
+**Completion date:** 2026-06-09
 
 ### Goal
 
@@ -225,13 +226,13 @@ Enable dry-run preview of Review Queue approve and reject operations without rea
 
 ### Acceptance Criteria
 
-1. 2 new POST routes (dry-run only)
-2. Dry-run response shows `wouldModify`, `wouldWrite`, `affectsMemory`, `affectsProduction`
-3. P0/permanent items blocked in dry-run
-4. All hashes unchanged after dry-run
-5. Kill switch visible
-6. All quality gates PASS
-7. Production untouched
+1. ✅ 2 new POST routes (dry-run only)
+2. ✅ Dry-run response shows `wouldModify`, `wouldWriteMemory`, `wouldUpdateReview`, `wouldAppendEvent`
+3. ✅ P0/permanent items blocked in dry-run
+4. ✅ All hashes unchanged after dry-run
+5. ✅ Safety display visible (dev-only, production blocked)
+6. ✅ All quality gates PASS
+7. ✅ Production untouched
 
 ---
 
@@ -580,7 +581,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1A-00 | Review Queue read-only scope & contract freeze | ✅ Completed | 1-00 | No |
 | 1A | Review Queue read-only panel | ✅ Completed | 1A-00 | No |
 | 1B-00 | Review Queue dry-run scope & contract freeze | ✅ Completed | 1A | No |
-| 1B | Review Queue dry-run | Not Started | 1B-00 | No |
+| 1B | Review Queue dry-run | ✅ Completed | 1B-00 | No |
 | 1C | Review Queue execute | Not Started | 1B | Yes (dev) |
 | 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
 | 1E | Agent prompt preview | Not Started | 0E-Release | No |
@@ -603,7 +604,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │
 ├── 1B-00 ✅ (review dry-run scope & contract freeze)
 │
-├── 1B (review dry-run)
+├── 1B ✅ (review dry-run)
 │   └── 1C (review execute)
 │
 ├── 1D (memory dry-run)
@@ -638,4 +639,10 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 
 **Phase 1B-00 is completed.** Review Queue approve/reject dry-run scope and contract are frozen.
 
-The next subphase is **Phase 1B: Review Queue Approve/Reject Dry-Run Implementation**.
+**Phase 1B is completed.** Review Queue Approve/Reject Dry-Run is implemented.
+- 2 dry-run POST routes: /reviews/{reviewId}/approve/dry-run, /reviews/{reviewId}/reject/dry-run
+- Frontend dry-run UI with approve/reject buttons, result panel, safety display
+- OpenAPI 16 paths, dev-check updated, side-effect validated (zero changes)
+- 207 backend tests, 325 frontend tests, all quality gates pass
+
+The next subphase is **Phase 1C: Review Queue Approve/Reject Dev-Only Execute**.
