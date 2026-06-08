@@ -143,15 +143,20 @@ No writes to any read-only data. No LLM calls, no Agent run, no Tool execution, 
 | P2 | Vite dev mode paths | `data-vite-dev-id` contains local paths in dev mode only |
 | P2 | Full Playwright matrix | Automated viewport × theme screenshots not yet set up |
 
-## Next Phase Recommendation
+## Next Phase
 
-Phase 0D is complete. Next phase is **not started** and awaits user confirmation.
+Phase 0D is complete. The next phase is **Phase 0E: Engineering Governance**.
 
-Potential directions:
-- Real Agent conversation integration (SSE, streaming)
-- Build artifact cleanup (`.gitignore`)
-- Playwright browser test setup
-- Production readiness review
+**Phase 0E scope:**
+- 0E-01: Build Artifact Policy (`.gitignore`, `git rm --cached`)
+- 0E-02: Visual Review Artifact Policy (`.gitignore`, dev-check allowlist)
+- 0E-03: Playwright Smoke Matrix (viewport × theme automation)
+- 0E-04: Dev WebUI Smoke Runner (one-command start/status/stop)
+- 0E-05: dev-check Enhancement (WebUI-specific checks)
+- 0E-06: Phase 1 Safety Boundary Draft (documentation only)
+- 0E-Release: Final verification and push
+
+**See:** `docs/webui/phase-0e-00-governance-scope.md` and `docs/webui/phase-0e-implementation-plan.md`
 
 ## Acceptance Conclusion
 
