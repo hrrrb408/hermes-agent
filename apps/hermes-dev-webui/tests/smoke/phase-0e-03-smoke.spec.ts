@@ -5,6 +5,9 @@
  * Checks: page load, theme application, network safety, console quality,
  * layout stability, read-only enforcement, and path redaction.
  *
+ * Phase 1B update: dry-run POST endpoints (approve/dry-run, reject/dry-run)
+ * are now allowed. Real approve/reject/enqueue remain forbidden.
+ *
  * Prerequisites:
  *   - Dev API  on 127.0.0.1:5181  (HERMES_HOME=/Users/huangruibang/Code/hermes-home-dev)
  *   - WebUI    on 127.0.0.1:5180  (pnpm dev)
@@ -31,12 +34,15 @@ const THEMES = [
 ] as const
 
 // Forbidden URL patterns — any matching request fails the test
+// Phase 1B: approve/dry-run and reject/dry-run are allowed;
+// real approve/reject (without /dry-run) remain forbidden.
 const FORBIDDEN_PATTERNS = [
   /:5182\b/,
   /\/\/localhost(?![:/]|\b)/,         // bare "localhost" host (not 127.0.0.1)
   /\/\/0\.0\.0\.0/,
-  /\/reviews\/.*\/(approve|reject)/,
-  /POST.*\/api\/dev\/v1\/reviews/,
+  /\/reviews\/.*\/approve(?!\/dry-run)/,   // approve without /dry-run
+  /\/reviews\/.*\/reject(?!\/dry-run)/,    // reject without /dry-run
+  /POST.*\/api\/dev\/v1\/reviews(?!\/.*\/(approve|reject)\/dry-run)/,  // POST to reviews but not dry-run
   /PATCH.*\/api\/dev\/v1\/reviews/,
   /DELETE.*\/api\/dev\/v1\/reviews/,
   /POST.*\/api\/dev\/v1\/memory(?!\/status)(?!\/categories)(?!\/items[^/])\b/,
@@ -50,8 +56,12 @@ const FORBIDDEN_PATTERNS = [
   /DELETE.*\/api\/dev\/v1\/files/,
 ] as const
 
-// The ONLY allowed POST endpoint
-const ALLOWED_POST_PATTERN = /POST.*\/api\/dev\/v1\/context\/preview/
+// Allowed POST endpoints: context/preview + review dry-run
+const ALLOWED_POST_PATTERNS = [
+  /POST.*\/api\/dev\/v1\/context\/preview/,
+  /POST.*\/api\/dev\/v1\/reviews\/.*\/approve\/dry-run/,
+  /POST.*\/api\/dev\/v1\/reviews\/.*\/reject\/dry-run/,
+] as const
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -101,6 +111,14 @@ function createCollector(page: Page): ConsoleCollector {
   return collector
 }
 
+/**
+ * Check if a POST request to /api/dev/v1/ is an allowed endpoint.
+ */
+function isAllowedPost(method: string, url: string): boolean {
+  if (method !== 'POST' || !url.includes('/api/dev/v1/')) return true
+  return ALLOWED_POST_PATTERNS.some((p) => p.test(`${method} ${url}`))
+}
+
 // ─── Smoke matrix ──────────────────────────────────────────────────────
 
 for (const viewport of VIEWPORTS) {
@@ -139,10 +157,8 @@ for (const viewport of VIEWPORTS) {
         }
 
         // Check that POST is only to allowed endpoints
-        if (method === 'POST' && url.includes('/api/dev/v1/')) {
-          if (!ALLOWED_POST_PATTERN.test(`${method} ${url}`)) {
-            forbiddenRequests.push(`${method} ${url} (unallowed POST)`)
-          }
+        if (!isAllowedPost(method, url)) {
+          forbiddenRequests.push(`${method} ${url} (unallowed POST)`)
         }
       })
 
@@ -349,9 +365,10 @@ for (const viewport of VIEWPORTS) {
           `Drill-down found forbidden request: ${call}`,
         ).toBeFalsy()
       }
+      // Verify POST is only to allowed endpoints
       if (call.startsWith('POST') && call.includes('/api/dev/v1/')) {
         expect(
-          ALLOWED_POST_PATTERN.test(call),
+          isAllowedPost('POST', call),
           `Drill-down found unallowed POST: ${call}`,
         ).toBeTruthy()
       }

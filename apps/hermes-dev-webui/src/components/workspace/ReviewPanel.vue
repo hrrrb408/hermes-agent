@@ -36,6 +36,20 @@ function handleSearchKeydown(event: KeyboardEvent): void {
     store.loadReviews()
   }
 }
+
+function handleApproveDryRun(): void {
+  if (!store.detail || store.detail.status !== 'pending') return
+  store.runApproveDryRun(store.detail.reviewId)
+}
+
+function handleRejectDryRun(): void {
+  if (!store.detail || store.detail.status !== 'pending') return
+  store.runRejectDryRun(store.detail.reviewId)
+}
+
+function handleCloseDryRun(): void {
+  store.clearDryRun()
+}
 </script>
 
 <template>
@@ -48,7 +62,7 @@ function handleSearchKeydown(event: KeyboardEvent): void {
       <span v-if="store.isAvailable" class="panel-count">
         {{ store.totalCount }} items
       </span>
-      <span class="panel-phase-badge" title="Read-only in Phase 1A">1A</span>
+      <span class="panel-phase-badge" title="Dry-run preview in Phase 1B">1B</span>
     </div>
 
     <!-- Error state -->
@@ -214,10 +228,156 @@ function handleSearchKeydown(event: KeyboardEvent): void {
           <span :title="'Updated: ' + store.detail.timestamps.updatedAt">Updated {{ store.detail.timestamps.updatedAt.slice(0, 10) }}</span>
         </div>
 
+        <!-- Dry-run controls (only for pending items) -->
+        <div v-if="store.detail.status === 'pending'" class="review-dry-run-controls">
+          <button
+            type="button"
+            class="dry-run-btn dry-run-btn--approve"
+            :disabled="store.isDryRunLoading"
+            aria-label="Preview approve action (dry-run)"
+            @click="handleApproveDryRun"
+          >
+            Approve dry-run
+          </button>
+          <button
+            type="button"
+            class="dry-run-btn dry-run-btn--reject"
+            :disabled="store.isDryRunLoading"
+            aria-label="Preview reject action (dry-run)"
+            @click="handleRejectDryRun"
+          >
+            Reject dry-run
+          </button>
+        </div>
+        <div v-else class="review-dry-run-controls">
+          <span class="dry-run-disabled-notice">
+            Dry-run only available for pending items (current: {{ store.detail.status }}).
+          </span>
+        </div>
+
+        <!-- Dry-run result panel -->
+        <div v-if="store.dryRunResult" class="dry-run-result" role="region" aria-label="Dry-run result">
+          <div class="dry-run-result__header">
+            <strong>{{ store.dryRunResult.action }} dry-run</strong>
+            <span
+              class="dry-run-result__status"
+              :class="store.dryRunResult.allowed ? 'dry-run-result__status--allowed' : 'dry-run-result__status--blocked'"
+            >
+              {{ store.dryRunResult.allowed ? 'Would succeed' : 'Blocked' }}
+            </span>
+            <button
+              type="button"
+              class="panel-card__close"
+              aria-label="Close dry-run result"
+              @click="handleCloseDryRun"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div v-if="store.dryRunResult.blockedReason" class="dry-run-result__blocked-reason" role="alert">
+            {{ store.dryRunResult.blockedReason }}
+          </div>
+
+          <!-- Would-do flags -->
+          <dl class="context-list dry-run-result__flags">
+            <div>
+              <dt>Would modify</dt>
+              <dd>{{ store.dryRunResult.wouldModify ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Would write memory</dt>
+              <dd>{{ store.dryRunResult.wouldWriteMemory ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Would update review</dt>
+              <dd>{{ store.dryRunResult.wouldUpdateReview ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Would append event</dt>
+              <dd>{{ store.dryRunResult.wouldAppendEvent ? 'Yes' : 'No' }}</dd>
+            </div>
+          </dl>
+
+          <!-- Target info -->
+          <div v-if="store.dryRunResult.target" class="dry-run-result__target">
+            <dl class="context-list">
+              <div v-if="store.dryRunResult.target.memoryId">
+                <dt>Target memory</dt>
+                <dd>{{ store.dryRunResult.target.memoryId }}</dd>
+              </div>
+              <div>
+                <dt>Category</dt>
+                <dd>{{ store.dryRunResult.target.category }}</dd>
+              </div>
+              <div>
+                <dt>Operation</dt>
+                <dd>{{ store.dryRunResult.target.operation }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Validation checks -->
+          <details v-if="store.dryRunResult.checks.length > 0" class="panel-card__details" open>
+            <summary>Checks ({{ store.dryRunResult.checks.length }})</summary>
+            <ul class="dry-run-check-list">
+              <li
+                v-for="check in store.dryRunResult.checks"
+                :key="check.code"
+                class="dry-run-check-item"
+                :class="`dry-run-check-item--${check.status}`"
+              >
+                <span class="dry-run-check-item__icon">{{ check.status === 'pass' ? '✓' : '✗' }}</span>
+                <span class="dry-run-check-item__code">{{ check.code }}</span>
+                <span class="dry-run-check-item__message">{{ check.message }}</span>
+              </li>
+            </ul>
+          </details>
+
+          <!-- Safety -->
+          <div class="dry-run-result__safety">
+            <span class="review-safety__badge">🔒 Dev-only · Production blocked</span>
+          </div>
+
+          <!-- Effects / No effects -->
+          <div v-if="store.dryRunResult.effects.length > 0" class="dry-run-result__effects">
+            <p class="dry-run-result__label">Would do:</p>
+            <ul>
+              <li v-for="(effect, idx) in store.dryRunResult.effects" :key="idx">{{ effect }}</li>
+            </ul>
+          </div>
+
+          <div class="dry-run-result__no-effects">
+            <p class="dry-run-result__label">Safety:</p>
+            <ul>
+              <li v-for="(item, idx) in store.dryRunResult.noEffects" :key="idx">{{ item }}</li>
+            </ul>
+          </div>
+
+          <!-- Warnings -->
+          <div v-if="store.dryRunResult.warnings.length > 0" class="dry-run-result__warnings" role="alert">
+            <p class="dry-run-result__label">Warnings:</p>
+            <ul>
+              <li v-for="(warning, idx) in store.dryRunResult.warnings" :key="idx">{{ warning }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Dry-run loading -->
+        <div v-if="store.isDryRunLoading" class="panel-loading" aria-busy="true">
+          Running dry-run preview…
+        </div>
+
+        <!-- Dry-run error -->
+        <div v-if="store.dryRunError" class="panel-error" role="alert">
+          <p>{{ store.dryRunError }}</p>
+          <button type="button" class="panel-retry-btn" @click="handleApproveDryRun">Retry</button>
+        </div>
+
         <!-- Safety area -->
         <div class="review-safety">
-          <span class="review-safety__badge" title="Read-only in Phase 1A">
-            🔒 Read-only
+          <span class="review-safety__badge" title="Read-only with dry-run preview in Phase 1B">
+            🔒 Read-only · Dry-run preview
           </span>
         </div>
       </article>

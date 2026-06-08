@@ -5,16 +5,23 @@
  * - GET /api/dev/v1/reviews/status
  * - GET /api/dev/v1/reviews
  * - GET /api/dev/v1/reviews/{reviewId}
+ * - POST /api/dev/v1/reviews/{reviewId}/approve/dry-run
+ * - POST /api/dev/v1/reviews/{reviewId}/reject/dry-run
  *
- * All endpoints are read-only. No write functions are provided.
+ * Phase 1A: read-only GET endpoints.
+ * Phase 1B: dry-run POST endpoints (no side effects).
+ * No real approve/reject/enqueue functions are provided.
  */
 
-import { apiGet } from './client'
+import { apiGet, apiPost } from './client'
 import type {
   ReviewQueueStatus,
   ReviewListData,
   ReviewDetail,
   ReviewListParams,
+  DryRunResult,
+  ApproveDryRunRequest,
+  RejectDryRunRequest,
 } from '@/types/api/review'
 
 /** API prefix matching the Dev Web API. */
@@ -80,6 +87,50 @@ export async function fetchReviewDetail(
   const encodedId = encodeURIComponent(reviewId)
   return apiGet<ReviewDetail>(
     `${API_PREFIX}/reviews/${encodedId}`,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Preview what would happen if a review item were approved.
+ *
+ * This is a dry-run operation — no files are modified, no events
+ * are appended, no memory is written, and no review status changes.
+ *
+ * Phase 1B only. The real approve endpoint is not implemented.
+ */
+export async function dryRunApproveReview(
+  reviewId: string,
+  payload: ApproveDryRunRequest = {},
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(reviewId)
+  return apiPost<DryRunResult>(
+    `${API_PREFIX}/reviews/${encodedId}/approve/dry-run`,
+    payload,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Preview what would happen if a review item were rejected.
+ *
+ * This is a dry-run operation — no files are modified, no events
+ * are appended, and no review status changes.
+ *
+ * Phase 1B only. The real reject endpoint is not implemented.
+ */
+export async function dryRunRejectReview(
+  reviewId: string,
+  payload: RejectDryRunRequest = {},
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(reviewId)
+  return apiPost<DryRunResult>(
+    `${API_PREFIX}/reviews/${encodedId}/reject/dry-run`,
+    payload,
     undefined,
     signal,
   )

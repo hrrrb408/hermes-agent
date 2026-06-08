@@ -1,7 +1,9 @@
 /**
  * TypeScript types for the Dev API review queue endpoints.
  *
- * Matches the Phase 1A API contract. All fields are read-only.
+ * Phase 1A: read-only GET endpoints.
+ * Phase 1B: dry-run POST endpoints (approve/dry-run, reject/dry-run).
+ *
  * No fingerprint, source, raw candidate, or evaluation details
  * are included — those are forbidden fields.
  */
@@ -17,6 +19,7 @@ export interface ReviewQueueStatus {
   readonly approveEnabled: false
   readonly rejectEnabled: false
   readonly enqueueEnabled: false
+  readonly dryRunEnabled: true
   readonly counts: {
     readonly pending: number
     readonly approved: number
@@ -102,13 +105,13 @@ export interface ReviewErrors {
   readonly lastError: string | null
 }
 
-/** Safety flags — always read-only in Phase 1A. */
+/** Safety flags — read-only with dry-run available in Phase 1B. */
 export interface ReviewSafety {
   readonly readOnly: true
   readonly approveAvailable: false
   readonly rejectAvailable: false
   readonly writeAvailable: false
-  readonly dryRunAvailable: false
+  readonly dryRunAvailable: true
 }
 
 /** Full review item detail. */
@@ -149,4 +152,74 @@ export interface ReviewListParams {
   readonly limit?: number
   readonly offset?: number
   readonly order?: ReviewOrder
+}
+
+// ── Dry-Run Types (Phase 1B) ──
+
+/** Dry-run action type. */
+export type DryRunAction = 'APPROVE' | 'REJECT'
+
+/** A single validation check in a dry-run response. */
+export interface DryRunCheck {
+  readonly code: string
+  readonly status: 'pass' | 'fail'
+  readonly message: string
+}
+
+/** Safety flags for a dry-run response. */
+export interface DryRunSafety {
+  readonly devOnly: true
+  readonly productionBlocked: true
+  readonly protectedTarget: boolean
+  readonly p0Blocked: boolean
+  readonly permanentBlocked: boolean
+  readonly duplicateBlocked: boolean
+}
+
+/** Target information for a dry-run response. */
+export interface DryRunTarget {
+  readonly memoryId: string | null
+  readonly category: string
+  readonly operation: string
+}
+
+/** Preview of what would be written/changed. */
+export interface DryRunPreview {
+  readonly title: string
+  readonly summaryPreview: string
+  readonly tags: readonly string[]
+  readonly reasonPreview: string | null
+  readonly redactedPaths: true
+}
+
+/** Dry-run result data. */
+export interface DryRunResult {
+  readonly reviewId: string
+  readonly dryRun: true
+  readonly action: DryRunAction
+  readonly allowed: boolean
+  readonly blockedReason: string | null
+  readonly wouldModify: boolean
+  readonly wouldWriteMemory: boolean
+  readonly wouldUpdateReview: boolean
+  readonly wouldAppendEvent: boolean
+  readonly wouldCreateSnapshot: false
+  readonly target: DryRunTarget
+  readonly safety: DryRunSafety
+  readonly checks: readonly DryRunCheck[]
+  readonly preview: DryRunPreview | null
+  readonly effects: readonly string[]
+  readonly noEffects: readonly string[]
+  readonly warnings: readonly string[]
+}
+
+/** Request body for POST /reviews/{reviewId}/approve/dry-run. */
+export interface ApproveDryRunRequest {
+  readonly includeDiff?: boolean
+}
+
+/** Request body for POST /reviews/{reviewId}/reject/dry-run. */
+export interface RejectDryRunRequest {
+  readonly reason?: string
+  readonly includeDiff?: boolean
 }

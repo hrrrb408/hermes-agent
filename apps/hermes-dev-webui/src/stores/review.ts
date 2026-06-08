@@ -2,8 +2,8 @@
  * Review Queue store for the Dev WebUI.
  *
  * Manages loading, error, and data state for the Review panel.
- * All data is fetched from the read-only Dev API — no writes.
  * Phase 1A: read-only. No approve/reject/enqueue actions.
+ * Phase 1B: dry-run preview only. No real approve/reject/enqueue.
  */
 
 import { defineStore } from 'pinia'
@@ -13,6 +13,8 @@ import {
   fetchReviewStatus,
   fetchReviews,
   fetchReviewDetail,
+  dryRunApproveReview,
+  dryRunRejectReview,
 } from '@/api/reviews'
 import { isDevApiError } from '@/api/client'
 
@@ -24,6 +26,8 @@ import type {
   ReviewStatusFilter,
   ReviewDecisionFilter,
   ReviewOrder,
+  DryRunResult,
+  DryRunAction,
 } from '@/types/api/review'
 import type { LoadingState } from '@/stores/workspacePanel'
 
@@ -43,6 +47,12 @@ export const useReviewStore = defineStore('workspace-review', () => {
   const listError = ref('')
   const detailError = ref('')
 
+  // Dry-run state
+  const dryRunState = ref<LoadingState>('idle')
+  const dryRunResult = ref<DryRunResult | null>(null)
+  const dryRunError = ref('')
+  const dryRunAction = ref<DryRunAction | null>(null)
+
   // Filters
   const statusFilter = ref<ReviewStatusFilter | undefined>(undefined)
   const decisionFilter = ref<ReviewDecisionFilter | undefined>(undefined)
@@ -54,12 +64,16 @@ export const useReviewStore = defineStore('workspace-review', () => {
   let statusAbort: AbortController | null = null
   let listAbort: AbortController | null = null
   let detailAbort: AbortController | null = null
+  let dryRunAbort: AbortController | null = null
 
   // ── Computed ──
 
   const isAvailable = computed(() => status.value?.available ?? false)
   const pendingCount = computed(() => status.value?.counts.pending ?? 0)
   const totalCount = computed(() => status.value?.counts.total ?? 0)
+
+  const isDryRunLoading = computed(() => dryRunState.value === 'loading')
+  const isDryRunAvailable = computed(() => status.value?.dryRunEnabled ?? false)
 
   // ── Helpers ──
 
@@ -175,6 +189,62 @@ export const useReviewStore = defineStore('workspace-review', () => {
     orderFilter.value = value
   }
 
+  // ── Dry-run actions ──
+
+  async function runApproveDryRun(reviewId: string): Promise<void> {
+    dryRunAbort?.abort()
+    dryRunAbort = new AbortController()
+    dryRunState.value = 'loading'
+    dryRunError.value = ''
+    dryRunResult.value = null
+    dryRunAction.value = 'APPROVE'
+
+    try {
+      const response = await dryRunApproveReview(
+        reviewId,
+        { includeDiff: true },
+        dryRunAbort.signal,
+      )
+      dryRunResult.value = response.data
+      dryRunState.value = 'success'
+    } catch (err: unknown) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      dryRunError.value = handleError(err)
+      dryRunState.value = 'error'
+    }
+  }
+
+  async function runRejectDryRun(reviewId: string, reason?: string): Promise<void> {
+    dryRunAbort?.abort()
+    dryRunAbort = new AbortController()
+    dryRunState.value = 'loading'
+    dryRunError.value = ''
+    dryRunResult.value = null
+    dryRunAction.value = 'REJECT'
+
+    try {
+      const response = await dryRunRejectReview(
+        reviewId,
+        { reason, includeDiff: true },
+        dryRunAbort.signal,
+      )
+      dryRunResult.value = response.data
+      dryRunState.value = 'success'
+    } catch (err: unknown) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      dryRunError.value = handleError(err)
+      dryRunState.value = 'error'
+    }
+  }
+
+  function clearDryRun(): void {
+    dryRunAbort?.abort()
+    dryRunResult.value = null
+    dryRunError.value = ''
+    dryRunState.value = 'idle'
+    dryRunAction.value = null
+  }
+
   async function refresh(): Promise<void> {
     await Promise.all([loadStatus(), loadReviews()])
   }
@@ -191,6 +261,12 @@ export const useReviewStore = defineStore('workspace-review', () => {
     statusError,
     listError,
     detailError,
+    // Dry-run state
+    dryRunState,
+    dryRunResult,
+    dryRunError,
+    dryRunAction,
+    // Filters
     statusFilter,
     decisionFilter,
     categoryFilter,
@@ -200,6 +276,8 @@ export const useReviewStore = defineStore('workspace-review', () => {
     isAvailable,
     pendingCount,
     totalCount,
+    isDryRunLoading,
+    isDryRunAvailable,
     // Actions
     loadStatus,
     loadReviews,
@@ -212,6 +290,10 @@ export const useReviewStore = defineStore('workspace-review', () => {
     setCategoryFilter,
     setQueryFilter,
     setOrderFilter,
+    // Dry-run actions
+    runApproveDryRun,
+    runRejectDryRun,
+    clearDryRun,
     refresh,
   }
 })
