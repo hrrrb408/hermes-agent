@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00 Completed; 1A through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00 Completed; 1B through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -143,6 +143,44 @@ Display Memory Review Queue items in the Dev WebUI as a read-only panel.
 8. Path redaction applied
 9. All quality gates PASS
 10. Production untouched
+
+---
+
+## Phase 1B-00: Review Queue Approve/Reject Dry-Run Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-08
+
+### Deliverables
+
+- `docs/webui/phase-1b-00-review-queue-dry-run-scope.md` — Complete scope freeze document with:
+  - Review approve/reject real side-effect audit (5 files for approve, 2 files for reject)
+  - Dry-run vs execute boundary definition
+  - 2 proposed dry-run POST routes with request/response contracts
+  - DTO whitelist (28+ fields for approve, 20+ fields for reject)
+  - Forbidden fields documentation
+  - Error model (12 error codes)
+  - UI information architecture (dry-run controls, result panel, safety display)
+  - OpenAPI strategy (14 paths unchanged in 1B-00, 16 after 1B)
+  - dev-check update strategy (14 → 16, dry-run vs execute distinction)
+  - Playwright smoke update strategy (11 new checks)
+  - Side-effect hash validation strategy
+
+### Acceptance
+
+- ✅ Review approve/reject real side effects audited
+- ✅ Dry-run vs execute boundary defined
+- ✅ 2 dry-run API draft routes frozen
+- ✅ DTO whitelists and forbidden fields documented
+- ✅ Error model frozen
+- ✅ Frontend information architecture frozen
+- ✅ OpenAPI strategy: no change to 14-path contract
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS
+- ✅ dev-check PASS
+- ✅ compileall PASS
+- ✅ Local commit created, not pushed
+- ✅ Production environment unaffected
 
 ---
 
@@ -540,8 +578,9 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 |-------|------|--------|-------------|--------|
 | 1-00 | Planning & scope freeze | ✅ Completed | 0E-Release | No |
 | 1A-00 | Review Queue read-only scope & contract freeze | ✅ Completed | 1-00 | No |
-| 1A | Review Queue read-only panel | Not Started | 1A-00 | No |
-| 1B | Review Queue dry-run | Not Started | 1A | No |
+| 1A | Review Queue read-only panel | ✅ Completed | 1A-00 | No |
+| 1B-00 | Review Queue dry-run scope & contract freeze | ✅ Completed | 1A | No |
+| 1B | Review Queue dry-run | Not Started | 1B-00 | No |
 | 1C | Review Queue execute | Not Started | 1B | Yes (dev) |
 | 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
 | 1E | Agent prompt preview | Not Started | 0E-Release | No |
@@ -560,9 +599,12 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │
 ├── 1A-00 ✅ (review scope & contract freeze)
 │
-├── 1A (review read-only)
-│   └── 1B (review dry-run)
-│       └── 1C (review execute)
+├── 1A ✅ (review read-only)
+│
+├── 1B-00 ✅ (review dry-run scope & contract freeze)
+│
+├── 1B (review dry-run)
+│   └── 1C (review execute)
 │
 ├── 1D (memory dry-run)
 │
@@ -574,7 +616,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 ```
 
 **Independent tracks:**
-- Track 1: 1A → 1B → 1C (Review Queue)
+- Track 1: 1A → 1B-00 → 1B → 1C (Review Queue)
 - Track 2: 1D (Memory Writer, standalone)
 - Track 3: 1E → 1F → 1G (Agent + Tools)
 
@@ -594,4 +636,6 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 - OpenAPI 14 paths, dev-check updated, side-effect validated
 - 169 backend tests, 325 frontend tests, all quality gates pass
 
-The next subphase is **Phase 1A-Release: 封板核验与推送准备**.
+**Phase 1B-00 is completed.** Review Queue approve/reject dry-run scope and contract are frozen.
+
+The next subphase is **Phase 1B: Review Queue Approve/Reject Dry-Run Implementation**.
