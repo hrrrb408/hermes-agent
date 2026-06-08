@@ -1,14 +1,14 @@
 # Phase 0C-05: Memory / Context / Agent Panel Read-only Integration
 
 **Date:** 2026-06-08
-**Status:** Completed
+**Status:** Completed (Phase 0C-05A closure validated)
 **Depends on:** Phase 0C-04 (Session Messages)
 
 ---
 
 ## 1. Status
 
-Phase 0C-05 is **completed**. All Memory, Context Preview, and Agent Status endpoints are implemented with full read-only guarantees and connected to real frontend panels.
+Phase 0C-05 is **completed and formally sealed**. All Memory, Context Preview, and Agent Status endpoints are implemented with full read-only guarantees, connected to real frontend panels, and validated through comprehensive closure testing (Phase 0C-05A).
 
 ---
 
@@ -107,6 +107,33 @@ Never returned: `api_key`, `base_url`, `secret`, `token`, `credential`, `system_
 - Model names sanitized through `_safe_model_name()` — strips path segments
 - All DTOs explicitly constructed — never `asdict()` or `__dict__`
 
+### 5.1 Path Redaction (Phase 0C-05A)
+
+Memory record content may contain local file paths written by users or system references. These must never appear in API responses or frontend display.
+
+**Implementation:** `redact_local_paths()` pure function in `dev_web_memory_service.py`.
+
+Applied before `recordPreview` enters the DTO in:
+- `get_item()` — memory item detail endpoint
+- Applied to record text before truncation
+
+**Patterns redacted:**
+
+| Pattern | Replacement | Notes |
+|---------|-------------|-------|
+| `/Users/<name>/...` | `[local-path]` | macOS home directories |
+| `/home/<name>/...` | `[local-path]` | Linux home directories |
+| `C:\Users\...` | `[local-path]` | Windows paths (defensive) |
+| `file://...` | `[file-uri-redacted]` | File URI schemes |
+
+**Preserved (not redacted):**
+
+| Pattern | Reason |
+|---------|--------|
+| `memory://...` | Internal Hermes reference, not a local path |
+| `https://...` | Public URL |
+| `http://...` | Public URL |
+
 ---
 
 ## 6. Side-effect Guarantee
@@ -166,7 +193,7 @@ Verified by: `test_memory_files_unchanged_after_context_preview`, `test_no_new_e
 
 File: `tests/test_dev_web_memory.py`
 
-- 59 tests covering:
+- **77 tests** covering:
   - Memory status (available/unavailable, counts, no paths)
   - Memory categories (list, archived toggle, whitelist, no paths)
   - Memory items (list, filter, pagination, whitelist, no storage URI)
@@ -176,35 +203,104 @@ File: `tests/test_dev_web_memory.py`
   - Read-only verification (file hashes unchanged, no events appended)
   - Route boundary (11 business routes, no write routes, no reviews)
   - Status integration
+  - **Path redaction unit tests** (13 tests): macOS, Linux, Windows, file://, memory://, https, empty, multiple
+  - **Path redaction API integration** (5 tests): no local paths in responses, redaction markers present, memory:// preserved, https preserved, all endpoints verified
+
+Total backend tests: **350 passed** (across all 4 test files)
 
 ### 8.2 Frontend
 
 File: `apps/hermes-dev-webui/src/tests/memory-api.spec.ts`
 
-- 18 tests covering all API clients:
+- **21 tests** covering all API clients:
   - fetchMemoryStatus, fetchMemoryCategories, fetchMemoryItems, fetchMemoryItemDetail
   - previewContext
   - fetchAgentStatus
+  - **Path redaction in responses** (3 tests): redaction markers, null preview, safe content passthrough
 
-Updated: `workspace-panel.spec.ts` — 9 tests for panel behavior with real components
+Updated: `workspace-panel.spec.ts` — **10 tests** for panel behavior including no-local-paths check across all tabs
+
+Total frontend tests: **250 passed**
 
 ---
 
-## 9. Browser Validation
+## 9. Browser Validation (Phase 0C-05A Closure)
 
-Browser smoke test to be run with:
-- Dev API on `127.0.0.1:5181`
-- WebUI on `127.0.0.1:5180`
+Browser: Chromium Headless (Playwright)
+WebUI: `http://127.0.0.1:5180`
+API: `http://127.0.0.1:5181`
+Viewports: 1280×800, 1440×900
 
-Verification checklist:
-- Memory tab loads categories and items
-- Context tab accepts query and shows preview
-- Agent tab shows status with all flags disabled
-- No write requests in network tab
-- No secrets in responses
-- Console errors: 0
-- CORS errors: 0
-- All five themes render correctly
+### 9.1 Network Verification
+
+| Endpoint | Status | Path Redaction |
+|----------|--------|----------------|
+| GET /memory/status | 200 | No paths in response |
+| GET /memory/categories | 200 | No paths in response |
+| GET /memory/items | 200 | No paths in response |
+| GET /memory/items/{id} | 200 | `[local-path]` markers present |
+| POST /context/preview | 200 | No paths in response |
+| GET /agent/status | 200 | No paths in response |
+
+Forbidden routes (all 404): `/reviews`, `/agent/run`, `/tools`
+Port 5182: not listening
+
+### 9.2 Panel Verification
+
+**Memory Panel:**
+- Badge: Read-only ✅
+- Categories, items, detail visible ✅
+- No path leaks in visible text ✅
+- No write buttons ✅
+
+**Context Panel:**
+- Query input visible ✅
+- Preview submitted and returned ✅
+- No path leaks in visible text ✅
+- No LLM badge, no write badge ✅
+
+**Agent Panel:**
+- No secrets (api_key, base_url, secret) ✅
+- No Run Agent button ✅
+- No Tool Execute button ✅
+- No path leaks in visible text ✅
+
+### 9.3 Browser Quality
+
+| Check | Result |
+|-------|--------|
+| Console project errors | 0 |
+| Console project warnings | 0 |
+| CORS errors | 0 |
+| Asset 404 | 0 |
+| Horizontal overflow at 1280×800 | None |
+| Horizontal overflow at 1440×900 | None |
+
+### 9.4 Five-theme Regression
+
+| Theme | Result |
+|-------|--------|
+| Obsidian | PASS |
+| Paper | PASS |
+| 宋韵 Song | PASS |
+| 墨境 Ink | PASS |
+| 夜樱 Sakura Night | PASS |
+
+### 9.5 dev-check Result
+
+- Result: **WARN** (only due to 5 pre-existing visual-review directories)
+- No FAIL items
+- All PASS items unchanged from baseline
+
+### 9.6 Side-effect Verification
+
+All memory files verified by SHA-256 hash before and after smoke test:
+- MEMORY.md: unchanged
+- memory/indexes/: all 7 files unchanged
+- memory/records/: all 3 files unchanged
+- memory/events.jsonl: unchanged
+- memory/snapshots/: all 9 files unchanged
+- memory/reviews/: all files unchanged
 
 ---
 

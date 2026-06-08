@@ -969,6 +969,10 @@ components:
         recordPreview:
           type: string
           nullable: true
+          description: >
+            Record text preview, truncated to 5000 chars. Local absolute paths
+            are redacted: /Users/..., /home/..., C:\... → [local-path];
+            file://... → [file-uri-redacted]. memory:// and https:// are preserved.
 
     ContextPreviewLimits:
       type: object

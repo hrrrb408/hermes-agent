@@ -647,6 +647,8 @@ GET /api/dev/v1/memory/items/{memoryId}
 
 **`record` field:** Full record text, truncated to `maxRecordChars` (default 3000). Includes `truncated: true` flag if truncated.
 
+**Path redaction:** The `recordPreview` field is processed through `redact_local_paths()` before being returned. Local absolute paths (`/Users/...`, `/home/...`, Windows paths) are replaced with `[local-path]`. `file://` URIs are replaced with `[file-uri-redacted]`. `memory://` references and `https://` URLs are preserved unchanged.
+
 **Error codes:** `MEMORY_NOT_FOUND`
 
 ---
