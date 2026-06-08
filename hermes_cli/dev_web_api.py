@@ -1,7 +1,7 @@
 """Hermes Dev Web API — independent read-only FastAPI application.
 
 This module provides the ``create_dev_web_api_app()`` factory and the
-Phase 0C-05 endpoints:
+Phase 1A endpoints:
 
 - ``GET /api/dev/v1/status``
 - ``GET /api/dev/v1/files/status``
@@ -14,6 +14,9 @@ Phase 0C-05 endpoints:
 - ``GET /api/dev/v1/memory/items/{memoryId}``
 - ``POST /api/dev/v1/context/preview``
 - ``GET /api/dev/v1/agent/status``
+- ``GET /api/dev/v1/reviews/status``
+- ``GET /api/dev/v1/reviews``
+- ``GET /api/dev/v1/reviews/{reviewId}``
 
 Importing this module has **no side effects**: no server is started, no
 files are read, no database connections are opened.
@@ -38,6 +41,11 @@ from hermes_cli.dev_web_errors import (
     INVALID_MEMORY_ID,
     INVALID_PARAMETER,
     CONTEXT_PREVIEW_ERROR,
+    REVIEW_QUEUE_UNAVAILABLE,
+    REVIEW_NOT_FOUND,
+    INVALID_REVIEW_ID,
+    INVALID_REVIEW_QUERY,
+    REVIEW_STORE_ERROR,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -60,6 +68,13 @@ from hermes_cli.dev_web_memory_service import (
 from hermes_cli.dev_web_agent_service import (
     DevAgentStatusService,
 )
+from hermes_cli.dev_web_review_service import (
+    DevReviewQueryService,
+    ReviewQueueUnavailableError,
+    ReviewNotFoundError,
+    InvalidReviewIdError,
+    InvalidReviewQueryError,
+)
 
 
 # ── Query parameter enums ──
@@ -78,6 +93,35 @@ class ArchivedOption(str, Enum):
     exclude = "exclude"
     include = "include"
     only = "only"
+
+
+class ReviewStatusOption(str, Enum):
+    """Status filter for review list."""
+
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    failed = "failed"
+    all = "all"
+
+
+class ReviewDecisionOption(str, Enum):
+    """Decision filter for review list."""
+
+    WRITE = "WRITE"
+    UPDATE = "UPDATE"
+    REVIEW = "REVIEW"
+    SKIP = "SKIP"
+    SKIP_DUPLICATE = "SKIP_DUPLICATE"
+    UNDECIDED = "UNDECIDED"
+    all = "all"
+
+
+class ReviewOrderOption(str, Enum):
+    """Sort order for review list."""
+
+    created_desc = "created_desc"
+    updated_desc = "updated_desc"
 
 
 # ── App factory ──
@@ -107,6 +151,7 @@ def create_dev_web_api_app(
             {"name": "Context", "description": "Memory context preview"},
             {"name": "Agent", "description": "Agent configuration status"},
             {"name": "Files", "description": "File browsing status"},
+            {"name": "Reviews", "description": "Review queue read-only access"},
         ],
     )
 
@@ -117,16 +162,19 @@ def create_dev_web_api_app(
     message_service: DevMessageQueryService | None = None
     memory_service: DevMemoryQueryService | None = None
     agent_service: DevAgentStatusService | None = None
+    review_service: DevReviewQueryService | None = None
     if config.hermes_home is not None:
         state_db_path = config.hermes_home / "state.db"
         session_service = DevSessionQueryService(state_db_path)
         message_service = DevMessageQueryService(state_db_path)
         memory_service = DevMemoryQueryService(config.hermes_home)
         agent_service = DevAgentStatusService(config.hermes_home)
+        review_service = DevReviewQueryService(config.hermes_home)
     app.state.session_service = session_service
     app.state.message_service = message_service
     app.state.memory_service = memory_service
     app.state.agent_service = agent_service
+    app.state.review_service = review_service
 
     # ── Middleware (order matters: outermost first) ──
     app.add_middleware(RequestIdMiddleware)
@@ -143,7 +191,7 @@ def create_dev_web_api_app(
     register_error_handlers(app)
 
     # ── Routes ──
-    _register_routes(app, config, session_service, memory_service, agent_service)
+    _register_routes(app, config, session_service, memory_service, agent_service, review_service)
 
     return app
 
@@ -173,8 +221,9 @@ def _register_routes(
     session_service: DevSessionQueryService | None,
     memory_service: DevMemoryQueryService | None,
     agent_service: DevAgentStatusService | None,
+    review_service: DevReviewQueryService | None,
 ) -> None:
-    """Register Phase 0C-05 routes."""
+    """Register Phase 1A routes."""
 
     prefix = config.api_prefix
 
@@ -770,6 +819,176 @@ def _register_routes(
             }
 
         result = agent_service.get_status()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /reviews/status ──
+
+    @app.get(
+        f"{prefix}/reviews/status",
+        tags=["Reviews"],
+        summary="Review queue status",
+    )
+    def get_review_status(request: Request) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        if review_service is None:
+            return {
+                "data": {
+                    "available": False,
+                    "readOnly": True,
+                    "queueEnabled": False,
+                    "writeEnabled": False,
+                    "approveEnabled": False,
+                    "rejectEnabled": False,
+                    "enqueueEnabled": False,
+                    "counts": {
+                        "pending": 0,
+                        "approved": 0,
+                        "rejected": 0,
+                        "failed": 0,
+                        "total": 0,
+                    },
+                    "storage": {
+                        "available": False,
+                        "redactedPath": "",
+                    },
+                },
+                "meta": {"requestId": rid, "timestamp": ts},
+            }
+
+        result = review_service.get_status()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /reviews ──
+
+    @app.get(
+        f"{prefix}/reviews",
+        tags=["Reviews"],
+        summary="List review queue items",
+    )
+    def list_reviews(
+        request: Request,
+        status: ReviewStatusOption | None = Query(
+            default=None,
+            description="Filter by review status.",
+        ),
+        decision: ReviewDecisionOption | None = Query(
+            default=None,
+            description="Filter by original decision.",
+        ),
+        category: str | None = Query(
+            default=None,
+            max_length=64,
+            description="Filter by memory category.",
+        ),
+        query: str | None = Query(
+            default=None,
+            max_length=200,
+            description="Search review titles and summaries.",
+        ),
+        limit: int = Query(default=30, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        order: ReviewOrderOption = Query(default=ReviewOrderOption.updated_desc),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.list_reviews(
+                status=status.value if status else None,
+                decision=decision.value if decision else None,
+                category=category,
+                query=query,
+                limit=limit,
+                offset=offset,
+                order=order.value,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+        except InvalidReviewQueryError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_QUERY,
+                message=str(exc),
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /reviews/{reviewId} ──
+
+    @app.get(
+        f"{prefix}/reviews/{{reviewId}}",
+        tags=["Reviews"],
+        summary="Get review item detail",
+    )
+    def get_review_detail(
+        request: Request,
+        reviewId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate review ID
+        validation_error = DevReviewQueryService.validate_review_id(
+            reviewId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_ID,
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.get_review_detail(reviewId)
+        except ReviewNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=REVIEW_NOT_FOUND,
+                message="Review item was not found.",
+                request_id=rid,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
         return {
             "data": result,
             "meta": {"requestId": rid, "timestamp": ts},

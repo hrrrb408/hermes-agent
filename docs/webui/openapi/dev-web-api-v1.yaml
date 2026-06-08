@@ -30,6 +30,8 @@ tags:
     description: Agent configuration status
   - name: Files
     description: File browsing status
+  - name: Reviews
+    description: Review queue read-only access
 
 paths:
   /status:
@@ -366,6 +368,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FilesStatusResponse"
+
+  /reviews/status:
+    get:
+      operationId: getReviewQueueStatus
+      tags: [Reviews]
+      summary: Review queue status and safety flags
+      description: >
+        Returns the review queue status including availability, item counts,
+        and safety flags. All safety flags (writeEnabled, approveEnabled,
+        rejectEnabled, enqueueEnabled) are always false in Phase 1A.
+      responses:
+        "200":
+          description: Review queue status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewQueueStatusResponse"
+
+  /reviews:
+    get:
+      operationId: listReviewItems
+      tags: [Reviews]
+      summary: List review queue items
+      description: >
+        Returns a paginated, filtered list of review items. Only whitelisted
+        fields are included — no fingerprint, source, raw candidate, or
+        evaluation details are returned.
+      parameters:
+        - name: status
+          in: query
+          description: Filter by review status
+          schema:
+            type: string
+            enum: [pending, approved, rejected, failed, all]
+        - name: decision
+          in: query
+          description: Filter by original memory decision
+          schema:
+            type: string
+            enum: [WRITE, UPDATE, REVIEW, SKIP, SKIP_DUPLICATE, UNDECIDED, all]
+        - name: category
+          in: query
+          description: Filter by memory category
+          schema:
+            type: string
+            maxLength: 64
+        - name: query
+          in: query
+          description: Search review titles and summaries
+          schema:
+            type: string
+            maxLength: 200
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [created_desc, updated_desc]
+            default: updated_desc
+      responses:
+        "200":
+          description: Review items list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewListResponse"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Review queue unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{reviewId}:
+    get:
+      operationId: getReviewItem
+      tags: [Reviews]
+      summary: Get review item detail
+      description: >
+        Returns full detail for a single review item. Summary is truncated
+        to 300 chars. No fingerprint, source, raw candidate text, or
+        approval/rejection objects are returned. Safety flags are always
+        read-only in Phase 1A.
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MR-\\d{8}T\\d{6}-[0-9a-f]{8}$"
+            maxLength: 256
+      responses:
+        "200":
+          description: Review item detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewDetailResponse"
+        "400":
+          description: Invalid review ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Review item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Review queue unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -1097,5 +1234,278 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/FilesStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Reviews ──
+    ReviewQueueCounts:
+      type: object
+      required: [pending, approved, rejected, failed, total]
+      properties:
+        pending:
+          type: integer
+        approved:
+          type: integer
+        rejected:
+          type: integer
+        failed:
+          type: integer
+        total:
+          type: integer
+
+    ReviewQueueStorage:
+      type: object
+      required: [available, redactedPath]
+      properties:
+        available:
+          type: boolean
+        redactedPath:
+          type: string
+          description: Redacted path (e.g., [dev-home]/memory/reviews)
+
+    ReviewQueueStatusData:
+      type: object
+      required:
+        - available
+        - readOnly
+        - queueEnabled
+        - writeEnabled
+        - approveEnabled
+        - rejectEnabled
+        - enqueueEnabled
+        - counts
+        - storage
+      properties:
+        available:
+          type: boolean
+        readOnly:
+          type: boolean
+          enum: [true]
+        queueEnabled:
+          type: boolean
+          enum: [false]
+        writeEnabled:
+          type: boolean
+          enum: [false]
+        approveEnabled:
+          type: boolean
+          enum: [false]
+        rejectEnabled:
+          type: boolean
+          enum: [false]
+        enqueueEnabled:
+          type: boolean
+          enum: [false]
+        counts:
+          $ref: "#/components/schemas/ReviewQueueCounts"
+        storage:
+          $ref: "#/components/schemas/ReviewQueueStorage"
+
+    ReviewQueueStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ReviewQueueStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    ReviewListItem:
+      type: object
+      required:
+        - reviewId
+        - status
+        - decision
+        - proposedAction
+        - category
+        - title
+        - summaryPreview
+        - tags
+        - score
+        - reasonCodes
+        - targetMemoryId
+        - protectedTarget
+        - occurrenceCount
+        - createdAt
+        - updatedAt
+      properties:
+        reviewId:
+          type: string
+          pattern: "^MR-\\d{8}T\\d{6}-[0-9a-f]{8}$"
+        status:
+          type: string
+          enum: [pending, approved, rejected, failed]
+        decision:
+          type: string
+          enum: [WRITE, UPDATE, REVIEW, SKIP, SKIP_DUPLICATE, UNDECIDED]
+        proposedAction:
+          type: string
+          enum: [WRITE, UPDATE, UNDECIDED]
+        category:
+          type: string
+        title:
+          type: string
+          maxLength: 120
+        summaryPreview:
+          type: string
+          maxLength: 120
+        tags:
+          type: array
+          items:
+            type: string
+        score:
+          type: integer
+        reasonCodes:
+          type: array
+          items:
+            type: string
+        targetMemoryId:
+          type: string
+          nullable: true
+        protectedTarget:
+          type: boolean
+        occurrenceCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReviewListData:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReviewListItem"
+        page:
+          $ref: "#/components/schemas/Page"
+
+    ReviewListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ReviewListData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    ScoreBreakdownEntry:
+      type: object
+      required: [rule, value]
+      properties:
+        rule:
+          type: string
+        value:
+          type: integer
+
+    SimilarityScores:
+      type: object
+      required: [title, summary, combined, overall]
+      properties:
+        title:
+          type: number
+        summary:
+          type: number
+        combined:
+          type: number
+        overall:
+          type: number
+
+    ReviewTarget:
+      type: object
+      properties:
+        memoryId:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+        category:
+          type: string
+          nullable: true
+        protected:
+          type: boolean
+
+    ReviewTimestamps:
+      type: object
+      required: [createdAt, updatedAt, lastSeenAt]
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ReviewErrors:
+      type: object
+      properties:
+        lastError:
+          type: string
+          nullable: true
+          maxLength: 200
+
+    ReviewSafety:
+      type: object
+      required: [readOnly, approveAvailable, rejectAvailable, writeAvailable, dryRunAvailable]
+      properties:
+        readOnly:
+          type: boolean
+          enum: [true]
+        approveAvailable:
+          type: boolean
+          enum: [false]
+        rejectAvailable:
+          type: boolean
+          enum: [false]
+        writeAvailable:
+          type: boolean
+          enum: [false]
+        dryRunAvailable:
+          type: boolean
+          enum: [false]
+
+    ReviewDetailData:
+      allOf:
+        - $ref: "#/components/schemas/ReviewListItem"
+        - type: object
+          required: [summary, scoreBreakdown, similarity, target, timestamps, errors, safety]
+          properties:
+            summary:
+              type: string
+              maxLength: 300
+            scoreBreakdown:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScoreBreakdownEntry"
+            similarity:
+              $ref: "#/components/schemas/SimilarityScores"
+            target:
+              $ref: "#/components/schemas/ReviewTarget"
+            timestamps:
+              $ref: "#/components/schemas/ReviewTimestamps"
+            errors:
+              $ref: "#/components/schemas/ReviewErrors"
+            safety:
+              $ref: "#/components/schemas/ReviewSafety"
+
+    ReviewDetailResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ReviewDetailData"
         meta:
           $ref: "#/components/schemas/Meta"

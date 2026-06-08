@@ -7063,7 +7063,7 @@ def _webui_check_openapi(
 
     Checks:
     - YAML is parseable
-    - Exactly 11 business paths
+    - Exactly 14 business paths
     - All allowed routes are present
     - No forbidden routes appear
     """
@@ -7088,19 +7088,24 @@ def _webui_check_openapi(
         "/memory/items/{memoryId}": {"get"},
         "/context/preview": {"post"},
         "/agent/status": {"get"},
+        "/reviews/status": {"get"},
+        "/reviews": {"get"},
+        "/reviews/{reviewId}": {"get"},
     }
 
     # Forbidden route path substrings
     FORBIDDEN_SUBSTRINGS = (
-        "/reviews",
         "/agent/run",
         "/tools",
         "/files/upload",
     )
 
+    # Forbidden POST/PATCH/DELETE on reviews (GET is allowed above)
+    _REVIEW_WRITE_METHODS = {"post", "patch", "delete"}
+
     # Check path count
     add_fn(
-        "PASS" if path_count == 11 else "FAIL",
+        "PASS" if path_count == 14 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7129,6 +7134,12 @@ def _webui_check_openapi(
             if substr in route_path:
                 forbidden_found.append(route_path)
                 break
+        # Check for review write routes (POST/PATCH/DELETE on /reviews/*)
+        if route_path.startswith("/reviews") and route_path not in allowed_path_set:
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            if actual_methods & _REVIEW_WRITE_METHODS:
+                forbidden_found.append(route_path)
+            continue
         # Check for HTTP methods not in the allowed set
         if route_path in allowed_path_set:
             actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}

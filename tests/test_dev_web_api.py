@@ -517,12 +517,10 @@ class TestCORS:
 
 
 class TestRouteBoundary:
-    """Phase 0C-05: 11 business routes exist. Write routes, reviews,
+    """Phase 1A: 14 business routes exist. Write routes, review writes,
     and agent run remain unimplemented (404 or 405)."""
 
     @pytest.mark.parametrize("path", [
-        "/api/dev/v1/reviews",
-        "/api/dev/v1/reviews/pending",
         "/api/dev/v1/agent/run",
         "/api/dev/v1/agent/messages",
         "/api/dev/v1/tools",
@@ -572,9 +570,18 @@ class TestRouteBoundary:
         )
         assert resp.status_code == 503
 
-    def test_no_review_routes(self, client):
-        resp = client.get("/api/dev/v1/reviews")
-        assert resp.status_code == 404
+    def test_review_read_routes_exist(self, client):
+        """Phase 1A: review read routes are implemented (503 without hermes_home)."""
+        assert client.get("/api/dev/v1/reviews/status").status_code == 200
+        assert client.get("/api/dev/v1/reviews").status_code == 503
+        assert client.get("/api/dev/v1/reviews/MR-20260101T000000-deadbeef").status_code == 503
+
+    def test_no_review_write_routes(self, client):
+        """Phase 1A: review write routes are not implemented."""
+        assert client.post("/api/dev/v1/reviews", json={}).status_code == 405
+        assert client.post("/api/dev/v1/reviews/enqueue", json={}).status_code in (404, 405)
+        assert client.patch("/api/dev/v1/reviews/MR-20260101T000000-deadbeef", json={}).status_code in (404, 405)
+        assert client.delete("/api/dev/v1/reviews/MR-20260101T000000-deadbeef").status_code in (404, 405)
 
     def test_no_file_upload(self, client):
         resp = client.post("/api/dev/v1/files/upload", json={})
