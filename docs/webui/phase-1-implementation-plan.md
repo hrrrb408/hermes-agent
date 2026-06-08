@@ -284,9 +284,9 @@ Enable dry-run preview of Review Queue approve and reject operations without rea
 
 ---
 
-## Phase 1C: Review Queue Approve/Reject Dev-Only Execute — Not Started
+## Phase 1C: Review Queue Approve/Reject Dev-Only Execute — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed ✅
 **Priority:** P1 (High risk, real write)
 **Estimated scope:** Large (2 execute routes + audit + confirmation + kill switch)
 **Dependencies:** Phase 1B completed
@@ -631,7 +631,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1B-00 | Review Queue dry-run scope & contract freeze | ✅ Completed | 1A | No |
 | 1B | Review Queue dry-run | ✅ Completed | 1B-00 | No |
 | 1C-00 | Review Queue execute scope & safety boundary freeze | ✅ Completed | 1B | No |
-| 1C | Review Queue execute | Not Started | 1C-00 | Yes (dev) |
+| 1C | Review Queue execute | ✅ Completed | 1C-00 | Yes (dev) |
 | 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
 | 1E | Agent prompt preview | Not Started | 0E-Release | No |
 | 1F | Agent Run without tools | Not Started | 1E | Yes (dev) |
@@ -655,7 +655,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │
 ├── 1B ✅ (review dry-run)
 │   └── 1C-00 ✅ (review execute scope & safety boundary freeze)
-│       └── 1C (review execute)
+│       └── 1C ✅ (review execute)
 │
 ├── 1D (memory dry-run)
 │
@@ -695,11 +695,13 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 - OpenAPI 16 paths, dev-check updated, side-effect validated (zero changes)
 - 207 backend tests, 325 frontend tests, all quality gates pass
 
-**Phase 1C-00 is completed.** Review Queue dev-only execute scope and safety boundary are frozen.
-- Complete write-effect audit: 6 files (WRITE approve), 7 files (UPDATE approve), 2 files (reject)
-- Failure modes, concurrency, and race conditions documented
-- Execute routes草案 frozen: /reviews/{reviewId}/approve/execute, /reviews/{reviewId}/reject/execute
-- Confirmation model, kill switch, audit trail, rollback strategy frozen
-- No API implemented, no business code modified
+**Phase 1C is completed.** Review Queue dev-only approve/reject execute is implemented with kill switch, dev-only guard, explicit confirmation, and fixture-only write tests.
+- Kill switch: `HERMES_REVIEW_EXECUTE_ENABLED` env var, default disabled
+- Dev-only guard: rejects production HERMES_HOME
+- 2 execute POST routes: /reviews/{reviewId}/approve/execute, /reviews/{reviewId}/reject/execute
+- Full confirmation model: confirmationText, expectedAction, reviewUpdatedAt, dryRunPreviewed, acknowledgedEffects
+- 330 backend tests (105 review), 325 frontend tests, 24 smoke tests, all quality gates pass
+- OpenAPI 18 paths, dev-check updated, side-effect validated (zero changes to real dev-home)
+- See `docs/webui/phase-1c-review-queue-execute.md` for full details
 
-The next subphase is **Phase 1C: Review Queue Approve/Reject Dev-Only Execute**.
+The next subphase is **Phase 1D** (to be defined).
