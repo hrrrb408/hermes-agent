@@ -375,4 +375,6 @@ None.
 
 **Phase 0E-05 completed.** dev-check now includes Dev WebUI engineering governance checks for artifact policies, smoke runner, Playwright smoke matrix, package scripts, and static OpenAPI route boundaries. 15 new checks added with 17 unit tests and 5 integration tests. All checks are fast, read-only, and require no service startup. See `docs/webui/phase-0e-05-dev-check-enhancement.md` for details.
 
-The next subphase is **0E-06: Phase 1 Safety Boundary Draft**. This task does NOT automatically start 0E-06.
+**Phase 0E-06 completed.** Phase 1 safety boundary is now defined. Any future write operation must satisfy default-deny, dry-run-first, dev-only isolation, explicit confirmation, allowlist, audit trail, kill switch, and testing gates. The document defines risk taxonomy (P0 prohibited, high/medium/low), 10 safety principles, capability-specific gates for Review Queue, Memory, Agent Run, Tool Execution, Sessions, and Files, and recommends a Phase 1 sequence (1A through 1G). See `docs/webui/phase-0e-06-phase-1-safety-boundary.md` for details.
+
+The next subphase is **0E-Release: Final Verification & Push**. This task does NOT automatically start 0E-Release.

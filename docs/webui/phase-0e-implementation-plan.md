@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03, 0E-04, 0E-05 completed; 0E-06 through 0E-Release not started
+**Status:** Phase 0E-00 through 0E-06 completed; 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -380,59 +380,88 @@ Only after 0E-Release verification.
 
 ---
 
-## Phase 0E-06: Phase 1 Safety Boundary Draft — Not Started
+## Phase 0E-06: Phase 1 Safety Boundary — Completed ✅
 
+**Status:** Completed
 **Priority:** P1
 **Estimated scope:** Medium (documentation only, no code)
+**Date:** 2026-06-08
 
 ### Goal
 
-Draft the safety principles and prerequisites document for Phase 1, which will introduce write operations.
+Define the safety boundary document for Phase 1, establishing principles, gates, and capability-specific prerequisites before any write operations are introduced.
 
 ### Context
 
-Phase 0C/0D established a strong read-only boundary. Phase 1 will need to introduce:
-- Agent conversation (SSE streaming)
-- Session creation
-- Message sending
-- Potentially tool execution and Memory writes
-
-Without documented safety principles, there is risk of introducing write operations without adequate safeguards.
+Phase 0C/0D established a strong read-only boundary. Phase 1 will inevitably introduce write operations. Without documented preconditions, there is risk of:
+- Write operations introduced without adequate isolation testing
+- Agent Run without dry-run capability
+- Tool execution without allowlist
+- Memory/Review mutation without production isolation verification
 
 ### Modification Scope
 
 | File | Action |
 |------|--------|
-| `docs/webui/phase-1-safety-boundary.md` | **New** — Safety principles document |
+| `docs/webui/phase-0e-06-phase-1-safety-boundary.md` | **New** — Complete safety boundary document |
 
-### Proposed Principles
+### Documented Principles
 
 1. **Default deny:** All write operations disabled until explicitly enabled per-phase
 2. **Dry-run first:** Every write operation must have a dry-run mode that validates without mutating
-3. **Allowlist enforcement:** All mutations must go through a verified allowlist, not a denylist
-4. **Production isolation verification:** Before and after every write phase, verify `~/.hermes` is untouched
-5. **Dual confirmation:** Browser + CLI confirmation for destructive operations
-6. **Incremental enablement:** Each write capability is its own phase with independent acceptance criteria
-7. **No SSE before Agent Run:** Streaming must not be introduced before Agent Run is complete and tested
-8. **No automatic memory operations:** Memory write/update/archive remain disabled in WebUI
+3. **Dev-only isolation:** All Phase 1 capabilities restricted to dev-home, production is fail-closed
+4. **Explicit confirmation:** All write operations require user confirmation with cancel-default focus
+5. **Allowlist enforcement:** Only explicitly listed actions are permitted
+6. **Audit trail:** Every real write operation produces an audit event
+7. **Kill switch:** Every capability can be immediately disabled via environment variable
+8. **No production by design:** Production detection results in refusal, not warning
+9. **Test-before-enable:** Comprehensive tests are a prerequisite for each capability
+10. **Dual-channel safety:** Backend enforcement is mandatory, frontend hiding is insufficient
+
+### Documented Capability Gates
+
+- Review Queue read-only, dry-run, and execute gates (Phase 1A → 1B → 1C)
+- Memory Writer dry-run gate (Phase 1D)
+- Agent Run prompt preview and execution gates (Phase 1E → 1F)
+- Tool Execution Safety Framework gate (Phase 1G)
+- Session/Message/File/Gateway operation boundaries
+
+### Recommended Phase 1 Sequence
+
+```
+1A: Review Queue Read-Only → 1B: Review Queue Dry-Run → 1C: Review Queue Execute
+1D: Memory Writer Dry-Run (parallel)
+1E: Agent Prompt Preview → 1F: Agent Run Without Tools → 1G: Tool Execution
+```
 
 ### Non-goals
 
 - No code changes
 - No Phase 1 implementation
+- No new API routes
 - No commitment to Phase 1 timeline
-- No API route design
 
 ### Acceptance Criteria
 
-1. Document exists at `docs/webui/phase-1-safety-boundary.md`
-2. All 8 proposed principles are documented with rationale
-3. Phase 1 candidate capabilities are listed with prerequisites
-4. Document reviewed and acknowledged by user
+1. ✅ Document exists at `docs/webui/phase-0e-06-phase-1-safety-boundary.md`
+2. ✅ All 10 safety principles documented with rationale and requirements
+3. ✅ Phase 1 candidate capabilities listed with risk classification
+4. ✅ Capability-specific gates defined for Review Queue, Memory, Agent, Tools, Sessions, Files
+5. ✅ Phase 1 recommended sequence provided (1A through 1G)
+6. ✅ Existing safety mechanisms inventoried for reuse
+7. ✅ Audit trail requirements defined
+8. ✅ Kill switch requirements defined
+9. ✅ Testing requirements defined
+10. ✅ No write operations implemented
+11. ✅ No new API routes added
+12. ✅ No business code modified
+13. ✅ memory-check PASS
+14. ✅ dev-check PASS
+15. ✅ compileall PASS
 
 ### Dependencies
 
-- None (can start immediately; documentation only)
+- None (documentation only)
 
 ### Push
 
@@ -484,7 +513,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 | 0E-03 | Playwright smoke matrix | ✅ Completed | 0E-01 preferred |
 | 0E-04 | Dev WebUI smoke runner | ✅ Completed | None |
 | 0E-05 | dev-check enhancement | ✅ Completed | 0E-01, 0E-02 preferred |
-| 0E-06 | Phase 1 safety boundary | Not started | None |
+| 0E-06 | Phase 1 safety boundary | ✅ Completed | None |
 | 0E-Release | Final verification & push | Not started | All above |
 
 ---
@@ -498,7 +527,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 ├── 0E-03 ✅ (prefers 0E-01)
 ├── 0E-04 ✅ (no deps)
 ├── 0E-05 ✅ (prefers 0E-01 + 0E-02)
-├── 0E-06 (no deps)
+├── 0E-06 ✅ (no deps)
 └── 0E-Release (requires all)
 ```
 
@@ -508,6 +537,6 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 
 ## Phase 0E Closure
 
-**Phase 0E-00 through 0E-05 are completed.**
+**Phase 0E-00 through 0E-06 are completed.**
 
-See individual subphase sections for status. The next subphase is **0E-06: Phase 1 Safety Boundary Draft**.
+See individual subphase sections for status. The next subphase is **0E-Release: Final Verification & Push**.
