@@ -88,12 +88,13 @@ Read-only first → Dry-run second → Dev-only execute third → High-risk last
 
 ---
 
-## Phase 1A: Review Queue Read-Only Panel — Not Started
+## Phase 1A: Review Queue Read-Only Panel — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** P2 (Low risk, no write)
 **Estimated scope:** Medium (3 new GET routes + frontend panel)
 **Dependencies:** Phase 0E-Release completed
+**Completion date:** 2026-06-08
 
 ### Goal
 
@@ -587,6 +588,10 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 
 **Phase 1A-00 is completed.** Review Queue read-only scope and contract are frozen.
 
-The next subphase is **Phase 1A: Review Queue Read-Only Panel**.
+**Phase 1A is completed.** Review Queue Read-Only Panel is implemented.
+- 3 GET review routes: /reviews/status, /reviews, /reviews/{reviewId}
+- Frontend ReviewPanel with read-only panel in workspace
+- OpenAPI 14 paths, dev-check updated, side-effect validated
+- 169 backend tests, 325 frontend tests, all quality gates pass
 
-This document does NOT automatically start Phase 1A.
+The next subphase is **Phase 1A-Release: 封板核验与推送准备**.
