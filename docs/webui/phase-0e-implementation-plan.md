@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00, 0E-01, 0E-02 completed; 0E-03 through 0E-Release not started
+**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03 completed; 0E-04 through 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -153,8 +153,9 @@ Only after 0E-Release verification.
 
 ---
 
-## Phase 0E-03: Playwright Smoke Matrix — Not Started
+## Phase 0E-03: Playwright Smoke Matrix — Completed ✅
 
+**Status:** Completed
 **Priority:** P2
 **Estimated scope:** Medium (new test infrastructure + 20 test cases)
 
@@ -188,25 +189,30 @@ Create a lightweight Playwright test script that validates all 5 themes render c
 
 ### Test Requirements
 
-For each of 20 viewport × theme combinations:
+For each of 20 viewport × theme combinations + 4 panel drill-downs (24 total):
 - Page loads without JavaScript errors
 - `data-theme` attribute matches expected theme ID
 - `color-scheme` matches theme's light/dark setting
 - Key CSS variables are set (`--color-app-bg`, `--color-text-primary`, `--color-accent`)
 - No horizontal overflow
+- No forbidden network requests (5182, localhost, 0.0.0.0, write endpoints, reviews, agent/run)
+- Console errors = 0, CORS errors = 0, asset 404 = 0
+- Read-only UI enforced (Send/Attach disabled, "Read only" visible)
+- No raw filesystem paths in page text
 
 Viewports:
-- Mobile: 640×800
-- Tablet: 768×1024
-- Desktop: 1280×900
-- Wide: 1440×900
+- 1440×900 (wide-screen)
+- 1280×800 (standard desktop)
+- 1024×768 (compressed desktop)
+- 768×900 (tablet/narrow)
 
 ### Acceptance Criteria
 
-1. `pnpm exec playwright test` runs and reports pass/fail for 20 combinations
-2. No screenshots or traces saved by default
-3. Test completes in under 60 seconds
-4. All existing tests still pass
+1. ✅ `npx playwright test` runs and reports pass/fail for 24 tests (20 theme + 4 drill-down)
+2. ✅ No screenshots or traces saved by default
+3. ✅ Test completes in under 60 seconds (49.8s actual)
+4. ✅ All existing tests still pass (324 unit tests)
+5. ✅ No side-effects on state.db, MEMORY.md, or memory files
 
 ### Risks
 
@@ -453,7 +459,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 | 0E-00 | Governance scope & freeze | ✅ Completed | None |
 | 0E-01 | Build artifact policy | ✅ Completed | None |
 | 0E-02 | Visual review artifact policy | ✅ Completed | None |
-| 0E-03 | Playwright smoke matrix | Not started | 0E-01 preferred |
+| 0E-03 | Playwright smoke matrix | ✅ Completed | 0E-01 preferred |
 | 0E-04 | Dev WebUI smoke runner | Not started | None |
 | 0E-05 | dev-check enhancement | Not started | 0E-01, 0E-02 preferred |
 | 0E-06 | Phase 1 safety boundary | Not started | None |
@@ -467,7 +473,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 0E-00 ✅
 ├── 0E-01 ✅ (no deps)
 ├── 0E-02 ✅ (no deps)
-├── 0E-03 (prefers 0E-01)
+├── 0E-03 ✅ (prefers 0E-01)
 ├── 0E-04 (no deps)
 ├── 0E-05 (prefers 0E-01 + 0E-02)
 ├── 0E-06 (no deps)

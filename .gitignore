@@ -83,6 +83,11 @@ apps/desktop/*.tsbuildinfo
 # Hermes Dev WebUI visual review artifacts
 /apps/hermes-dev-webui/visual-review/
 
+# Hermes Dev WebUI Playwright artifacts
+/apps/hermes-dev-webui/playwright-report/
+/apps/hermes-dev-webui/test-results/
+/apps/hermes-dev-webui/blob-report/
+
 # Web UI assets — synced from @nous-research/ui at build time via
 # `npm run sync-assets` (see web/package.json).
 web/public/fonts/

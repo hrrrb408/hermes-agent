@@ -369,4 +369,6 @@ None.
 
 **Phase 0E-02 completed.** Visual-review artifacts are local-only and ignored by Git. `dev-check` no longer reports dirty worktree due solely to visual-review artifacts. Plan A (`.gitignore` only) was sufficient — no `dev-check` code changes were needed. See `docs/webui/phase-0e-02-visual-review-artifact-policy.md` for details.
 
-The next subphase is **0E-03: Playwright Smoke Matrix**. This task does NOT automatically start 0E-03.
+**Phase 0E-03 completed.** Playwright smoke matrix established with 4 viewports × 5 themes = 20 combinations plus 4 panel drill-down tests = 24 total tests. `@playwright/test@1.60.0` added as dev dependency. All tests pass in 49.8s. Smoke test runs without screenshots, videos, traces, or HAR artifacts. No side-effects on dev-home state. See `docs/webui/phase-0e-03-playwright-smoke-matrix.md` for details.
+
+The next subphase is **0E-04: Dev WebUI Smoke Runner**. This task does NOT automatically start 0E-04.
