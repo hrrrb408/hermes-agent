@@ -27,9 +27,11 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 
-from fastapi import FastAPI, Query, Request
+from fastapi import Body, FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from typing import Any
 
 from hermes_cli.dev_web_config import DevWebApiConfig
 from hermes_cli.dev_web_errors import (
@@ -49,6 +51,14 @@ from hermes_cli.dev_web_errors import (
     REVIEW_DRY_RUN_UNAVAILABLE,
     REVIEW_NOT_PENDING,
     REVIEW_APPROVAL_BLOCKED,
+    REVIEW_EXECUTE_DISABLED,
+    REVIEW_PRECONDITION_FAILED,
+    INVALID_CONFIRMATION,
+    MISSING_DRY_RUN,
+    INVALID_ACKNOWLEDGED_EFFECTS,
+    REVIEW_EXECUTE_ERROR,
+    UNSAFE_ENVIRONMENT,
+    REVIEW_REJECTION_BLOCKED,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -78,6 +88,13 @@ from hermes_cli.dev_web_review_service import (
     InvalidReviewIdError,
     InvalidReviewQueryError,
     ReviewNotPendingError,
+    ReviewExecuteDisabledError,
+    ReviewPreconditionFailedError,
+    InvalidConfirmationError,
+    MissingDryRunError,
+    InvalidAcknowledgedEffectsError,
+    ReviewApprovalBlockedError,
+    UnsafeEnvironmentError,
 )
 
 
@@ -1122,6 +1139,315 @@ def _register_routes(
                 status_code=409,
                 code=REVIEW_NOT_PENDING,
                 message=str(exc),
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── POST /reviews/{reviewId}/approve/execute ──
+
+    @app.post(
+        f"{prefix}/reviews/{{reviewId}}/approve/execute",
+        tags=["Reviews"],
+        summary="Execute approve action (dev-only, requires confirmation)",
+    )
+    def approve_execute(
+        request: Request,
+        reviewId: str,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate review ID
+        validation_error = DevReviewQueryService.validate_review_id(
+            reviewId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_ID,
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        confirmation_text = body.get("confirmationText", "")
+        expected_action = body.get("expectedAction", "")
+        review_updated_at = body.get("reviewUpdatedAt", "")
+        dry_run_previewed = body.get("dryRunPreviewed", False)
+        acknowledged_effects = body.get("acknowledgedEffects", [])
+
+        # Validate required fields
+        if not confirmation_text:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message="confirmationText is required.",
+                request_id=rid,
+            )
+        if not review_updated_at:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message="reviewUpdatedAt is required.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.execute_approve(
+                reviewId,
+                confirmation_text=confirmation_text,
+                expected_action=expected_action,
+                review_updated_at=review_updated_at,
+                dry_run_previewed=dry_run_previewed,
+                acknowledged_effects=acknowledged_effects,
+            )
+        except ReviewExecuteDisabledError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_EXECUTE_DISABLED,
+                message=(
+                    "Review execute is disabled. "
+                    "Enable with HERMES_REVIEW_EXECUTE_ENABLED=true."
+                ),
+                # kill_switch_disabled
+                request_id=rid,
+            )
+        except UnsafeEnvironmentError:
+            return _make_error_json(
+                status_code=503,
+                code=UNSAFE_ENVIRONMENT,
+                message="Execute is not allowed in this environment.",
+                request_id=rid,
+            )
+        except ReviewNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=REVIEW_NOT_FOUND,
+                message="Review item was not found.",
+                request_id=rid,
+            )
+        except ReviewNotPendingError as exc:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_NOT_PENDING,
+                message=str(exc),
+                request_id=rid,
+            )
+        except ReviewPreconditionFailedError:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_PRECONDITION_FAILED,
+                message=(
+                    "Review item was modified since dry-run preview. "
+                    "Please re-run dry-run."
+                ),
+                # updated_at mismatch
+                request_id=rid,
+            )
+        except InvalidConfirmationError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message=str(exc),
+                request_id=rid,
+            )
+        except MissingDryRunError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=MISSING_DRY_RUN,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidAcknowledgedEffectsError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_ACKNOWLEDGED_EFFECTS,
+                message=str(exc),
+                request_id=rid,
+            )
+        except ReviewApprovalBlockedError as exc:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_APPROVAL_BLOCKED,
+                message=str(exc),
+                request_id=rid,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=REVIEW_EXECUTE_ERROR,
+                message="An unexpected error occurred during execute.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── POST /reviews/{reviewId}/reject/execute ──
+
+    @app.post(
+        f"{prefix}/reviews/{{reviewId}}/reject/execute",
+        tags=["Reviews"],
+        summary="Execute reject action (dev-only, requires confirmation)",
+    )
+    def reject_execute(
+        request: Request,
+        reviewId: str,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        # Validate review ID
+        validation_error = DevReviewQueryService.validate_review_id(
+            reviewId
+        )
+        if validation_error:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_REVIEW_ID,
+                message=validation_error,
+                request_id=rid,
+            )
+
+        if review_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+
+        confirmation_text = body.get("confirmationText", "")
+        expected_action = body.get("expectedAction", "")
+        review_updated_at = body.get("reviewUpdatedAt", "")
+        dry_run_previewed = body.get("dryRunPreviewed", False)
+        acknowledged_effects = body.get("acknowledgedEffects", [])
+        reason = body.get("reason")
+
+        # Validate required fields
+        if not confirmation_text:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message="confirmationText is required.",
+                request_id=rid,
+            )
+        if not review_updated_at:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message="reviewUpdatedAt is required.",
+                request_id=rid,
+            )
+
+        try:
+            result = review_service.execute_reject(
+                reviewId,
+                confirmation_text=confirmation_text,
+                expected_action=expected_action,
+                review_updated_at=review_updated_at,
+                dry_run_previewed=dry_run_previewed,
+                acknowledged_effects=acknowledged_effects,
+                reason=reason,
+            )
+        except ReviewExecuteDisabledError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_EXECUTE_DISABLED,
+                message=(
+                    "Review execute is disabled. "
+                    "Enable with HERMES_REVIEW_EXECUTE_ENABLED=true."
+                ),
+                # kill_switch_disabled
+                request_id=rid,
+            )
+        except UnsafeEnvironmentError:
+            return _make_error_json(
+                status_code=503,
+                code=UNSAFE_ENVIRONMENT,
+                message="Execute is not allowed in this environment.",
+                request_id=rid,
+            )
+        except ReviewNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=REVIEW_NOT_FOUND,
+                message="Review item was not found.",
+                request_id=rid,
+            )
+        except ReviewNotPendingError as exc:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_NOT_PENDING,
+                message=str(exc),
+                request_id=rid,
+            )
+        except ReviewPreconditionFailedError:
+            return _make_error_json(
+                status_code=409,
+                code=REVIEW_PRECONDITION_FAILED,
+                message=(
+                    "Review item was modified since dry-run preview. "
+                    "Please re-run dry-run."
+                ),
+                # updated_at mismatch
+                request_id=rid,
+            )
+        except InvalidConfirmationError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message=str(exc),
+                request_id=rid,
+            )
+        except MissingDryRunError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=MISSING_DRY_RUN,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidAcknowledgedEffectsError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_ACKNOWLEDGED_EFFECTS,
+                message=str(exc),
+                request_id=rid,
+            )
+        except ReviewQueueUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=REVIEW_QUEUE_UNAVAILABLE,
+                message="Review queue is unavailable.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=REVIEW_EXECUTE_ERROR,
+                message="An unexpected error occurred during execute.",
                 request_id=rid,
             )
 

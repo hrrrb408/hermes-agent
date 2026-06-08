@@ -302,3 +302,73 @@ class MessageListResponse(BaseModel):
 
     data: MessageListData
     meta: ResponseMeta
+
+
+# ── Review Execute (Phase 1C) ──
+
+
+class ReviewExecuteRequest(BaseModel):
+    """Request body for POST /reviews/{reviewId}/approve/execute."""
+
+    confirmation_text: str = Field(alias="confirmationText")
+    expected_action: str = Field(alias="expectedAction")
+    review_updated_at: str = Field(alias="reviewUpdatedAt")
+    dry_run_previewed: bool = Field(alias="dryRunPreviewed")
+    acknowledged_effects: list[str] = Field(
+        alias="acknowledgedEffects", default_factory=list,
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class ReviewRejectExecuteRequest(BaseModel):
+    """Request body for POST /reviews/{reviewId}/reject/execute."""
+
+    confirmation_text: str = Field(alias="confirmationText")
+    expected_action: str = Field(alias="expectedAction")
+    review_updated_at: str = Field(alias="reviewUpdatedAt")
+    dry_run_previewed: bool = Field(alias="dryRunPreviewed")
+    acknowledged_effects: list[str] = Field(
+        alias="acknowledgedEffects", default_factory=list,
+    )
+    reason: str | None = Field(default=None, max_length=500)
+
+    model_config = {"populate_by_name": True}
+
+
+class ReviewExecuteTarget(BaseModel):
+    """Target information in execute response."""
+
+    memory_id: str | None = Field(default=None, alias="memoryId")
+    category: str = ""
+    operation: str = ""
+
+    model_config = {"populate_by_name": True}
+
+
+class ReviewExecuteAudit(BaseModel):
+    """Audit information in execute response."""
+
+    actor: str = "dev-webui"
+    timestamp: str = ""
+    dev_only: bool = Field(default=True, alias="devOnly")
+
+    model_config = {"populate_by_name": True}
+
+
+class ReviewExecuteResult(BaseModel):
+    """Response data for POST /reviews/{reviewId}/approve|reject/execute."""
+
+    review_id: str = Field(alias="reviewId")
+    executed: bool = True
+    action: str = ""
+    status_before: str = Field(alias="statusBefore", default="")
+    status_after: str = Field(alias="statusAfter", default="")
+    memory_changed: bool = Field(default=False, alias="memoryChanged")
+    review_changed: bool = Field(default=False, alias="reviewChanged")
+    event_appended: bool = Field(default=False, alias="eventAppended")
+    target: ReviewExecuteTarget = Field(default_factory=ReviewExecuteTarget)
+    audit: ReviewExecuteAudit = Field(default_factory=ReviewExecuteAudit)
+    warnings: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}

@@ -1,4 +1,4 @@
-"""Tests for the Hermes Dev Web API Review Queue endpoints (Phase 1A + 1B).
+"""Tests for the Hermes Dev Web API Review Queue endpoints (Phase 1A + 1B + 1C).
 
 Covers:
 - GET /reviews/status — queue status and safety flags
@@ -6,6 +6,8 @@ Covers:
 - GET /reviews/{reviewId} — detail view
 - POST /reviews/{reviewId}/approve/dry-run — approve dry-run preview
 - POST /reviews/{reviewId}/reject/dry-run — reject dry-run preview
+- POST /reviews/{reviewId}/approve/execute — approve execute (Phase 1C)
+- POST /reviews/{reviewId}/reject/execute — reject execute (Phase 1C)
 - Forbidden POST/PATCH/DELETE review routes
 - Side-effect verification (no files changed)
 - DTO whitelist (no forbidden fields in responses)
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -955,3 +958,550 @@ class TestDryRunSideEffects:
         )
         after = self._hash_dir(reviews_dir)
         assert before == after
+
+
+# ── Execute disabled mode tests ──
+
+
+class TestExecuteDisabledMode:
+    """Verify execute routes return 503 when kill switch is disabled (default)."""
+
+    def test_approve_execute_disabled(self, client_with_reviews):
+        """Execute approve returns REVIEW_EXECUTE_DISABLED when kill switch off."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/execute",
+            json={
+                "confirmationText": "APPROVE",
+                "expectedAction": "APPROVE",
+                "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                "dryRunPreviewed": True,
+                "acknowledgedEffects": [
+                    "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                ],
+            },
+        )
+        assert resp.status_code == 503
+        assert resp.json()["error"]["code"] == "REVIEW_EXECUTE_DISABLED"
+
+    def test_reject_execute_disabled(self, client_with_reviews):
+        """Execute reject returns REVIEW_EXECUTE_DISABLED when kill switch off."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/execute",
+            json={
+                "confirmationText": "REJECT",
+                "expectedAction": "REJECT",
+                "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                "dryRunPreviewed": True,
+                "acknowledgedEffects": [
+                    "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                ],
+            },
+        )
+        assert resp.status_code == 503
+        assert resp.json()["error"]["code"] == "REVIEW_EXECUTE_DISABLED"
+
+    def test_execute_disabled_no_file_changes(self, client_with_reviews, review_home):
+        """Execute attempts with disabled kill switch must not modify any files."""
+        reviews_dir = review_home / "memory" / "reviews"
+        before = TestDryRunSideEffects()._hash_dir(reviews_dir)
+
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/execute",
+            json={
+                "confirmationText": "APPROVE",
+                "expectedAction": "APPROVE",
+                "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                "dryRunPreviewed": True,
+                "acknowledgedEffects": [
+                    "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                ],
+            },
+        )
+        client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/execute",
+            json={
+                "confirmationText": "REJECT",
+                "expectedAction": "REJECT",
+                "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                "dryRunPreviewed": True,
+                "acknowledgedEffects": [
+                    "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                ],
+            },
+        )
+
+        after = TestDryRunSideEffects()._hash_dir(reviews_dir)
+        assert before == after
+
+    def test_execute_status_shows_disabled(self, client_with_reviews):
+        """Reviews status must show execute disabled."""
+        resp = client_with_reviews.get("/api/dev/v1/reviews/status")
+        data = resp.json()["data"]
+        assert data.get("executeEnabled") is False
+        assert data.get("killSwitchActive") is True
+
+    def test_execute_disabled_no_home(self, client_no_home):
+        """Execute without HERMES_HOME returns 503."""
+        resp = client_no_home.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/execute",
+            json={
+                "confirmationText": "APPROVE",
+                "expectedAction": "APPROVE",
+                "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                "dryRunPreviewed": True,
+                "acknowledgedEffects": [
+                    "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                ],
+            },
+        )
+        assert resp.status_code == 503
+
+
+# ── Execute enabled mode tests (temp fixture) ──
+
+
+@pytest.fixture
+def execute_home(tmp_path):
+    """Create a temporary HERMES_HOME for execute testing.
+
+    This fixture MUST only be used with kill switch enabled tests.
+    It never touches /Users/huangruibang/Code/hermes-home-dev.
+    """
+    home = tmp_path / "hermes-exec-test"
+    home.mkdir(exist_ok=True)
+
+    for subdir in ("sessions", "cron", "memories", "skills"):
+        (home / subdir).mkdir(exist_ok=True)
+
+    # Create MEMORY.md
+    (home / "MEMORY.md").write_text(
+        "# Test Memory\n\n## hermes\n- test memory note\n",
+        encoding="utf-8",
+    )
+
+    # Create memory directory structure
+    memory_dir = home / "memory"
+    memory_dir.mkdir(exist_ok=True)
+    (memory_dir / "indexes").mkdir(exist_ok=True)
+    (memory_dir / "records").mkdir(exist_ok=True)
+    (memory_dir / "records" / "hermes").mkdir(exist_ok=True)
+    (memory_dir / "snapshots").mkdir(exist_ok=True)
+    (memory_dir / "events.jsonl").write_text("", encoding="utf-8")
+
+    # Create index file
+    (memory_dir / "indexes" / "hermes.md").write_text(
+        "# hermes\n\n- [[HERMES-001]] Test memory\n",
+        encoding="utf-8",
+    )
+
+    # Create reviews structure
+    reviews_dir = memory_dir / "reviews"
+    items_dir = reviews_dir / "items"
+    items_dir.mkdir(parents=True)
+    (reviews_dir / "events.jsonl").write_text("", encoding="utf-8")
+    (reviews_dir / ".queue.lock").write_text("", encoding="utf-8")
+
+    # Create pending review items for testing
+    items = [
+        _make_review_item(
+            review_id="MR-20260609T143000-abc12345",
+            status="pending",
+            decision="REVIEW",
+            category="hermes",
+            title="Test approve execute item",
+        ),
+        _make_review_item(
+            review_id="MR-20260609T143100-def67890",
+            status="pending",
+            decision="WRITE",
+            category="hermes",
+            title="Test reject execute item",
+        ),
+    ]
+
+    for item in items:
+        path = items_dir / f"{item['review_id']}.json"
+        path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return home
+
+
+@pytest.fixture
+def client_execute(execute_home):
+    """TestClient with execute-enabled review queue data."""
+    config = DevWebApiConfig(hermes_home=execute_home)
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+class TestExecuteRejectEnabled:
+    """Reject execute with kill switch enabled on temp fixture."""
+
+    def test_reject_execute_success(self, client_execute, execute_home):
+        """Reject execute succeeds when kill switch enabled."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executed"] is True
+        assert data["action"] == "REJECT"
+        assert data["statusBefore"] == "pending"
+        assert data["statusAfter"] == "rejected"
+        assert data["memoryChanged"] is False
+        assert data["reviewChanged"] is True
+        assert data["eventAppended"] is True
+        assert data["audit"]["devOnly"] is True
+        assert data["audit"]["actor"] == "dev-webui"
+
+    def test_reject_execute_updates_review_json(self, client_execute, execute_home):
+        """Verify the review JSON file is updated to rejected."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        item_path = execute_home / "memory" / "reviews" / "items" / f"{review_id}.json"
+        updated = json.loads(item_path.read_text(encoding="utf-8"))
+        assert updated["status"] == "rejected"
+        assert updated["rejection"] is not None
+        assert "rejected_at" in updated["rejection"]
+
+    def test_reject_execute_appends_event(self, client_execute, execute_home):
+        """Verify a review_rejected event is appended."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        events_path = execute_home / "memory" / "reviews" / "events.jsonl"
+        before_events = events_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_events = events_path.read_text(encoding="utf-8")
+        assert len(after_events) > len(before_events)
+        assert "review_rejected" in after_events
+
+    def test_reject_execute_no_memory_write(self, client_execute, execute_home):
+        """Verify no memory records are created by reject."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        records_dir = execute_home / "memory" / "records"
+        before_files = set(records_dir.rglob("*.md"))
+
+        with _execute_enabled():
+            client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_files = set(records_dir.rglob("*.md"))
+        assert before_files == after_files
+
+
+class TestExecuteValidation:
+    """Execute validation tests (kill switch enabled, temp fixture)."""
+
+    def test_invalid_confirmation_text(self, client_execute, execute_home):
+        """Wrong confirmationText returns INVALID_CONFIRMATION."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "WRONG",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_CONFIRMATION"
+
+    def test_missing_dry_run_previewed(self, client_execute, execute_home):
+        """dryRunPreviewed=false returns MISSING_DRY_RUN."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": False,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "MISSING_DRY_RUN"
+
+    def test_invalid_acknowledged_effects(self, client_execute, execute_home):
+        """Missing acknowledged effects returns INVALID_ACKNOWLEDGED_EFFECTS."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": ["UPDATE_REVIEW"],
+                },
+            )
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_ACKNOWLEDGED_EFFECTS"
+
+    def test_precondition_failed(self, client_execute, execute_home):
+        """Wrong reviewUpdatedAt returns REVIEW_PRECONDITION_FAILED."""
+        review_id = "MR-20260609T143100-def67890"
+        _set_updated_at(execute_home, review_id, "2026-06-06T16:03:10+08:00")
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": "2026-01-01T00:00:00+08:00",
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "REVIEW_PRECONDITION_FAILED"
+
+    def test_not_pending(self, client_execute, execute_home):
+        """Rejecting a non-pending item returns REVIEW_NOT_PENDING."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        # First reject it
+        with _execute_enabled():
+            client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        # Try to reject again
+        item_path = execute_home / "memory" / "reviews" / "items" / f"{review_id}.json"
+        item = json.loads(item_path.read_text(encoding="utf-8"))
+        new_updated_at = item["updated_at"]
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": new_updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+        assert resp.status_code == 409
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_PENDING"
+
+    def test_not_found(self, client_execute):
+        """Non-existent review returns REVIEW_NOT_FOUND."""
+        with _execute_enabled():
+            resp = client_execute.post(
+                "/api/dev/v1/reviews/MR-20260101T000000-deadbeef/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+        assert resp.status_code == 404
+        assert resp.json()["error"]["code"] == "REVIEW_NOT_FOUND"
+
+    def test_missing_confirmation_text(self, client_execute):
+        """Missing confirmationText returns error."""
+        with _execute_enabled():
+            resp = client_execute.post(
+                "/api/dev/v1/reviews/MR-20260609T143100-def67890/reject/execute",
+                json={
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": "2026-06-06T16:03:10+08:00",
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": ["UPDATE_REVIEW", "APPEND_REVIEW_EVENT"],
+                },
+            )
+        assert resp.status_code == 400
+
+    def test_execute_response_no_sensitive_data(self, client_execute, execute_home):
+        """Execute response must not contain paths, secrets, or traceback."""
+        review_id = "MR-20260609T143100-def67890"
+        updated_at = "2026-06-06T16:03:10+08:00"
+        _set_updated_at(execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/reject/execute",
+                json={
+                    "confirmationText": "REJECT",
+                    "expectedAction": "REJECT",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        text = json.dumps(resp.json())
+        assert "/Users/" not in text
+        assert "/home/" not in text
+        assert "traceback" not in text.lower()
+        assert "secret" not in text.lower()
+        assert "token" not in text.lower()
+
+
+class TestExecuteRoutes:
+    """Verify execute routes exist and bare routes remain forbidden."""
+
+    def test_approve_execute_route_exists(self, client_with_reviews):
+        """Route exists (returns 503 disabled, not 404)."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve/execute",
+            json={},
+        )
+        assert resp.status_code != 404
+
+    def test_reject_execute_route_exists(self, client_with_reviews):
+        """Route exists (returns 503 disabled, not 404)."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject/execute",
+            json={},
+        )
+        assert resp.status_code != 404
+
+    def test_bare_approve_still_405(self, client_with_reviews):
+        """Bare /approve (no /dry-run or /execute) remains forbidden."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/approve",
+            json={},
+        )
+        assert resp.status_code in (404, 405)
+
+    def test_bare_reject_still_405(self, client_with_reviews):
+        """Bare /reject (no /dry-run or /execute) remains forbidden."""
+        resp = client_with_reviews.post(
+            "/api/dev/v1/reviews/MR-20260606T080234-1e10c286/reject",
+            json={},
+        )
+        assert resp.status_code in (404, 405)
+
+    def test_enqueue_still_405(self, client_with_reviews):
+        resp = client_with_reviews.post("/api/dev/v1/reviews/enqueue", json={})
+        assert resp.status_code in (404, 405)
+
+
+# ── Helpers ──
+
+
+import contextlib
+
+
+@contextlib.contextmanager
+def _execute_enabled():
+    """Context manager that enables the execute kill switch for testing."""
+    old = os.environ.get("HERMES_REVIEW_EXECUTE_ENABLED")
+    os.environ["HERMES_REVIEW_EXECUTE_ENABLED"] = "true"
+    try:
+        yield
+    finally:
+        if old is None:
+            os.environ.pop("HERMES_REVIEW_EXECUTE_ENABLED", None)
+        else:
+            os.environ["HERMES_REVIEW_EXECUTE_ENABLED"] = old
+
+
+def _set_updated_at(home: Path, review_id: str, updated_at: str) -> None:
+    """Set the updated_at field on a review item."""
+    item_path = home / "memory" / "reviews" / "items" / f"{review_id}.json"
+    item = json.loads(item_path.read_text(encoding="utf-8"))
+    item["updated_at"] = updated_at
+    item_path.write_text(json.dumps(item, indent=2), encoding="utf-8")

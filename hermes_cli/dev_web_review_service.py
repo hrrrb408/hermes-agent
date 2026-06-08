@@ -3,11 +3,16 @@
 Read-only service that queries review queue data from the development HERMES_HOME
 using the memory_review_queue read-only functions. All queries are side-effect-free.
 
+Phase 1C adds dev-only execute methods that call the real approve_review_item()
+and reject_review_item() functions. Execute is gated by a fail-closed kill switch
+and dev-only environment guard.
+
 Importing this module has no side effects.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -19,6 +24,8 @@ from agent.memory_review_queue import (
     list_review_items,
     load_review_item,
     revalidate_review_approval,
+    approve_review_item,
+    reject_review_item,
     REVIEW_ID_RE,
 )
 from hermes_cli.dev_web_memory_service import redact_local_paths
@@ -51,6 +58,64 @@ class ReviewNotPendingError(Exception):
         super().__init__(
             f"Review item is not pending (current: {current_status})."
         )
+
+
+class ReviewExecuteDisabledError(Exception):
+    """Raised when execute is attempted but the kill switch is disabled."""
+
+
+class ReviewPreconditionFailedError(Exception):
+    """Raised when reviewUpdatedAt does not match the current item."""
+
+    def __init__(self, expected: str, actual: str) -> None:
+        self.expected_updated_at = expected
+        self.actual_updated_at = actual
+        super().__init__(
+            "Review item was modified since dry-run preview. "
+            "Please re-run dry-run."
+        )
+
+
+class InvalidConfirmationError(Exception):
+    """Raised when confirmationText does not match the expected value."""
+
+    def __init__(self, expected: str) -> None:
+        self.expected = expected
+        super().__init__(
+            f"confirmationText must be exactly '{expected}'."
+        )
+
+
+class MissingDryRunError(Exception):
+    """Raised when dryRunPreviewed is not true."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "dryRunPreviewed must be true. "
+            "Dry-run preview must be completed before execute."
+        )
+
+
+class InvalidAcknowledgedEffectsError(Exception):
+    """Raised when acknowledgedEffects does not include required effects."""
+
+    def __init__(self, missing: list[str]) -> None:
+        self.missing_effects = missing
+        super().__init__(
+            f"Missing required acknowledged effects: {', '.join(missing)}."
+        )
+
+
+class ReviewApprovalBlockedError(Exception):
+    """Raised when approval revalidation fails on execute."""
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)
+
+
+class UnsafeEnvironmentError(Exception):
+    """Raised when execute is attempted in an unsafe environment."""
 
 
 # ── Constants ──
@@ -329,6 +394,10 @@ class DevReviewQueryService:
             "rejectEnabled": False,
             "enqueueEnabled": False,
             "dryRunEnabled": True,
+            "executeEnabled": self.is_execute_enabled(),
+            "killSwitchActive": not self.is_execute_enabled(),
+            "devOnly": True,
+            "productionBlocked": True,
             "counts": counts,
             "storage": {
                 "available": storage_available,
@@ -733,6 +802,359 @@ class DevReviewQueryService:
             "noEffects": no_effects,
             "warnings": [],
         }
+
+    # ── Kill switch ──
+
+    @staticmethod
+    def is_execute_enabled() -> bool:
+        """Check if execute capability is enabled via kill switch.
+
+        The kill switch reads HERMES_REVIEW_EXECUTE_ENABLED from the
+        environment. Default is disabled (false). Fail-closed: any
+        unrecognized value is treated as disabled.
+        """
+        raw = os.environ.get("HERMES_REVIEW_EXECUTE_ENABLED", "").strip().lower()
+        return raw in ("true", "1", "yes", "on")
+
+    @staticmethod
+    def _check_dev_only_environment(hermes_home: Path) -> None:
+        """Verify the HERMES_HOME is safe for execute operations.
+
+        Raises UnsafeEnvironmentError if:
+        - HERMES_HOME is the production home (~/.hermes)
+        - HERMES_HOME is inside the production home
+        """
+        from hermes_cli.dev_web_config import _PRODUCTION_HERMES_HOME
+
+        resolved = hermes_home.resolve()
+        try:
+            prod_resolved = _PRODUCTION_HERMES_HOME.resolve()
+        except Exception:
+            prod_resolved = _PRODUCTION_HERMES_HOME
+
+        if resolved == prod_resolved:
+            raise UnsafeEnvironmentError(
+                "Execute is not allowed on the production home."
+            )
+        try:
+            resolved.relative_to(prod_resolved)
+        except ValueError:
+            pass  # Not inside production — good
+        else:
+            raise UnsafeEnvironmentError(
+                "Execute is not allowed inside the production home."
+            )
+
+    # ── Execute: Approve ──
+
+    def execute_approve(
+        self,
+        review_id: str,
+        *,
+        confirmation_text: str,
+        expected_action: str,
+        review_updated_at: str,
+        dry_run_previewed: bool,
+        acknowledged_effects: list[str],
+    ) -> dict[str, Any]:
+        """Execute a real approve on a review item.
+
+        This method has real side effects: it writes memory files,
+        updates review status, and appends events. It is gated by
+        the kill switch and dev-only environment guard.
+
+        All preconditions must be met before execution.
+        """
+        # 1. Kill switch check
+        if not self.is_execute_enabled():
+            raise ReviewExecuteDisabledError()
+
+        # 2. Dev-only environment guard
+        self._check_dev_only_environment(self._home)
+
+        # 3. Validate review ID
+        validation_error = self.validate_review_id(review_id)
+        if validation_error:
+            raise InvalidReviewIdError()
+
+        # 4. Validate confirmation text
+        if confirmation_text != "APPROVE":
+            raise InvalidConfirmationError("APPROVE")
+
+        # 5. Validate expected action
+        if expected_action != "APPROVE":
+            raise InvalidConfirmationError("APPROVE for expectedAction")
+
+        # 6. Validate dryRunPreviewed
+        if not dry_run_previewed:
+            raise MissingDryRunError()
+
+        # 7. Validate acknowledged effects
+        required_effects = {"WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT"}
+        missing = sorted(required_effects - set(acknowledged_effects))
+        if missing:
+            raise InvalidAcknowledgedEffectsError(missing)
+
+        # 8. Load review item
+        if not self.is_available():
+            raise ReviewQueueUnavailableError()
+
+        try:
+            item = load_review_item(review_id, home=self._home)
+        except FileNotFoundError:
+            raise ReviewNotFoundError()
+        except (ValueError, OSError):
+            raise ReviewNotFoundError()
+
+        # 9. Check status is pending
+        status = item.get("status", "")
+        if status != ReviewStatus.PENDING.value:
+            raise ReviewNotPendingError(status)
+
+        # 10. Validate reviewUpdatedAt precondition
+        current_updated_at = item.get("updated_at", "")
+        if review_updated_at != current_updated_at:
+            raise ReviewPreconditionFailedError(
+                review_updated_at, current_updated_at,
+            )
+
+        # 11. Determine proposed action
+        proposed_action = item.get("proposed_action", "")
+        if not proposed_action or proposed_action == ProposedAction.UNDECIDED.value:
+            proposed_action = ProposedAction.WRITE.value
+        action = proposed_action if proposed_action in (
+            ProposedAction.WRITE.value, ProposedAction.UPDATE.value,
+        ) else ProposedAction.WRITE.value
+
+        # 12. Get target memory ID
+        target_memory_id = None
+        matched_memory = item.get("matched_memory")
+        if matched_memory and isinstance(matched_memory, dict):
+            target_memory_id = matched_memory.get("memory_id")
+
+        # 13. Revalidate approval (full validation before execute)
+        try:
+            validation = revalidate_review_approval(
+                item, action=action, target=target_memory_id,
+            )
+        except (FileNotFoundError, ValueError, OSError, KeyError):
+            validation = _basic_approve_validation(
+                item, action=action, target=target_memory_id,
+            )
+
+        if not validation.get("valid", False):
+            errors = validation.get("errors", [])
+            reason = ", ".join(errors) if errors else "Approval validation failed."
+            raise ReviewApprovalBlockedError(
+                _truncate(reason, _BLOCKED_REASON_MAX_LENGTH),
+            )
+
+        # 14. Execute the real approve
+        status_before = item.get("status", ReviewStatus.PENDING.value)
+        candidate = item.get("candidate", {})
+        memory_changed = False
+
+        try:
+            result_item, result_info = approve_review_item(
+                review_id,
+                action=action,
+                target=target_memory_id,
+                dry_run=False,
+                home=self._home,
+            )
+            memory_changed = action in (
+                ProposedAction.WRITE.value, ProposedAction.UPDATE.value,
+            )
+            # Check if it was already approved (idempotent)
+            already_approved = result_info.get("already_approved", False)
+        except ValueError as exc:
+            # Catch approval errors from the real function
+            error_msg = str(exc)
+            raise ReviewApprovalBlockedError(
+                _truncate(redact_local_paths(error_msg), _BLOCKED_REASON_MAX_LENGTH),
+            )
+        except Exception as exc:
+            # Unexpected errors — return sanitized message
+            raise ReviewApprovalBlockedError(
+                "An error occurred during approval execution.",
+            )
+
+        status_after = result_item.get("status", ReviewStatus.APPROVED.value)
+        # Get the actual memory_id if it was written
+        result_memory_id = target_memory_id
+        if memory_changed and result_item.get("approval"):
+            result_memory_id = result_item["approval"].get(
+                "memory_id", target_memory_id,
+            )
+
+        return _build_execute_result(
+            review_id=review_id,
+            action="APPROVE",
+            status_before=status_before,
+            status_after=status_after,
+            memory_changed=memory_changed,
+            review_changed=True,
+            event_appended=True,
+            target_memory_id=result_memory_id,
+            category=candidate.get("category", ""),
+            operation=action,
+        )
+
+    # ── Execute: Reject ──
+
+    def execute_reject(
+        self,
+        review_id: str,
+        *,
+        confirmation_text: str,
+        expected_action: str,
+        review_updated_at: str,
+        dry_run_previewed: bool,
+        acknowledged_effects: list[str],
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """Execute a real reject on a review item.
+
+        This method has real side effects: it updates review status
+        and appends events. No memory is written.
+        """
+        # 1. Kill switch check
+        if not self.is_execute_enabled():
+            raise ReviewExecuteDisabledError()
+
+        # 2. Dev-only environment guard
+        self._check_dev_only_environment(self._home)
+
+        # 3. Validate review ID
+        validation_error = self.validate_review_id(review_id)
+        if validation_error:
+            raise InvalidReviewIdError()
+
+        # 4. Validate confirmation text
+        if confirmation_text != "REJECT":
+            raise InvalidConfirmationError("REJECT")
+
+        # 5. Validate expected action
+        if expected_action != "REJECT":
+            raise InvalidConfirmationError("REJECT for expectedAction")
+
+        # 6. Validate dryRunPreviewed
+        if not dry_run_previewed:
+            raise MissingDryRunError()
+
+        # 7. Validate acknowledged effects
+        required_effects = {"UPDATE_REVIEW", "APPEND_REVIEW_EVENT"}
+        missing = sorted(required_effects - set(acknowledged_effects))
+        if missing:
+            raise InvalidAcknowledgedEffectsError(missing)
+
+        # 8. Sanitize reason (path redaction + truncation)
+        safe_reason = "Rejected via dev-webui"
+        if reason and reason.strip():
+            safe_reason = redact_local_paths(reason.strip())[:500]
+
+        # 9. Load review item
+        if not self.is_available():
+            raise ReviewQueueUnavailableError()
+
+        try:
+            item = load_review_item(review_id, home=self._home)
+        except FileNotFoundError:
+            raise ReviewNotFoundError()
+        except (ValueError, OSError):
+            raise ReviewNotFoundError()
+
+        # 10. Check status is pending
+        status = item.get("status", "")
+        if status != ReviewStatus.PENDING.value:
+            raise ReviewNotPendingError(status)
+
+        # 11. Validate reviewUpdatedAt precondition
+        current_updated_at = item.get("updated_at", "")
+        if review_updated_at != current_updated_at:
+            raise ReviewPreconditionFailedError(
+                review_updated_at, current_updated_at,
+            )
+
+        # 12. Execute the real reject
+        status_before = item.get("status", ReviewStatus.PENDING.value)
+        candidate = item.get("candidate", {})
+
+        try:
+            result_item, changed = reject_review_item(
+                review_id,
+                reason=safe_reason,
+                home=self._home,
+            )
+        except ValueError as exc:
+            error_msg = str(exc)
+            raise ReviewNotPendingError(
+                _truncate(redact_local_paths(error_msg), _BLOCKED_REASON_MAX_LENGTH),
+            )
+        except Exception:
+            raise ReviewApprovalBlockedError(
+                "An error occurred during rejection execution.",
+            )
+
+        status_after = result_item.get("status", ReviewStatus.REJECTED.value)
+
+        return _build_execute_result(
+            review_id=review_id,
+            action="REJECT",
+            status_before=status_before,
+            status_after=status_after,
+            memory_changed=False,
+            review_changed=changed,
+            event_appended=True,
+            target_memory_id=None,
+            category=candidate.get("category", ""),
+            operation="REJECT",
+        )
+
+
+def _build_execute_result(
+    *,
+    review_id: str,
+    action: str,
+    status_before: str,
+    status_after: str,
+    memory_changed: bool,
+    review_changed: bool,
+    event_appended: bool,
+    target_memory_id: str | None,
+    category: str,
+    operation: str,
+) -> dict[str, Any]:
+    """Build a whitelisted execute result DTO.
+
+    Only safe fields are included. No raw candidate, source,
+    fingerprint, paths, secrets, or traceback.
+    """
+    from datetime import datetime, timezone
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    return {
+        "reviewId": review_id,
+        "executed": True,
+        "action": action,
+        "statusBefore": status_before,
+        "statusAfter": status_after,
+        "memoryChanged": memory_changed,
+        "reviewChanged": review_changed,
+        "eventAppended": event_appended,
+        "target": {
+            "memoryId": target_memory_id,
+            "category": category,
+            "operation": operation,
+        },
+        "audit": {
+            "actor": "dev-webui",
+            "timestamp": timestamp,
+            "devOnly": True,
+        },
+        "warnings": [],
+    }
 
 
 def _basic_approve_validation(
