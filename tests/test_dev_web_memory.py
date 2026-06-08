@@ -134,7 +134,14 @@ def memory_home(tmp_path):
     (home / "memory" / "records" / "test-cat" / "mem-test_cat-001.md").write_text(
         record_1, encoding="utf-8"
     )
-    record_2 = "# Details\n\nFull record content for beta.\n"
+    record_2 = (
+        "# Status\n\n"
+        "Source at /Users/huangruibang/Code/hermes-agent-dev.\n"
+        "Config file:///Users/alice/private.txt.\n"
+        "Linux path /home/bob/.ssh/id_rsa.\n"
+        "See also memory://records/projects/hermes/hermes.md\n"
+        "Visit https://example.com for info.\n"
+    )
     (home / "memory" / "records" / "test-cat" / "mem-test_cat-002.md").write_text(
         record_2, encoding="utf-8"
     )
@@ -735,3 +742,153 @@ class TestStatusIntegration:
         resp = empty_home_client.get(f"{API}/status")
         services = resp.json()["data"]["services"]
         assert services["memory"]["available"] is False
+
+
+# ── Path Redaction ──
+
+
+class TestRedactLocalPaths:
+    """Unit tests for the redact_local_paths() pure function."""
+
+    def test_import(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        assert callable(redact_local_paths)
+
+    def test_macos_users_path(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("Source at /Users/huangruibang/Code/hermes-agent-dev.")
+        assert "/Users/" not in result
+        assert "[local-path]" in result
+        assert "Source at" in result
+
+    def test_macos_other_user(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("Path /Users/alice/project/secret.txt here.")
+        assert "/Users/alice" not in result
+        assert "secret.txt" not in result
+        assert "[local-path]" in result
+
+    def test_linux_home_path(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("Key at /home/bob/.ssh/id_rsa.")
+        assert "/home/bob" not in result
+        assert "id_rsa" not in result
+        assert "[local-path]" in result
+
+    def test_file_uri(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("Config file:///Users/alice/private.txt.")
+        assert "file:///" not in result
+        assert "private.txt" not in result
+        assert "[file-uri-redacted]" in result
+
+    def test_file_uri_with_host(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("file://localhost/Users/alice/secret.")
+        assert "file://" not in result
+        assert "[file-uri-redacted]" in result
+
+    def test_preserves_memory_uri(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        text = "See memory://records/projects/hermes/hermes.md for details."
+        result = redact_local_paths(text)
+        assert "memory://" in result
+        assert "memory://records/projects/hermes/hermes.md" in result
+
+    def test_preserves_https_url(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        text = "Visit https://example.com/path for info."
+        result = redact_local_paths(text)
+        assert "https://example.com/path" in result
+
+    def test_preserves_http_url(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        text = "Server at http://localhost:3000/api."
+        result = redact_local_paths(text)
+        assert "http://localhost:3000/api" in result
+
+    def test_empty_string(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        assert redact_local_paths("") == ""
+
+    def test_no_paths(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        text = "Plain text without any paths."
+        assert redact_local_paths(text) == text
+
+    def test_windows_path(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        result = redact_local_paths("Located at C:\\Users\\alice\\secret.txt.")
+        assert "C:\\Users\\alice" not in result
+        assert "[local-path]" in result
+
+    def test_multiple_paths_in_one_text(self):
+        from hermes_cli.dev_web_memory_service import redact_local_paths
+        text = (
+            "Dev source /Users/huangruibang/Code/hermes-agent-dev, "
+            "prod data /Users/huangruibang/.hermes, "
+            "linux /home/bob/.ssh/id_rsa."
+        )
+        result = redact_local_paths(text)
+        assert "/Users/" not in result
+        assert "/home/" not in result
+        assert result.count("[local-path]") >= 3
+
+
+class TestPathRedactionInAPI:
+    """Integration tests verifying path redaction in API responses."""
+
+    def test_item_detail_no_local_paths(self, memory_client):
+        """Verify recordPreview does not contain local absolute paths."""
+        resp = memory_client.get(f"{API}/memory/items/MEM-TEST_CAT-002")
+        assert resp.status_code == 200
+        body = json.dumps(resp.json())
+        # No local absolute paths
+        assert "/Users/" not in body
+        assert "/home/" not in body
+        assert "file://" not in body
+        assert "secret.txt" not in body
+        assert "id_rsa" not in body
+        assert "private.txt" not in body
+
+    def test_item_detail_has_redaction_markers(self, memory_client):
+        """Verify redaction markers appear where paths were."""
+        resp = memory_client.get(f"{API}/memory/items/MEM-TEST_CAT-002")
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        preview = data.get("recordPreview", "")
+        assert "[local-path]" in preview
+        assert "[file-uri-redacted]" in preview
+
+    def test_item_detail_preserves_memory_uri(self, memory_client):
+        """Verify memory:// references are preserved in recordPreview."""
+        resp = memory_client.get(f"{API}/memory/items/MEM-TEST_CAT-002")
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        preview = data.get("recordPreview", "")
+        assert "memory://" in preview
+
+    def test_item_detail_preserves_https(self, memory_client):
+        """Verify https:// URLs are preserved in recordPreview."""
+        resp = memory_client.get(f"{API}/memory/items/MEM-TEST_CAT-002")
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        preview = data.get("recordPreview", "")
+        assert "https://example.com" in preview
+
+    def test_all_memory_endpoints_no_paths(self, memory_client):
+        """Verify no endpoint returns local absolute paths."""
+        endpoints = [
+            (f"{API}/memory/status", "get"),
+            (f"{API}/memory/categories", "get"),
+            (f"{API}/memory/items", "get"),
+            (f"{API}/memory/items/MEM-TEST_CAT-001", "get"),
+            (f"{API}/memory/items/MEM-TEST_CAT-002", "get"),
+        ]
+        for url, method in endpoints:
+            resp = memory_client.get(url)
+            assert resp.status_code == 200, f"{url} returned {resp.status_code}"
+            body = json.dumps(resp.json())
+            assert "/Users/" not in body, f"Found /Users/ in {url}"
+            assert "/home/" not in body, f"Found /home/ in {url}"
+            assert "file://" not in body, f"Found file:// in {url}"

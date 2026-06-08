@@ -8,6 +8,7 @@ Importing this module has no side effects.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,51 @@ from hermes_cli.memory_router import (
     _priority_bonus,
     MEMORY_ID_RE,
 )
+
+
+# ── Path redaction ──
+
+# Patterns for local absolute paths that must never appear in API responses.
+# These patterns are intentionally broad to cover different user names and
+# distributions, not just the current developer's machine.
+
+# /Users/<segment>/... — macOS home directories
+_RE_MACOS_PATH = re.compile(r"/Users/[^\s\"'`\)\]]+")
+
+# /home/<segment>/... — Linux home directories
+_RE_LINUX_PATH = re.compile(r"/home/[^\s\"'`\)\]]+")
+
+# file:// URIs (with or without host)
+_RE_FILE_URI = re.compile(r"file://[^\s\"'`\)\]]+")
+
+# C:\... or D:\... — Windows absolute paths (defensive)
+_RE_WINDOWS_PATH = re.compile(r"[A-Z]:\\[^\s\"'`\)\]]+", re.IGNORECASE)
+
+
+def redact_local_paths(text: str) -> str:
+    """Redact local file paths and file:// URIs from text.
+
+    Replaces local absolute paths with ``[local-path]`` and ``file://``
+    URIs with ``[file-uri-redacted]``. Preserves ``memory://`` references
+    and ``http(s)://`` URLs.
+
+    This function is applied to ``recordPreview`` and any other
+    panel-facing text before it enters the DTO layer.
+    """
+    if not text:
+        return text
+
+    # Redact file:// URIs first (before path patterns match the /... part)
+    text = _RE_FILE_URI.sub("[file-uri-redacted]", text)
+
+    # Redact macOS and Linux absolute paths
+    text = _RE_MACOS_PATH.sub("[local-path]", text)
+    text = _RE_LINUX_PATH.sub("[local-path]", text)
+
+    # Redact Windows absolute paths
+    text = _RE_WINDOWS_PATH.sub("[local-path]", text)
+
+    return text
 
 
 # ── Custom exceptions ──
@@ -411,6 +457,7 @@ class DevMemoryQueryService:
                 record_path = resolve_memory_uri(storage, self._home)
                 if record_path.exists():
                     text = record_path.read_text(encoding="utf-8")
+                    text = redact_local_paths(text)
                     record_preview, truncated = _truncate_text(
                         text, _MAX_RECORD_PREVIEW_CHARS
                     )

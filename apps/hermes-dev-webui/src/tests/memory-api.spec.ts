@@ -217,6 +217,93 @@ describe('fetchMemoryItemDetail', () => {
   })
 })
 
+// ── Path redaction verification ──
+
+describe('Memory API: path redaction in responses', () => {
+  it('recordPreview does not contain local paths after redaction', async () => {
+    mockFetchResponse(200, {
+      data: {
+        id: 'MEM-TEST-001',
+        category: 'test',
+        title: 'Test',
+        summary: 'A test.',
+        tags: 'test',
+        type: 'project_status',
+        importance: 'P0',
+        status: 'active',
+        createdAt: '2026-06-01',
+        updatedAt: '2026-06-01',
+        recordPreview: 'Source at [local-path]. Config [file-uri-redacted]. See memory://records/test.md.',
+        truncated: false,
+      },
+      meta: MOCK_META,
+    })
+
+    const result = await fetchMemoryItemDetail('MEM-TEST-001')
+    const preview = result.data.recordPreview ?? ''
+    // Redaction markers should be present
+    expect(preview).toContain('[local-path]')
+    expect(preview).toContain('[file-uri-redacted]')
+    // Raw local paths must NOT appear
+    expect(preview).not.toContain('/Users/')
+    expect(preview).not.toContain('/home/')
+    expect(preview).not.toContain('file://')
+    // memory:// references are preserved
+    expect(preview).toContain('memory://')
+  })
+
+  it('recordPreview with null value is handled safely', async () => {
+    mockFetchResponse(200, {
+      data: {
+        id: 'MEM-TEST-002',
+        category: 'test',
+        title: 'No Preview',
+        summary: '',
+        tags: '',
+        type: '',
+        importance: '',
+        status: 'active',
+        createdAt: '',
+        updatedAt: '',
+        recordPreview: null,
+        truncated: false,
+      },
+      meta: MOCK_META,
+    })
+
+    const result = await fetchMemoryItemDetail('MEM-TEST-002')
+    expect(result.data.recordPreview).toBeNull()
+  })
+
+  it('recordPreview with only safe content passes through', async () => {
+    mockFetchResponse(200, {
+      data: {
+        id: 'MEM-TEST-003',
+        category: 'test',
+        title: 'Safe Content',
+        summary: '',
+        tags: '',
+        type: '',
+        importance: '',
+        status: 'active',
+        createdAt: '',
+        updatedAt: '',
+        recordPreview: 'This is safe content with https://example.com and memory://ref.',
+        truncated: false,
+      },
+      meta: MOCK_META,
+    })
+
+    const result = await fetchMemoryItemDetail('MEM-TEST-003')
+    const preview = result.data.recordPreview ?? ''
+    expect(preview).toContain('https://example.com')
+    expect(preview).toContain('memory://ref')
+    expect(preview).not.toContain('/Users/')
+    expect(preview).not.toContain('/home/')
+    expect(preview).not.toContain('file://')
+  })
+})
+
 // ── Context API ──
 
 describe('previewContext', () => {

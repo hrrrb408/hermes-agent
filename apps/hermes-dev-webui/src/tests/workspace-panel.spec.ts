@@ -54,6 +54,19 @@ describe('WorkspacePanel', () => {
     expect(wrapper.text()).not.toContain('/Users/')
   })
 
+  it('never renders raw local paths in any tab', async () => {
+    const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
+    // Check all four tabs for local path leakage
+    const tabs = ['memory', 'context', 'agent', 'files'] as const
+    for (const tab of tabs) {
+      await wrapper.get(`#workspace-tab-${tab}`).trigger('click')
+      const html = wrapper.html()
+      expect(html, `Tab ${tab} should not contain /Users/`).not.toContain('/Users/')
+      expect(html, `Tab ${tab} should not contain /home/`).not.toContain('/home/')
+      expect(html, `Tab ${tab} should not contain file://`).not.toContain('file://')
+    }
+  })
+
   it('retains tab icons when collapsed', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: true } })
     expect(wrapper.findAll('[role="tab"]')).toHaveLength(4)
