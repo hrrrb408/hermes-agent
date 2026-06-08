@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00 Completed; 1A through 1G Not Started
+**Status:** Phase 1-00, 1A-00 Completed; 1A through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -46,6 +46,44 @@ Read-only first → Dry-run second → Dev-only execute third → High-risk last
 - ✅ compileall PASS
 - ✅ Local commit created
 - ✅ Not pushed
+- ✅ Production environment unaffected
+
+---
+
+## Phase 1A-00: Review Queue Read-Only Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-08
+
+### Deliverables
+
+- `docs/webui/phase-1a-00-review-queue-readonly-scope.md` — Complete scope freeze document with:
+  - Review Queue data source audit (structure, storage, functions, sensitive fields)
+  - Read-only API proposal frozen (3 GET routes with request/response schemas)
+  - DTO whitelist frozen (16 list fields, 16+ detail fields, transformations documented)
+  - Forbidden fields documented (raw content, paths, secrets, internal metadata)
+  - Redaction rules defined (reusing existing `redact_local_paths()`)
+  - Error model frozen (7 error codes, envelope, validation rules)
+  - Pagination/filter/sort strategy frozen (offset-based, 4 filters, 2 sort orders)
+  - Frontend information architecture frozen (panel layout, components, safety area)
+  - OpenAPI strategy documented (11 paths unchanged, 14 after Phase 1A)
+  - dev-check update strategy (11 → 14 paths)
+  - Playwright smoke update strategy (10 new checks)
+  - Side-effect hash validation strategy (SHA-256 before/after)
+
+### Acceptance
+
+- ✅ Review Queue data source audited
+- ✅ Read-only API proposal frozen
+- ✅ DTO whitelist and forbidden fields documented
+- ✅ Error model frozen
+- ✅ Frontend information architecture frozen
+- ✅ OpenAPI strategy: no change to current 11-path contract
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS
+- ✅ dev-check PASS
+- ✅ compileall PASS
+- ✅ Local commit created, not pushed
 - ✅ Production environment unaffected
 
 ---
@@ -500,7 +538,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | Phase | Goal | Status | Dependencies | Write? |
 |-------|------|--------|-------------|--------|
 | 1-00 | Planning & scope freeze | ✅ Completed | 0E-Release | No |
-| 1A | Review Queue read-only panel | Not Started | 0E-Release | No |
+| 1A-00 | Review Queue read-only scope & contract freeze | ✅ Completed | 1-00 | No |
+| 1A | Review Queue read-only panel | Not Started | 1A-00 | No |
 | 1B | Review Queue dry-run | Not Started | 1A | No |
 | 1C | Review Queue execute | Not Started | 1B | Yes (dev) |
 | 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
@@ -517,6 +556,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 0E-Release ✅
 │
 ├── 1-00 ✅ (planning only)
+│
+├── 1A-00 ✅ (review scope & contract freeze)
 │
 ├── 1A (review read-only)
 │   └── 1B (review dry-run)
@@ -543,6 +584,8 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 ## Phase 1 Closure
 
 **Phase 1-00 is completed.** Planning and scope are frozen.
+
+**Phase 1A-00 is completed.** Review Queue read-only scope and contract are frozen.
 
 The next subphase is **Phase 1A: Review Queue Read-Only Panel**.
 
