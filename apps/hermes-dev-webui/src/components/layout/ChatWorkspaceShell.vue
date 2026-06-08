@@ -438,4 +438,9 @@ function retryMessages(): void {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.workspace-retry-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
 </style>

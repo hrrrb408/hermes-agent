@@ -5,7 +5,7 @@ import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
 </script>
 
 <template>
-  <header class="top-status-bar">
+  <header class="top-status-bar" role="banner">
     <div class="top-status-bar__brand">
       <Box :size="16" aria-hidden="true" />
       <strong>Hermes Dev WebUI</strong>

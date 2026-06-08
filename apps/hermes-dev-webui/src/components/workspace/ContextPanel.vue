@@ -46,9 +46,9 @@ async function runPreview(): Promise<void> {
     </form>
 
     <!-- Error state -->
-    <div v-if="store.state === 'error'" class="panel-error">
+    <div v-if="store.state === 'error'" class="panel-error" role="alert">
       <p>{{ store.error }}</p>
-      <button type="button" class="panel-retry-btn" @click="runPreview">Retry</button>
+      <button type="button" class="panel-retry-btn" aria-label="Retry context preview" @click="runPreview">Retry</button>
     </div>
 
     <!-- Results -->

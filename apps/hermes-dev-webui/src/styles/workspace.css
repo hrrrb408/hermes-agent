@@ -237,6 +237,11 @@
   cursor: not-allowed;
 }
 
+.new-session-button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .new-session-button small {
   margin-left: auto;
   font-size: 0.625rem;
@@ -318,6 +323,11 @@
   background: var(--workspace-hover-bg);
 }
 
+.session-item:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
 .session-item--active {
   border-color: var(--workspace-sidebar-selected-border);
   background: var(--workspace-sidebar-selected-bg);
@@ -393,6 +403,32 @@
   padding: var(--space-4);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+.session-list__retry,
+.session-list__load-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
+  background: transparent;
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  margin-top: var(--space-2);
+}
+
+.session-list__retry:focus-visible,
+.session-list__load-more:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.session-list__load-more:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .session-sidebar__footer {
@@ -635,6 +671,11 @@
 .composer__actions button:disabled {
   cursor: not-allowed;
   opacity: 0.66;
+}
+
+.composer__actions button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .composer__send {
@@ -887,6 +928,11 @@
 
 .panel-retry-btn:hover {
   opacity: 0.8;
+}
+
+.panel-retry-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .panel-toggle {
@@ -1798,6 +1844,110 @@
 
   .home-label {
     max-width: 110px;
+  }
+}
+
+/* ── Responsive layout breakpoints ── */
+
+/* Compact desktop: slightly narrower sidebars */
+@media (max-width: 1320px) {
+  :root {
+    --workspace-sidebar-width: 248px;
+    --workspace-panel-width: 304px;
+  }
+}
+
+/* Medium width: auto-collapse right panel, compress sidebar */
+@media (max-width: 1024px) {
+  :root {
+    --workspace-sidebar-width: 220px;
+    --workspace-panel-width: 280px;
+  }
+
+  .top-status-bar {
+    grid-template-columns: minmax(160px, auto) minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .top-status-bar__statuses {
+    display: none;
+  }
+}
+
+/* Critical breakpoint: force right panel collapsed */
+@media (max-width: 900px) {
+  .workspace-page:not(.workspace-page--panel-collapsed) .workspace-body {
+    grid-template-columns:
+      var(--workspace-sidebar-width)
+      minmax(0, 1fr)
+      var(--workspace-panel-collapsed-width);
+  }
+}
+
+/* Tablet / narrow: collapse sidebar too if not already */
+@media (max-width: 768px) {
+  :root {
+    --workspace-sidebar-width: 200px;
+  }
+
+  .workspace-page:not(.workspace-page--sidebar-collapsed):not(.workspace-page--panel-collapsed) .workspace-body {
+    grid-template-columns:
+      var(--workspace-sidebar-collapsed-width)
+      minmax(0, 1fr)
+      var(--workspace-panel-collapsed-width);
+  }
+
+  .workspace-page--sidebar-collapsed:not(.workspace-page--panel-collapsed) .workspace-body {
+    grid-template-columns:
+      var(--workspace-sidebar-collapsed-width)
+      minmax(0, 1fr)
+      var(--workspace-panel-collapsed-width);
+  }
+
+  .workspace-page--panel-collapsed:not(.workspace-page--sidebar-collapsed) .workspace-body {
+    grid-template-columns:
+      var(--workspace-sidebar-collapsed-width)
+      minmax(0, 1fr)
+      var(--workspace-panel-collapsed-width);
+  }
+
+  .top-status-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .top-status-bar__brand strong {
+    font-size: var(--font-size-xs);
+  }
+
+  .home-label {
+    display: none;
+  }
+}
+
+/* Minimum support: ensure content is reachable */
+@media (max-width: 640px) {
+  .workspace-body {
+    grid-template-columns:
+      var(--workspace-sidebar-collapsed-width)
+      minmax(0, 1fr)
+      var(--workspace-panel-collapsed-width) !important;
+  }
+
+  .top-status-bar {
+    padding: 0 var(--space-2);
+  }
+
+  .chat-workspace__header {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .composer {
+    margin: 0 var(--space-2) var(--space-2);
+  }
+
+  .workspace-panel__content {
+    padding: var(--space-2);
   }
 }
 

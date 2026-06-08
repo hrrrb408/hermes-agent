@@ -12,14 +12,14 @@ onMounted(() => {
 <template>
   <section class="workspace-panel__section" aria-label="Agent Status">
     <!-- Loading -->
-    <div v-if="store.state === 'loading'" class="panel-loading">
+    <div v-if="store.state === 'loading'" class="panel-loading" aria-busy="true">
       Loading agent status…
     </div>
 
     <!-- Error -->
-    <div v-else-if="store.state === 'error'" class="panel-error">
+    <div v-else-if="store.state === 'error'" class="panel-error" role="alert">
       <p>{{ store.error }}</p>
-      <button type="button" class="panel-retry-btn" @click="store.loadStatus()">Retry</button>
+      <button type="button" class="panel-retry-btn" aria-label="Retry loading agent status" @click="store.loadStatus()">Retry</button>
     </div>
 
     <!-- Unavailable -->

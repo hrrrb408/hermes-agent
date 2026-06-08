@@ -45,13 +45,13 @@ async function selectItem(item: MemoryItem): Promise<void> {
     </div>
 
     <!-- Error state -->
-    <div v-if="store.statusState === 'error'" class="panel-error">
+    <div v-if="store.statusState === 'error'" class="panel-error" role="alert">
       <p>{{ store.statusError }}</p>
-      <button type="button" class="panel-retry-btn" @click="retryAll">Retry</button>
+      <button type="button" class="panel-retry-btn" aria-label="Retry loading memory status" @click="retryAll">Retry</button>
     </div>
 
     <!-- Loading state -->
-    <div v-else-if="store.statusState === 'loading'" class="panel-loading">
+    <div v-else-if="store.statusState === 'loading'" class="panel-loading" aria-busy="true" aria-live="polite">
       Loading memory data…
     </div>
 
@@ -129,13 +129,13 @@ async function selectItem(item: MemoryItem): Promise<void> {
         </div>
 
         <!-- Items error -->
-        <div v-if="store.itemsState === 'error'" class="panel-error">
+        <div v-if="store.itemsState === 'error'" class="panel-error" role="alert">
           <p>{{ store.itemsError }}</p>
-          <button type="button" class="panel-retry-btn" @click="store.loadItems()">Retry</button>
+          <button type="button" class="panel-retry-btn" aria-label="Retry loading memory items" @click="store.loadItems()">Retry</button>
         </div>
 
         <!-- Items loading -->
-        <div v-else-if="store.itemsState === 'loading'" class="panel-loading">
+        <div v-else-if="store.itemsState === 'loading'" class="panel-loading" aria-busy="true">
           Loading items…
         </div>
 
