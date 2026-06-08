@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03, 0E-04 completed; 0E-05 through 0E-Release not started
+**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03, 0E-04, 0E-05 completed; 0E-06 through 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -302,10 +302,11 @@ Only after 0E-Release verification.
 
 ---
 
-## Phase 0E-05: dev-check Enhancement — Not Started
+## Phase 0E-05: dev-check Enhancement — Completed ✅
 
 **Priority:** P3
 **Estimated scope:** Medium (add WebUI-specific checks to existing function)
+**Date:** 2026-06-08
 
 ### Goal
 
@@ -313,7 +314,7 @@ Add Dev WebUI-specific checks to `cmd_dev_check()` in `hermes_cli/main.py`.
 
 ### Context
 
-Current `dev-check` checks Hermes dev environment integrity but has no awareness of the Dev WebUI subsystem. It does not verify:
+Current `dev-check` checks Hermes dev environment integrity but has no awareness of the Dev WebUI subsystem. It did not verify:
 - Dev API module existence
 - OpenAPI spec validity
 - Route count (11 business routes expected)
@@ -326,17 +327,27 @@ Current `dev-check` checks Hermes dev environment integrity but has no awareness
 | File | Action |
 |------|--------|
 | `hermes_cli/main.py` | **Modify** — Add WebUI-specific checks to `cmd_dev_check()` |
+| `tests/test_dev_check_webui.py` | **New** — 17 unit tests + 5 integration tests |
 
-### Proposed Checks
+### Implemented Checks (15 total)
 
-| Check | Type | Description |
-|-------|------|-------------|
-| Dev API module | PASS/FAIL | `hermes_cli/dev_web_api.py` exists and is importable |
-| Dev WebUI package | PASS/FAIL | `apps/hermes-dev-webui/package.json` exists |
-| OpenAPI spec | PASS/FAIL | `docs/webui/openapi/dev-web-api-v1.yaml` exists and is valid YAML |
-| Build artifacts | PASS/WARN | dist/ and tsbuildinfo not tracked or not dirty |
-| Visual-review whitelist | PASS/WARN | untracked visual-review dirs are known whitelisted |
-| WebUI deps installed | PASS/WARN | `apps/hermes-dev-webui/node_modules` exists |
+| Check | Label | Type |
+|-------|-------|------|
+| WebUI app directory | `WebUI app` | PASS/FAIL |
+| package.json | `WebUI package` | PASS/FAIL |
+| Build artifact ignore | `Build artifacts` | PASS/FAIL |
+| Visual-review ignore | `Visual review` | PASS/FAIL |
+| Playwright artifact ignore | `Playwright artifacts` | PASS/FAIL |
+| Playwright config | `Playwright config` | PASS/FAIL |
+| Smoke spec | `Smoke spec` | PASS/FAIL |
+| Smoke runner | `Smoke runner` | PASS/FAIL |
+| test:smoke script | `Smoke script` | PASS/FAIL |
+| test:smoke:0e03 script | `Smoke 0e03 script` | PASS/WARN |
+| OpenAPI path count | `OpenAPI paths` | PASS/FAIL |
+| OpenAPI route presence | `OpenAPI routes` | PASS/FAIL |
+| Forbidden routes | `Forbidden routes` | PASS/FAIL |
+| Dev Web API module | `Dev Web API module` | PASS/FAIL |
+| WebUI section marker | `WebUI section` | PASS |
 
 ### Non-goals
 
@@ -347,15 +358,21 @@ Current `dev-check` checks Hermes dev environment integrity but has no awareness
 
 ### Acceptance Criteria
 
-1. `dev-check` reports 4–6 new WebUI-specific checks
-2. All existing checks still pass
-3. New checks complete in under 2 seconds total
-4. `dev-check` result remains PASS (or WARN for known visual-review dirs only)
-5. All existing tests still pass
+1. ✅ `dev-check` reports 15 new WebUI-specific checks
+2. ✅ All existing checks still pass
+3. ✅ New checks complete in under 2 seconds total
+4. ✅ `dev-check` result remains PASS (WARN only for uncommitted changes during development)
+5. ✅ 17 new unit tests pass, 5 integration tests available
 
-### Dependencies
+### Validation
 
-- Preferably after 0E-01 and 0E-02 (so expected states are defined)
+| Check | Result |
+|-------|--------|
+| compileall | PASS |
+| Unit tests (17) | 17/17 PASS |
+| dev-check | PASS (all WebUI checks) |
+| memory-check | PASS |
+| No service startup | Confirmed |
 
 ### Push
 
@@ -466,7 +483,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 | 0E-02 | Visual review artifact policy | ✅ Completed | None |
 | 0E-03 | Playwright smoke matrix | ✅ Completed | 0E-01 preferred |
 | 0E-04 | Dev WebUI smoke runner | ✅ Completed | None |
-| 0E-05 | dev-check enhancement | Not started | 0E-01, 0E-02 preferred |
+| 0E-05 | dev-check enhancement | ✅ Completed | 0E-01, 0E-02 preferred |
 | 0E-06 | Phase 1 safety boundary | Not started | None |
 | 0E-Release | Final verification & push | Not started | All above |
 
@@ -480,7 +497,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 ├── 0E-02 ✅ (no deps)
 ├── 0E-03 ✅ (prefers 0E-01)
 ├── 0E-04 ✅ (no deps)
-├── 0E-05 (prefers 0E-01 + 0E-02)
+├── 0E-05 ✅ (prefers 0E-01 + 0E-02)
 ├── 0E-06 (no deps)
 └── 0E-Release (requires all)
 ```
@@ -491,6 +508,6 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 
 ## Phase 0E Closure
 
-**Phase 0E-00 through 0E-04 are completed.**
+**Phase 0E-00 through 0E-05 are completed.**
 
-See individual subphase sections for status. The next subphase is **0E-05: dev-check Enhancement**.
+See individual subphase sections for status. The next subphase is **0E-06: Phase 1 Safety Boundary Draft**.

@@ -259,7 +259,7 @@ import shutil
 import stat
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 
 def _add_accept_hooks_flag(parser) -> None:
@@ -7035,6 +7035,119 @@ def cmd_gateway_dev(args):
         sys.exit(1)
 
 
+def _webui_check_gitignore(
+    add_fn: Callable[[str, str, str], None],
+    git_value_fn: Callable[..., tuple[str, int]],
+    label: str,
+    paths: list[str],
+) -> None:
+    """Check that a list of paths are ignored by .gitignore.
+
+    Uses ``git check-ignore`` via the existing ``_git_value``-style helper.
+    Falls back to FAIL if git is unavailable.
+    """
+    all_ignored = True
+    for p in paths:
+        out, rc = git_value_fn("check-ignore", "-v", p)
+        if rc != 0:
+            all_ignored = False
+            break
+    add_fn("PASS" if all_ignored else "FAIL", label, "ignored" if all_ignored else "not ignored")
+
+
+def _webui_check_openapi(
+    add_fn: Callable[[str, str, str], None],
+    openapi_path: Path,
+) -> None:
+    """Validate the static OpenAPI contract for Dev WebUI.
+
+    Checks:
+    - YAML is parseable
+    - Exactly 11 business paths
+    - All allowed routes are present
+    - No forbidden routes appear
+    """
+    import yaml  # type: ignore[import-untyped]
+
+    content = openapi_path.read_text(encoding="utf-8")
+    spec = yaml.safe_load(content)
+
+    paths = spec.get("paths", {})
+    path_count = len(paths)
+
+    # Allowed business routes (path template → at least one method)
+    ALLOWED_ROUTES: dict[str, set[str]] = {
+        "/status": {"get"},
+        "/files/status": {"get"},
+        "/sessions": {"get"},
+        "/sessions/{sessionId}": {"get"},
+        "/sessions/{sessionId}/messages": {"get"},
+        "/memory/status": {"get"},
+        "/memory/categories": {"get"},
+        "/memory/items": {"get"},
+        "/memory/items/{memoryId}": {"get"},
+        "/context/preview": {"post"},
+        "/agent/status": {"get"},
+    }
+
+    # Forbidden route path substrings
+    FORBIDDEN_SUBSTRINGS = (
+        "/reviews",
+        "/agent/run",
+        "/tools",
+        "/files/upload",
+    )
+
+    # Check path count
+    add_fn(
+        "PASS" if path_count == 11 else "FAIL",
+        "OpenAPI paths",
+        f"{path_count}",
+    )
+
+    # Check all allowed routes present
+    missing_routes = []
+    for route, expected_methods in ALLOWED_ROUTES.items():
+        if route not in paths:
+            missing_routes.append(route)
+            continue
+        route_methods = set(paths[route].keys()) & {"get", "post", "put", "patch", "delete"}
+        if not expected_methods.issubset(route_methods):
+            missing_routes.append(route)
+    add_fn(
+        "PASS" if not missing_routes else "FAIL",
+        "OpenAPI routes",
+        "all present" if not missing_routes else f"missing: {', '.join(missing_routes)}",
+    )
+
+    # Check forbidden routes absent
+    forbidden_found = []
+    allowed_path_set = set(ALLOWED_ROUTES.keys())
+    for route_path in paths:
+        # Check forbidden substrings
+        for substr in FORBIDDEN_SUBSTRINGS:
+            if substr in route_path:
+                forbidden_found.append(route_path)
+                break
+        # Check for HTTP methods not in the allowed set
+        if route_path in allowed_path_set:
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            extra_methods = actual_methods - ALLOWED_ROUTES[route_path]
+            if extra_methods:
+                forbidden_found.append(f"{route_path} ({', '.join(sorted(extra_methods))})")
+        else:
+            # Path not in allowed set at all — check for non-GET
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            non_get = actual_methods - {"get"}
+            if non_get:
+                forbidden_found.append(f"{route_path} ({', '.join(sorted(non_get))})")
+    add_fn(
+        "PASS" if not forbidden_found else "FAIL",
+        "Forbidden routes",
+        "absent" if not forbidden_found else f"found: {', '.join(forbidden_found)}",
+    )
+
+
 def cmd_dev_check(args):
     """Check that this Hermes invocation is isolated to the dev environment."""
     expected_source_root = Path("/Users/huangruibang/Code/hermes-agent-dev")
@@ -7442,6 +7555,125 @@ def cmd_dev_check(args):
             _add("FAIL", "Memory detail", failure)
     except Exception as exc:
         _add("FAIL", "Memory system", str(exc))
+
+    # ── Dev WebUI governance checks ──────────────────────────────────────
+    try:
+        webui_app = PROJECT_ROOT / "apps" / "hermes-dev-webui"
+        webui_pkg = webui_app / "package.json"
+
+        # 1. WebUI app directory and package.json
+        _add(
+            "PASS" if webui_app.is_dir() else "FAIL",
+            "WebUI app",
+            "exists" if webui_app.is_dir() else "missing",
+        )
+        _add(
+            "PASS" if webui_pkg.is_file() else "FAIL",
+            "WebUI package",
+            "exists" if webui_pkg.is_file() else "missing",
+        )
+
+        # 2. Build artifact policy (dist/ and *.tsbuildinfo ignored)
+        _webui_check_gitignore(
+            _add, _git_value,
+            "Build artifacts",
+            [
+                "apps/hermes-dev-webui/dist/index.html",
+                "apps/hermes-dev-webui/tsconfig.app.tsbuildinfo",
+            ],
+        )
+
+        # 3. Visual review policy
+        _webui_check_gitignore(
+            _add, _git_value,
+            "Visual review",
+            [
+                "apps/hermes-dev-webui/visual-review/phase-0b/",
+            ],
+        )
+
+        # 4. Playwright artifact policy
+        _webui_check_gitignore(
+            _add, _git_value,
+            "Playwright artifacts",
+            [
+                "apps/hermes-dev-webui/playwright-report/",
+                "apps/hermes-dev-webui/test-results/",
+                "apps/hermes-dev-webui/blob-report/",
+            ],
+        )
+
+        # 5. Playwright config and smoke spec
+        pw_config = webui_app / "playwright.config.ts"
+        _add(
+            "PASS" if pw_config.is_file() else "FAIL",
+            "Playwright config",
+            "exists" if pw_config.is_file() else "missing",
+        )
+
+        smoke_spec = webui_app / "tests" / "smoke" / "phase-0e-03-smoke.spec.ts"
+        _add(
+            "PASS" if smoke_spec.is_file() else "FAIL",
+            "Smoke spec",
+            "exists" if smoke_spec.is_file() else "missing",
+        )
+
+        # 6. Smoke runner exists and executable
+        smoke_runner = PROJECT_ROOT / "scripts" / "run-dev-webui-smoke.sh"
+        runner_ok = smoke_runner.is_file()
+        runner_exec = os.access(smoke_runner, os.X_OK) if runner_ok else False
+        _add(
+            "PASS" if runner_exec else "FAIL",
+            "Smoke runner",
+            "executable" if runner_exec else ("not executable" if runner_ok else "missing"),
+        )
+
+        # 7. Package scripts (test:smoke, test:smoke:0e03)
+        if webui_pkg.is_file():
+            try:
+                import json
+
+                pkg_data = json.loads(webui_pkg.read_text(encoding="utf-8"))
+                scripts = pkg_data.get("scripts", {})
+                has_smoke = "test:smoke" in scripts
+                has_smoke_0e03 = "test:smoke:0e03" in scripts
+                _add(
+                    "PASS" if has_smoke else "FAIL",
+                    "Smoke script",
+                    "test:smoke" if has_smoke else "missing",
+                )
+                _add(
+                    "PASS" if has_smoke_0e03 else "WARN",
+                    "Smoke 0e03 script",
+                    "test:smoke:0e03" if has_smoke_0e03 else "missing",
+                )
+            except Exception:
+                _add("FAIL", "WebUI package", "not parseable JSON")
+        else:
+            _add("FAIL", "Smoke scripts", "package.json missing")
+
+        # 8. Static OpenAPI contract
+        openapi_path = PROJECT_ROOT / "docs" / "webui" / "openapi" / "dev-web-api-v1.yaml"
+        if openapi_path.is_file():
+            try:
+                _webui_check_openapi(_add, openapi_path)
+            except Exception as exc:
+                _add("FAIL", "OpenAPI contract", f"parse error: {exc}")
+        else:
+            _add("FAIL", "OpenAPI contract", "missing")
+
+        # 9. Dev Web API module
+        dev_api_mod = PROJECT_ROOT / "hermes_cli" / "dev_web_api.py"
+        _add(
+            "PASS" if dev_api_mod.is_file() else "FAIL",
+            "Dev Web API module",
+            "exists" if dev_api_mod.is_file() else "missing",
+        )
+
+        # 10. Dev WebUI section separator
+        _add("PASS", "WebUI section", "checked")
+    except Exception as exc:
+        _add("FAIL", "WebUI governance", str(exc))
 
     has_fail = any(status == "FAIL" for status, _label, _value in checks)
     has_warn = any(status == "WARN" for status, _label, _value in checks)

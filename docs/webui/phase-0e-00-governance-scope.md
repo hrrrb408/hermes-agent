@@ -373,4 +373,6 @@ None.
 
 **Phase 0E-04 completed.** Dev WebUI Smoke Runner is available at `scripts/run-dev-webui-smoke.sh`. It starts Dev API (127.0.0.1:5181) and WebUI (127.0.0.1:5180), waits for health, runs the 24-test Playwright smoke matrix, and cleans up safely. Port-occupied scenarios fail closed without killing unknown processes. Zero side-effects on dev-home data. See `docs/webui/phase-0e-04-dev-webui-smoke-runner.md` for details.
 
-The next subphase is **0E-05: dev-check Enhancement**. This task does NOT automatically start 0E-05.
+**Phase 0E-05 completed.** dev-check now includes Dev WebUI engineering governance checks for artifact policies, smoke runner, Playwright smoke matrix, package scripts, and static OpenAPI route boundaries. 15 new checks added with 17 unit tests and 5 integration tests. All checks are fast, read-only, and require no service startup. See `docs/webui/phase-0e-05-dev-check-enhancement.md` for details.
+
+The next subphase is **0E-06: Phase 1 Safety Boundary Draft**. This task does NOT automatically start 0E-06.
