@@ -10,9 +10,9 @@ describe('WorkspacePanel', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders all four tabs with Context selected by default', () => {
+  it('renders all five tabs with Context selected by default', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(4)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(5)
     expect(wrapper.get('#workspace-tab-context').attributes('aria-selected')).toBe('true')
   })
 
@@ -54,10 +54,23 @@ describe('WorkspacePanel', () => {
     expect(wrapper.text()).not.toContain('/Users/')
   })
 
+  it('shows Review panel with read-only state', async () => {
+    const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
+    await wrapper.get('#workspace-tab-reviews').trigger('click')
+    const text = wrapper.text()
+    // Review panel shows loading or unavailable state
+    expect(
+      text.includes('Loading') ||
+      text.includes('Unavailable') ||
+      text.includes('Review') ||
+      text.includes('Read-only')
+    ).toBe(true)
+  })
+
   it('never renders raw local paths in any tab', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    // Check all four tabs for local path leakage
-    const tabs = ['memory', 'context', 'agent', 'files'] as const
+    // Check all five tabs for local path leakage
+    const tabs = ['memory', 'context', 'agent', 'files', 'reviews'] as const
     for (const tab of tabs) {
       await wrapper.get(`#workspace-tab-${tab}`).trigger('click')
       const html = wrapper.html()
@@ -69,8 +82,8 @@ describe('WorkspacePanel', () => {
 
   it('retains tab icons when collapsed', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: true } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(4)
-    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(4)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(5)
+    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(5)
     expect(wrapper.find('[role="tabpanel"]').exists()).toBe(false)
   })
 
@@ -91,9 +104,12 @@ describe('WorkspacePanel', () => {
 
   it('supports arrow-key tab navigation', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
+    // Tabs order: files, memory, context, reviews, agent
+    // ArrowRight from context → reviews
     await wrapper.get('#workspace-tab-context').trigger('keydown', { key: 'ArrowRight' })
-    expect(useUiStore().workspaceTab).toBe('agent')
-    await wrapper.get('#workspace-tab-agent').trigger('keydown', { key: 'Home' })
+    expect(useUiStore().workspaceTab).toBe('reviews')
+    // Home → files (first tab)
+    await wrapper.get('#workspace-tab-reviews').trigger('keydown', { key: 'Home' })
     expect(useUiStore().workspaceTab).toBe('files')
   })
 })

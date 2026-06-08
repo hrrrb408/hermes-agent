@@ -35,8 +35,10 @@ const FORBIDDEN_PATTERNS = [
   /:5182\b/,
   /\/\/localhost(?![:/]|\b)/,         // bare "localhost" host (not 127.0.0.1)
   /\/\/0\.0\.0\.0/,
-  /\/reviews\b/,
   /\/reviews\/.*\/(approve|reject)/,
+  /POST.*\/api\/dev\/v1\/reviews/,
+  /PATCH.*\/api\/dev\/v1\/reviews/,
+  /DELETE.*\/api\/dev\/v1\/reviews/,
   /POST.*\/api\/dev\/v1\/memory(?!\/status)(?!\/categories)(?!\/items[^/])\b/,
   /PATCH.*\/api\/dev\/v1\/memory/,
   /DELETE.*\/api\/dev\/v1\/memory/,
@@ -326,7 +328,7 @@ for (const viewport of VIEWPORTS) {
       }
 
       // Click through each tab
-      const tabIds = ['files', 'memory', 'context', 'agent']
+      const tabIds = ['files', 'memory', 'context', 'reviews', 'agent']
       for (const tabId of tabIds) {
         const tab = page.locator(`#workspace-tab-${tabId}`)
         if (await tab.count() > 0) {

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Activity, Brain, ChevronLeft, ChevronRight, FolderTree, Layers } from '@lucide/vue'
+import { Activity, Brain, ChevronLeft, ChevronRight, ClipboardCheck, FolderTree, Layers } from '@lucide/vue'
 import IconButton from '@/components/common/IconButton.vue'
 import AgentPanel from '@/components/workspace/AgentPanel.vue'
 import ContextPanel from '@/components/workspace/ContextPanel.vue'
 import FilesPlaceholder from '@/components/workspace/FilesPlaceholder.vue'
 import MemoryPanel from '@/components/workspace/MemoryPanel.vue'
+import ReviewPanel from '@/components/workspace/ReviewPanel.vue'
 import { useUiStore, type WorkspaceTab } from '@/stores/ui'
 
 const props = defineProps<{
@@ -21,6 +22,7 @@ const tabs = [
   { id: 'files', label: 'Files', icon: FolderTree },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'context', label: 'Context', icon: Layers },
+  { id: 'reviews', label: 'Reviews', icon: ClipboardCheck },
   { id: 'agent', label: 'Agent', icon: Activity },
 ] as const
 
@@ -106,6 +108,7 @@ function moveTab(event: KeyboardEvent, tab: WorkspaceTab): void {
       <FilesPlaceholder v-if="uiStore.workspaceTab === 'files'" />
       <MemoryPanel v-else-if="uiStore.workspaceTab === 'memory'" />
       <ContextPanel v-else-if="uiStore.workspaceTab === 'context'" />
+      <ReviewPanel v-else-if="uiStore.workspaceTab === 'reviews'" />
       <AgentPanel v-else />
     </div>
   </aside>

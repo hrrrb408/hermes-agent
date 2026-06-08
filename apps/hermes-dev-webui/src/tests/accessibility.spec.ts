@@ -229,7 +229,7 @@ describe('Accessibility — WorkspacePanel', () => {
     expect(tablist.attributes('aria-orientation')).toBe('vertical')
 
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs).toHaveLength(4)
+    expect(tabs).toHaveLength(5)
 
     const tabpanel = wrapper.find('[role="tabpanel"]')
     expect(tabpanel.exists()).toBe(true)
@@ -270,7 +270,7 @@ describe('Accessibility — WorkspacePanel', () => {
       }
     }
     expect(activeCount).toBe(1)
-    expect(inactiveCount).toBe(3)
+    expect(inactiveCount).toBe(4)
   })
 
   it('collapse toggle has aria-expanded and aria-controls', () => {
@@ -288,7 +288,7 @@ describe('Accessibility — WorkspacePanel', () => {
     // Press ArrowRight should move to next tab
     await contextTab.trigger('keydown', { key: 'ArrowRight' })
     const store = useUiStore()
-    expect(store.workspaceTab).toBe('agent') // tabs order: files, memory, context, agent
+    expect(store.workspaceTab).toBe('reviews') // tabs order: files, memory, context, reviews, agent
   })
 
   it('Home key selects first tab', async () => {
