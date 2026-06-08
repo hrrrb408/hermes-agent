@@ -371,4 +371,6 @@ None.
 
 **Phase 0E-03 completed.** Playwright smoke matrix established with 4 viewports × 5 themes = 20 combinations plus 4 panel drill-down tests = 24 total tests. `@playwright/test@1.60.0` added as dev dependency. All tests pass in 49.8s. Smoke test runs without screenshots, videos, traces, or HAR artifacts. No side-effects on dev-home state. See `docs/webui/phase-0e-03-playwright-smoke-matrix.md` for details.
 
-The next subphase is **0E-04: Dev WebUI Smoke Runner**. This task does NOT automatically start 0E-04.
+**Phase 0E-04 completed.** Dev WebUI Smoke Runner is available at `scripts/run-dev-webui-smoke.sh`. It starts Dev API (127.0.0.1:5181) and WebUI (127.0.0.1:5180), waits for health, runs the 24-test Playwright smoke matrix, and cleans up safely. Port-occupied scenarios fail closed without killing unknown processes. Zero side-effects on dev-home data. See `docs/webui/phase-0e-04-dev-webui-smoke-runner.md` for details.
+
+The next subphase is **0E-05: dev-check Enhancement**. This task does NOT automatically start 0E-05.

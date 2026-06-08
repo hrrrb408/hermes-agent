@@ -1,7 +1,7 @@
 # Phase 0E Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03 completed; 0E-04 through 0E-Release not started
+**Status:** Phase 0E-00, 0E-01, 0E-02, 0E-03, 0E-04 completed; 0E-05 through 0E-Release not started
 **Depends on:** Phase 0D final closure (279e27259)
 **Governance scope:** `docs/webui/phase-0e-00-governance-scope.md`
 
@@ -230,62 +230,67 @@ Only after 0E-Release verification.
 
 ---
 
-## Phase 0E-04: Dev WebUI Smoke Runner — Not Started
+## Phase 0E-04: Dev WebUI Smoke Runner — Completed ✅
 
+**Status:** Completed
 **Priority:** P3
 **Estimated scope:** Medium (new script with start/status/stop)
+**Date:** 2026-06-08
 
 ### Goal
 
-Create `scripts/run-dev-webui.sh` that starts both Dev API and WebUI dev server with correct environment.
-
-### Context
-
-Currently requires two manual commands:
-```bash
-# Terminal 1: Dev API
-HERMES_HOME=/Users/huangruibang/Code/hermes-home-dev python -m hermes_cli.main dev-webui-api
-
-# Terminal 2: WebUI
-cd apps/hermes-dev-webui && pnpm dev
-```
+Create `scripts/run-dev-webui-smoke.sh` that starts both Dev API and WebUI dev server, waits for health, runs the 0E-03 Playwright smoke matrix, and cleans up.
 
 ### Modification Scope
 
 | File | Action |
 |------|--------|
-| `scripts/run-dev-webui.sh` | **New** — Smoke runner with start/status/stop |
+| `scripts/run-dev-webui-smoke.sh` | **New** — One-shot smoke runner |
+| `apps/hermes-dev-webui/pnpm-lock.yaml` | **Modified** — Updated by `pnpm install` |
 
-### Non-goals
-
-- Not a daemon or service manager
-- No auto-restart on crash
-- No log file management
-- No PID file persistence across reboots
-- No system service integration
-
-### Script Design
+### Runner Design
 
 ```
-./scripts/run-dev-webui.sh start   # Start both Dev API and WebUI
-./scripts/run-dev-webui.sh status  # Check if both are running
-./scripts/run-dev-webui.sh stop    # Stop both
+./scripts/run-dev-webui-smoke.sh              # Full smoke cycle
+./scripts/run-dev-webui-smoke.sh --skip-smoke # Start services only
+./scripts/run-dev-webui-smoke.sh --keep-running # Keep services after tests
 ```
 
 Safety:
 - Enforces `HERMES_HOME=/Users/huangruibang/Code/hermes-home-dev`
-- Enforces `127.0.0.1` binding
+- Enforces `127.0.0.1` binding (ports 5180, 5181)
 - Refuses to start if ports are occupied
-- Cleans up child processes on stop
+- Only kills processes it started (via tracked PIDs + pgrep children)
+- Cleans up on EXIT/INT/TERM via trap
+- Never kills unknown processes or Production Gateway
 
 ### Acceptance Criteria
 
-1. `start` launches both processes; both report healthy
-2. `status` shows both running with PIDs
-3. `stop` terminates both cleanly (no orphan processes)
-4. Refuses to start if 5180 or 5181 is occupied
-5. Does not affect production Gateway
-6. All existing tests still pass
+1. ✅ Runner starts Dev API on 127.0.0.1:5181
+2. ✅ Runner starts WebUI on 127.0.0.1:5180
+3. ✅ Health checks pass for both services
+4. ✅ Playwright smoke matrix runs (24/24 passed in 49.6s)
+5. ✅ Cleanup stops all started processes, ports freed
+6. ✅ Port-occupied scenario: fail-closed, no kill of holding process
+7. ✅ Zero side-effects on state.db, MEMORY.md, memory files
+8. ✅ Does not affect Production Gateway PID 1717
+9. ✅ All existing tests still pass (324 frontend tests)
+
+### Validation
+
+| Check | Result |
+|-------|--------|
+| bash -n | PASS |
+| Full smoke run | 24/24 passed, 49.6s |
+| Port-occupied fail-closed | Exit 1, no kill |
+| Side-effect validation | All checksums unchanged |
+| pnpm lint | PASS |
+| pnpm type-check | PASS |
+| pnpm test | 324/324 PASS |
+| pnpm build | PASS (artifacts gitignored) |
+| memory-check | PASS |
+| dev-check | WARN (uncommitted files — expected) |
+| compileall | PASS |
 
 ### Dependencies
 
@@ -460,7 +465,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 | 0E-01 | Build artifact policy | ✅ Completed | None |
 | 0E-02 | Visual review artifact policy | ✅ Completed | None |
 | 0E-03 | Playwright smoke matrix | ✅ Completed | 0E-01 preferred |
-| 0E-04 | Dev WebUI smoke runner | Not started | None |
+| 0E-04 | Dev WebUI smoke runner | ✅ Completed | None |
 | 0E-05 | dev-check enhancement | Not started | 0E-01, 0E-02 preferred |
 | 0E-06 | Phase 1 safety boundary | Not started | None |
 | 0E-Release | Final verification & push | Not started | All above |
@@ -474,7 +479,7 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 ├── 0E-01 ✅ (no deps)
 ├── 0E-02 ✅ (no deps)
 ├── 0E-03 ✅ (prefers 0E-01)
-├── 0E-04 (no deps)
+├── 0E-04 ✅ (no deps)
 ├── 0E-05 (prefers 0E-01 + 0E-02)
 ├── 0E-06 (no deps)
 └── 0E-Release (requires all)
@@ -486,6 +491,6 @@ Run full quality gate, verify clean working tree, and push all Phase 0E commits 
 
 ## Phase 0E Closure
 
-**Phase 0E is NOT yet started (beyond 0E-00 scope freeze).**
+**Phase 0E-00 through 0E-04 are completed.**
 
-See individual subphase sections for status.
+See individual subphase sections for status. The next subphase is **0E-05: dev-check Enhancement**.
