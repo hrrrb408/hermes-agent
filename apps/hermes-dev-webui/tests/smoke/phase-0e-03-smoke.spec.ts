@@ -36,6 +36,8 @@ const THEMES = [
 // Forbidden URL patterns — any matching request fails the test
 // Phase 1B: approve/dry-run and reject/dry-run are allowed;
 // real approve/reject (without /dry-run) remain forbidden.
+// Phase 1E: agent/prompt/preview and agent/run/dry-run are allowed;
+// POST /agent/run (without /dry-run) remains forbidden.
 const FORBIDDEN_PATTERNS = [
   /:5182\b/,
   /\/\/localhost(?![:/]|\b)/,         // bare "localhost" host (not 127.0.0.1)
@@ -48,7 +50,7 @@ const FORBIDDEN_PATTERNS = [
   /POST.*\/api\/dev\/v1\/memory(?!\/status)(?!\/categories)(?!\/items[^/])\b/,
   /PATCH.*\/api\/dev\/v1\/memory/,
   /DELETE.*\/api\/dev\/v1\/memory/,
-  /POST.*\/api\/dev\/v1\/agent\/run/,
+  /POST.*\/api\/dev\/v1\/agent\/run\/?(?!\/dry-run)\b/,  // POST /agent/run but NOT /agent/run/dry-run
   /POST.*\/api\/dev\/v1\/tools/,
   /POST.*\/api\/dev\/v1\/sessions/,
   /POST.*\/api\/dev\/v1\/messages/,
@@ -56,9 +58,11 @@ const FORBIDDEN_PATTERNS = [
   /DELETE.*\/api\/dev\/v1\/files/,
 ] as const
 
-// Allowed POST endpoints: context/preview + review dry-run + review execute
+// Allowed POST endpoints: context/preview + review dry-run/execute + agent preview
 const ALLOWED_POST_PATTERNS = [
   /POST.*\/api\/dev\/v1\/context\/preview/,
+  /POST.*\/api\/dev\/v1\/agent\/prompt\/preview/,
+  /POST.*\/api\/dev\/v1\/agent\/run\/dry-run/,
   /POST.*\/api\/dev\/v1\/reviews\/.*\/approve\/dry-run/,
   /POST.*\/api\/dev\/v1\/reviews\/.*\/reject\/dry-run/,
   /POST.*\/api\/dev\/v1\/reviews\/.*\/approve\/execute/,
