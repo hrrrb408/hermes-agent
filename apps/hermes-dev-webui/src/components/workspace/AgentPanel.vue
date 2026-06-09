@@ -3,8 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useAgentStore } from '@/stores/workspacePanel'
 import { useAgentPreviewStore } from '@/stores/agentPreview'
 import AgentPreviewResult from './AgentPreviewResult.vue'
+import AgentLiveRun from './AgentLiveRun.vue'
 
-type AgentTab = 'status' | 'promptPreview' | 'dryRun'
+type AgentTab = 'status' | 'promptPreview' | 'dryRun' | 'liveRun'
 
 const store = useAgentStore()
 const previewStore = useAgentPreviewStore()
@@ -25,7 +26,7 @@ function setTab(tab: AgentTab): void {
 }
 
 function handleKeyDown(event: KeyboardEvent, tab: AgentTab): void {
-  const tabs: AgentTab[] = ['status', 'promptPreview', 'dryRun']
+  const tabs: AgentTab[] = ['status', 'promptPreview', 'dryRun', 'liveRun']
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
 
@@ -84,6 +85,18 @@ function handleKeyDown(event: KeyboardEvent, tab: AgentTab): void {
         @click="setTab('dryRun')"
         @keydown="handleKeyDown($event, 'dryRun')"
       >Run Dry-Run</button>
+      <button
+        id="agent-tab-liveRun"
+        type="button"
+        role="tab"
+        class="agent-tab"
+        :class="{ 'agent-tab--active': activeTab === 'liveRun' }"
+        :aria-selected="activeTab === 'liveRun'"
+        :aria-controls="'agent-tabpanel-liveRun'"
+        :tabindex="activeTab === 'liveRun' ? 0 : -1"
+        @click="setTab('liveRun')"
+        @keydown="handleKeyDown($event, 'liveRun')"
+      >Live Run</button>
     </div>
 
     <!-- Status Tab -->
@@ -292,6 +305,17 @@ function handleKeyDown(event: KeyboardEvent, tab: AgentTab): void {
 
       <!-- Result -->
       <AgentPreviewResult v-else-if="previewStore.hasResult && previewStore.activeMode === 'dryRun'" :result="previewStore.result!" />
+    </div>
+
+    <!-- Live Run Tab -->
+    <div
+      v-if="activeTab === 'liveRun'"
+      id="agent-tabpanel-liveRun"
+      role="tabpanel"
+      aria-labelledby="agent-tab-liveRun"
+      tabindex="0"
+    >
+      <AgentLiveRun />
     </div>
   </section>
 </template>
