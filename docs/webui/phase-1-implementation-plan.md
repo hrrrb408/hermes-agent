@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00 Completed; 1C through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00 Completed; 1D through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -351,6 +351,46 @@ Allow real execution of Review Queue approve/reject in dev-home only.
 
 ---
 
+## Phase 1D-00: Memory Writer Dry-Run Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-09
+
+### Deliverables
+
+- `docs/webui/phase-1d-00-memory-writer-dry-run-scope.md` — Complete scope freeze document with:
+  - Memory Writer core code audit (runtime_memory_writer.py, memory_router.py, memory_review_queue.py)
+  - Decision model audit (WRITE, UPDATE, REVIEW, SKIP, SKIP_DUPLICATE)
+  - Similarity and duplicate detection strategy (6 thresholds documented)
+  - P0/permanent/protected strategy audit
+  - Side-effect matrix (5 operations × 6 resource types)
+  - Safe read-only function inventory (40+ functions listed)
+  - Forbidden write function inventory (20+ functions listed)
+  - Hidden write risk analysis (ensure_memory_scaffold, _ensure_paths)
+  - 3 dry-run POST route drafts frozen
+  - Request DTOs frozen (WRITE, UPDATE, ARCHIVE)
+  - Unified response DTO frozen (with field whitelist)
+  - Error model frozen (16 error codes)
+  - Frontend information architecture frozen (Writer Preview sub-tab)
+  - OpenAPI strategy documented (18 paths unchanged, → 21 after implementation)
+  - dev-check strategy, Playwright strategy, side-effect validation strategy, test fixture strategy
+
+### Acceptance
+
+- ✅ Memory Writer core code fully audited
+- ✅ Decision model, similarity, protection, side effects documented
+- ✅ 3 dry-run route drafts frozen
+- ✅ DTO contracts, error model, field whitelist frozen
+- ✅ OpenAPI strategy: no change to 18-path contract
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS
+- ✅ dev-check PASS
+- ✅ compileall PASS
+- ✅ Local commit created, not pushed
+- ✅ Production environment unaffected
+
+---
+
 ## Phase 1D: Memory Writer Dry-Run Panel — Not Started
 
 **Status:** Not Started
@@ -632,7 +672,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1B | Review Queue dry-run | ✅ Completed | 1B-00 | No |
 | 1C-00 | Review Queue execute scope & safety boundary freeze | ✅ Completed | 1B | No |
 | 1C | Review Queue execute | ✅ Completed | 1C-00 | Yes (dev) |
-| 1D | Memory Writer dry-run | Not Started | 0E-Release | No |
+| 1D-00 | Memory Writer dry-run scope & contract freeze | ✅ Completed | 0E-Release | No |
+| 1D | Memory Writer dry-run | Not Started | 1D-00 | No |
 | 1E | Agent prompt preview | Not Started | 0E-Release | No |
 | 1F | Agent Run without tools | Not Started | 1E | Yes (dev) |
 | 1G | Tool execution framework | Not Started | 1F | Default No |
@@ -657,6 +698,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │   └── 1C-00 ✅ (review execute scope & safety boundary freeze)
 │       └── 1C ✅ (review execute)
 │
+├── 1D-00 ✅ (memory dry-run scope & contract freeze)
+│
 ├── 1D (memory dry-run)
 │
 ├── 1E (agent preview)
@@ -668,7 +711,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 
 **Independent tracks:**
 - Track 1: 1A → 1B-00 → 1B → 1C-00 → 1C (Review Queue)
-- Track 2: 1D (Memory Writer, standalone)
+- Track 2: 1D-00 → 1D (Memory Writer)
 - Track 3: 1E → 1F → 1G (Agent + Tools)
 
 Tracks can be developed in parallel. Within each track, phases are sequential.
@@ -710,4 +753,17 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 - Zero side effects on formal dev-home and production
 - See `docs/webui/phase-1c-post-approve-execute-test-closure.md` for full details
 
-The next subphase is **Phase 1D** (to be defined).
+**Phase 1D-00 is completed.** Memory Writer dry-run panel scope, contracts, safety boundaries, and validation strategy are frozen.
+- `docs/webui/phase-1d-00-memory-writer-dry-run-scope.md` — Complete scope freeze document
+- Memory Writer core code fully audited (runtime_memory_writer.py, memory_router.py, memory_review_queue.py)
+- Decision model: WRITE, UPDATE, REVIEW, SKIP, SKIP_DUPLICATE with threshold documentation
+- Side-effect matrix: 5 operations × 6 resource types
+- Safe read-only functions: 40+ functions identified as side-effect-free
+- Forbidden write functions: 20+ functions identified as having write effects
+- 3 dry-run route drafts frozen: /memory/write/dry-run, /memory/items/{id}/update/dry-run, /memory/items/{id}/archive/dry-run
+- DTO contracts, error model (16 codes), field whitelist, redaction rules frozen
+- Frontend IA: Writer Preview sub-tab within Memory panel
+- No API implemented, no business code modified
+- See `docs/webui/phase-1d-00-memory-writer-dry-run-scope.md` for full details
+
+The next subphase is **Phase 1D** (Memory Writer Dry-Run Panel Implementation).
