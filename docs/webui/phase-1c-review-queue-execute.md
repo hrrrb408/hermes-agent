@@ -307,3 +307,30 @@ Phase 1C completed. Review Queue dev-only approve/reject execute is implemented 
 ## 15. Next Task
 
 Phase 1C-Release: Review Queue Execute 封板核验与推送准备
+
+---
+
+## 16. Phase 1C-Post-01: Approve Execute Success-Path Test Closure
+
+**Date:** 2026-06-09
+**Status:** Completed ✅
+
+### Gap Closed
+
+The original Phase 1C test suite covered reject-execute success and most approve-execute failure paths, but lacked approve-execute **success** path coverage. Phase 1C-Post-01 adds 18 tests covering:
+
+- **WRITE success path** (8 tests): API response, review JSON approval, review event, memory record creation, category index update, memory event, index backup, unexpected write verification
+- **UPDATE success path** (7 tests): API response, review JSON approval, review event, record modification, memory event, index+record backups, unexpected write verification
+- **DTO safety** (2 tests): No sensitive data leakage, strict whitelist validation
+- **Idempotency** (1 test): Second approve does not duplicate writes
+
+### Test Count
+
+- Before: 330 backend tests
+- After: 348 backend tests (+18 new, plus pre-existing test count growth)
+
+### Fixture Details
+
+All approve success tests use isolated `pytest tmp_path` fixtures with properly structured MEMORY.md (including `index` field), category indexes, memory records, and review items. The kill switch is enabled only via `_execute_enabled()` context manager within each test.
+
+See `docs/webui/phase-1c-post-approve-execute-test-closure.md` for full details.

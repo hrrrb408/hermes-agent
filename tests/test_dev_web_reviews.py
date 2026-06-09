@@ -1505,3 +1505,853 @@ def _set_updated_at(home: Path, review_id: str, updated_at: str) -> None:
     item = json.loads(item_path.read_text(encoding="utf-8"))
     item["updated_at"] = updated_at
     item_path.write_text(json.dumps(item, indent=2), encoding="utf-8")
+
+
+# ── Approve Execute Success Path Tests (Phase 1C-Post-01) ──
+
+
+def _hash_tree(root: Path) -> dict[str, str]:
+    """Return {relative_path: sha256} for all files under root."""
+    result: dict[str, str] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            rel = str(path.relative_to(root))
+            result[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
+
+
+@pytest.fixture
+def approve_execute_home(tmp_path):
+    """Temporary HERMES_HOME for approve execute success-path testing.
+
+    Has a properly structured MEMORY.md (with index field) so that
+    revalidate_review_approval → parse_root → category_index_path works.
+    Never touches hermes-home-dev or ~/.hermes.
+    """
+    home = tmp_path / "hermes-approve-test"
+    home.mkdir(exist_ok=True)
+
+    for subdir in ("sessions", "cron", "memories", "skills"):
+        (home / subdir).mkdir(exist_ok=True)
+
+    # MEMORY.md with proper index field for parse_root()
+    (home / "MEMORY.md").write_text(
+        "# Test Memory\n\n"
+        "## hermes\n"
+        "- index: memory://indexes/hermes.md\n"
+        "- status: active\n",
+        encoding="utf-8",
+    )
+
+    # Memory directory structure
+    memory_dir = home / "memory"
+    memory_dir.mkdir(exist_ok=True)
+    (memory_dir / "indexes").mkdir(exist_ok=True)
+    (memory_dir / "records").mkdir(exist_ok=True)
+    (memory_dir / "records" / "hermes").mkdir(exist_ok=True)
+    (memory_dir / "snapshots").mkdir(exist_ok=True)
+    (memory_dir / "events.jsonl").write_text("", encoding="utf-8")
+
+    # Index file — empty (no items to cause duplicate detection for WRITE)
+    (memory_dir / "indexes" / "hermes.md").write_text(
+        "# Hermes Memory Index\n",
+        encoding="utf-8",
+    )
+
+    # Reviews structure
+    reviews_dir = memory_dir / "reviews"
+    items_dir = reviews_dir / "items"
+    items_dir.mkdir(parents=True)
+    (reviews_dir / "events.jsonl").write_text("", encoding="utf-8")
+    (reviews_dir / ".queue.lock").write_text("", encoding="utf-8")
+
+    # Pending WRITE review item (no matched_memory to avoid duplicate path)
+    write_item = _make_review_item(
+        review_id="MR-20260609T150000-a1b2c3d4",
+        status="pending",
+        decision="WRITE",
+        proposed_action="WRITE",
+        category="hermes",
+        title="Test approve write item",
+        summary="A test summary for approve write.",
+        tags=["alpha", "beta"],
+        score=85,
+        has_matched=False,
+    )
+
+    for item in [write_item]:
+        path = items_dir / f"{item['review_id']}.json"
+        path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return home
+
+
+@pytest.fixture
+def client_approve_execute(approve_execute_home):
+    """TestClient for approve execute success-path testing."""
+    config = DevWebApiConfig(hermes_home=approve_execute_home)
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+@pytest.fixture
+def approve_update_home(tmp_path):
+    """Temporary HERMES_HOME for approve UPDATE execute testing.
+
+    Includes an existing memory item in the index with a record file,
+    so that revalidate_review_approval for UPDATE can find the target,
+    pass similarity checks, and update the existing record.
+    """
+    home = tmp_path / "hermes-approve-update-test"
+    home.mkdir(exist_ok=True)
+
+    for subdir in ("sessions", "cron", "memories", "skills"):
+        (home / subdir).mkdir(exist_ok=True)
+
+    # MEMORY.md with index field
+    (home / "MEMORY.md").write_text(
+        "# Test Memory\n\n"
+        "## hermes\n"
+        "- index: memory://indexes/hermes.md\n"
+        "- status: active\n",
+        encoding="utf-8",
+    )
+
+    memory_dir = home / "memory"
+    memory_dir.mkdir(exist_ok=True)
+    (memory_dir / "indexes").mkdir(exist_ok=True)
+    (memory_dir / "records").mkdir(exist_ok=True)
+    (memory_dir / "records" / "hermes").mkdir(exist_ok=True)
+    (memory_dir / "snapshots").mkdir(exist_ok=True)
+    (memory_dir / "events.jsonl").write_text("", encoding="utf-8")
+
+    # Target memory item in index — must be parseable by parse_index()
+    # Fields: type, importance (NOT P0), ttl (NOT permanent), status=active,
+    # tags with non-generic overlap, summary similar to candidate
+    target_memory_id = "MEM-HERMES-001"
+    target_title = "Test approve update target item"
+    target_summary = "A test summary for the approve update target memory record."
+    target_tags = "alpha, beta"
+
+    index_content = (
+        "# Hermes Memory Index\n\n"
+        f"## {target_memory_id} {target_title}\n\n"
+        f"- type: project_status\n"
+        f"- importance: P2\n"
+        f"- ttl: project\n"
+        f"- status: active\n"
+        f"- tags: {target_tags}\n"
+        f"- storage: memory://records/hermes/{target_memory_id.casefold()}.md\n"
+        f"- created_at: 2026-06-09\n"
+        f"- updated_at: 2026-06-09\n"
+        f"- summary: {target_summary}\n"
+    )
+    (memory_dir / "indexes" / "hermes.md").write_text(index_content, encoding="utf-8")
+
+    # Record file for target — minimal valid content
+    record_dir = memory_dir / "records" / "hermes"
+    record_content = (
+        f"# {target_memory_id} {target_title}\n\n"
+        f"{target_summary}\n\n"
+        f"## Details\n\nOriginal content.\n\n"
+        f"## Metadata\n\n"
+        f"- type: project_status\n"
+        f"- importance: P2\n"
+        f"- ttl: project\n"
+        f"- status: active\n"
+        f"- tags: {target_tags}\n"
+    )
+    (record_dir / f"{target_memory_id.casefold()}.md").write_text(
+        record_content, encoding="utf-8",
+    )
+
+    # Reviews structure
+    reviews_dir = memory_dir / "reviews"
+    items_dir = reviews_dir / "items"
+    items_dir.mkdir(parents=True)
+    (reviews_dir / "events.jsonl").write_text("", encoding="utf-8")
+    (reviews_dir / ".queue.lock").write_text("", encoding="utf-8")
+
+    # UPDATE review item — candidate must be similar to target
+    # Use near-identical title and summary to pass similarity thresholds
+    # title_similarity >= 0.85 OR summary_similarity >= 0.90
+    update_item = _make_review_item(
+        review_id="MR-20260609T160000-e5f6a7b8",
+        status="pending",
+        decision="UPDATE",
+        proposed_action="UPDATE",
+        category="hermes",
+        title="Test approve update target item updated",
+        summary="A test summary for the approve update target memory record.",
+        tags=["alpha", "beta"],
+        score=85,
+        has_matched=True,
+    )
+    # Ensure matched_memory points to the target
+    update_item["matched_memory"] = {
+        "memory_id": target_memory_id,
+        "title": target_title,
+        "category": "hermes",
+    }
+
+    path = items_dir / f"{update_item['review_id']}.json"
+    path.write_text(json.dumps(update_item, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return home
+
+
+@pytest.fixture
+def client_approve_update(approve_update_home):
+    """TestClient for approve UPDATE execute testing."""
+    config = DevWebApiConfig(hermes_home=approve_update_home)
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+class TestApproveExecuteWriteSuccess:
+    """Approve execute WRITE success-path tests with isolated temp fixture."""
+
+    def test_approve_execute_write_success_response(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Approve execute WRITE returns 200 with correct DTO fields."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executed"] is True
+        assert data["action"] == "APPROVE"
+        assert data["statusBefore"] == "pending"
+        assert data["statusAfter"] == "approved"
+        assert data["memoryChanged"] is True
+        assert data["reviewChanged"] is True
+        assert data["eventAppended"] is True
+        assert data["audit"]["devOnly"] is True
+        assert data["audit"]["actor"] == "dev-webui"
+        assert "warnings" in data
+        assert isinstance(data["warnings"], list)
+
+    def test_approve_execute_write_review_json_approved(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Review JSON status changes to approved with approval object."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        item_path = approve_execute_home / "memory" / "reviews" / "items" / f"{review_id}.json"
+        updated = json.loads(item_path.read_text(encoding="utf-8"))
+        assert updated["status"] == "approved"
+        assert updated["approval"] is not None
+        assert "approved_at" in updated["approval"]
+        assert "memory_id" in updated["approval"]
+        assert updated["approval"]["action"] == "WRITE"
+        assert updated.get("rejection") is None
+
+    def test_approve_execute_write_review_event_appended(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """review_approved event is appended to review events.jsonl."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        events_path = approve_execute_home / "memory" / "reviews" / "events.jsonl"
+        before_events = events_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_events = events_path.read_text(encoding="utf-8")
+        assert len(after_events) > len(before_events)
+        # Parse events and verify the last one is review_approved
+        lines = [l for l in after_events.strip().splitlines() if l.strip()]
+        last_event = json.loads(lines[-1])
+        assert last_event["event"] == "review_approved"
+        assert last_event["review_id"] == review_id
+        assert "memory_id" in last_event
+
+    def test_approve_execute_write_creates_memory_record(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Memory record file is created after WRITE approve."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        # Record for "hermes" category goes to records/projects/hermes/
+        records_dir = approve_execute_home / "memory" / "records"
+        before_files = set(records_dir.rglob("*.md"))
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_files = set(records_dir.rglob("*.md"))
+        new_files = after_files - before_files
+        assert len(new_files) == 1
+        new_file = new_files.pop()
+        content = new_file.read_text(encoding="utf-8")
+        assert "MEM-HERMES-" in content
+
+    def test_approve_execute_write_updates_category_index(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Category index is updated with the new memory item."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        index_path = approve_execute_home / "memory" / "indexes" / "hermes.md"
+        before_content = index_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_content = index_path.read_text(encoding="utf-8")
+        assert len(after_content) > len(before_content)
+        assert "MEM-HERMES-" in after_content
+
+    def test_approve_execute_write_appends_memory_event(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """memory_create event is appended to memory events.jsonl."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        events_path = approve_execute_home / "memory" / "events.jsonl"
+        before = events_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after = events_path.read_text(encoding="utf-8")
+        assert len(after) > len(before)
+        assert "memory_create" in after
+
+    def test_approve_execute_write_creates_index_backup(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """A snapshot/backup of the index file is created."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        snapshots_dir = approve_execute_home / "memory" / "snapshots"
+        before_files = set(snapshots_dir.iterdir())
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_files = set(snapshots_dir.iterdir())
+        new_snapshots = after_files - before_files
+        assert len(new_snapshots) >= 1
+        # Verify backup file name pattern: INDEX-hermes-YYYYMMDD-HHMMSS.md
+        snapshot_names = [f.name for f in new_snapshots]
+        assert any("INDEX-hermes" in n or "INDEX-" in n for n in snapshot_names)
+
+    def test_approve_execute_write_no_unexpected_file_changes(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """File changes are limited to expected paths only."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        before = _hash_tree(approve_execute_home)
+
+        with _execute_enabled():
+            client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after = _hash_tree(approve_execute_home)
+        changed = sorted(k for k in set(list(before.keys()) + list(after.keys()))
+                         if before.get(k) != after.get(k))
+
+        # Expected changes:
+        # - memory/indexes/hermes.md (new item added)
+        # - memory/records/hermes/<new-id>.md (new record created)
+        # - memory/events.jsonl (memory_create appended)
+        # - memory/snapshots/<backup>.md (index backup)
+        # - memory/reviews/items/<review-id>.json (status → approved)
+        # - memory/reviews/events.jsonl (review_approved appended)
+        for path in changed:
+            is_expected = (
+                path.startswith("memory/indexes/")
+                or path.startswith("memory/records/")
+                or path.startswith("memory/events.jsonl")
+                or path.startswith("memory/snapshots/")
+                or path.startswith("memory/reviews/")
+            )
+            assert is_expected, f"Unexpected file change: {path}"
+
+
+class TestApproveExecuteUpdateSuccess:
+    """Approve execute UPDATE success-path tests with isolated temp fixture."""
+
+    def test_approve_execute_update_success_response(
+        self, client_approve_update, approve_update_home,
+    ):
+        """Approve execute UPDATE returns 200 with correct DTO."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executed"] is True
+        assert data["action"] == "APPROVE"
+        assert data["statusBefore"] == "pending"
+        assert data["statusAfter"] == "approved"
+        assert data["memoryChanged"] is True
+        assert data["reviewChanged"] is True
+        assert data["eventAppended"] is True
+        assert data["target"]["memoryId"] == "MEM-HERMES-001"
+        assert data["target"]["operation"] == "UPDATE"
+        assert data["audit"]["devOnly"] is True
+
+    def test_approve_execute_update_review_json_approved(
+        self, client_approve_update, approve_update_home,
+    ):
+        """Review JSON status changes to approved after UPDATE."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        item_path = approve_update_home / "memory" / "reviews" / "items" / f"{review_id}.json"
+        updated = json.loads(item_path.read_text(encoding="utf-8"))
+        assert updated["status"] == "approved"
+        assert updated["approval"] is not None
+        assert "approved_at" in updated["approval"]
+        assert updated["approval"]["action"] == "UPDATE"
+        assert updated["approval"]["memory_id"] == "MEM-HERMES-001"
+
+    def test_approve_execute_update_review_event(
+        self, client_approve_update, approve_update_home,
+    ):
+        """review_approved event is appended with UPDATE action."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        events_path = approve_update_home / "memory" / "reviews" / "events.jsonl"
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        lines = [l for l in events_path.read_text(encoding="utf-8").strip().splitlines() if l.strip()]
+        last_event = json.loads(lines[-1])
+        assert last_event["event"] == "review_approved"
+        assert last_event["review_id"] == review_id
+        assert last_event.get("action") == "UPDATE"
+
+    def test_approve_execute_update_modifies_record(
+        self, client_approve_update, approve_update_home,
+    ):
+        """Target memory record is modified after UPDATE approve."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        record_path = approve_update_home / "memory" / "records" / "hermes" / "mem-hermes-001.md"
+        before = record_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after = record_path.read_text(encoding="utf-8")
+        assert after != before
+
+    def test_approve_execute_update_appends_memory_event(
+        self, client_approve_update, approve_update_home,
+    ):
+        """memory_update event is appended to memory events.jsonl."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        events_path = approve_update_home / "memory" / "events.jsonl"
+        before = events_path.read_text(encoding="utf-8")
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after = events_path.read_text(encoding="utf-8")
+        assert len(after) > len(before)
+        assert "memory_update" in after
+
+    def test_approve_execute_update_creates_backups(
+        self, client_approve_update, approve_update_home,
+    ):
+        """Both index and record backups are created for UPDATE."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        snapshots_dir = approve_update_home / "memory" / "snapshots"
+        before_files = set(snapshots_dir.iterdir())
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after_files = set(snapshots_dir.iterdir())
+        new_snapshots = after_files - before_files
+        assert len(new_snapshots) >= 2
+        snapshot_names = [f.name for f in new_snapshots]
+        has_index_backup = any("INDEX-" in n for n in snapshot_names)
+        has_record_backup = any("RECORD-" in n for n in snapshot_names)
+        assert has_index_backup, f"Missing index backup in: {snapshot_names}"
+        assert has_record_backup, f"Missing record backup in: {snapshot_names}"
+
+    def test_approve_execute_update_no_unexpected_file_changes(
+        self, client_approve_update, approve_update_home,
+    ):
+        """File changes are limited to expected paths for UPDATE."""
+        review_id = "MR-20260609T160000-e5f6a7b8"
+        updated_at = "2026-06-09T16:00:00+08:00"
+        _set_updated_at(approve_update_home, review_id, updated_at)
+
+        before = _hash_tree(approve_update_home)
+
+        with _execute_enabled():
+            client_approve_update.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        after = _hash_tree(approve_update_home)
+        changed = sorted(k for k in set(list(before.keys()) + list(after.keys()))
+                         if before.get(k) != after.get(k))
+
+        for path in changed:
+            is_expected = (
+                path.startswith("memory/indexes/")
+                or path.startswith("memory/records/")
+                or path.startswith("memory/events.jsonl")
+                or path.startswith("memory/snapshots/")
+                or path.startswith("memory/reviews/")
+            )
+            assert is_expected, f"Unexpected file change: {path}"
+
+
+class TestApproveExecuteDtoSafety:
+    """Verify approve execute response DTO does not leak sensitive data."""
+
+    def test_approve_execute_response_no_sensitive_data(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Response must not contain paths, secrets, traceback, or raw candidate."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        text = json.dumps(resp.json())
+        assert "/Users/" not in text
+        assert "/home/" not in text
+        assert "traceback" not in text.lower()
+        assert "secret" not in text.lower()
+        assert "token" not in text.lower()
+        assert "cookie" not in text.lower()
+
+    def test_approve_execute_response_dto_whitelist(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Response data contains only whitelisted fields."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        with _execute_enabled():
+            resp = client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        data = resp.json()["data"]
+        allowed_top = {
+            "reviewId", "executed", "action", "statusBefore", "statusAfter",
+            "memoryChanged", "reviewChanged", "eventAppended",
+            "target", "audit", "warnings",
+        }
+        assert set(data.keys()) == allowed_top
+
+        # Target must not contain raw candidate or source
+        assert "rawCandidate" not in data
+        assert "source" not in data
+        assert "fingerprint" not in data
+
+        # Target sub-object
+        target = data["target"]
+        assert "memoryId" in target
+        assert "category" in target
+        assert "operation" in target
+
+        # Audit sub-object
+        audit = data["audit"]
+        assert audit["actor"] == "dev-webui"
+        assert audit["devOnly"] is True
+        assert "timestamp" in audit
+
+
+class TestApproveExecuteIdempotency:
+    """Verify re-executing approve on already-approved item does not duplicate writes."""
+
+    def test_second_approve_does_not_duplicate_memory_write(
+        self, client_approve_execute, approve_execute_home,
+    ):
+        """Second approve request does not create additional memory records."""
+        review_id = "MR-20260609T150000-a1b2c3d4"
+        updated_at = "2026-06-09T15:00:00+08:00"
+        _set_updated_at(approve_execute_home, review_id, updated_at)
+
+        # First approve
+        with _execute_enabled():
+            resp1 = client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        assert resp1.status_code == 200
+
+        # Capture state after first approve
+        records_dir = approve_execute_home / "memory" / "records"
+        after_first_records = set(records_dir.rglob("*.md"))
+        mem_events_path = approve_execute_home / "memory" / "events.jsonl"
+        after_first_mem_events = mem_events_path.read_text(encoding="utf-8")
+        review_events_path = approve_execute_home / "memory" / "reviews" / "events.jsonl"
+        after_first_review_events = review_events_path.read_text(encoding="utf-8")
+
+        # Read the updated review item to get new updated_at
+        item_path = approve_execute_home / "memory" / "reviews" / "items" / f"{review_id}.json"
+        updated_item = json.loads(item_path.read_text(encoding="utf-8"))
+        new_updated_at = updated_item["updated_at"]
+
+        # Second approve (should be idempotent or return error)
+        with _execute_enabled():
+            resp2 = client_approve_execute.post(
+                f"/api/dev/v1/reviews/{review_id}/approve/execute",
+                json={
+                    "confirmationText": "APPROVE",
+                    "expectedAction": "APPROVE",
+                    "reviewUpdatedAt": new_updated_at,
+                    "dryRunPreviewed": True,
+                    "acknowledgedEffects": [
+                        "WRITE_MEMORY", "UPDATE_REVIEW", "APPEND_REVIEW_EVENT",
+                    ],
+                },
+            )
+
+        # Second request should not duplicate memory records
+        after_second_records = set(records_dir.rglob("*.md"))
+        assert after_second_records == after_first_records
+
+        # Second request should not duplicate memory events
+        after_second_mem_events = mem_events_path.read_text(encoding="utf-8")
+        first_count = after_first_mem_events.count("memory_create")
+        second_count = after_second_mem_events.count("memory_create")
+        assert second_count == first_count
