@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00 Completed; 1E through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00 Completed; 1F through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -494,9 +494,9 @@ Display Memory Writer decision previews and dry-run results.
 
 ---
 
-## Phase 1E: Agent Prompt Preview / Dry-Run — Not Started
+## Phase 1E: Agent Prompt Preview / Dry-Run — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed
 **Priority:** P2 (Medium risk, no LLM)
 **Estimated scope:** Medium (2 preview routes + preview UI)
 **Dependencies:** Phase 0E-Release (independent of 1A/1B/1C/1D)
@@ -547,6 +547,59 @@ Preview Agent prompt construction and context assembly without LLM calls.
 
 ---
 
+## Phase 1F-00: Agent Dev-Only Run / SSE Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-09
+
+### Deliverables
+
+- `docs/webui/phase-1f-00-agent-run-sse-scope.md` — Complete scope freeze document with:
+  - Agent Run complete call graph audited with source evidence (Web API → Run Service → Thread → Agent Init → Config → Session → Memory → Prompt → Provider → Streaming → Tool Loop (disabled) → Persistence → Memory Writer (disabled) → Review Queue (disabled) → Completion → SSE terminal → Registry cleanup)
+  - Agent initialization audit (constructor parameters, provider client, API key, tool registry, session_db, callbacks)
+  - Streaming callback audit (stream_delta_callback selected, _stream_callback = None)
+  - Cancellation propagation audit (interrupt() → _interrupt_requested → _set_interrupt → thread join → timeout)
+  - Session/message persistence ownership re-confirmed (Agent Runtime = sole owner, _last_flushed_db_idx dedup)
+  - Concurrency audit (same-session 409, global max 1, single-process only)
+  - Run Registry designed (in-process, thread-safe, bounded event buffer, TTL cleanup)
+  - Run State Machine designed (8 states, 12 transitions, 4 terminal states)
+  - Kill Switch defined (HERMES_AGENT_RUN_ENABLED, default disabled, fail-closed)
+  - Dev-only environment guard frozen (enforce_dev_environment, production fail-closed)
+  - Confirmation model frozen (RUN + dryRunPreviewed + acknowledgedEffects)
+  - 4 REST-style routes frozen (POST create, GET status, GET SSE events, POST cancel)
+  - Request/Response DTO contracts frozen with field whitelists
+  - SSE protocol frozen (10 event types, incremental delta, monotonic sequence, single terminal)
+  - Reconnection strategy frozen (Last-Event-ID, 15s grace period, 410 on buffer expiry)
+  - Cancel propagation and orphan thread handling frozen (10s timeout, keep reference)
+  - Rate limits frozen (1 concurrent, 3/min, 20/hour)
+  - Token and cost limits frozen (maxOutputTokens ≤ 4096, null if uncertain)
+  - Tool boundary enforcement frozen (empty schema, unexpected tool_call → FAILED)
+  - Runtime Memory Writer disable verified (config default off)
+  - Review Queue disable verified (config default off)
+  - Audit trail frozen (state.db agent_run_audit table, metadata only)
+  - Error model frozen (20 error codes with HTTP mapping)
+  - Frontend IA frozen (4-tab Agent panel with Live Run tab)
+  - Accessibility frozen (ARIA, reduced motion, screen reader)
+  - OpenAPI strategy frozen (23 → 27 paths)
+  - dev-check strategy, Playwright smoke strategy, backend test strategy frozen
+  - Fixture strategy frozen (Fake Provider, tmp_path, no real LLM)
+  - No P0 blockers identified
+
+### Acceptance
+
+- ✅ Agent Run call chain fully audited with source evidence
+- ✅ Streaming callback mechanism confirmed (stream_delta_callback only)
+- ✅ Persistence ownership re-confirmed (Agent Runtime sole owner)
+- ✅ Concurrency model audited and policy frozen
+- ✅ Run Registry, State Machine, SSE Protocol, Kill Switch designed
+- ✅ All DTOs, error codes, field whitelists frozen
+- ✅ No LLM calls, no agent runs, no tool execution, no writes
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS, dev-check PASS, compileall PASS
+- ✅ Production environment unaffected
+
+---
+
 ## Phase 1F: Agent Run Dev-Only Without Tools — Not Started
 
 **Status:** Not Started
@@ -562,21 +615,26 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 | File | Action |
 |------|--------|
-| `hermes_cli/dev_web_api.py` | **Modify** — Add agent run POST route + SSE |
+| `hermes_cli/dev_web_api.py` | **Modify** — Add 4 agent run routes + SSE |
 | `hermes_cli/dev_web_schemas.py` | **Modify** — Add agent run DTOs |
-| Agent run service | **New** — Agent run orchestration with SSE bridge |
+| Agent run service | **New** — Agent run orchestration, Run Registry, SSE bridge |
 | SSE bridge | **New** — Thread pool → async queue bridge |
+| Audit service | **New** — Agent run audit trail |
 | Rate limiter | **New** — Request rate limiting |
-| Kill switch configuration | **Modify** — Agent run kill switch |
-| Frontend agent run UI | **New** — Confirmation, streaming, cancellation |
-| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add agent run route |
-| Test files | **New/Modify** — Agent run tests, SSE tests, cancellation tests |
+| Kill switch configuration | **Modify** — Agent run kill switch (HERMES_AGENT_RUN_ENABLED) |
+| Frontend agent run UI | **New** — Live Run tab with confirmation, streaming, cancellation |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — Add 4 agent run routes |
+| `hermes_cli/main.py` | **Modify** — Update dev-check route count |
+| Test files | **New/Modify** — Agent run tests, SSE tests, cancellation tests, audit tests |
 
 ### New Routes
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/dev/v1/agent/run` | Execute agent run (dev-only, no tools) |
+| POST | `/api/dev/v1/agent/runs` | Create agent run (dev-only, no tools) |
+| GET | `/api/dev/v1/agent/runs/{runId}` | Run status |
+| GET | `/api/dev/v1/agent/runs/{runId}/events` | SSE stream |
+| POST | `/api/dev/v1/agent/runs/{runId}/cancel` | Cancel run |
 
 ### Write Capability
 
@@ -586,9 +644,9 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 1. ~~**Double-persist question:** Does `AIAgent.chat()` auto-persist?~~ **Resolved in 1E-00:** Yes, Agent Runtime auto-persists via `_persist_session()` at 16+ exit points. Web API must NOT write sessions/messages directly. (Option A)
 2. ~~**SSE mechanism choice:** `stream_delta_callback` vs `stream_callback`?~~ **Resolved in 1E-00:** `stream_delta_callback` selected. Constructor-time callback, true delta interface, public API. Must NOT register `_stream_callback` simultaneously.
-3. **Rate limit / timeout / cancellation:** Specific limits?
-4. **Audit trail design:** Schema for agent run events?
-5. **Kill switch:** Runtime enable/disable mechanism?
+3. ~~**Rate limit / timeout / cancellation:** Specific limits?~~ **Resolved in 1F-00:** 1 concurrent, 3/min, 20/hr, 120s overall timeout, 10s cancel timeout. See `phase-1f-00-agent-run-sse-scope.md`.
+4. ~~**Audit trail design:** Schema for agent run events?~~ **Resolved in 1F-00:** state.db `agent_run_audit` table with metadata-only fields. See `phase-1f-00-agent-run-sse-scope.md` Section 30.
+5. ~~**Kill switch:** Runtime enable/disable mechanism?~~ **Resolved in 1F-00:** `HERMES_AGENT_RUN_ENABLED` env var, default disabled, fail-closed. See `phase-1f-00-agent-run-sse-scope.md` Section 12.
 
 ### Non-Goals
 
@@ -599,16 +657,20 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ### Acceptance Criteria
 
-1. 1 new POST route (execute)
+1. 4 new routes (create, status, SSE events, cancel)
 2. SSE follows all CLAUDE.md constraints (thread pool, bridge, single entry, done event, error propagation, disconnect handling, single-generation)
-3. Explicit confirmation required
-4. Timeout enforced
-5. Cancel works (client disconnect → interrupt)
-6. Rate limiting enforced
-7. No tools in context
-8. No memory auto-write
-9. No double-persist
-10. Audit event produced
+3. Explicit confirmation required (RUN + dryRunPreviewed + acknowledgedEffects)
+4. Kill switch enforced (HERMES_AGENT_RUN_ENABLED, default disabled)
+5. Dev-only environment guard enforced (fail-closed)
+6. Timeout enforced (120s overall, 90s provider, 10s cancel wait)
+7. Cancel works (interrupt + join + timeout)
+8. Rate limiting enforced (1 concurrent, 3/min, 20/hr)
+9. No tools in context (empty tool schema, unexpected tool_call → FAILED)
+10. No memory auto-write (config disabled, verified by hash)
+11. No double-persist (Agent Runtime sole owner, _last_flushed_db_idx dedup)
+12. Audit event produced per Run (state.db agent_run_audit table)
+13. All quality gates PASS
+14. Production untouched
 11. All quality gates PASS
 12. Production untouched
 
