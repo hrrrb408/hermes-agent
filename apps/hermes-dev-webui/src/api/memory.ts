@@ -6,15 +6,22 @@
  * - GET /api/dev/v1/memory/categories
  * - GET /api/dev/v1/memory/items
  * - GET /api/dev/v1/memory/items/{memoryId}
+ * - POST /api/dev/v1/memory/write/dry-run
+ * - POST /api/dev/v1/memory/items/{memoryId}/update/dry-run
+ * - POST /api/dev/v1/memory/items/{memoryId}/archive/dry-run
  */
 
-import { apiGet } from './client'
+import { apiGet, apiPost } from './client'
 import type {
   MemoryStatusData,
   MemoryCategoryListData,
   MemoryItemListData,
   MemoryItemDetail,
   MemoryItemListParams,
+  MemoryWriteDryRunRequest,
+  MemoryUpdateDryRunRequest,
+  MemoryArchiveDryRunRequest,
+  MemoryDryRunResult,
 } from '@/types/api/memory'
 
 /** API prefix matching the Dev Web API. */
@@ -93,6 +100,57 @@ export async function fetchMemoryItemDetail(
   const encodedId = encodeURIComponent(memoryId)
   return apiGet<MemoryItemDetail>(
     `${API_PREFIX}/memory/items/${encodedId}`,
+    undefined,
+    signal,
+  )
+}
+
+// ── Memory Writer Dry-Run ──
+
+/**
+ * Preview a WRITE operation (dry-run, no side effects).
+ */
+export async function previewMemoryWrite(
+  payload: MemoryWriteDryRunRequest,
+  signal?: AbortSignal,
+) {
+  return apiPost<MemoryDryRunResult>(
+    `${API_PREFIX}/memory/write/dry-run`,
+    payload,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Preview an UPDATE operation (dry-run, no side effects).
+ */
+export async function previewMemoryUpdate(
+  memoryId: string,
+  payload: MemoryUpdateDryRunRequest,
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(memoryId)
+  return apiPost<MemoryDryRunResult>(
+    `${API_PREFIX}/memory/items/${encodedId}/update/dry-run`,
+    payload,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Preview an ARCHIVE operation (dry-run, no side effects).
+ */
+export async function previewMemoryArchive(
+  memoryId: string,
+  payload: MemoryArchiveDryRunRequest = {},
+  signal?: AbortSignal,
+) {
+  const encodedId = encodeURIComponent(memoryId)
+  return apiPost<MemoryDryRunResult>(
+    `${API_PREFIX}/memory/items/${encodedId}/archive/dry-run`,
+    payload,
     undefined,
     signal,
   )

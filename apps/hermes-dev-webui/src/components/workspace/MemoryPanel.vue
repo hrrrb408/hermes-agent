@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useMemoryStore } from '@/stores/workspacePanel'
+import MemoryWriterPreview from './MemoryWriterPreview.vue'
 import type { MemoryItem } from '@/types/api/memory'
 
 const store = useMemoryStore()
+
+type MemorySubTab = 'browse' | 'writer'
+const activeSubTab = ref<MemorySubTab>('browse')
 
 onMounted(async () => {
   await store.loadStatus()
@@ -34,6 +38,39 @@ async function selectItem(item: MemoryItem): Promise<void> {
 
 <template>
   <section class="workspace-panel__section" aria-label="Memory">
+    <!-- Sub-tab navigation -->
+    <div class="writer-tabs memory-sub-tabs" role="tablist" aria-label="Memory panel tabs">
+      <button
+        role="tab"
+        type="button"
+        class="writer-tab"
+        :class="{ 'writer-tab--active': activeSubTab === 'browse' }"
+        :aria-selected="activeSubTab === 'browse'"
+        aria-controls="memory-browse"
+        @click="activeSubTab = 'browse'"
+      >
+        Browse
+      </button>
+      <button
+        role="tab"
+        type="button"
+        class="writer-tab"
+        :class="{ 'writer-tab--active': activeSubTab === 'writer' }"
+        :aria-selected="activeSubTab === 'writer'"
+        aria-controls="memory-writer"
+        @click="activeSubTab = 'writer'"
+      >
+        Writer Preview
+      </button>
+    </div>
+
+    <!-- Writer Preview sub-panel -->
+    <div v-if="activeSubTab === 'writer'" id="memory-writer" role="tabpanel">
+      <MemoryWriterPreview />
+    </div>
+
+    <!-- Browse sub-panel -->
+    <div v-else id="memory-browse" role="tabpanel">
     <!-- Status badge -->
     <div class="panel-header">
       <span class="panel-badge" :class="{ 'panel-badge--active': store.isAvailable }">
@@ -171,5 +208,6 @@ async function selectItem(item: MemoryItem): Promise<void> {
         </div>
       </template>
     </template>
+    </div><!-- end memory-browse -->
   </section>
 </template>
