@@ -7091,6 +7091,8 @@ def _webui_check_openapi(
         "/memory/items/{memoryId}/archive/dry-run": {"post"},
         "/context/preview": {"post"},
         "/agent/status": {"get"},
+        "/agent/prompt/preview": {"post"},
+        "/agent/run/dry-run": {"post"},
         "/reviews/status": {"get"},
         "/reviews": {"get"},
         "/reviews/{reviewId}": {"get"},
@@ -7101,10 +7103,16 @@ def _webui_check_openapi(
     }
 
     # Forbidden route path substrings
+    # Phase 1E: /agent/run/dry-run is allowed, but /agent/run (exact) is forbidden.
+    # /agent/prompt/preview is allowed.
     FORBIDDEN_SUBSTRINGS = (
-        "/agent/run",
         "/tools",
         "/files/upload",
+    )
+
+    # Forbidden exact paths (not substring match)
+    FORBIDDEN_EXACT_PATHS = (
+        "/agent/run",
     )
 
     # Forbidden POST/PATCH/DELETE on reviews (GET is allowed above)
@@ -7112,7 +7120,7 @@ def _webui_check_openapi(
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 21 else "FAIL",
+        "PASS" if path_count == 23 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7139,6 +7147,11 @@ def _webui_check_openapi(
         # Check forbidden substrings
         for substr in FORBIDDEN_SUBSTRINGS:
             if substr in route_path:
+                forbidden_found.append(route_path)
+                break
+        # Check forbidden exact paths
+        for exact_path in FORBIDDEN_EXACT_PATHS:
+            if route_path == exact_path:
                 forbidden_found.append(route_path)
                 break
         # Check for review write routes (POST/PATCH/DELETE on /reviews/*)

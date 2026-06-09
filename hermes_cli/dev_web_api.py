@@ -71,6 +71,16 @@ from hermes_cli.dev_web_errors import (
     MEMORY_CATEGORY_NOT_FOUND,
     MEMORY_STORE_ERROR,
     INTERNAL_ERROR,
+    AGENT_PREVIEW_UNAVAILABLE,
+    INVALID_AGENT_PREVIEW_REQUEST,
+    INVALID_SESSION_ID,
+    INVALID_MODEL_OVERRIDE,
+    INVALID_TEMPERATURE,
+    INVALID_MAX_OUTPUT_TOKENS,
+    AGENT_HISTORY_UNAVAILABLE,
+    AGENT_MEMORY_CONTEXT_UNAVAILABLE,
+    AGENT_CONFIG_UNAVAILABLE,
+    AGENT_PROMPT_ASSEMBLY_ERROR,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -114,6 +124,25 @@ from hermes_cli.dev_web_memory_writer_service import (
     MemoryWriterTargetNotFoundError,
     MemoryWriterInvalidIdError,
     MemoryWriterInvalidRequestError,
+)
+from hermes_cli.dev_web_agent_preview_service import (
+    DevAgentPreviewService,
+    AgentPreviewError,
+    AgentConfigUnavailableError,
+    AgentHistoryUnavailableError,
+    AgentMemoryContextUnavailableError,
+    AgentPromptAssemblyError,
+    InvalidSessionIdError,
+    InvalidModelOverrideError,
+    InvalidTemperatureError,
+    InvalidMaxOutputTokensError,
+    InvalidRequestError,
+    _validate_session_id,
+    _MAX_MESSAGE_LENGTH,
+    _MAX_HISTORY_LIMIT,
+    _MAX_MEMORY_QUERY_LENGTH,
+    _MAX_CATEGORIES,
+    _MAX_MEMORIES,
 )
 
 
@@ -204,6 +233,7 @@ def create_dev_web_api_app(
     agent_service: DevAgentStatusService | None = None
     review_service: DevReviewQueryService | None = None
     writer_service: DevMemoryWriterDryRunService | None = None
+    preview_service: DevAgentPreviewService | None = None
     if config.hermes_home is not None:
         state_db_path = config.hermes_home / "state.db"
         session_service = DevSessionQueryService(state_db_path)
@@ -212,12 +242,14 @@ def create_dev_web_api_app(
         agent_service = DevAgentStatusService(config.hermes_home)
         review_service = DevReviewQueryService(config.hermes_home)
         writer_service = DevMemoryWriterDryRunService(config.hermes_home)
+        preview_service = DevAgentPreviewService(config.hermes_home)
     app.state.session_service = session_service
     app.state.message_service = message_service
     app.state.memory_service = memory_service
     app.state.agent_service = agent_service
     app.state.review_service = review_service
     app.state.writer_service = writer_service
+    app.state.preview_service = preview_service
 
     # ── Middleware (order matters: outermost first) ──
     app.add_middleware(RequestIdMiddleware)
@@ -234,7 +266,7 @@ def create_dev_web_api_app(
     register_error_handlers(app)
 
     # ── Routes ──
-    _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service)
+    _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service, preview_service)
 
     return app
 
@@ -266,6 +298,7 @@ def _register_routes(
     agent_service: DevAgentStatusService | None,
     review_service: DevReviewQueryService | None,
     writer_service: DevMemoryWriterDryRunService | None,
+    preview_service: DevAgentPreviewService | None,
 ) -> None:
     """Register Phase 1A routes."""
 
@@ -1484,6 +1517,9 @@ def _register_routes(
     # ── Phase 1D: Memory Writer Dry-Run ──
     _register_writer_routes(app, config, writer_service)
 
+    # ── Phase 1E: Agent Prompt Preview & Run Dry-Run ──
+    _register_preview_routes(app, config, preview_service)
+
 
 def _register_writer_routes(
     app: FastAPI,
@@ -1685,3 +1721,491 @@ def _register_writer_routes(
         ts = _utc_now_iso()
         result["meta"] = {"requestId": rid, "timestamp": ts}
         return result
+
+
+# ── Forbidden request fields ──
+
+_FORBIDDEN_REQUEST_FIELDS = frozenset({
+    "apiKey", "api_key", "baseUrl", "base_url",
+    "authorization", "headers", "proxy",
+    "systemPrompt", "developerPrompt",
+    "tools", "toolSchema", "execute", "run",
+    "stream", "force", "persist", "saveSession",
+    "writeMemory", "autoMemory",
+})
+
+
+def _check_forbidden_fields(body: dict, rid: str) -> JSONResponse | None:
+    """Check for forbidden fields in the request body. Returns error or None."""
+    for field in _FORBIDDEN_REQUEST_FIELDS:
+        if field in body:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message=f"Field '{field}' is not allowed.",
+                request_id=rid,
+            )
+    # Check nested options/overrides for forbidden fields
+    for section_key in ("options", "overrides"):
+        section = body.get(section_key)
+        if isinstance(section, dict):
+            for field in _FORBIDDEN_REQUEST_FIELDS:
+                if field in section:
+                    return _make_error_json(
+                        status_code=400,
+                        code=INVALID_AGENT_PREVIEW_REQUEST,
+                        message=f"Field '{field}' is not allowed in {section_key}.",
+                        request_id=rid,
+                    )
+    return None
+
+
+def _register_preview_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+    preview_service: DevAgentPreviewService | None,
+) -> None:
+    """Register Phase 1E Agent Prompt Preview & Run Dry-Run routes."""
+
+    prefix = config.api_prefix
+
+    # ── POST /agent/prompt/preview ──
+
+    @app.post(
+        f"{prefix}/agent/prompt/preview",
+        tags=["Agent"],
+        summary="Preview agent prompt assembly (dry-run, no side effects)",
+    )
+    def agent_prompt_preview(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if preview_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_PREVIEW_UNAVAILABLE,
+                message="Agent preview is unavailable.",
+                request_id=rid,
+            )
+
+        # Check for forbidden fields
+        forbidden = _check_forbidden_fields(body, rid)
+        if forbidden is not None:
+            return forbidden
+
+        # Validate message
+        message = body.get("message", "")
+        if not isinstance(message, str):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message="message must be a string.",
+                request_id=rid,
+            )
+        message = message.strip()
+        if not message:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message="message is required and must not be empty.",
+                request_id=rid,
+            )
+        if len(message) > _MAX_MESSAGE_LENGTH:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message=f"message is too long (max {_MAX_MESSAGE_LENGTH} characters).",
+                request_id=rid,
+            )
+
+        # Validate session ID if provided
+        session_id = body.get("sessionId")
+        if session_id is not None:
+            if not isinstance(session_id, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_SESSION_ID,
+                    message="sessionId must be a string.",
+                    request_id=rid,
+                )
+            session_id = session_id.strip()
+            validation_error = _validate_session_id(session_id)
+            if validation_error:
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_SESSION_ID,
+                    message=validation_error,
+                    request_id=rid,
+                )
+
+        # Extract options with safe bounds
+        options = body.get("options", {})
+        if not isinstance(options, dict):
+            options = {}
+
+        include_history = options.get("includeHistory", True)
+        if not isinstance(include_history, bool):
+            include_history = True
+
+        history_limit = options.get("historyLimit", 20)
+        if not isinstance(history_limit, int) or history_limit < 0:
+            history_limit = 20
+        history_limit = min(history_limit, _MAX_HISTORY_LIMIT)
+
+        include_memory_context = options.get("includeMemoryContext", True)
+        if not isinstance(include_memory_context, bool):
+            include_memory_context = True
+
+        memory_query = options.get("memoryQuery", "")
+        if not isinstance(memory_query, str):
+            memory_query = ""
+        memory_query = memory_query.strip()
+        if len(memory_query) > _MAX_MEMORY_QUERY_LENGTH:
+            memory_query = memory_query[:_MAX_MEMORY_QUERY_LENGTH]
+
+        max_categories = options.get("maxCategories", 5)
+        if not isinstance(max_categories, int) or max_categories < 0:
+            max_categories = 5
+        max_categories = min(max_categories, _MAX_CATEGORIES)
+
+        max_memories = options.get("maxMemories", 10)
+        if not isinstance(max_memories, int) or max_memories < 0:
+            max_memories = 10
+        max_memories = min(max_memories, _MAX_MEMORIES)
+
+        include_system_preview = options.get("includeSystemPreview", False)
+        if not isinstance(include_system_preview, bool):
+            include_system_preview = False
+
+        include_tool_metadata = options.get("includeToolMetadata", True)
+        if not isinstance(include_tool_metadata, bool):
+            include_tool_metadata = True
+
+        # Extract overrides
+        overrides = body.get("overrides", {})
+        if not isinstance(overrides, dict):
+            overrides = {}
+
+        model_override = overrides.get("model")
+        if model_override is not None and not isinstance(model_override, str):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MODEL_OVERRIDE,
+                message="model override must be a string.",
+                request_id=rid,
+            )
+
+        temperature_override = overrides.get("temperature")
+        if temperature_override is not None:
+            try:
+                temperature_override = float(temperature_override)
+            except (ValueError, TypeError):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_TEMPERATURE,
+                    message="temperature must be a number.",
+                    request_id=rid,
+                )
+
+        max_tokens_override = overrides.get("maxOutputTokens")
+        if max_tokens_override is not None:
+            try:
+                max_tokens_override = int(max_tokens_override)
+            except (ValueError, TypeError):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_MAX_OUTPUT_TOKENS,
+                    message="maxOutputTokens must be an integer.",
+                    request_id=rid,
+                )
+
+        try:
+            result = preview_service.preview_prompt(
+                message=message,
+                session_id=session_id or None,
+                include_history=include_history,
+                history_limit=history_limit,
+                include_memory_context=include_memory_context,
+                memory_query=memory_query,
+                max_categories=max_categories,
+                max_memories=max_memories,
+                include_system_preview=include_system_preview,
+                include_tool_metadata=include_tool_metadata,
+                model_override=model_override or None,
+                temperature_override=temperature_override,
+                max_tokens_override=max_tokens_override,
+            )
+        except AgentConfigUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_CONFIG_UNAVAILABLE,
+                message="Agent configuration is unavailable.",
+                request_id=rid,
+            )
+        except InvalidSessionIdError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_SESSION_ID,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidModelOverrideError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MODEL_OVERRIDE,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidTemperatureError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_TEMPERATURE,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidMaxOutputTokensError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MAX_OUTPUT_TOKENS,
+                message=str(exc),
+                request_id=rid,
+            )
+        except AgentPromptAssemblyError:
+            return _make_error_json(
+                status_code=500,
+                code=AGENT_PROMPT_ASSEMBLY_ERROR,
+                message="Prompt assembly failed.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred during preview.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── POST /agent/run/dry-run ──
+
+    @app.post(
+        f"{prefix}/agent/run/dry-run",
+        tags=["Agent"],
+        summary="Preview agent run capabilities (dry-run, no side effects)",
+    )
+    def agent_run_dry_run(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if preview_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_PREVIEW_UNAVAILABLE,
+                message="Agent preview is unavailable.",
+                request_id=rid,
+            )
+
+        # Check for forbidden fields
+        forbidden = _check_forbidden_fields(body, rid)
+        if forbidden is not None:
+            return forbidden
+
+        # Validate message
+        message = body.get("message", "")
+        if not isinstance(message, str):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message="message must be a string.",
+                request_id=rid,
+            )
+        message = message.strip()
+        if not message:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message="message is required and must not be empty.",
+                request_id=rid,
+            )
+        if len(message) > _MAX_MESSAGE_LENGTH:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_PREVIEW_REQUEST,
+                message=f"message is too long (max {_MAX_MESSAGE_LENGTH} characters).",
+                request_id=rid,
+            )
+
+        # Validate session ID if provided
+        session_id = body.get("sessionId")
+        if session_id is not None:
+            if not isinstance(session_id, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_SESSION_ID,
+                    message="sessionId must be a string.",
+                    request_id=rid,
+                )
+            session_id = session_id.strip()
+            validation_error = _validate_session_id(session_id)
+            if validation_error:
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_SESSION_ID,
+                    message=validation_error,
+                    request_id=rid,
+                )
+
+        # Extract options
+        options = body.get("options", {})
+        if not isinstance(options, dict):
+            options = {}
+
+        include_history = options.get("includeHistory", True)
+        if not isinstance(include_history, bool):
+            include_history = True
+
+        history_limit = options.get("historyLimit", 20)
+        if not isinstance(history_limit, int) or history_limit < 0:
+            history_limit = 20
+        history_limit = min(history_limit, _MAX_HISTORY_LIMIT)
+
+        include_memory_context = options.get("includeMemoryContext", True)
+        if not isinstance(include_memory_context, bool):
+            include_memory_context = True
+
+        memory_query = options.get("memoryQuery", "")
+        if not isinstance(memory_query, str):
+            memory_query = ""
+        memory_query = memory_query.strip()
+        if len(memory_query) > _MAX_MEMORY_QUERY_LENGTH:
+            memory_query = memory_query[:_MAX_MEMORY_QUERY_LENGTH]
+
+        tools_requested = options.get("toolsRequested", False)
+        if not isinstance(tools_requested, bool):
+            tools_requested = False
+
+        stream_requested = options.get("streamRequested", False)
+        if not isinstance(stream_requested, bool):
+            stream_requested = False
+
+        auto_memory_requested = options.get("autoMemoryRequested", False)
+        if not isinstance(auto_memory_requested, bool):
+            auto_memory_requested = False
+
+        # Extract overrides
+        overrides = body.get("overrides", {})
+        if not isinstance(overrides, dict):
+            overrides = {}
+
+        model_override = overrides.get("model")
+        if model_override is not None and not isinstance(model_override, str):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MODEL_OVERRIDE,
+                message="model override must be a string.",
+                request_id=rid,
+            )
+
+        temperature_override = overrides.get("temperature")
+        if temperature_override is not None:
+            try:
+                temperature_override = float(temperature_override)
+            except (ValueError, TypeError):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_TEMPERATURE,
+                    message="temperature must be a number.",
+                    request_id=rid,
+                )
+
+        max_tokens_override = overrides.get("maxOutputTokens")
+        if max_tokens_override is not None:
+            try:
+                max_tokens_override = int(max_tokens_override)
+            except (ValueError, TypeError):
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_MAX_OUTPUT_TOKENS,
+                    message="maxOutputTokens must be an integer.",
+                    request_id=rid,
+                )
+
+        try:
+            result = preview_service.dry_run_agent(
+                message=message,
+                session_id=session_id or None,
+                include_history=include_history,
+                history_limit=history_limit,
+                include_memory_context=include_memory_context,
+                memory_query=memory_query,
+                tools_requested=tools_requested,
+                stream_requested=stream_requested,
+                auto_memory_requested=auto_memory_requested,
+                model_override=model_override or None,
+                temperature_override=temperature_override,
+                max_tokens_override=max_tokens_override,
+            )
+        except AgentConfigUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_CONFIG_UNAVAILABLE,
+                message="Agent configuration is unavailable.",
+                request_id=rid,
+            )
+        except InvalidSessionIdError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_SESSION_ID,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidModelOverrideError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MODEL_OVERRIDE,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidTemperatureError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_TEMPERATURE,
+                message=str(exc),
+                request_id=rid,
+            )
+        except InvalidMaxOutputTokensError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MAX_OUTPUT_TOKENS,
+                message=str(exc),
+                request_id=rid,
+            )
+        except AgentPromptAssemblyError:
+            return _make_error_json(
+                status_code=500,
+                code=AGENT_PROMPT_ASSEMBLY_ERROR,
+                message="Prompt assembly failed.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred during dry-run.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }

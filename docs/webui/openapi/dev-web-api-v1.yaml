@@ -588,6 +588,187 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /agent/prompt/preview:
+    post:
+      operationId: agentPromptPreview
+      tags: [Agent]
+      summary: Preview agent prompt assembly (dry-run, no side effects)
+      description: >
+        Assembles the agent's prompt metadata without calling any LLM,
+        executing any tool, or writing any data. Returns section breakdowns,
+        model info, memory context, and safety flags.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                sessionId:
+                  type: string
+                  maxLength: 200
+                  description: Optional session ID to include history.
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                  description: The user message to preview prompt assembly for.
+                options:
+                  type: object
+                  properties:
+                    includeHistory:
+                      type: boolean
+                      default: true
+                    historyLimit:
+                      type: integer
+                      minimum: 0
+                      maximum: 100
+                      default: 20
+                    includeMemoryContext:
+                      type: boolean
+                      default: true
+                    memoryQuery:
+                      type: string
+                      maxLength: 1000
+                    maxCategories:
+                      type: integer
+                      minimum: 0
+                      maximum: 20
+                      default: 5
+                    maxMemories:
+                      type: integer
+                      minimum: 0
+                      maximum: 50
+                      default: 10
+                    includeSystemPreview:
+                      type: boolean
+                      default: false
+                    includeToolMetadata:
+                      type: boolean
+                      default: true
+                overrides:
+                  type: object
+                  properties:
+                    model:
+                      type: string
+                      nullable: true
+                    temperature:
+                      type: number
+                      minimum: 0.0
+                      maximum: 2.0
+                      nullable: true
+                    maxOutputTokens:
+                      type: integer
+                      minimum: 1
+                      maximum: 32768
+                      nullable: true
+      responses:
+        "200":
+          description: Prompt preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPreviewResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Agent preview unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /agent/run/dry-run:
+    post:
+      operationId: agentRunDryRun
+      tags: [Agent]
+      summary: Preview agent run capabilities (dry-run, no side effects)
+      description: >
+        Simulates what an agent run would do without calling any LLM,
+        executing any tool, or writing any data. All execution capabilities
+        are forced disabled. Returns capability plan and safety flags.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                sessionId:
+                  type: string
+                  maxLength: 200
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                options:
+                  type: object
+                  properties:
+                    includeHistory:
+                      type: boolean
+                      default: true
+                    historyLimit:
+                      type: integer
+                      minimum: 0
+                      maximum: 100
+                      default: 20
+                    includeMemoryContext:
+                      type: boolean
+                      default: true
+                    memoryQuery:
+                      type: string
+                      maxLength: 1000
+                    toolsRequested:
+                      type: boolean
+                      default: false
+                    streamRequested:
+                      type: boolean
+                      default: false
+                    autoMemoryRequested:
+                      type: boolean
+                      default: false
+                overrides:
+                  type: object
+                  properties:
+                    model:
+                      type: string
+                      nullable: true
+                    temperature:
+                      type: number
+                      minimum: 0.0
+                      maximum: 2.0
+                      nullable: true
+                    maxOutputTokens:
+                      type: integer
+                      minimum: 1
+                      maximum: 32768
+                      nullable: true
+      responses:
+        "200":
+          description: Agent run dry-run result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPreviewResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Agent preview unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /files/status:
     get:
       operationId: getFilesStatus
@@ -2471,3 +2652,207 @@ components:
           $ref: "#/components/schemas/MemoryDryRunData"
         meta:
           $ref: "#/components/schemas/Meta"
+
+    # ── Phase 1E: Agent Preview ──
+
+    AgentPreviewResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/AgentPreviewData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    AgentPreviewData:
+      type: object
+      required: [dryRun, operation, allowed, session, model, prompt, memoryContext, capabilities, checks, noEffects, safety, warnings]
+      properties:
+        dryRun:
+          type: boolean
+          description: Always true — this is a dry-run preview.
+        operation:
+          type: string
+          enum: [PROMPT_PREVIEW, AGENT_RUN_DRY_RUN]
+        allowed:
+          type: boolean
+        blockedReason:
+          type: string
+          nullable: true
+        session:
+          $ref: "#/components/schemas/AgentPreviewSession"
+        model:
+          $ref: "#/components/schemas/AgentPreviewModel"
+        prompt:
+          $ref: "#/components/schemas/AgentPromptMetadata"
+        memoryContext:
+          $ref: "#/components/schemas/AgentMemoryContextPreview"
+        capabilities:
+          $ref: "#/components/schemas/AgentCapabilityPreview"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPreviewCheck"
+        noEffects:
+          type: array
+          items:
+            type: string
+        safety:
+          $ref: "#/components/schemas/AgentPreviewSafety"
+        warnings:
+          type: array
+          items:
+            type: string
+        userMessagePreview:
+          type: string
+          description: Redacted preview of the user message (prompt preview only).
+
+    AgentPreviewSession:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        exists:
+          type: boolean
+        historyIncluded:
+          type: boolean
+        historyMessageCount:
+          type: integer
+        historyTruncated:
+          type: boolean
+
+    AgentPreviewModel:
+      type: object
+      properties:
+        name:
+          type: string
+        provider:
+          type: string
+        temperature:
+          type: number
+          nullable: true
+        maxOutputTokens:
+          type: integer
+          nullable: true
+
+    AgentPromptMetadata:
+      type: object
+      properties:
+        sectionCount:
+          type: integer
+        characterCount:
+          type: integer
+        truncated:
+          type: boolean
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPromptSection"
+
+    AgentPromptSection:
+      type: object
+      properties:
+        type:
+          type: string
+        included:
+          type: boolean
+        characterCount:
+          type: integer
+        messageCount:
+          type: integer
+          nullable: true
+        preview:
+          type: string
+          nullable: true
+        redacted:
+          type: boolean
+
+    AgentMemoryContextPreview:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        categoryCount:
+          type: integer
+        memoryCount:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentMemoryContextItem"
+        truncated:
+          type: boolean
+
+    AgentMemoryContextItem:
+      type: object
+      properties:
+        memoryId:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        score:
+          type: integer
+        summaryPreview:
+          type: string
+
+    AgentCapabilityPreview:
+      type: object
+      properties:
+        llmCallRequested:
+          type: boolean
+        llmCallAvailable:
+          type: boolean
+        llmCallForcedDisabled:
+          type: boolean
+        streamingRequested:
+          type: boolean
+        streamingAvailable:
+          type: boolean
+        streamingForcedDisabled:
+          type: boolean
+        toolsRequested:
+          type: boolean
+        toolExecutionAvailable:
+          type: boolean
+        toolExecutionForcedDisabled:
+          type: boolean
+        autoMemoryRequested:
+          type: boolean
+        memoryWriteAvailable:
+          type: boolean
+        memoryWriteForcedDisabled:
+          type: boolean
+        sessionWriteAvailable:
+          type: boolean
+        reviewQueueAvailable:
+          type: boolean
+
+    AgentPreviewCheck:
+      type: object
+      properties:
+        code:
+          type: string
+        passed:
+          type: boolean
+        message:
+          type: string
+
+    AgentPreviewSafety:
+      type: object
+      properties:
+        readOnly:
+          type: boolean
+        sideEffects:
+          type: boolean
+        llmCalled:
+          type: boolean
+        toolsExecuted:
+          type: boolean
+        sessionWritten:
+          type: boolean
+        memoryWritten:
+          type: boolean
+        reviewQueued:
+          type: boolean
