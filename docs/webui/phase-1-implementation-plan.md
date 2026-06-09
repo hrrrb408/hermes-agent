@@ -608,6 +608,14 @@ Preview Agent prompt construction and context assembly without LLM calls.
 **Estimated scope:** Large (SSE infrastructure + agent run route + audit + cancellation)
 **Dependencies:** Phase 1E completed
 
+### Release Fix History
+
+| Fix | Date | Description |
+|-----|------|-------------|
+| Release Fix 1 | 2026-06-09 | Cancel timeout safety hardening |
+| Release Fix 2 | 2026-06-09 | Close release safety gaps |
+| Release Fix 3 | 2026-06-09 | Update route boundary assertions (27 paths, 12 POST), add Fake Provider enabled browser smoke |
+
 ### Goal
 
 Enable real Agent execution in dev-home with tools disabled and Memory auto-write disabled.

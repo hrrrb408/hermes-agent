@@ -329,8 +329,80 @@ Phase 1F completed. Dev-only Agent Run and SSE streaming are implemented with ki
 
 ---
 
+## 22. Release Fix 3 — Route Boundary Regression and Fake Provider Browser Smoke
+
+### Problem
+
+Phase 1F-Release 封板仍有两个阻塞项：
+
+1. **6 个过期路由边界测试** — Phase 1F 新增 4 个 Agent Run 路由后，OpenAPI 从 23 paths → 27 paths，POST 从 10 → 12，但测试断言仍使用旧基线。
+2. **Fake Provider enabled Browser Smoke 缺失** — Phase 1F Release 门禁要求 enabled-mode 浏览器 Smoke。
+
+### Route Boundary Fixes
+
+| 测试文件 | 旧值 | 新值 |
+|---|---:|---:|
+| test_dev_web_memory_writer_dry_run.py paths | 21 | 27 |
+| test_dev_web_memory.py paths | 23 | 27 |
+| test_dev_web_memory.py POST | 10 | 12 |
+| test_dev_web_0c06_closure.py paths | 23 | 27 |
+| test_dev_web_0c06_closure.py POST | 10 | 12 |
+
+Agent allowed POST 集合更新为：
+
+```text
+POST /api/dev/v1/agent/prompt/preview
+POST /api/dev/v1/agent/run/dry-run
+POST /api/dev/v1/agent/runs
+POST /api/dev/v1/agent/runs/{runId}/cancel
+```
+
+Legacy routes 仍然禁止：
+
+```text
+POST /api/dev/v1/agent/run
+GET  /api/dev/v1/agent/stream
+POST /api/dev/v1/agent/tools
+```
+
+### Fake Provider Enabled Browser Smoke
+
+- Runner: `scripts/run-dev-webui-agent-run-smoke.sh`
+- Playwright spec: `apps/hermes-dev-webui/tests/smoke/phase-1f-agent-run-smoke.spec.ts`
+- Server helper: `tests/_agent_run_smoke_server.py`
+
+**设计要点：**
+
+- 使用临时 HERMES_HOME（`mktemp -d /tmp/hermes-agent-run-smoke.XXXXXX`）
+- Fake Provider 零外部网络调用
+- 通过 monkeypatch 注入 FakeAgent 替换 AIAgent
+- 支持成功 Run 和 Cancel Run 场景
+- Session 消息通过 FakeAgent 模拟持久化
+
+**已验证行为：**
+
+- 成功 Run：SSE streaming，delta 增量，message.completed，usage.updated，run.completed
+- Session 持久化：User +1, Assistant +1
+- Cancel Run：run.cancelling → run.cancelled
+- Memory / Review 零写入
+- Console errors = 0, CORS errors = 0, external requests = 0
+- 正式 dev-home state.db 不变
+
+### Bug Fix: Missing `import asyncio`
+
+SSE endpoint 使用 `asyncio.Event()` 但 `dev_web_api.py` 未导入 `asyncio`。
+已补齐 `import asyncio`。
+
+### Status
+
+- Phase 1F Release Fix 3: Completed
+- Phase 1F-Release: Pending re-verification
+- Phase 1G: Not Started
+
+---
+
 ## 21. Next Task
 
-Phase 1F-Release: Agent Dev-Only Run / SSE 封板核验与推送准备.
+Phase 1F-Release: 重新执行完整封板核验与推送准备.
 
 Phase 1G is NOT started.
