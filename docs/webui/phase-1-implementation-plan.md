@@ -600,9 +600,10 @@ Preview Agent prompt construction and context assembly without LLM calls.
 
 ---
 
-## Phase 1F: Agent Run Dev-Only Without Tools — Not Started
+## Phase 1F: Agent Run Dev-Only Without Tools — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed ✅
+**Date:** 2026-06-09
 **Priority:** P1 (High risk, real LLM)
 **Estimated scope:** Large (SSE infrastructure + agent run route + audit + cancellation)
 **Dependencies:** Phase 1E completed
@@ -786,9 +787,9 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1C-00 | Review Queue execute scope & safety boundary freeze | ✅ Completed | 1B | No |
 | 1C | Review Queue execute | ✅ Completed | 1C-00 | Yes (dev) |
 | 1D-00 | Memory Writer dry-run scope & contract freeze | ✅ Completed | 0E-Release | No |
-| 1D | Memory Writer dry-run | Not Started | 1D-00 | No |
-| 1E | Agent prompt preview | Not Started | 0E-Release | No |
-| 1F | Agent Run without tools | Not Started | 1E | Yes (dev) |
+| 1D | Memory Writer dry-run | ✅ Completed | 1D-00 | No |
+| 1E | Agent prompt preview | ✅ Completed | 0E-Release | No |
+| 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G | Tool execution framework | Not Started | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
@@ -906,3 +907,20 @@ The next subphase is **Phase 1D** (Memory Writer Dry-Run Panel Implementation).
 - See `docs/webui/phase-1e-00-agent-prompt-preview-scope.md` for full details
 
 The next subphase is **Phase 1E** (Agent Prompt Preview / Dry-Run Implementation).
+
+**Phase 1F is completed.** Agent Dev-Only Run / SSE is implemented with kill-switch protection, single-session concurrency, Agent Runtime persistence ownership, tools disabled, auto-memory disabled, and formal dev-home disabled-mode validation.
+- Kill switch: `HERMES_AGENT_RUN_ENABLED` env var, default disabled, fail-closed
+- Dev-only guard: rejects production HERMES_HOME, resolves symlinks
+- 4 REST-style run routes: POST create, GET status, GET SSE events, POST cancel
+- Full SSE protocol: 10 event types, monotonic sequence, single terminal event, Last-Event-ID reconnect, 15s heartbeat
+- Run Registry: in-process, thread-safe, 500 events / 1 MiB buffer, TTL cleanup
+- Run State Machine: 8 states, 12 transitions, 4 terminal states
+- Audit trail: state.db `agent_run_audit` table, metadata only
+- Rate limiting: 1 concurrent, 3/min, 20/hr
+- Overall timeout: 120s, cancel wait: 10s
+- Frontend Live Run tab with confirmation, streaming, cancellation
+- 47 backend tests, 30 frontend tests, all quality gates pass
+- OpenAPI 27 paths, dev-check updated
+- See `docs/webui/phase-1f-agent-run-sse.md` for full details
+
+The next subphase is **Phase 1G** (Tool Execution Safety Framework).
