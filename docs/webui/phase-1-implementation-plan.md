@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00 Completed; 1D through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00 Completed; 1E through 1G Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -391,9 +391,10 @@ Allow real execution of Review Queue approve/reject in dev-home only.
 
 ---
 
-## Phase 1D: Memory Writer Dry-Run Panel — Not Started
+## Phase 1D: Memory Writer Dry-Run Panel — Completed ✅
 
-**Status:** Not Started
+**Status:** Completed
+**Date:** 2026-06-09
 **Priority:** P2 (Medium risk, no real write)
 **Estimated scope:** Medium (3 dry-run routes + preview UI)
 **Dependencies:** Phase 0E-Release (independent of 1A/1B/1C)
@@ -440,6 +441,56 @@ Display Memory Writer decision previews and dry-run results.
 5. Path redaction applied
 6. All quality gates PASS
 7. Production untouched
+
+---
+
+## Phase 1E-00: Agent Prompt Preview / Dry-Run Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-09
+
+### Deliverables
+
+- `docs/webui/phase-1e-00-agent-prompt-preview-scope.md` — Complete scope freeze document with:
+  - Agent call chain fully audited (entry points → config → session → memory → prompt → LLM → tools → persistence → memory writer → review queue)
+  - Prompt assembly pipeline audited (stable/context/volatile 3-tier architecture)
+  - System Prompt sources audited (SOUL.md, tool guidance, skills, environment hints, context files, memory, profile info)
+  - Memory Context injection audited (read-only, no side effects)
+  - Session/Message persistence audited (AIAgent auto-persists at 16+ exit points)
+  - **Double-persist decision frozen:** Agent Runtime is sole persistence owner (Option A); Web API must NOT write sessions/messages directly
+  - Streaming callback audit: `stream_delta_callback` and `_stream_callback` both receive identical deltas
+  - **SSE callback decision frozen:** `stream_delta_callback` selected for Phase 1F (constructor-time, public API, true delta)
+  - Tool execution boundary audited
+  - Runtime Memory Writer trigger point audited (synchronous, after final response)
+  - Review Queue trigger point audited
+  - Provider/Model config audited (API keys in .env, paths in config.yaml)
+  - Safe read-only functions listed (20+ functions)
+  - Forbidden execution functions listed (22+ functions)
+  - 2 preview route drafts frozen
+  - Request DTOs frozen (Prompt Preview + Agent Run Dry-Run)
+  - Unified response DTO frozen (with field whitelist)
+  - System Prompt exposure strategy frozen (metadata + optional redacted preview, never full text)
+  - Error model frozen (13 error codes)
+  - Frontend IA frozen (3 sub-tabs: Status, Prompt Preview, Run Dry-Run)
+  - Redaction and truncation rules frozen
+  - OpenAPI strategy: current 21 paths → future 23 paths
+  - dev-check strategy, Playwright Smoke strategy, Side-effect hash strategy, Test fixture strategy defined
+  - No P0 blockers identified
+
+### Acceptance
+
+- ✅ Agent call chain audited with source evidence
+- ✅ Prompt assembly pipeline audited (3 tiers)
+- ✅ System Prompt sources and sensitive content analyzed
+- ✅ Memory Context injection confirmed read-only
+- ✅ Session/Message persistence ownership frozen (Agent Runtime = sole owner)
+- ✅ Streaming callback mechanism selected for Phase 1F (`stream_delta_callback`)
+- ✅ Safe/forbidden function lists complete
+- ✅ All DTOs, error codes, field whitelists frozen
+- ✅ No LLM calls, no agent runs, no tool execution, no writes
+- ✅ No API implemented, no business code modified
+- ✅ memory-check PASS, dev-check PASS, compileall PASS
+- ✅ Production environment unaffected
 
 ---
 
@@ -533,8 +584,8 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ### P1 Must-Resolve Before Implementation
 
-1. **Double-persist question:** Does `AIAgent.chat()` auto-persist?
-2. **SSE mechanism choice:** `stream_delta_callback` vs `stream_callback`?
+1. ~~**Double-persist question:** Does `AIAgent.chat()` auto-persist?~~ **Resolved in 1E-00:** Yes, Agent Runtime auto-persists via `_persist_session()` at 16+ exit points. Web API must NOT write sessions/messages directly. (Option A)
+2. ~~**SSE mechanism choice:** `stream_delta_callback` vs `stream_callback`?~~ **Resolved in 1E-00:** `stream_delta_callback` selected. Constructor-time callback, true delta interface, public API. Must NOT register `_stream_callback` simultaneously.
 3. **Rate limit / timeout / cancellation:** Specific limits?
 4. **Audit trail design:** Schema for agent run events?
 5. **Kill switch:** Runtime enable/disable mechanism?
@@ -767,3 +818,29 @@ Tracks can be developed in parallel. Within each track, phases are sequential.
 - See `docs/webui/phase-1d-00-memory-writer-dry-run-scope.md` for full details
 
 The next subphase is **Phase 1D** (Memory Writer Dry-Run Panel Implementation).
+
+**Phase 1D is completed.** Memory Writer dry-run panel is implemented with 3 dry-run routes, preview UI, and zero side effects.
+- 3 dry-run POST routes: /memory/write/dry-run, /memory/items/{id}/update/dry-run, /memory/items/{id}/archive/dry-run
+- DevMemoryWriterDryRunService using only safe read-only functions
+- Independently enforced P0/permanent protection for UPDATE/ARCHIVE
+- Writer Preview sub-tab within Memory panel
+- 51 new tests, 476 backend tests total, 325 frontend tests, 24 smoke tests
+- OpenAPI 21 paths, side-effect hash validated (zero changes)
+- See `docs/webui/phase-1d-memory-writer-dry-run.md` for full details
+
+**Phase 1E-00 is completed.** Agent Prompt Preview / Dry-Run scope, contracts, persistence ownership, streaming strategy, and safety boundaries are frozen.
+- `docs/webui/phase-1e-00-agent-prompt-preview-scope.md` — Complete scope freeze document
+- Agent call chain fully audited (entry → config → session → memory → prompt → LLM → tools → persistence → memory writer → review queue)
+- Prompt assembly pipeline audited (stable/context/volatile 3-tier architecture)
+- **Double-persist decision frozen:** Agent Runtime is sole persistence owner (Option A)
+- **SSE callback decision frozen:** `stream_delta_callback` selected for Phase 1F
+- Safe read-only functions listed (20+), forbidden execution functions listed (22+)
+- 2 preview route drafts frozen, DTOs frozen, error model frozen (13 codes)
+- System Prompt exposure: metadata + optional redacted preview, never full text
+- Frontend IA frozen (3 sub-tabs: Status, Prompt Preview, Run Dry-Run)
+- OpenAPI: 21 paths unchanged, 23 paths after Phase 1E
+- No P0 blockers identified
+- No API implemented, no business code modified
+- See `docs/webui/phase-1e-00-agent-prompt-preview-scope.md` for full details
+
+The next subphase is **Phase 1E** (Agent Prompt Preview / Dry-Run Implementation).
