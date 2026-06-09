@@ -647,12 +647,29 @@ class TestAudit:
     """Verify audit trail behavior."""
 
     def test_audit_table_creation(self, tmp_path):
+        """Audit table is created lazily on first record_created(), not on init."""
         from hermes_cli.dev_web_agent_run_audit import AgentRunAudit
 
         db_path = tmp_path / "state.db"
         db_path.touch()
         audit = AgentRunAudit(db_path)
 
+        # Construction does NOT create the table (P0-1 fix: lazy init)
+        conn = sqlite3.connect(str(db_path))
+        tables = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_run_audit'"
+        ).fetchall()
+        conn.close()
+        assert len(tables) == 0, "Audit table should NOT exist after construction"
+
+        # Table is created on first record_created()
+        audit.record_created(
+            run_id="run-test",
+            session_id="session-1",
+            request_id="req-1",
+            model="test-model",
+            provider="test-provider",
+        )
         conn = sqlite3.connect(str(db_path))
         tables = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_run_audit'"

@@ -88,6 +88,12 @@ class AgentRunRegistry:
         self._session_locks: Dict[str, str] = {}  # session_id → run_id
         self._active_count = 0
 
+    @property
+    def active_count(self) -> int:
+        """Current number of active (non-released) runs."""
+        with self._lock:
+            return self._active_count
+
     # ── Run creation ──
 
     def create_run(
@@ -373,6 +379,67 @@ class AgentRunRegistry:
             record = self._get_locked(run_id)
             record.agent_reference = agent
 
+    # ── Worker lifecycle ──
+
+    def set_worker_alive(self, run_id: str, alive: bool) -> None:
+        """Mark worker thread as alive or not.
+
+        Called by the service when the worker thread starts and is about
+        to run the agent.
+        """
+        with self._lock:
+            record = self._get_locked(run_id)
+            record.worker_alive = alive
+
+    def mark_cancel_timeout(self, run_id: str) -> RunRecord:
+        """Mark run as FAILED with AGENT_CANCEL_TIMEOUT.
+
+        Unlike fail_run(), this does NOT release session lock or capacity.
+        Resources are held until mark_worker_exited() is called.
+
+        Raises:
+            RunNotFoundError: Run does not exist.
+        """
+        with self._lock:
+            record = self._get_locked(run_id)
+            if record.status not in (
+                RunStatus.RUNNING, RunStatus.CANCELLING,
+                RunStatus.STARTING,
+            ):
+                raise TransitionError(
+                    f"Cannot mark cancel timeout for run {run_id} "
+                    f"in status {record.status.value}"
+                )
+            record.status = RunStatus.FAILED
+            record.failed_at = _utc_now_iso()
+            record.error_code = "AGENT_CANCEL_TIMEOUT"
+            record.error_message = "Cancel wait timed out — worker may still be running"
+            record.cancel_timeout = True
+            # Do NOT call _release_terminal_locked — worker still alive
+            return record
+
+    def mark_worker_exited(self, run_id: str) -> None:
+        """Mark worker thread as exited and release resources.
+
+        Idempotent: safe to call multiple times.
+        Only releases resources on the first call.
+        """
+        with self._lock:
+            record = self._get_locked(run_id)
+
+            if record.worker_exited:
+                # Already exited — no-op (idempotent)
+                return
+
+            record.worker_alive = False
+            record.worker_exited = True
+
+            # Release resources if run is terminal
+            if record.is_terminal() and record.session_lock_held:
+                self._session_locks.pop(record.session_id, None)
+                record.session_lock_held = False
+                self._active_count = max(0, self._active_count - 1)
+
     # ── Usage ──
 
     def set_usage(self, run_id: str, usage: RunUsage) -> None:
@@ -454,6 +521,8 @@ class AgentRunRegistry:
     def cleanup_expired(self) -> int:
         """Remove expired terminal runs.
 
+        Skips runs where worker is still alive (P0-2 fix).
+
         Returns:
             Number of runs cleaned up.
         """
@@ -466,6 +535,10 @@ class AgentRunRegistry:
         with self._lock:
             to_remove = []
             for run_id, record in self._runs.items():
+                # Skip runs with alive workers
+                if record.worker_alive and not record.worker_exited:
+                    continue
+
                 if record.is_terminal() and not record.status == RunStatus.EXPIRED:
                     # Check if terminal state was reached long enough ago
                     terminal_time_str = (
@@ -509,8 +582,12 @@ class AgentRunRegistry:
         """Handle terminal state: release session lock and decrement counter.
 
         Does NOT release if worker thread may still be running
-        (cancel-timeout scenario tracked by cancel-timeout handler).
+        (worker_alive=True). Resources are deferred until mark_worker_exited().
         """
+        if record.worker_alive and not record.worker_exited:
+            # Worker still running — defer release
+            return
+
         if record.session_lock_held:
             self._session_locks.pop(record.session_id, None)
             record.session_lock_held = False

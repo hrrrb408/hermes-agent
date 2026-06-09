@@ -250,6 +250,11 @@ class RunRecord:
     # Session lock tracking
     session_lock_held: bool = False
 
+    # Worker lifecycle tracking (P0-2 fix)
+    worker_alive: bool = False
+    worker_exited: bool = False
+    cancel_timeout: bool = False
+
     # Condition for SSE waiters
     event_condition: threading.Condition = field(
         default_factory=lambda: threading.Condition(threading.Lock())

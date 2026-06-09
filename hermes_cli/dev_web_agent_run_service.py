@@ -380,11 +380,7 @@ class AgentRunService:
                     "Cancel timeout for run %s — worker may still be running",
                     run_id
                 )
-                self._registry.fail_run(
-                    run_id,
-                    "AGENT_CANCEL_TIMEOUT",
-                    "Cancel wait timed out — worker may still be running",
-                )
+                self._registry.mark_cancel_timeout(run_id)
                 self._registry.append_event(run_id, RunEventType.RUN_FAILED, {
                     "errorCode": "AGENT_CANCEL_TIMEOUT",
                 })
@@ -498,6 +494,8 @@ class AgentRunService:
         finally:
             # Ensure terminal event is emitted even on crash
             self._ensure_terminal_event(run_id)
+            # Mark worker as exited and release resources (idempotent)
+            self._registry.mark_worker_exited(run_id)
             # Clear agent reference
             if agent is not None:
                 try:

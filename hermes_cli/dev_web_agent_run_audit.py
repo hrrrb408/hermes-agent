@@ -73,7 +73,7 @@ class AgentRunAudit:
 
     def __init__(self, state_db_path: Path) -> None:
         self._db_path = str(state_db_path)
-        self._ensure_table()
+        self._initialized = False
 
     def _ensure_table(self) -> None:
         """Create the audit table and indexes if they don't exist."""
@@ -85,6 +85,17 @@ class AgentRunAudit:
                 conn.commit()
         except Exception as exc:
             logger.warning("Agent run audit table creation failed: %s", exc)
+
+    def _lazy_init(self) -> None:
+        """Lazily initialize the audit table on first write.
+
+        Construction of AgentRunAudit is side-effect-free.
+        The audit table is only created when the first audit record
+        needs to be written (after all safety pre-checks have passed).
+        """
+        if not self._initialized:
+            self._ensure_table()
+            self._initialized = True
 
     def record_created(
         self,
@@ -98,7 +109,9 @@ class AgentRunAudit:
         """Record run creation audit event.
 
         This is the initial audit row. Must be created BEFORE the run starts.
+        Lazily creates the audit table on first call.
         """
+        self._lazy_init()
         try:
             with sqlite3.connect(self._db_path) as conn:
                 conn.execute(
