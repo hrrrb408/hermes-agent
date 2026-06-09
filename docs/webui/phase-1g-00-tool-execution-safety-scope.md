@@ -1476,22 +1476,124 @@ Below is the complete inventory of all 71 registered tools, ordered by canonical
 | recommendation | Candidate Allow |
 | inputParams | category |
 
-#### 6.50 spotify_albums through spotify_search
-
-All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_playback, spotify_playlists, spotify_queue, spotify_search):
+#### 6.50 spotify_albums
 
 | Field | Value |
 |-------|-------|
+| canonicalName | spotify_albums |
+| module | tools/spotify_tool.py |
 | toolset | spotify |
 | syncMode | sync |
-| sideEffects | Various (read + playback control + playlist modification) |
+| sideEffects | None (read-only metadata) |
 | externalNetwork | Yes (Spotify API) |
 | credentialUse | Yes (Spotify OAuth) |
-| userDataExposure | Listening history, playlists, library |
-| riskLevel | R2–R5 (read-only = R2, playback control = R3, playlist modification = R3, library modification = R3) |
-| recommendation | Deny (all require external credentials) |
+| userDataExposure | Album metadata, track listings |
+| riskLevel | R2 |
+| recommendation | Deny |
+| inputParams | action (string, required), album_id, id, market, limit, offset |
 
-#### 6.51 terminal
+#### 6.51 spotify_devices
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_devices |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | Transfer playback to device (state mutation) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Device list, playback state |
+| riskLevel | R3 |
+| recommendation | Deny |
+| inputParams | action (string, required), device_id, play |
+| notes | Primary R3 because `transfer` action mutates playback state on remote device |
+
+#### 6.52 spotify_library
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_library |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | Save/remove items from user library (state mutation) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Library contents |
+| riskLevel | R3 |
+| recommendation | Deny |
+| inputParams | kind (string, required), action (string, required), limit, offset, market, uris, ids, items |
+| notes | Primary R3 because `save`/`remove` actions modify user library |
+
+#### 6.53 spotify_playback
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_playback |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | Controls playback (play, pause, skip, volume — state mutation) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Playback state, listening history |
+| riskLevel | R3 |
+| recommendation | Deny |
+| inputParams | action (string, required), device_id, market, context_uri, uris, offset, position_ms, state, volume_percent, limit, after, before |
+| notes | Primary R3 because play/pause/skip/volume actions mutate remote playback state |
+
+#### 6.54 spotify_playlists
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_playlists |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | Create, update, modify playlists (state mutation) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Playlist contents, user identity |
+| riskLevel | R3 |
+| recommendation | Deny |
+| inputParams | action (string, required), playlist_id, market, limit, offset, name, description, public, collaborative, uris, position, snapshot_id |
+| notes | Primary R3 because create/update/modify actions mutate playlists |
+
+#### 6.55 spotify_queue
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_queue |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | Add items to queue (state mutation) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Queue contents |
+| riskLevel | R3 |
+| recommendation | Deny |
+| inputParams | action (string, required), uri, device_id |
+| notes | Primary R3 because `add` action modifies playback queue |
+
+#### 6.56 spotify_search
+
+| Field | Value |
+|-------|-------|
+| canonicalName | spotify_search |
+| module | tools/spotify_tool.py |
+| toolset | spotify |
+| syncMode | sync |
+| sideEffects | None (read-only catalog search) |
+| externalNetwork | Yes (Spotify API) |
+| credentialUse | Yes (Spotify OAuth) |
+| userDataExposure | Search queries |
+| riskLevel | R2 |
+| recommendation | Deny |
+| inputParams | query (string, required), types, type, limit, offset, market, include_external |
+
+#### 6.57 terminal
 
 | Field | Value |
 |-------|-------|
@@ -1515,7 +1617,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Permanent Deny |
 | inputParams | command (string, required), background, timeout, workdir, pty, notify_on_complete, watch_patterns |
 
-#### 6.52 text_to_speech
+#### 6.58 text_to_speech
 
 | Field | Value |
 |-------|-------|
@@ -1539,7 +1641,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny |
 | inputParams | text (string, required), output_path |
 
-#### 6.53 todo
+#### 6.59 todo
 
 | Field | Value |
 |-------|-------|
@@ -1563,7 +1665,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny (writes filesystem) |
 | inputParams | todos (array), merge (boolean) |
 
-#### 6.54 video_analyze
+#### 6.60 video_analyze
 
 | Field | Value |
 |-------|-------|
@@ -1587,7 +1689,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny |
 | inputParams | video_url (string, required), question (string, required) |
 
-#### 6.55 video_generate
+#### 6.61 video_generate
 
 | Field | Value |
 |-------|-------|
@@ -1611,7 +1713,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny |
 | inputParams | prompt (string, required), image_url, duration, aspect_ratio, resolution, etc. |
 
-#### 6.56 vision_analyze
+#### 6.62 vision_analyze
 
 | Field | Value |
 |-------|-------|
@@ -1635,7 +1737,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny |
 | inputParams | image_url (string, required), question (string, required) |
 
-#### 6.57 web_extract
+#### 6.63 web_extract
 
 | Field | Value |
 |-------|-------|
@@ -1659,7 +1761,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny (user-provided arbitrary URLs) |
 | inputParams | urls (array, required) |
 
-#### 6.58 web_search
+#### 6.64 web_search
 
 | Field | Value |
 |-------|-------|
@@ -1683,7 +1785,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny (external network, credentials, query leakage) |
 | inputParams | query (string, required), limit (integer) |
 
-#### 6.59 write_file
+#### 6.65 write_file
 
 | Field | Value |
 |-------|-------|
@@ -1707,7 +1809,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Permanent Deny |
 | inputParams | path (string, required), content (string, required), cross_profile |
 
-#### 6.60 x_search
+#### 6.66 x_search
 
 | Field | Value |
 |-------|-------|
@@ -1731,7 +1833,7 @@ All 7 Spotify tools (spotify_albums, spotify_devices, spotify_library, spotify_p
 | recommendation | Deny |
 | inputParams | query (string, required), allowed_x_handles, excluded_x_handles, from_date, to_date, etc. |
 
-#### 6.61–6.65 Yuanbao Tools
+#### 6.67–6.71 Yuanbao Tools
 
 | canonicalName | module | toolset | riskLevel | recommendation |
 |---------------|--------|---------|-----------|----------------|
@@ -1749,16 +1851,17 @@ All Yuanbao tools require external credentials and access the Yuanbao platform A
 
 ### Risk Level Distribution
 
+**Primary Risk Model:** Each canonical tool is assigned exactly one Primary Risk Level, equal to its highest actual risk. Capability tags (filesystemRead, networkWrite, etc.) are orthogonal and may overlap, but do not participate in the Primary Risk total. **R0+R1+R2+R3+R4+R5 = 71.**
+
 | Risk Level | Count | Tools |
 |-----------|------:|-------|
 | R0 (Pure Computation) | 1 | clarify |
-| R1 (Read-only Local) | 4 | read_file, search_files, skills_list, skill_view |
-| R2 (Read-only External) | 22 | web_search, web_extract, vision_analyze, video_analyze, x_search, feishu_doc_read, feishu_drive_list_comments, feishu_drive_list_comment_replies, ha_get_state, ha_list_entities, ha_list_services, kanban_show, kanban_list, spotify_albums, spotify_devices, spotify_search, spotify_queue, yb_query_group_info, yb_query_group_members, yb_search_sticker, mixture_of_agents, session_search |
-| R3 (Controlled Write) | 22 | write_file, patch, memory, todo, send_message, text_to_speech, image_generate, video_generate, cronjob, skill_manage, feishu_drive_add_comment, feishu_drive_reply_comment, ha_call_service, kanban_block, kanban_comment, kanban_complete, kanban_create, kanban_heartbeat, kanban_link, kanban_unblock, yb_send_dm, yb_send_sticker, spotify_playback, spotify_playlists, spotify_library |
-| R4 (Process/Code Execution) | 20 | terminal, process, execute_code, delegate_task, computer_use, browser_navigate, browser_snapshot, browser_click, browser_type, browser_scroll, browser_back, browser_press, browser_get_images, browser_vision, browser_console, browser_cdp, browser_dialog |
-| R5 (High-Risk System) | 4 | discord_admin, ha_call_service, cronjob (also R3/R5 overlap) |
-
-Note: Some tools have dual risk depending on action. Spotify playback control is R3, read-only Spotify is R2. Total unique tools = 71.
+| R1 (Read-only Local) | 5 | read_file, search_files, session_search, skill_view, skills_list |
+| R2 (Read-only External) | 19 | feishu_doc_read, feishu_drive_list_comment_replies, feishu_drive_list_comments, ha_get_state, ha_list_entities, ha_list_services, kanban_list, kanban_show, mixture_of_agents, spotify_albums, spotify_search, video_analyze, vision_analyze, web_extract, web_search, x_search, yb_query_group_info, yb_query_group_members, yb_search_sticker |
+| R3 (Controlled Write) | 26 | discord, feishu_drive_add_comment, feishu_drive_reply_comment, image_generate, kanban_block, kanban_comment, kanban_complete, kanban_create, kanban_heartbeat, kanban_link, kanban_unblock, memory, patch, send_message, skill_manage, spotify_devices, spotify_library, spotify_playback, spotify_playlists, spotify_queue, text_to_speech, todo, video_generate, write_file, yb_send_dm, yb_send_sticker |
+| R4 (Process/Code Execution) | 17 | browser_back, browser_cdp, browser_click, browser_console, browser_dialog, browser_get_images, browser_navigate, browser_press, browser_scroll, browser_snapshot, browser_type, browser_vision, computer_use, delegate_task, execute_code, process, terminal |
+| R5 (High-Risk System) | 3 | cronjob, discord_admin, ha_call_service |
+| **Total** | **71** | — |
 
 ### Classification Criteria
 
@@ -1768,33 +1871,37 @@ Note: Some tools have dual risk depending on action. Spotify playback control is
 - Local pure computation only
 - Candidate for Allowlist
 
-**R1 — Read-only Local Query** (4 tools):
-- Reads local filesystem or database (SessionDB)
-- Does not modify files
+**R1 — Read-only Local Query** (5 tools):
+- Reads local filesystem or local database (SessionDB via FTS5)
+- Does not modify files or external state
 - Does not execute processes
-- Does not access secrets or network
+- Does not access external network, secrets, or credentials
 - Risks: privacy leakage, path leakage, large file output, symlink escape
 - Candidate for Allowlist with strict path allowlist and output truncation
 
-**R2 — Read-only External Network** (22 tools):
-- HTTP GET to external APIs
-- Search, third-party API queries
-- All require credentials or access tokens
+**R2 — Read-only External Network** (19 tools):
+- HTTP GET to external APIs (read-only, no state mutation)
+- Search, third-party API queries, multimodal analysis
+- Most require credentials or access tokens
+- No modification of remote state
 - Risks: privacy exfiltration, SSRF, cost, malicious response
-- Default Deny — fixed domain allowlist only, not suitable for Phase 1G first batch
+- Default Deny — not suitable for Phase 1G first batch
 
-**R3 — Controlled Write** (22 tools):
-- Write local files, write databases, create resources, send messages
-- Risks: irreversible writes, wrong targets, duplicate execution, data corruption
+**R3 — Controlled Write** (26 tools):
+- Write local files, send messages, modify remote state, generate media, control playback
+- Includes tools whose highest capability is external state mutation (e.g., `spotify_playback` controls playback, `discord` can send messages, `spotify_devices` can transfer playback, `spotify_queue` can add items)
+- Also includes local-only writes (`write_file`, `patch`, `memory`, `todo`, `skill_manage`)
+- Risks: irreversible writes, wrong targets, duplicate execution, data corruption, external side effects
 - Not eligible for Phase 1G first batch — must have Dry-Run first, explicit confirmation, idempotency
 
-**R4 — Process and Code Execution** (20 tools):
-- Shell, Python execution, browser automation, subagent spawning, desktop control
+**R4 — Process and Code Execution** (17 tools):
+- Shell execution, code execution, browser automation, subagent spawning, desktop control
+- Includes all browser tools (even read-only browser tools belong here because the browser itself is a controlled execution environment)
 - Risks: arbitrary code execution, command injection, privilege escalation
 - Permanent Deny for Dev WebUI Agent auto-execution
 
-**R5 — High-Risk System Operations** (4 tools):
-- Server management, IoT device control, admin operations
+**R5 — High-Risk System Operations** (3 tools):
+- Scheduled job management (`cronjob` — can spawn arbitrary agent runs), server administration (`discord_admin` — bans, kicks, channel deletion), IoT device control (`ha_call_service` — physical device impact)
 - Risks: system damage, physical device impact, irreversible changes
 - Permanent Deny
 
@@ -1919,6 +2026,8 @@ The following tools are **permanently prohibited** from Dev WebUI Agent executio
 ## 9. Candidate Allowlist
 
 Phase 1G-00 freezes the **candidate** Allowlist. No tools are enabled. Actual enablement requires Phase 1G-E implementation.
+
+**Summary:** 6 candidates total — 1 R0 + 5 R1 — 0 enabled.
 
 ### Candidates
 
@@ -3052,7 +3161,7 @@ Each phase requires:
 | 15 | Per-tool side-effect analysis | ✓ |
 | 16 | Per-tool risk level assigned | ✓ |
 | 17 | Permanent Denylist frozen | ✓ (26 tools) |
-| 18 | Candidate Allowlist frozen | ✓ (6 candidates, 0 enabled) |
+| 18 | Candidate Allowlist frozen | ✓ (6 candidates: 1 R0 + 5 R1, 0 enabled) |
 | 19 | Allowlist may be empty | ✓ |
 | 20 | Default-Deny decision chain frozen | ✓ (20 steps) |
 | 21 | Kill Switch contract frozen | ✓ |
@@ -3100,6 +3209,14 @@ Each phase requires:
 | 63 | .claude/ still untracked | Pending |
 | 64 | Production Gateway PID 1717 unaffected | Pending |
 | 65 | Phase 1G implementation not started | ✓ |
+| 66 | All 71 canonical tools have exactly one Primary Risk | ✓ (Documentation Fix) |
+| 67 | R0+R1+R2+R3+R4+R5 = 71 | ✓ (1+5+19+26+17+3 = 71) |
+| 68 | No multiply-classified tools | ✓ |
+| 69 | No unclassified tools | ✓ |
+| 70 | Denylist canonical names all exist in Registry | ✓ |
+| 71 | Candidate canonical names all exist in Registry | ✓ |
+| 72 | Denylist ∩ Candidate = ∅ | ✓ |
+| 73 | R1 candidate count matches Candidate list | ✓ (5 R1 candidates) |
 
 ---
 
@@ -3108,9 +3225,9 @@ Each phase requires:
 Phase 1G-00 is a **documentation-only** scope document. It:
 
 1. Audits the complete Hermes tool system (71 tools, 33 toolsets, full call chain)
-2. Classifies every tool by risk level (R0: 1, R1: 4, R2: 22, R3: 22, R4: 20, R5: 4)
+2. Classifies every tool by risk level with unique Primary Risk (R0: 1, R1: 5, R2: 19, R3: 26, R4: 17, R5: 3 = 71)
 3. Freezes a Permanent Denylist of 26 tools
-4. Freezes a Candidate Allowlist of 6 tools (0 enabled)
+4. Freezes a Candidate Allowlist of 6 tools (1 R0 + 5 R1, 0 enabled)
 5. Defines comprehensive safety contracts for all future Tool Execution phases
 6. Defines a 6-phase implementation roadmap (1G-01 through 1G-06)
 7. Establishes zero modification to existing code, API, state, or production environment
@@ -3120,3 +3237,108 @@ Phase 1G-00 is a **documentation-only** scope document. It:
 **No Provider Tool Schema was sent.**
 
 **Phase 1G implementation has not started.**
+
+---
+
+## 39. Documentation Fix Record
+
+### Date
+
+2026-06-10
+
+### Problems Discovered
+
+**Problem 1: R1 count inconsistency.**
+- The risk summary table listed R1 = 4 with tools: `read_file, search_files, skills_list, skill_view`
+- The Candidate Allowlist table listed 6 tools including `session_search` at R1
+- `session_search` was classified as R2 in the summary but R1 in the Candidate list
+- Root cause: `session_search` reads local SessionDB via FTS5 — it has no external network access, no credentials, no filesystem write — it is R1, not R2
+- Fix: Moved `session_search` from R2 to R1 in the summary table
+
+**Problem 2: Risk total exceeded tool count.**
+- Original summary: R0=1 + R1=4 + R2=22 + R3=22 + R4=20 + R5=4 = 73
+- Registry contains only 71 canonical tools
+- Root causes:
+  - `session_search` was double-counted (R2 in summary but R1 in Candidate)
+  - `ha_call_service` was counted in both R3 and R5 (overlap note)
+  - `cronjob` was counted in both R3 and R5 (overlap note)
+  - Spotify tools were grouped as "R2–R5" with ambiguous individual classification
+  - No explicit rule that each tool gets exactly one Primary Risk Level
+- Fix: Adopted unique Primary Risk model — each tool assigned to its single highest risk level
+
+### Classification Model Fix
+
+**Before (original):** Tools could appear in multiple risk levels. Dual-classification was noted informally. No explicit rule enforced uniqueness.
+
+**After (fixed):** Each of the 71 canonical tools is assigned exactly one Primary Risk Level, equal to its highest actual risk. Capability tags are orthogonal but do not participate in the Primary Risk total.
+
+### Before Statistics
+
+| Risk | Count |
+|------|------:|
+| R0 | 1 |
+| R1 | 4 |
+| R2 | 22 |
+| R3 | 22 |
+| R4 | 20 |
+| R5 | 4 |
+| Total | 73 (≠71) |
+
+### After Statistics
+
+| Risk | Count | Delta |
+|------|------:|-------|
+| R0 | 1 | = |
+| R1 | 5 | +1 (session_search moved from R2) |
+| R2 | 19 | −3 (session_search→R1, spotify_devices→R3, spotify_queue→R3) |
+| R3 | 26 | +4 (discord added, spotify_devices/queue moved from R2, ha_call_service removed from R3↔R5 overlap) |
+| R4 | 17 | −3 (browser tools recounted: 12 browser + 5 non-browser = 17, not 20) |
+| R5 | 3 | −1 (ha_call_service and cronjob deduplicated — each appears once in R5 only) |
+| Total | 71 | =71 ✓ |
+
+### Key Reclassifications
+
+| canonicalName | Before | After | Reason |
+|---------------|--------|-------|--------|
+| session_search | R2 (summary) / R1 (candidate) | R1 | Local-only FTS5 query on SessionDB; no network, no credentials |
+| spotify_devices | R2 | R3 | `transfer` action mutates playback state |
+| spotify_queue | R2 | R3 | `add` action modifies playback queue |
+| discord | R3 | R3 | No change; was correctly R3 in inventory |
+| ha_call_service | R3 + R5 (dual) | R5 only | IoT device control = highest risk R5 |
+| cronjob | R3 + R5 (dual) | R5 only | Spawns arbitrary agent runs = highest risk R5 |
+
+### Candidate Allowlist Verification
+
+| Tool | Canonical Name | Risk | Verified |
+|------|---------------|------|----------|
+| clarify | ✓ exists in Registry | R0 | ✓ |
+| skills_list | ✓ exists in Registry | R1 | ✓ |
+| skill_view | ✓ exists in Registry | R1 | ✓ |
+| read_file | ✓ exists in Registry | R1 | ✓ |
+| search_files | ✓ exists in Registry | R1 | ✓ |
+| session_search | ✓ exists in Registry | R1 | ✓ |
+
+Total: 6 candidates (1 R0 + 5 R1), 0 enabled, no intersection with Denylist.
+
+### Permanent Denylist Verification
+
+- 26 canonical names, all verified in Registry
+- No duplicates, no aliases, no toolset names, no wildcards
+- Denylist ∩ Candidate = ∅
+
+### Spotify Inventory Expansion
+
+The original document grouped all 7 Spotify tools under a single "R2–R5" entry (section 6.50). This obscured individual tool classification and contributed to the counting error.
+
+Fix: Expanded into 7 individual entries (6.50–6.56), each with a single Primary Risk Level:
+- R2 (read-only): spotify_albums, spotify_search
+- R3 (state mutation): spotify_devices, spotify_library, spotify_playback, spotify_playlists, spotify_queue
+
+### Safety Policy Impact
+
+**No safety policy changes.** This fix only corrects documentation statistics and classification model. It does not:
+- Change the Permanent Denylist composition
+- Change the Candidate Allowlist composition
+- Change any safety contract, decision chain, or kill switch rule
+- Implement any Tool Execution capability
+- Modify any business code

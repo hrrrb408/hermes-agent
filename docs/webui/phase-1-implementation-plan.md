@@ -739,9 +739,9 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 - ✅ Tool Registry fully audited (71 canonical names confirmed)
 - ✅ Toolsets fully audited (33 individual toolsets documented)
 - ✅ Agent Tool Loop fully audited
-- ✅ Per-tool risk classification completed (R0: 1, R1: 4, R2: 22, R3: 22, R4: 20, R5: 4)
+- ✅ Per-tool risk classification completed (R0: 1, R1: 5, R2: 19, R3: 26, R4: 17, R5: 3 = 71)
 - ✅ Permanent Denylist frozen (26 tools)
-- ✅ Candidate Allowlist frozen (6 candidates, 0 enabled)
+- ✅ Candidate Allowlist frozen (6 candidates: 1 R0 + 5 R1, 0 enabled)
 - ✅ All safety contracts frozen
 - ✅ Sub-phase roadmap frozen (1G-01 through 1G-06)
 - ✅ No business code modified
@@ -1029,10 +1029,10 @@ Phase 1F-Release: Pending final re-verification and push preparation.
 
 **Phase 1G-00 is completed.** Tool Execution Safety Framework scope, inventory, risk classification, permanent denylist, candidate allowlist, validation, audit and phased implementation contracts are frozen.
 - `docs/webui/phase-1g-00-tool-execution-safety-scope.md` — Complete scope freeze document
-- 71 tools audited with canonical names, risk classification (R0–R5), and side-effect analysis
+- 71 tools audited with canonical names, unique Primary Risk classification (R0: 1, R1: 5, R2: 19, R3: 26, R4: 17, R5: 3 = 71), and side-effect analysis
 - 33 individual toolsets audited with full tool-to-toolset mapping
 - Permanent Denylist: 26 tools frozen across 11 categories
-- Candidate Allowlist: 6 tools identified, 0 enabled (Allowlist empty until Phase 1G-E)
+- Candidate Allowlist: 6 tools identified (1 R0 + 5 R1), 0 enabled (Allowlist empty until Phase 1G-E)
 - Default-Deny Decision Chain: 20 steps, fail-closed at every stage
 - Kill Switch contract: `HERMES_TOOL_EXECUTION_ENABLED`, fail-closed semantics
 - Sub-phase roadmap: 1G-01 through 1G-06 (Inventory → Policy API → Schema Preview → Dry-Run → Fixture → Execute)
@@ -1044,3 +1044,13 @@ Phase 1F-Release: Pending final re-verification and push preparation.
 
 The next subphase is **Phase 1G-01** (Tool Inventory and Static Policy Module).
 Phase 1G implementation has NOT started.
+
+**Phase 1G-00 Documentation Fix is completed.** Risk classification statistics corrected to use unique Primary Risk model.
+- Root cause 1: `session_search` classified as R2 in summary but R1 in Candidate Allowlist (it is local-only FTS5 → R1)
+- Root cause 2: Tools with mixed capabilities (Spotify, ha_call_service, cronjob) counted in multiple risk levels, causing R0–R5 total = 73 instead of 71
+- Fix: Adopted unique Primary Risk model — each tool assigned exactly one risk level = its highest actual risk
+- Before: R0=1, R1=4, R2=22, R3=22, R4=20, R5=4 (total 73 ≠ 71)
+- After: R0=1, R1=5, R2=19, R3=26, R4=17, R5=3 (total 71 = 71 ✓)
+- Spotify section expanded from 1 grouped entry to 7 individual entries with unique risk levels
+- No safety policy changes, no Denylist/Candidate composition changes, no business code changes
+- See `docs/webui/phase-1g-00-tool-execution-safety-scope.md` Section 39 for full fix record
