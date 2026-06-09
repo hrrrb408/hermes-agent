@@ -667,17 +667,22 @@ class TestReadOnlyGuarantees:
 
 class TestRouteBoundary:
     def test_total_business_routes(self, memory_client):
-        """Verify runtime OpenAPI has exactly 23 business paths."""
+        """Verify runtime OpenAPI has exactly 27 business paths."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 23
-        # Phase 1E: verify new agent preview routes exist
+        assert len(paths) == 27
+        # Phase 1E: verify agent preview routes exist
         assert "/api/dev/v1/agent/prompt/preview" in paths
         assert "/api/dev/v1/agent/run/dry-run" in paths
+        # Phase 1F: verify agent run routes exist
+        assert "/api/dev/v1/agent/runs" in paths
+        assert "/api/dev/v1/agent/runs/{runId}" in paths
+        assert "/api/dev/v1/agent/runs/{runId}/events" in paths
+        assert "/api/dev/v1/agent/runs/{runId}/cancel" in paths
 
     def test_no_real_write_memory_routes(self, memory_client):
         """Verify no real (non-dry-run) memory write routes exist."""
@@ -703,10 +708,12 @@ class TestRouteBoundary:
                 )
 
     def test_no_agent_write_routes(self, memory_client):
-        """Verify no real agent execution routes exist (only safe preview routes)."""
+        """Verify no real agent execution routes exist (only safe preview + run routes)."""
         allowed_agent_post_routes = {
             "/api/dev/v1/agent/prompt/preview",
             "/api/dev/v1/agent/run/dry-run",
+            "/api/dev/v1/agent/runs",
+            "/api/dev/v1/agent/runs/{runId}/cancel",
         }
         # Routes that must NOT exist at all (any method)
         forbidden_agent_routes = {
@@ -718,10 +725,12 @@ class TestRouteBoundary:
         # Routes that exist as GET but must NOT have POST
         no_post_routes = {
             "/api/dev/v1/sessions/{sessionId}/messages",
+            "/api/dev/v1/agent/runs/{runId}",
+            "/api/dev/v1/agent/runs/{runId}/events",
         }
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
-        # Verify safe preview routes exist
+        # Verify safe routes exist
         for route in allowed_agent_post_routes:
             assert route in spec["paths"], f"Expected safe route {route} missing"
         # Verify real execution routes do NOT exist at all
@@ -743,22 +752,26 @@ class TestRouteBoundary:
                 )
 
     def test_post_routes_are_safe(self, memory_client):
-        """Verify all POST routes are safe (dry-run, preview, or execute with confirmation)."""
+        """Verify all POST routes are safe (dry-run, preview, execute, or agent run with confirmation)."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         post_routes = []
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        # 10 POST routes: context/preview, 2 review dry-runs, 2 review executes,
-        # 3 memory writer dry-runs, agent prompt preview, agent run dry-run
-        assert len(post_routes) == 10
-        # Verify Phase 1E new safe POST routes
+        # 12 POST routes: context/preview, 2 review dry-runs, 2 review executes,
+        # 3 memory writer dry-runs, agent prompt preview, agent run dry-run,
+        # agent runs (create), agent runs cancel
+        assert len(post_routes) == 12
+        # Verify Phase 1E safe POST routes
         assert "/api/dev/v1/agent/prompt/preview" in post_routes
         assert "/api/dev/v1/agent/run/dry-run" in post_routes
+        # Verify Phase 1F agent run POST routes
+        assert "/api/dev/v1/agent/runs" in post_routes
+        assert "/api/dev/v1/agent/runs/{runId}/cancel" in post_routes
         for route in post_routes:
-            assert any(kw in route for kw in ("preview", "dry-run", "execute")), (
-                f"POST route {route} is not a safe preview/dry-run/execute route"
+            assert any(kw in route for kw in ("preview", "dry-run", "execute", "runs", "cancel")), (
+                f"POST route {route} is not a safe preview/dry-run/execute/run route"
             )
 
     def test_404_for_unknown_routes(self, memory_client):

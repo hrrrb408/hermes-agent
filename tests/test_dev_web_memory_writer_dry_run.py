@@ -805,7 +805,7 @@ class TestRouteBoundary:
     """Verify route boundary rules for Phase 1D."""
 
     def test_total_business_paths(self):
-        """Total business paths should be 21."""
+        """Total business paths should be 27 (21 base + 4 Phase 1F agent run + 2 Phase 1E agent preview)."""
         config = DevWebApiConfig(hermes_home=None)
         app = create_dev_web_api_app(config)
         business_prefix = "/api/dev/v1/"
@@ -813,7 +813,7 @@ class TestRouteBoundary:
             r.path for r in app.routes
             if hasattr(r, "path") and r.path.startswith(business_prefix)
         ))
-        assert len(paths) == 21, f"Expected 21 paths, got {len(paths)}: {paths}"
+        assert len(paths) == 27, f"Expected 27 paths, got {len(paths)}: {paths}"
 
     def test_no_real_write_routes(self):
         """Real write routes must not exist."""

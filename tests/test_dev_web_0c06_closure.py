@@ -402,21 +402,21 @@ class TestOpenAPIContract:
     """Verify static and runtime OpenAPI consistency."""
 
     def test_business_paths_count(self, client):
-        """Phase 1E: 23 implemented business paths (11 + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview)."""
+        """Phase 1F: 27 implemented business paths (11 base + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 4 agent run)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 23
+        assert len(paths) == 27
 
     def test_post_routes(self, client):
-        """Phase 1E: 10 POST routes (context/preview + 2 review dry-run + 2 execute + 3 writer dry-run + 2 agent preview)."""
+        """Phase 1F: 12 POST routes (context/preview + 2 review dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 2 agent run)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         post_routes = []
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        assert len(post_routes) == 10
+        assert len(post_routes) == 12
         assert "/api/dev/v1/context/preview" in post_routes
         assert "/api/dev/v1/reviews/{reviewId}/approve/dry-run" in post_routes
         assert "/api/dev/v1/reviews/{reviewId}/reject/dry-run" in post_routes
@@ -427,6 +427,8 @@ class TestOpenAPIContract:
         assert "/api/dev/v1/memory/items/{memoryId}/archive/dry-run" in post_routes
         assert "/api/dev/v1/agent/prompt/preview" in post_routes
         assert "/api/dev/v1/agent/run/dry-run" in post_routes
+        assert "/api/dev/v1/agent/runs" in post_routes
+        assert "/api/dev/v1/agent/runs/{runId}/cancel" in post_routes
 
     def test_no_write_schemas(self, client):
         resp = client.get("/openapi.json")

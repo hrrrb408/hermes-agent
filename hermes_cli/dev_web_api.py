@@ -24,6 +24,7 @@ files are read, no database connections are opened.
 
 from __future__ import annotations
 
+import asyncio
 from enum import Enum
 from pathlib import Path
 
