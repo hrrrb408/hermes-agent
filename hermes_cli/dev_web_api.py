@@ -59,6 +59,18 @@ from hermes_cli.dev_web_errors import (
     REVIEW_EXECUTE_ERROR,
     UNSAFE_ENVIRONMENT,
     REVIEW_REJECTION_BLOCKED,
+    MEMORY_DRY_RUN_UNAVAILABLE,
+    INVALID_MEMORY_DRY_RUN_REQUEST,
+    MEMORY_WRITE_BLOCKED,
+    MEMORY_UPDATE_BLOCKED,
+    MEMORY_ARCHIVE_BLOCKED,
+    MEMORY_P0_PROTECTED,
+    MEMORY_PERMANENT_PROTECTED,
+    MEMORY_DUPLICATE_BLOCKED,
+    MEMORY_ALREADY_ARCHIVED,
+    MEMORY_CATEGORY_NOT_FOUND,
+    MEMORY_STORE_ERROR,
+    INTERNAL_ERROR,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -95,6 +107,13 @@ from hermes_cli.dev_web_review_service import (
     InvalidAcknowledgedEffectsError,
     ReviewApprovalBlockedError,
     UnsafeEnvironmentError,
+)
+from hermes_cli.dev_web_memory_writer_service import (
+    DevMemoryWriterDryRunService,
+    MemoryWriterDryRunUnavailableError,
+    MemoryWriterTargetNotFoundError,
+    MemoryWriterInvalidIdError,
+    MemoryWriterInvalidRequestError,
 )
 
 
@@ -184,6 +203,7 @@ def create_dev_web_api_app(
     memory_service: DevMemoryQueryService | None = None
     agent_service: DevAgentStatusService | None = None
     review_service: DevReviewQueryService | None = None
+    writer_service: DevMemoryWriterDryRunService | None = None
     if config.hermes_home is not None:
         state_db_path = config.hermes_home / "state.db"
         session_service = DevSessionQueryService(state_db_path)
@@ -191,11 +211,13 @@ def create_dev_web_api_app(
         memory_service = DevMemoryQueryService(config.hermes_home)
         agent_service = DevAgentStatusService(config.hermes_home)
         review_service = DevReviewQueryService(config.hermes_home)
+        writer_service = DevMemoryWriterDryRunService(config.hermes_home)
     app.state.session_service = session_service
     app.state.message_service = message_service
     app.state.memory_service = memory_service
     app.state.agent_service = agent_service
     app.state.review_service = review_service
+    app.state.writer_service = writer_service
 
     # ── Middleware (order matters: outermost first) ──
     app.add_middleware(RequestIdMiddleware)
@@ -212,7 +234,7 @@ def create_dev_web_api_app(
     register_error_handlers(app)
 
     # ── Routes ──
-    _register_routes(app, config, session_service, memory_service, agent_service, review_service)
+    _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service)
 
     return app
 
@@ -243,6 +265,7 @@ def _register_routes(
     memory_service: DevMemoryQueryService | None,
     agent_service: DevAgentStatusService | None,
     review_service: DevReviewQueryService | None,
+    writer_service: DevMemoryWriterDryRunService | None,
 ) -> None:
     """Register Phase 1A routes."""
 
@@ -1451,8 +1474,214 @@ def _register_routes(
                 request_id=rid,
             )
 
+
         ts = _utc_now_iso()
         return {
             "data": result,
             "meta": {"requestId": rid, "timestamp": ts},
         }
+
+    # ── Phase 1D: Memory Writer Dry-Run ──
+    _register_writer_routes(app, config, writer_service)
+
+
+def _register_writer_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+    writer_service: DevMemoryWriterDryRunService | None,
+) -> None:
+    """Register Phase 1D Memory Writer dry-run routes."""
+
+    prefix = config.api_prefix
+
+    # ── POST /memory/write/dry-run ──
+
+    @app.post(
+        f"{prefix}/memory/write/dry-run",
+        tags=["Memory"],
+        summary="Preview WRITE operation (dry-run, no side effects)",
+    )
+    def memory_write_dry_run(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if writer_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+
+        query = body.get("query", "")
+        candidate = body.get("candidate", {})
+        options = body.get("options")
+
+        try:
+            result = writer_service.dry_run_write(
+                query=query,
+                candidate=candidate,
+                options=options,
+            )
+        except MemoryWriterDryRunUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+        except MemoryWriterInvalidRequestError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MEMORY_DRY_RUN_REQUEST,
+                message=str(exc),
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred during dry-run.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        result["meta"] = {"requestId": rid, "timestamp": ts}
+        return result
+
+    # ── POST /memory/items/{memoryId}/update/dry-run ──
+
+    @app.post(
+        f"{prefix}/memory/items/{{memoryId}}/update/dry-run",
+        tags=["Memory"],
+        summary="Preview UPDATE operation (dry-run, no side effects)",
+    )
+    def memory_update_dry_run(
+        request: Request,
+        memoryId: str,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if writer_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+
+        candidate = body.get("candidate", {})
+        options = body.get("options")
+
+        try:
+            result = writer_service.dry_run_update(
+                memoryId,
+                candidate=candidate,
+                options=options,
+            )
+        except MemoryWriterDryRunUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+        except MemoryWriterInvalidIdError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MEMORY_ID,
+                message=str(exc),
+                request_id=rid,
+            )
+        except MemoryWriterTargetNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=MEMORY_NOT_FOUND,
+                message="Memory item was not found.",
+                request_id=rid,
+            )
+        except MemoryWriterInvalidRequestError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MEMORY_DRY_RUN_REQUEST,
+                message=str(exc),
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred during dry-run.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        result["meta"] = {"requestId": rid, "timestamp": ts}
+        return result
+
+    # ── POST /memory/items/{memoryId}/archive/dry-run ──
+
+    @app.post(
+        f"{prefix}/memory/items/{{memoryId}}/archive/dry-run",
+        tags=["Memory"],
+        summary="Preview ARCHIVE operation (dry-run, no side effects)",
+    )
+    def memory_archive_dry_run(
+        request: Request,
+        memoryId: str,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if writer_service is None:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+
+        reason = body.get("reason")
+        options = body.get("options")
+
+        try:
+            result = writer_service.dry_run_archive(
+                memoryId,
+                reason=reason,
+                options=options,
+            )
+        except MemoryWriterDryRunUnavailableError:
+            return _make_error_json(
+                status_code=503,
+                code=MEMORY_DRY_RUN_UNAVAILABLE,
+                message="Memory writer dry-run is unavailable.",
+                request_id=rid,
+            )
+        except MemoryWriterInvalidIdError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_MEMORY_ID,
+                message=str(exc),
+                request_id=rid,
+            )
+        except MemoryWriterTargetNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=MEMORY_NOT_FOUND,
+                message="Memory item was not found.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred during dry-run.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        result["meta"] = {"requestId": rid, "timestamp": ts}
+        return result

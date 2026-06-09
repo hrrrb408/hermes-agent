@@ -667,32 +667,37 @@ class TestReadOnlyGuarantees:
 
 class TestRouteBoundary:
     def test_total_business_routes(self, memory_client):
-        """Verify runtime OpenAPI has exactly 11 business paths."""
+        """Verify runtime OpenAPI has exactly 21 business paths."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 11
+        assert len(paths) == 21
 
-    def test_no_write_memory_routes(self, memory_client):
-        """Verify no memory write routes exist."""
+    def test_no_real_write_memory_routes(self, memory_client):
+        """Verify no real (non-dry-run) memory write routes exist."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         for path, methods in spec["paths"].items():
             if "/memory" in path:
                 for method in methods:
-                    assert method.lower() in ("get",), (
-                        f"Found non-GET method {method} on {path}"
-                    )
+                    if method.lower() == "post":
+                        assert path.endswith("/dry-run"), (
+                            f"Found non-dry-run POST method {method} on {path}"
+                        )
 
-    def test_no_review_routes(self, memory_client):
-        """Verify no review routes exist."""
+    def test_no_review_write_routes(self, memory_client):
+        """Verify no real (non-dry-run, non-execute) review write routes exist."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         for path in spec["paths"]:
-            assert "/reviews" not in path
+            if "/reviews" in path:
+                # Only dry-run and execute routes are allowed
+                assert "dry-run" in path or "execute" in path or spec["paths"][path].get("get"), (
+                    f"Unexpected review route: {path}"
+                )
 
     def test_no_agent_write_routes(self, memory_client):
         """Verify no agent write routes exist."""
@@ -705,20 +710,24 @@ class TestRouteBoundary:
                         assert "run" not in path
                         assert "message" not in path
 
-    def test_context_preview_is_only_post(self, memory_client):
-        """Verify context/preview is the only POST business route."""
+    def test_post_routes_are_safe(self, memory_client):
+        """Verify all POST routes are safe (dry-run, preview, or execute with confirmation)."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         post_routes = []
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        assert len(post_routes) == 1
-        assert post_routes[0] == "/api/dev/v1/context/preview"
+        # 8 POST routes: context/preview, 2 review dry-runs, 2 review executes,
+        # 3 memory writer dry-runs
+        assert len(post_routes) == 8
+        for route in post_routes:
+            assert any(kw in route for kw in ("preview", "dry-run", "execute")), (
+                f"POST route {route} is not a safe preview/dry-run/execute route"
+            )
 
     def test_404_for_unknown_routes(self, memory_client):
         assert memory_client.get(f"{API}/memory/write").status_code == 404
-        assert memory_client.get(f"{API}/reviews").status_code == 404
         assert memory_client.get(f"{API}/agent/run").status_code == 404
         assert memory_client.get(f"{API}/tools").status_code == 404
         assert memory_client.get(f"{API}/memory/items/test/delete").status_code == 404

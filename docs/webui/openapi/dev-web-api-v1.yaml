@@ -296,6 +296,238 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /memory/write/dry-run:
+    post:
+      operationId: memoryWriteDryRun
+      tags: [Memory]
+      summary: Preview WRITE operation (dry-run, no side effects)
+      description: >
+        Evaluates a memory WRITE candidate and returns a decision preview
+        without modifying any files. The response includes the computed score,
+        similarity analysis, protection checks, and predicted effects.
+        This endpoint is completely side-effect-free.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, candidate]
+              properties:
+                query:
+                  type: string
+                  maxLength: 2000
+                  description: The user message or context for the memory candidate.
+                candidate:
+                  type: object
+                  required: [summary, category, importance, ttl, tags]
+                  properties:
+                    title:
+                      type: string
+                      maxLength: 120
+                    summary:
+                      type: string
+                      maxLength: 1000
+                    category:
+                      type: string
+                      maxLength: 100
+                      pattern: "^[a-z0-9][a-z0-9_-]*$"
+                    type:
+                      type: string
+                      maxLength: 50
+                    importance:
+                      type: string
+                      enum: [P0, P1, P2, P3]
+                    ttl:
+                      type: string
+                      enum: [permanent, project, session, temporary]
+                    tags:
+                      type: array
+                      items:
+                        type: string
+                        maxLength: 50
+                      maxItems: 20
+                    sourceConfidence:
+                      type: string
+                      enum: [user_confirmed, assistant_inferred]
+                options:
+                  type: object
+                  properties:
+                    allowReviewRecommendation:
+                      type: boolean
+                      default: true
+                    includeSimilarity:
+                      type: boolean
+                      default: true
+                    includeEffects:
+                      type: boolean
+                      default: true
+      responses:
+        "200":
+          description: WRITE dry-run preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryDryRunResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Memory system unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /memory/items/{memoryId}/update/dry-run:
+    post:
+      operationId: memoryUpdateDryRun
+      tags: [Memory]
+      summary: Preview UPDATE operation (dry-run, no side effects)
+      description: >
+        Evaluates an UPDATE candidate against an existing memory item and returns
+        a decision preview including diff, similarity, and protection checks.
+        No files are modified.
+      parameters:
+        - name: memoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MEM-[A-Z]+-\\d+$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidate]
+              properties:
+                candidate:
+                  type: object
+                  required: [summary]
+                  properties:
+                    summary:
+                      type: string
+                      maxLength: 1000
+                    type:
+                      type: string
+                      maxLength: 50
+                    importance:
+                      type: string
+                      enum: [P0, P1, P2, P3]
+                    ttl:
+                      type: string
+                      enum: [permanent, project, session, temporary]
+                    tags:
+                      type: array
+                      items:
+                        type: string
+                        maxLength: 50
+                      maxItems: 20
+                options:
+                  type: object
+                  properties:
+                    includeDiff:
+                      type: boolean
+                      default: true
+                    includeSimilarity:
+                      type: boolean
+                      default: true
+                    includeEffects:
+                      type: boolean
+                      default: true
+      responses:
+        "200":
+          description: UPDATE dry-run preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryDryRunResponse"
+        "400":
+          description: Invalid request or memory ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Memory item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Memory system unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /memory/items/{memoryId}/archive/dry-run:
+    post:
+      operationId: memoryArchiveDryRun
+      tags: [Memory]
+      summary: Preview ARCHIVE operation (dry-run, no side effects)
+      description: >
+        Evaluates an ARCHIVE operation on a memory item and returns protection
+        checks and predicted effects. P0 and permanent items are independently
+        blocked. No files are modified.
+      parameters:
+        - name: memoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^MEM-[A-Z]+-\\d+$"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+                  description: Optional archive reason.
+                options:
+                  type: object
+                  properties:
+                    includeEffects:
+                      type: boolean
+                      default: true
+                    includeReferences:
+                      type: boolean
+                      default: true
+      responses:
+        "200":
+          description: ARCHIVE dry-run preview result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryDryRunResponse"
+        "400":
+          description: Invalid request or memory ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Memory item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Memory system unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /context/preview:
     post:
       operationId: previewContext
@@ -2026,5 +2258,216 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ReviewExecuteData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    MemoryDryRunData:
+      type: object
+      required: [dryRun, operation, allowed, decision, safety, checks, warnings]
+      properties:
+        dryRun:
+          type: boolean
+          description: Always true for dry-run responses.
+        operation:
+          type: string
+          enum: [WRITE, UPDATE, ARCHIVE]
+          description: The requested operation.
+        allowed:
+          type: boolean
+          description: Whether the operation would be permitted.
+        blockedReason:
+          type: string
+          nullable: true
+          description: Reason the operation is blocked (null if allowed).
+        decision:
+          type: string
+          enum: [WRITE, UPDATE, REVIEW, SKIP, SKIP_DUPLICATE, ARCHIVE]
+          description: The Memory Writer decision.
+        wouldModify:
+          type: boolean
+          description: Whether any files would be modified if executed.
+        wouldEnqueueReview:
+          type: boolean
+          description: Whether a review queue item would be enqueued.
+        target:
+          $ref: "#/components/schemas/MemoryDryRunTarget"
+        candidate:
+          $ref: "#/components/schemas/MemoryDryRunCandidate"
+        score:
+          type: object
+          properties:
+            total:
+              type: integer
+            breakdown:
+              type: array
+              items:
+                type: object
+                properties:
+                  rule:
+                    type: string
+                  value:
+                    type: integer
+        similarity:
+          type: object
+          nullable: true
+          properties:
+            title:
+              type: number
+            summary:
+              type: number
+            combined:
+              type: number
+            overall:
+              type: number
+            tagOverlap:
+              type: array
+              items:
+                type: string
+            coreTagOverlap:
+              type: array
+              items:
+                type: string
+            matchedMemoryId:
+              type: string
+              nullable: true
+            matchedMemoryTitle:
+              type: string
+              nullable: true
+        diff:
+          type: object
+          nullable: true
+          properties:
+            titleChanged:
+              type: boolean
+            summaryChanged:
+              type: boolean
+            importanceChanged:
+              type: boolean
+            ttlChanged:
+              type: boolean
+            tagsAdded:
+              type: array
+              items:
+                type: string
+            tagsRemoved:
+              type: array
+              items:
+                type: string
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryDryRunCheck"
+        effects:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryDryRunEffect"
+        noEffects:
+          type: array
+          items:
+            type: string
+        safety:
+          type: object
+          properties:
+            readOnly:
+              type: boolean
+            writeEnabled:
+              type: boolean
+            executeAvailable:
+              type: boolean
+            sideEffects:
+              type: boolean
+        config:
+          type: object
+          properties:
+            autoWriteEnabled:
+              type: boolean
+            autoUpdateEnabled:
+              type: boolean
+            autoCreateCategories:
+              type: boolean
+            writeThreshold:
+              type: integer
+            reviewThreshold:
+              type: integer
+            updateSimilarityThreshold:
+              type: number
+            duplicateSimilarityThreshold:
+              type: number
+            candidateSimilarityThreshold:
+              type: number
+        warnings:
+          type: array
+          items:
+            type: string
+
+    MemoryDryRunTarget:
+      type: object
+      nullable: true
+      properties:
+        memoryId:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        importance:
+          type: string
+        ttl:
+          type: string
+        status:
+          type: string
+        protected:
+          type: boolean
+        protectionReason:
+          type: string
+          nullable: true
+
+    MemoryDryRunCandidate:
+      type: object
+      nullable: true
+      properties:
+        titlePreview:
+          type: string
+        summaryPreview:
+          type: string
+        category:
+          type: string
+        type:
+          type: string
+        importance:
+          type: string
+        ttl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    MemoryDryRunCheck:
+      type: object
+      properties:
+        code:
+          type: string
+        passed:
+          type: boolean
+        message:
+          type: string
+
+    MemoryDryRunEffect:
+      type: object
+      properties:
+        type:
+          type: string
+        wouldOccur:
+          type: boolean
+        description:
+          type: string
+
+    MemoryDryRunResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/MemoryDryRunData"
         meta:
           $ref: "#/components/schemas/Meta"

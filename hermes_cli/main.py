@@ -7063,7 +7063,7 @@ def _webui_check_openapi(
 
     Checks:
     - YAML is parseable
-    - Exactly 18 business paths
+    - Exactly 21 business paths
     - All allowed routes are present
     - No forbidden routes appear
     """
@@ -7086,6 +7086,9 @@ def _webui_check_openapi(
         "/memory/categories": {"get"},
         "/memory/items": {"get"},
         "/memory/items/{memoryId}": {"get"},
+        "/memory/write/dry-run": {"post"},
+        "/memory/items/{memoryId}/update/dry-run": {"post"},
+        "/memory/items/{memoryId}/archive/dry-run": {"post"},
         "/context/preview": {"post"},
         "/agent/status": {"get"},
         "/reviews/status": {"get"},
@@ -7109,7 +7112,7 @@ def _webui_check_openapi(
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 18 else "FAIL",
+        "PASS" if path_count == 21 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
