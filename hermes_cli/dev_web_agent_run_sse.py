@@ -128,24 +128,32 @@ async def stream_run_events(
     registry.set_client_connected(run_id, True)
 
     try:
-        # 2. Replay buffered events if Last-Event-ID provided
+        # 2. Replay buffered events
+        # When no Last-Event-ID is provided (first connection), replay ALL
+        # buffered events from sequence 0 to ensure run.created and
+        # run.started are delivered even if they were emitted before the
+        # client connected.
         if last_event_id is not None:
-            try:
-                replay_events = registry.get_events_after(run_id, last_event_id)
-                for evt in replay_events:
-                    yield serialize_sse_event(evt)
-            except EventBufferExpiredError:
-                yield serialize_error_event(
-                    "AGENT_EVENT_BUFFER_EXPIRED",
-                    "Event buffer expired, cannot replay"
-                )
-                return
-            except InvalidLastEventIdError:
-                yield serialize_error_event(
-                    "INVALID_LAST_EVENT_ID",
-                    "Invalid Last-Event-ID value"
-                )
-                return
+            replay_after = last_event_id
+        else:
+            replay_after = 0
+
+        try:
+            replay_events = registry.get_events_after(run_id, replay_after)
+            for evt in replay_events:
+                yield serialize_sse_event(evt)
+        except EventBufferExpiredError:
+            yield serialize_error_event(
+                "AGENT_EVENT_BUFFER_EXPIRED",
+                "Event buffer expired, cannot replay"
+            )
+            return
+        except InvalidLastEventIdError:
+            yield serialize_error_event(
+                "INVALID_LAST_EVENT_ID",
+                "Invalid Last-Event-ID value"
+            )
+            return
 
         # 3. Stream live events
         last_heartbeat = time.monotonic()

@@ -80,7 +80,8 @@ class FakeProviderResult:
         input_tokens: int = 10,
         output_tokens: int = 5,
         total_tokens: int = 15,
-        delay_per_delta: float = 0.05,
+        initial_delay: float = 0.15,
+        delay_per_delta: float = 0.08,
         block_forever: bool = False,
     ):
         self.deltas = deltas or ["Hello", " ", "from", " ", "Hermes"]
@@ -88,6 +89,7 @@ class FakeProviderResult:
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
         self.total_tokens = total_tokens
+        self.initial_delay = initial_delay
         self.delay_per_delta = delay_per_delta
         self.block_forever = block_forever
         self._interrupted = threading.Event()
@@ -126,6 +128,11 @@ class FakeAgent:
                 "total_tokens": 0,
                 "messages": [],
             }
+
+        # Initial delay to give SSE time to connect and receive
+        # run.created / run.started events before deltas start
+        if result.initial_delay > 0:
+            time.sleep(result.initial_delay)
 
         # Stream deltas with delay
         for delta in result.deltas:
@@ -182,6 +189,7 @@ def _get_success_result() -> FakeProviderResult:
             input_tokens=10,
             output_tokens=5,
             total_tokens=15,
+            initial_delay=0.15,
             delay_per_delta=0.08,
         )
     return _SUCCESS_RESULT

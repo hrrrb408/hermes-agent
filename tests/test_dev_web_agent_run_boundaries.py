@@ -375,6 +375,149 @@ class TestSSEReconnect:
         assert msg_count_before == msg_count_after
 
 
+# ── SSE Lifecycle Events ──
+
+
+class TestSSELifecycleEvents:
+    """Verify that run.created and run.started are always captured and replayable.
+
+    Phase 1F SSE contract: the first SSE connection without Last-Event-ID
+    must replay all buffered events starting from sequence 0, ensuring
+    run.created (sequence 1) and run.started are delivered.
+    """
+
+    def test_run_created_is_sequence_1(self):
+        """run.created event must be sequence = 1."""
+        from hermes_cli.dev_web_agent_run_registry import AgentRunRegistry
+        from hermes_cli.dev_web_agent_run_models import RunEventType
+
+        registry = AgentRunRegistry()
+        record = registry.create_run(
+            session_id="ses-1", request_id="req-1",
+            model_name="m", provider_name="p",
+        )
+        run_id = record.run_id
+
+        event = registry.append_event(run_id, RunEventType.RUN_CREATED, {
+            "sessionId": "ses-1",
+            "model": {"name": "m", "provider": "p"},
+        })
+        assert event.sequence == 1
+        assert event.event_type == RunEventType.RUN_CREATED
+
+    def test_run_started_after_created(self):
+        """run.started must follow run.created in event buffer."""
+        from hermes_cli.dev_web_agent_run_registry import AgentRunRegistry
+        from hermes_cli.dev_web_agent_run_models import RunEventType
+
+        registry = AgentRunRegistry()
+        record = registry.create_run(
+            session_id="ses-1", request_id="req-1",
+            model_name="m", provider_name="p",
+        )
+        run_id = record.run_id
+
+        created = registry.append_event(run_id, RunEventType.RUN_CREATED, {})
+        started = registry.append_event(run_id, RunEventType.RUN_STARTED, {"model": "m"})
+
+        assert created.sequence == 1
+        assert started.sequence == 2
+        assert started.sequence > created.sequence
+
+    def test_first_connection_replays_all_events(self):
+        """get_events_after(0) returns ALL buffered events including created/started."""
+        from hermes_cli.dev_web_agent_run_registry import AgentRunRegistry
+        from hermes_cli.dev_web_agent_run_models import RunEventType
+
+        registry = AgentRunRegistry()
+        record = registry.create_run(
+            session_id="ses-1", request_id="req-1",
+            model_name="m", provider_name="p",
+        )
+        run_id = record.run_id
+
+        # Simulate full lifecycle event emission
+        registry.append_event(run_id, RunEventType.RUN_CREATED, {})
+        registry.append_event(run_id, RunEventType.RUN_STARTED, {})
+        registry.append_event(run_id, RunEventType.MESSAGE_DELTA, {"delta": "Hi"})
+        registry.append_event(run_id, RunEventType.MESSAGE_DELTA, {"delta": " there"})
+        registry.append_event(run_id, RunEventType.MESSAGE_COMPLETED, {})
+        registry.append_event(run_id, RunEventType.USAGE_UPDATED, {})
+        registry.append_event(run_id, RunEventType.RUN_COMPLETED, {})
+
+        # First connection (no Last-Event-ID) should get ALL events
+        all_events = registry.get_events_after(run_id, after_sequence=0)
+        assert len(all_events) == 7
+
+        event_types = [e.event_type for e in all_events]
+        assert event_types[0] == RunEventType.RUN_CREATED
+        assert event_types[1] == RunEventType.RUN_STARTED
+        assert event_types[2] == RunEventType.MESSAGE_DELTA
+        assert event_types[-1] == RunEventType.RUN_COMPLETED
+
+    def test_delta_after_started_in_lifecycle(self):
+        """First message.delta must come after run.started."""
+        from hermes_cli.dev_web_agent_run_registry import AgentRunRegistry
+        from hermes_cli.dev_web_agent_run_models import RunEventType
+
+        registry = AgentRunRegistry()
+        record = registry.create_run(
+            session_id="ses-1", request_id="req-1",
+            model_name="m", provider_name="p",
+        )
+        run_id = record.run_id
+
+        registry.append_event(run_id, RunEventType.RUN_CREATED, {})
+        started = registry.append_event(run_id, RunEventType.RUN_STARTED, {})
+        delta = registry.append_event(run_id, RunEventType.MESSAGE_DELTA, {"delta": "Hi"})
+
+        assert delta.sequence > started.sequence
+
+    def test_successful_run_complete_lifecycle(self):
+        """Successful run emits ordered subsequence: created, started, deltas, completed."""
+        from hermes_cli.dev_web_agent_run_registry import AgentRunRegistry
+        from hermes_cli.dev_web_agent_run_models import RunEventType, TERMINAL_EVENT_TYPES
+
+        registry = AgentRunRegistry()
+        record = registry.create_run(
+            session_id="ses-1", request_id="req-1",
+            model_name="m", provider_name="p",
+        )
+        run_id = record.run_id
+
+        registry.append_event(run_id, RunEventType.RUN_CREATED, {})
+        registry.append_event(run_id, RunEventType.RUN_STARTED, {})
+        registry.append_event(run_id, RunEventType.MESSAGE_DELTA, {"delta": "A"})
+        registry.append_event(run_id, RunEventType.MESSAGE_DELTA, {"delta": "B"})
+        registry.append_event(run_id, RunEventType.MESSAGE_COMPLETED, {})
+        registry.append_event(run_id, RunEventType.USAGE_UPDATED, {})
+        registry.append_event(run_id, RunEventType.RUN_COMPLETED, {})
+
+        all_events = registry.get_events_after(run_id, after_sequence=0)
+        event_types = [e.event_type for e in all_events]
+
+        # Verify ordered subsequence
+        assert event_types.index(RunEventType.RUN_CREATED) == 0
+        assert event_types.index(RunEventType.RUN_STARTED) == 1
+
+        first_delta_idx = event_types.index(RunEventType.MESSAGE_DELTA)
+        started_idx = event_types.index(RunEventType.RUN_STARTED)
+        assert first_delta_idx > started_idx
+
+        completed_idx = event_types.index(RunEventType.MESSAGE_COMPLETED)
+        last_delta_idx = max(
+            i for i, t in enumerate(event_types) if t == RunEventType.MESSAGE_DELTA
+        )
+        assert completed_idx > last_delta_idx
+
+        assert RunEventType.USAGE_UPDATED in event_types
+        assert event_types[-1] == RunEventType.RUN_COMPLETED
+
+        # Exactly one terminal event
+        terminal_events = [e for e in all_events if e.event_type in TERMINAL_EVENT_TYPES]
+        assert len(terminal_events) == 1
+
+
 # ── Retry ──
 
 

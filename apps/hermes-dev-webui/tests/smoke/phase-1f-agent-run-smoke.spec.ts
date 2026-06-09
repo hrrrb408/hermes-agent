@@ -294,9 +294,15 @@ test('successful agent run with SSE streaming', async ({ page }) => {
   // ── Step 7: Verify SSE event sequence ──
   const eventTypes = sseEvents.map((e) => e.event)
 
-  // run.created and run.started may be missed if run completes before
-  // SSE connects — they are buffered but may already have been emitted.
-  // What we MUST see are the delta/completed/completion events.
+  // Phase 1F-Release Fix 4: run.created and run.started are MANDATORY.
+  // First SSE connection replays from buffer start (after_sequence=0).
+  expect(eventTypes[0]).toBe('run.created')
+  expect(eventTypes).toContain('run.started')
+
+  // run.started must come before first message.delta
+  const startedIdx = eventTypes.indexOf('run.started')
+  const firstDeltaIdx = eventTypes.indexOf('message.delta')
+  expect(firstDeltaIdx).toBeGreaterThan(startedIdx)
 
   // Must have multiple message.delta events
   const deltaEvents = sseEvents.filter((e) => e.event === 'message.delta')
@@ -304,6 +310,15 @@ test('successful agent run with SSE streaming', async ({ page }) => {
 
   // Must have message.completed
   expect(eventTypes).toContain('message.completed')
+
+  // message.completed must come after last message.delta
+  const lastDeltaIdx = Math.max(
+    ...sseEvents
+      .map((e, i) => (e.event === 'message.delta' ? i : -1))
+      .filter((i) => i >= 0),
+  )
+  const completedIdx = eventTypes.indexOf('message.completed')
+  expect(completedIdx).toBeGreaterThan(lastDeltaIdx)
 
   // Must have usage.updated
   expect(eventTypes).toContain('usage.updated')
@@ -322,13 +337,12 @@ test('successful agent run with SSE streaming', async ({ page }) => {
     return d.data?.delta ?? ''
   })
 
-  // Verify we received deltas (may miss early ones due to connection timing)
+  // Verify we received all deltas
   expect(deltaTexts.length).toBeGreaterThanOrEqual(1)
 
-  // Verify final text from deltas (may be partial if early deltas were missed,
-  // but the text should be a suffix of the expected final text)
+  // Verify final text from deltas
   const fullText = deltaTexts.join('')
-  expect(EXPECTED_FINAL_TEXT).toContain(fullText)
+  expect(fullText).toBe(EXPECTED_FINAL_TEXT)
 
   // ── Step 9: Verify sequence monotonicity ──
   const sequences = sseEvents.map((e) => e.id).filter((id) => id > 0)
@@ -428,81 +442,70 @@ test('cancel agent run', async ({ page }) => {
     method: 'POST',
   })
 
-  // Accept 200 (cancel succeeded) or check error
-  if (cancelResp.status !== 200) {
-    const errorBody = await cancelResp.text()
-    // If the run already completed (race), accept it
-    const finalCheck = await fetch(`${API_BASE}/agent/runs/${runId}`)
-    const finalData = await finalCheck.json()
-    if (finalData.data?.status === 'COMPLETED' || finalData.data?.status === 'CANCELLED') {
-      // Run already reached terminal state — acceptable
-      console.log(`Run already ${finalData.data?.status}, cancel returned ${cancelResp.status}: ${errorBody}`)
-    } else {
-      throw new Error(
-        `Cancel returned ${cancelResp.status}: ${errorBody}. Status: ${finalData.data?.status}`,
-      )
-    }
-  } else {
-    const cancelData = await cancelResp.json()
-    expect(cancelData.data.cancelRequested).toBe(true)
+  // Phase 1F-Release Fix 4: Cancel MUST return 200.
+  // No TransitionError races.  If already terminal (race with worker),
+  // alreadyTerminal=true is returned.
+  expect(cancelResp.status).toBe(200)
 
-    // ── Step 4: Wait for terminal state ──
-    await page.waitForTimeout(3000)
+  const cancelData = await cancelResp.json()
+  expect(cancelData.data.cancelRequested).toBe(true)
 
-    // ── Step 5: Verify final status ──
-    const finalResp = await fetch(`${API_BASE}/agent/runs/${runId}`)
-    const finalData = await finalResp.json()
-    const finalStatus = finalData.data?.status
-    expect(finalStatus).toBe('CANCELLED')
+  // ── Step 4: Wait for terminal state ──
+  await page.waitForTimeout(3000)
 
-    // ── Step 6: Verify SSE events for cancel ──
-    const sseResponse = await fetch(`${API_BASE}/agent/runs/${runId}/events`, {
-      headers: { Accept: 'text/event-stream' },
-    })
+  // ── Step 5: Verify final status ──
+  const finalResp = await fetch(`${API_BASE}/agent/runs/${runId}`)
+  const finalData = await finalResp.json()
+  const finalStatus = finalData.data?.status
+  expect(finalStatus).toBe('CANCELLED')
 
-    const reader = sseResponse.body?.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    const cancelEvents: Array<{ event: string }> = []
+  // ── Step 6: Verify SSE events for cancel ──
+  const sseResponse = await fetch(`${API_BASE}/agent/runs/${runId}/events`, {
+    headers: { Accept: 'text/event-stream' },
+  })
 
-    const timeout = setTimeout(() => { reader?.cancel() }, 5000)
+  const reader = sseResponse.body?.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const cancelEvents: Array<{ event: string }> = []
 
-    while (reader) {
-      const result = await reader.read()
-      if (result.done) break
+  const timeout = setTimeout(() => { reader?.cancel() }, 5000)
 
-      buffer += decoder.decode(result.value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
+  while (reader) {
+    const result = await reader.read()
+    if (result.done) break
 
-      let currentEvent = ''
+    buffer += decoder.decode(result.value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
 
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7)
-        } else if (line === '' && currentEvent) {
-          cancelEvents.push({ event: currentEvent })
-          currentEvent = ''
-        }
+    let currentEvent = ''
+
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7)
+      } else if (line === '' && currentEvent) {
+        cancelEvents.push({ event: currentEvent })
+        currentEvent = ''
       }
     }
-
-    clearTimeout(timeout)
-
-    const cancelEventTypes = cancelEvents.map((e) => e.event)
-
-    // Must have run.cancelling
-    expect(cancelEventTypes).toContain('run.cancelling')
-
-    // Must have run.cancelled
-    expect(cancelEventTypes).toContain('run.cancelled')
-
-    // Terminal event count = 1
-    const terminalEvents = cancelEvents.filter((e) =>
-      ['run.completed', 'run.cancelled', 'run.failed'].includes(e.event),
-    )
-    expect(terminalEvents.length).toBe(1)
   }
+
+  clearTimeout(timeout)
+
+  const cancelEventTypes = cancelEvents.map((e) => e.event)
+
+  // Must have run.cancelling
+  expect(cancelEventTypes).toContain('run.cancelling')
+
+  // Must have run.cancelled
+  expect(cancelEventTypes).toContain('run.cancelled')
+
+  // Terminal event count = 1
+  const terminalEvents = cancelEvents.filter((e) =>
+    ['run.completed', 'run.cancelled', 'run.failed'].includes(e.event),
+  )
+  expect(terminalEvents.length).toBe(1)
 
   // ── Step 7: Verify session messages didn't double-write ──
   const messagesAfter = await getMessageCount(API_BASE, CANCEL_SESSION)
