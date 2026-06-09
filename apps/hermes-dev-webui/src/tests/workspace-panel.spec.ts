@@ -43,8 +43,15 @@ describe('WorkspacePanel', () => {
       text.includes('Agent') ||
       text.includes('Retry')
     ).toBe(true)
-    // Should NOT show old mock content
-    expect(wrapper.text()).not.toContain('Preview')
+    // Phase 1E: safe preview sub-tabs are present
+    expect(text).toContain('Prompt Preview')
+    expect(text).toContain('Run Dry-Run')
+    // Must NOT contain real execution action buttons
+    expect(text).not.toContain('Run Agent')
+    expect(text).not.toContain('Send to Model')
+    expect(text).not.toContain('Execute Agent')
+    expect(text).not.toContain('Start Stream')
+    expect(text).not.toContain('Call Model')
   })
 
   it('shows a static file tree disclaimer', async () => {

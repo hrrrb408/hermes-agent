@@ -667,14 +667,17 @@ class TestReadOnlyGuarantees:
 
 class TestRouteBoundary:
     def test_total_business_routes(self, memory_client):
-        """Verify runtime OpenAPI has exactly 21 business paths."""
+        """Verify runtime OpenAPI has exactly 23 business paths."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 21
+        assert len(paths) == 23
+        # Phase 1E: verify new agent preview routes exist
+        assert "/api/dev/v1/agent/prompt/preview" in paths
+        assert "/api/dev/v1/agent/run/dry-run" in paths
 
     def test_no_real_write_memory_routes(self, memory_client):
         """Verify no real (non-dry-run) memory write routes exist."""
@@ -700,15 +703,44 @@ class TestRouteBoundary:
                 )
 
     def test_no_agent_write_routes(self, memory_client):
-        """Verify no agent write routes exist."""
+        """Verify no real agent execution routes exist (only safe preview routes)."""
+        allowed_agent_post_routes = {
+            "/api/dev/v1/agent/prompt/preview",
+            "/api/dev/v1/agent/run/dry-run",
+        }
+        # Routes that must NOT exist at all (any method)
+        forbidden_agent_routes = {
+            "/api/dev/v1/agent/run",
+            "/api/dev/v1/agent/run/",
+            "/api/dev/v1/agent/stream",
+            "/api/dev/v1/agent/tools",
+        }
+        # Routes that exist as GET but must NOT have POST
+        no_post_routes = {
+            "/api/dev/v1/sessions/{sessionId}/messages",
+        }
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
+        # Verify safe preview routes exist
+        for route in allowed_agent_post_routes:
+            assert route in spec["paths"], f"Expected safe route {route} missing"
+        # Verify real execution routes do NOT exist at all
+        for route in forbidden_agent_routes:
+            assert route not in spec["paths"], (
+                f"Forbidden agent route {route} found"
+            )
+        # Verify read-only routes do NOT have POST method
+        for route in no_post_routes:
+            if route in spec["paths"]:
+                assert "post" not in spec["paths"][route], (
+                    f"POST method found on read-only route {route}"
+                )
+        # Verify all agent POST routes are in the allowed set
         for path, methods in spec["paths"].items():
-            if "/agent" in path:
-                for method in methods:
-                    if method.lower() == "post":
-                        assert "run" not in path
-                        assert "message" not in path
+            if "/agent" in path and "post" in methods:
+                assert path in allowed_agent_post_routes, (
+                    f"Agent POST route {path} not in allowed set"
+                )
 
     def test_post_routes_are_safe(self, memory_client):
         """Verify all POST routes are safe (dry-run, preview, or execute with confirmation)."""
@@ -718,9 +750,12 @@ class TestRouteBoundary:
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        # 8 POST routes: context/preview, 2 review dry-runs, 2 review executes,
-        # 3 memory writer dry-runs
-        assert len(post_routes) == 8
+        # 10 POST routes: context/preview, 2 review dry-runs, 2 review executes,
+        # 3 memory writer dry-runs, agent prompt preview, agent run dry-run
+        assert len(post_routes) == 10
+        # Verify Phase 1E new safe POST routes
+        assert "/api/dev/v1/agent/prompt/preview" in post_routes
+        assert "/api/dev/v1/agent/run/dry-run" in post_routes
         for route in post_routes:
             assert any(kw in route for kw in ("preview", "dry-run", "execute")), (
                 f"POST route {route} is not a safe preview/dry-run/execute route"
