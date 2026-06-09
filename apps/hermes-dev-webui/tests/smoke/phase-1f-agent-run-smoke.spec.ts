@@ -109,7 +109,7 @@ function trackRequests(page: Page): {
     }
   })
 
-  return { requests, externalRequests }
+  return { externalRequests }
 }
 
 // ─── Helper: navigate to Agent Live Run tab ──────────────────────────────
