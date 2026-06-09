@@ -81,6 +81,13 @@ from hermes_cli.dev_web_errors import (
     AGENT_MEMORY_CONTEXT_UNAVAILABLE,
     AGENT_CONFIG_UNAVAILABLE,
     AGENT_PROMPT_ASSEMBLY_ERROR,
+    AGENT_RUN_DISABLED,
+    INVALID_AGENT_RUN_REQUEST,
+    AGENT_SESSION_BUSY,
+    AGENT_RUN_CAPACITY_REACHED,
+    AGENT_RUN_NOT_FOUND,
+    AGENT_RATE_LIMITED,
+    AGENT_RUN_FAILED,
 )
 from hermes_cli.dev_web_middleware import RequestIdMiddleware
 from hermes_cli.dev_web_schemas import _utc_now_iso
@@ -1520,6 +1527,9 @@ def _register_routes(
     # ── Phase 1E: Agent Prompt Preview & Run Dry-Run ──
     _register_preview_routes(app, config, preview_service)
 
+    # ── Phase 1F: Agent Run (Dev-Only, SSE) ──
+    _register_agent_run_routes(app, config)
+
 
 def _register_writer_routes(
     app: FastAPI,
@@ -2209,3 +2219,334 @@ def _register_preview_routes(
             "data": result,
             "meta": {"requestId": rid, "timestamp": ts},
         }
+
+
+def _register_agent_run_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+) -> None:
+    """Register Phase 1F Agent Run routes (dev-only, SSE streaming).
+
+    Routes:
+        POST   /api/dev/v1/agent/runs                     Create Run
+        GET    /api/dev/v1/agent/runs/{runId}             Run Status
+        GET    /api/dev/v1/agent/runs/{runId}/events      SSE Stream
+        POST   /api/dev/v1/agent/runs/{runId}/cancel      Cancel Run
+    """
+
+    prefix = config.api_prefix
+
+    # ── POST /agent/runs ──
+
+    @app.post(
+        f"{prefix}/agent/runs",
+        tags=["Agent"],
+        summary="Create agent run (dev-only, no tools, streaming only)",
+        status_code=202,
+    )
+    async def create_agent_run(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> JSONResponse:
+        rid = getattr(request.state, "request_id", "")
+
+        if config.hermes_home is None:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message="Agent Run is unavailable (no HERMES_HOME).",
+                request_id=rid,
+            )
+
+        from hermes_cli.dev_web_agent_run_service import (
+            AgentRunService,
+            AgentRunDisabledError,
+            InvalidRequestError as RunInvalidRequestError,
+            InvalidConfirmError,
+            MissingDryRunError as RunMissingDryRunError,
+            InvalidEffectsError,
+            SessionNotFoundError as RunSessionNotFoundError,
+            SessionBusyError as RunSessionBusyError,
+            CapacityError,
+            RateLimitedError,
+            AgentRunError,
+        )
+
+        service = AgentRunService(
+            hermes_home=config.hermes_home,
+            source_root=Path(__file__).resolve().parents[1],
+        )
+
+        try:
+            result = service.create_run(body, rid)
+        except AgentRunDisabledError:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message=(
+                    "Agent Run is disabled. "
+                    "Enable with HERMES_AGENT_RUN_ENABLED=true."
+                ),
+                request_id=rid,
+            )
+        except InvalidConfirmError:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_CONFIRMATION,
+                message="confirmationText must be 'RUN'.",
+                request_id=rid,
+            )
+        except RunMissingDryRunError:
+            return _make_error_json(
+                status_code=400,
+                code=MISSING_DRY_RUN,
+                message="dryRunPreviewed must be true.",
+                request_id=rid,
+            )
+        except InvalidEffectsError:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_ACKNOWLEDGED_EFFECTS,
+                message="acknowledgedEffects must be exactly ['CALL_LLM', 'WRITE_SESSION'].",
+                request_id=rid,
+            )
+        except RunInvalidRequestError as exc:
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_RUN_REQUEST,
+                message=str(exc),
+                request_id=rid,
+            )
+        except RunSessionNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=SESSION_NOT_FOUND,
+                message="Session was not found.",
+                request_id=rid,
+            )
+        except RunSessionBusyError:
+            return _make_error_json(
+                status_code=409,
+                code=AGENT_SESSION_BUSY,
+                message="Session already has an active run.",
+                request_id=rid,
+            )
+        except CapacityError:
+            return _make_error_json(
+                status_code=409,
+                code=AGENT_RUN_CAPACITY_REACHED,
+                message="Global active run limit reached.",
+                request_id=rid,
+            )
+        except RateLimitedError as exc:
+            resp = _make_error_json(
+                status_code=429,
+                code=AGENT_RATE_LIMITED,
+                message=str(exc),
+                request_id=rid,
+            )
+            if exc.retry_after:
+                resp.headers["Retry-After"] = str(int(exc.retry_after))
+            return resp
+        except AgentRunError:
+            return _make_error_json(
+                status_code=500,
+                code=AGENT_RUN_FAILED,
+                message="Agent run failed to start.",
+                request_id=rid,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=INTERNAL_ERROR,
+                message="An unexpected error occurred.",
+                request_id=rid,
+            )
+
+        return JSONResponse(content=result, status_code=202)
+
+    # ── GET /agent/runs/{runId} ──
+
+    @app.get(
+        f"{prefix}/agent/runs/{{runId}}",
+        tags=["Agent"],
+        summary="Get agent run status",
+    )
+    def get_agent_run_status(
+        request: Request,
+        runId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        from hermes_cli.dev_web_agent_run_service import (
+            AgentRunService,
+            AgentRunDisabledError,
+            RunNotFoundError as RunRunNotFoundError,
+        )
+        from hermes_cli.dev_web_agent_run_models import validate_run_id
+
+        if not validate_run_id(runId):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_RUN_REQUEST,
+                message="Invalid run ID format.",
+                request_id=rid,
+            )
+
+        if config.hermes_home is None:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message="Agent Run is unavailable.",
+                request_id=rid,
+            )
+
+        service = AgentRunService(
+            hermes_home=config.hermes_home,
+            source_root=Path(__file__).resolve().parents[1],
+        )
+
+        try:
+            return service.get_run_status(runId, rid)
+        except AgentRunDisabledError:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message="Agent Run is disabled.",
+                request_id=rid,
+            )
+        except RunRunNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=AGENT_RUN_NOT_FOUND,
+                message="Run not found.",
+                request_id=rid,
+            )
+
+    # ── GET /agent/runs/{runId}/events ──
+
+    @app.get(
+        f"{prefix}/agent/runs/{{runId}}/events",
+        tags=["Agent"],
+        summary="SSE stream for agent run events",
+    )
+    async def stream_agent_run_events(
+        request: Request,
+        runId: str,
+    ):
+        from starlette.responses import StreamingResponse
+        from hermes_cli.dev_web_agent_run_models import validate_run_id
+        from hermes_cli.dev_web_agent_run_registry import get_run_registry
+        from hermes_cli.dev_web_agent_run_sse import (
+            stream_run_events,
+            SSE_HEADERS,
+        )
+
+        rid = getattr(request.state, "request_id", "")
+
+        if not validate_run_id(runId):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_RUN_REQUEST,
+                message="Invalid run ID format.",
+                request_id=rid,
+            )
+
+        registry = get_run_registry()
+        if registry.try_get_run(runId) is None:
+            return _make_error_json(
+                status_code=404,
+                code=AGENT_RUN_NOT_FOUND,
+                message="Run not found.",
+                request_id=rid,
+            )
+
+        # Parse Last-Event-ID header
+        last_event_id = None
+        lei_header = request.headers.get("Last-Event-ID")
+        if lei_header:
+            try:
+                last_event_id = int(lei_header)
+            except ValueError:
+                return _make_error_json(
+                    status_code=400,
+                    code=INVALID_AGENT_RUN_REQUEST,
+                    message="Invalid Last-Event-ID header.",
+                    request_id=rid,
+                )
+
+        # Create disconnect event
+        disconnect_event = asyncio.Event()
+
+        async def event_generator():
+            try:
+                async for event_text in stream_run_events(
+                    runId, registry, last_event_id, disconnect_event,
+                ):
+                    yield event_text
+            except Exception:
+                yield ""
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
+        )
+
+    # ── POST /agent/runs/{runId}/cancel ──
+
+    @app.post(
+        f"{prefix}/agent/runs/{{runId}}/cancel",
+        tags=["Agent"],
+        summary="Cancel agent run (idempotent)",
+    )
+    async def cancel_agent_run(
+        request: Request,
+        runId: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        from hermes_cli.dev_web_agent_run_service import (
+            AgentRunService,
+            AgentRunDisabledError,
+            RunNotFoundError as RunRunNotFoundError,
+        )
+        from hermes_cli.dev_web_agent_run_models import validate_run_id
+
+        if not validate_run_id(runId):
+            return _make_error_json(
+                status_code=400,
+                code=INVALID_AGENT_RUN_REQUEST,
+                message="Invalid run ID format.",
+                request_id=rid,
+            )
+
+        if config.hermes_home is None:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message="Agent Run is unavailable.",
+                request_id=rid,
+            )
+
+        service = AgentRunService(
+            hermes_home=config.hermes_home,
+            source_root=Path(__file__).resolve().parents[1],
+        )
+
+        try:
+            return service.cancel_run(runId, rid)
+        except AgentRunDisabledError:
+            return _make_error_json(
+                status_code=503,
+                code=AGENT_RUN_DISABLED,
+                message="Agent Run is disabled.",
+                request_id=rid,
+            )
+        except RunRunNotFoundError:
+            return _make_error_json(
+                status_code=404,
+                code=AGENT_RUN_NOT_FOUND,
+                message="Run not found.",
+                request_id=rid,
+            )

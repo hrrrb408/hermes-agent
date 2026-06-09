@@ -1134,6 +1134,331 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /agent/runs:
+    post:
+      tags: [Agent]
+      summary: Create agent run (dev-only, no tools, streaming only)
+      operationId: createAgentRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionId
+                - message
+                - confirmationText
+                - dryRunPreviewed
+                - acknowledgedEffects
+                - options
+              properties:
+                sessionId:
+                  type: string
+                  description: Existing session ID
+                message:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                confirmationText:
+                  type: string
+                  enum: ["RUN"]
+                dryRunPreviewed:
+                  type: boolean
+                  enum: [true]
+                previewRequestId:
+                  type: string
+                  description: Optional Phase 1E preview request ID
+                acknowledgedEffects:
+                  type: array
+                  items:
+                    type: string
+                  description: Must be exactly ["CALL_LLM", "WRITE_SESSION"]
+                options:
+                  type: object
+                  required:
+                    - stream
+                    - tools
+                    - autoMemory
+                  properties:
+                    stream:
+                      type: boolean
+                      enum: [true]
+                    tools:
+                      type: boolean
+                      enum: [false]
+                    autoMemory:
+                      type: boolean
+                      enum: [false]
+                overrides:
+                  type: object
+                  properties:
+                    model:
+                      type: string
+                      nullable: true
+                    temperature:
+                      type: number
+                      nullable: true
+                      minimum: 0.0
+                      maximum: 2.0
+                    maxOutputTokens:
+                      type: integer
+                      nullable: true
+                      minimum: 1
+                      maximum: 4096
+              additionalProperties: false
+      responses:
+        "202":
+          description: Run created and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      runId:
+                        type: string
+                      sessionId:
+                        type: string
+                      status:
+                        type: string
+                        enum: [CREATED]
+                      streamUrl:
+                        type: string
+                      statusUrl:
+                        type: string
+                      cancelUrl:
+                        type: string
+                      model:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          provider:
+                            type: string
+                      capabilities:
+                        type: object
+                        properties:
+                          llmCall:
+                            type: boolean
+                          streaming:
+                            type: boolean
+                          tools:
+                            type: boolean
+                          autoMemory:
+                            type: boolean
+                          sessionWrite:
+                            type: boolean
+                          memoryWrite:
+                            type: boolean
+                          reviewQueue:
+                            type: boolean
+                      safety:
+                        type: object
+                        properties:
+                          devOnly:
+                            type: boolean
+                          killSwitchEnabled:
+                            type: boolean
+                          toolsDisabled:
+                            type: boolean
+                          autoMemoryDisabled:
+                            type: boolean
+                  meta:
+                    type: object
+                    properties:
+                      requestId:
+                        type: string
+                      timestamp:
+                        type: string
+        "400":
+          description: Invalid request
+        "404":
+          description: Session not found
+        "409":
+          description: Session busy or capacity reached
+        "429":
+          description: Rate limited
+        "503":
+          description: Agent Run disabled or environment unsafe
+
+  /agent/runs/{runId}:
+    get:
+      tags: [Agent]
+      summary: Get agent run status
+      operationId: getAgentRunStatus
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^run-[0-9a-f]{32}$"
+      responses:
+        "200":
+          description: Run status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      runId:
+                        type: string
+                      sessionId:
+                        type: string
+                      status:
+                        type: string
+                        enum: [CREATED, STARTING, RUNNING, CANCELLING, COMPLETED, CANCELLED, FAILED]
+                      createdAt:
+                        type: string
+                        format: date-time
+                      startedAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      completedAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      cancelRequested:
+                        type: boolean
+                      clientConnected:
+                        type: boolean
+                      model:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          provider:
+                            type: string
+                      usage:
+                        type: object
+                        nullable: true
+                        properties:
+                          inputTokens:
+                            type: integer
+                            nullable: true
+                          outputTokens:
+                            type: integer
+                            nullable: true
+                          totalTokens:
+                            type: integer
+                            nullable: true
+                          cachedTokens:
+                            type: integer
+                            nullable: true
+                          cost:
+                            type: number
+                            nullable: true
+                          costEstimated:
+                            type: boolean
+                      error:
+                        type: object
+                        nullable: true
+                        properties:
+                          code:
+                            type: string
+                          message:
+                            type: string
+                  meta:
+                    type: object
+                    properties:
+                      requestId:
+                        type: string
+                      timestamp:
+                        type: string
+        "400":
+          description: Invalid run ID
+        "404":
+          description: Run not found
+        "503":
+          description: Agent Run disabled
+
+  /agent/runs/{runId}/events:
+    get:
+      tags: [Agent]
+      summary: SSE stream for agent run events
+      operationId: streamAgentRunEvents
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^run-[0-9a-f]{32}$"
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: integer
+          description: Last event sequence ID for reconnection
+      responses:
+        "200":
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream
+        "400":
+          description: Invalid run ID or Last-Event-ID
+        "404":
+          description: Run not found
+        "410":
+          description: Event buffer expired
+
+  /agent/runs/{runId}/cancel:
+    post:
+      tags: [Agent]
+      summary: Cancel agent run (idempotent)
+      operationId: cancelAgentRun
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^run-[0-9a-f]{32}$"
+      responses:
+        "200":
+          description: Cancel acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      runId:
+                        type: string
+                      cancelRequested:
+                        type: boolean
+                      statusBefore:
+                        type: string
+                      statusAfter:
+                        type: string
+                      alreadyTerminal:
+                        type: boolean
+                  meta:
+                    type: object
+                    properties:
+                      requestId:
+                        type: string
+                      timestamp:
+                        type: string
+        "400":
+          description: Invalid run ID
+        "404":
+          description: Run not found
+        "503":
+          description: Agent Run disabled
+
 components:
   schemas:
     # ── Common ──

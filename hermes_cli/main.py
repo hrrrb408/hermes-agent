@@ -7093,6 +7093,10 @@ def _webui_check_openapi(
         "/agent/status": {"get"},
         "/agent/prompt/preview": {"post"},
         "/agent/run/dry-run": {"post"},
+        "/agent/runs": {"post"},
+        "/agent/runs/{runId}": {"get"},
+        "/agent/runs/{runId}/events": {"get"},
+        "/agent/runs/{runId}/cancel": {"post"},
         "/reviews/status": {"get"},
         "/reviews": {"get"},
         "/reviews/{reviewId}": {"get"},
@@ -7113,6 +7117,7 @@ def _webui_check_openapi(
     # Forbidden exact paths (not substring match)
     FORBIDDEN_EXACT_PATHS = (
         "/agent/run",
+        "/agent/stream",
     )
 
     # Forbidden POST/PATCH/DELETE on reviews (GET is allowed above)
@@ -7120,7 +7125,7 @@ def _webui_check_openapi(
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 23 else "FAIL",
+        "PASS" if path_count == 27 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7176,6 +7181,48 @@ def _webui_check_openapi(
         "PASS" if not forbidden_found else "FAIL",
         "Forbidden routes",
         "absent" if not forbidden_found else f"found: {', '.join(forbidden_found)}",
+    )
+
+    # Phase 1F: Agent Run specific checks
+    agent_run_routes = {
+        "/agent/runs": {"post"},
+        "/agent/runs/{runId}": {"get"},
+        "/agent/runs/{runId}/events": {"get"},
+        "/agent/runs/{runId}/cancel": {"post"},
+    }
+    agent_run_present = all(
+        route in paths and agent_run_routes[route].issubset(set(paths[route].keys()))
+        for route in agent_run_routes
+    )
+    add_fn(
+        "PASS" if agent_run_present else "FAIL",
+        "Agent run routes",
+        "4" if agent_run_present else "missing agent run routes",
+    )
+
+    # Kill switch default = disabled
+    kill_switch_default = os.environ.get("HERMES_AGENT_RUN_ENABLED", "").strip().lower() in ("", "false", "0", "no", "off")
+    add_fn(
+        "PASS" if kill_switch_default else "WARN",
+        "Agent run kill switch",
+        "default disabled" if kill_switch_default else "enabled (development only)",
+    )
+
+    # Legacy agent routes must not exist
+    legacy_agent_routes = ["/agent/run", "/agent/stream"]
+    legacy_found = [r for r in legacy_agent_routes if r in paths]
+    add_fn(
+        "PASS" if not legacy_found else "FAIL",
+        "Legacy agent routes",
+        "absent" if not legacy_found else f"found: {', '.join(legacy_found)}",
+    )
+
+    # Agent tool routes must not exist
+    tool_routes = [p for p in paths if p.startswith("/agent/tools") or p.startswith("/tools")]
+    add_fn(
+        "PASS" if not tool_routes else "FAIL",
+        "Agent tool execution",
+        "absent" if not tool_routes else f"found: {', '.join(tool_routes)}",
     )
 
 
