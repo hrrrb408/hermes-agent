@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from hermes_cli.dev_web_agent_run_config import AGENT_RUN_CONFIG
+from dataclasses import dataclass
+
 from hermes_cli.dev_web_agent_run_models import (
     TERMINAL_EVENT_TYPES,
     TERMINAL_STATES,
@@ -67,6 +69,26 @@ class EventBufferExpiredError(RunRegistryError):
 
 class InvalidLastEventIdError(RunRegistryError):
     """Last-Event-ID is invalid or ahead of current sequence."""
+
+
+@dataclass
+class CancelDecision:
+    """Result of an atomic cancel request.
+
+    Produced by AgentRunRegistry.request_cancel() inside a single lock
+    acquisition.  The caller (Service) uses this to decide what to do
+    *without* touching Registry state again.
+    """
+
+    run_id: str
+    status_before: RunStatus
+    status_after: RunStatus
+    cancel_requested: bool
+    already_requested: bool
+    already_terminal: bool
+    emit_cancelling_event: bool
+    agent_reference: Any
+    future_reference: Any
 
 
 class AgentRunRegistry:
@@ -326,6 +348,95 @@ class AgentRunRegistry:
                     record.status = RunStatus.CANCELLING
             # If already CANCELLING, terminal, or EXPIRED → no-op
             return record
+
+    def request_cancel(self, run_id: str) -> CancelDecision:
+        """Atomic cancel decision — read state, decide, and update in one lock.
+
+        This is the ONLY method the Service cancel handler should call for
+        state transitions.  It guarantees that no TransitionError leaks to
+        the caller regardless of concurrent Worker state changes.
+
+        Returns:
+            CancelDecision with all information the Service needs.
+
+        Raises:
+            RunNotFoundError: Run does not exist.
+        """
+        with self._lock:
+            record = self._get_locked(run_id)
+            status_before = record.status
+
+            # 1. Already terminal → idempotent return
+            if status_before in TERMINAL_STATES:
+                return CancelDecision(
+                    run_id=run_id,
+                    status_before=status_before,
+                    status_after=status_before,
+                    cancel_requested=record.cancel_requested,
+                    already_requested=record.cancel_requested,
+                    already_terminal=True,
+                    emit_cancelling_event=False,
+                    agent_reference=record.agent_reference,
+                    future_reference=record.future,
+                )
+
+            # 2. Already CANCELLING → idempotent return
+            if status_before == RunStatus.CANCELLING:
+                return CancelDecision(
+                    run_id=run_id,
+                    status_before=status_before,
+                    status_after=status_before,
+                    cancel_requested=True,
+                    already_requested=True,
+                    already_terminal=False,
+                    emit_cancelling_event=False,
+                    agent_reference=record.agent_reference,
+                    future_reference=record.future,
+                )
+
+            # 3. ACTIVE (CREATED / STARTING / RUNNING) — attempt cancel
+            record.cancel_requested = True
+            emit_cancelling = False
+
+            if status_before == RunStatus.CREATED:
+                # Cancel before worker started
+                record.status = RunStatus.CANCELLED
+                record.cancelled_at = _utc_now_iso()
+                self._release_terminal_locked(record)
+            elif is_transition_allowed(status_before, RunStatus.CANCELLING):
+                record.status = RunStatus.CANCELLING
+                emit_cancelling = True
+            # else: status changed between read and lock — treat as
+            # already-terminal check below
+
+            status_after = record.status
+
+            # If the transition didn't happen (unexpected state), check
+            # if it's now terminal from a concurrent worker
+            if status_after in TERMINAL_STATES:
+                return CancelDecision(
+                    run_id=run_id,
+                    status_before=status_before,
+                    status_after=status_after,
+                    cancel_requested=True,
+                    already_requested=False,
+                    already_terminal=True,
+                    emit_cancelling_event=False,
+                    agent_reference=record.agent_reference,
+                    future_reference=record.future,
+                )
+
+            return CancelDecision(
+                run_id=run_id,
+                status_before=status_before,
+                status_after=status_after,
+                cancel_requested=True,
+                already_requested=False,
+                already_terminal=False,
+                emit_cancelling_event=emit_cancelling,
+                agent_reference=record.agent_reference,
+                future_reference=record.future,
+            )
 
     # ── Connection management ──
 

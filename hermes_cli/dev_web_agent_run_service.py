@@ -312,6 +312,9 @@ class AgentRunService:
         - Repeated cancel: no-op (already CANCELLING)
         - Terminal cancel: returns alreadyTerminal=true
 
+        Race-safe: all state decisions are atomic via Registry.request_cancel().
+        No TransitionError ever leaks to the caller.
+
         Returns:
             API response dict with cancel status.
         """
@@ -321,44 +324,50 @@ class AgentRunService:
         from hermes_cli.dev_web_agent_run_registry import (
             RunNotFoundError as RegistryRunNotFoundError,
         )
+
+        # Atomic cancel decision — all state read/write in one lock
         try:
-            record = self._registry.get_run(run_id)
+            decision = self._registry.request_cancel(run_id)
         except RegistryRunNotFoundError:
             raise RunNotFoundError(f"Run {run_id} not found.")
 
-        # Terminal state
-        if record.is_terminal():
+        # Build base response from the atomic decision
+        status_before = decision.status_before.value
+        status_after = decision.status_after.value
+
+        # Already terminal — nothing more to do
+        if decision.already_terminal:
             return {
                 "data": {
                     "runId": run_id,
-                    "cancelRequested": record.cancel_requested,
-                    "statusBefore": record.status.value,
-                    "statusAfter": record.status.value,
+                    "cancelRequested": decision.cancel_requested,
+                    "statusBefore": status_before,
+                    "statusAfter": status_after,
                     "alreadyTerminal": True,
                 },
                 "meta": {"requestId": request_id, "timestamp": _utc_now_iso()},
             }
 
-        # Already cancelling
-        if record.status == RunStatus.CANCELLING:
+        # Already cancelling — no duplicate event, no duplicate interrupt
+        if decision.already_requested:
             return {
                 "data": {
                     "runId": run_id,
                     "cancelRequested": True,
-                    "statusBefore": record.status.value,
+                    "statusBefore": status_before,
                     "statusAfter": RunStatus.CANCELLING.value,
                     "alreadyTerminal": False,
+                    "alreadyRequested": True,
                 },
                 "meta": {"requestId": request_id, "timestamp": _utc_now_iso()},
             }
 
-        # Active cancel
-        status_before = record.status.value
-        self._registry.append_event(run_id, RunEventType.RUN_CANCELLING, {})
-        updated = self._registry.mark_cancelling(run_id)
+        # Active cancel — emit event and interrupt agent
+        if decision.emit_cancelling_event:
+            self._registry.append_event(run_id, RunEventType.RUN_CANCELLING, {})
 
-        # Call interrupt on agent
-        agent_ref = updated.agent_reference
+        # Call interrupt on agent (best-effort, outside lock)
+        agent_ref = decision.agent_reference
         if agent_ref is not None:
             try:
                 agent_ref.interrupt()
@@ -366,34 +375,67 @@ class AgentRunService:
                 logger.debug("Agent interrupt failed for run %s: %s", run_id, exc)
 
         # Wait for worker with timeout
-        future = updated.future
+        future = decision.future_reference
         if future is not None:
             try:
                 future.result(timeout=self._config.cancel_wait_timeout)
-                # Worker finished — transition to CANCELLED
-                self._registry.cancel_run_completed(run_id)
-                self._registry.append_event(run_id, RunEventType.RUN_CANCELLED, {})
-                self._audit.record_cancelled(run_id=run_id)
+                # Worker finished — may have already emitted terminal event
+                # (e.g. if cancel was detected in complete_run)
+                try:
+                    final_record = self._registry.get_run(run_id)
+                    if not final_record.terminal_event_emitted:
+                        # Worker finished without emitting terminal — do it now
+                        self._registry.cancel_run_completed(run_id)
+                        self._registry.append_event(
+                            run_id, RunEventType.RUN_CANCELLED, {},
+                        )
+                        self._audit.record_cancelled(run_id=run_id)
+                    else:
+                        # Worker already emitted terminal event
+                        # Ensure audit records it
+                        if final_record.status == RunStatus.CANCELLED:
+                            self._audit.record_cancelled(run_id=run_id)
+                except Exception:
+                    pass
             except Exception:
                 # Timeout — worker still running
                 logger.warning(
                     "Cancel timeout for run %s — worker may still be running",
                     run_id
                 )
-                self._registry.mark_cancel_timeout(run_id)
-                self._registry.append_event(run_id, RunEventType.RUN_FAILED, {
-                    "errorCode": "AGENT_CANCEL_TIMEOUT",
-                })
-                self._audit.record_failed(
-                    run_id=run_id, error_code="AGENT_CANCEL_TIMEOUT"
-                )
+                try:
+                    self._registry.mark_cancel_timeout(run_id)
+                except Exception:
+                    # Worker may have completed between our decision and now;
+                    # re-read state and handle gracefully
+                    logger.debug(
+                        "mark_cancel_timeout failed for run %s — "
+                        "likely already terminal",
+                        run_id,
+                    )
+                    # Ensure terminal event is present
+                    self._ensure_terminal_event(run_id)
+                else:
+                    self._registry.append_event(run_id, RunEventType.RUN_FAILED, {
+                        "errorCode": "AGENT_CANCEL_TIMEOUT",
+                    })
+                    self._audit.record_failed(
+                        run_id=run_id, error_code="AGENT_CANCEL_TIMEOUT"
+                    )
+
+        # Get final status for response
+        try:
+            final_record = self._registry.get_run(run_id)
+            status_after = final_record.status.value
+        except Exception:
+            pass
 
         return {
             "data": {
                 "runId": run_id,
                 "cancelRequested": True,
                 "statusBefore": status_before,
-                "statusAfter": self._registry.get_run(run_id).status.value,
+                "statusAfter": status_after,
                 "alreadyTerminal": False,
             },
             "meta": {"requestId": request_id, "timestamp": _utc_now_iso()},
@@ -465,18 +507,30 @@ class AgentRunService:
             self._registry.append_event(run_id, RunEventType.USAGE_UPDATED, {
                 "usage": usage.to_api_dict(),
             })
-            self._registry.complete_run(run_id, usage=usage)
-            self._registry.append_event(run_id, RunEventType.RUN_COMPLETED, {})
+            completed_record = self._registry.complete_run(run_id, usage=usage)
 
-            # Audit
-            duration_ms = int((time.monotonic() - start_time) * 1000)
-            self._audit.record_completed(
-                run_id=run_id,
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
-                total_tokens=usage.total_tokens,
-                duration_ms=duration_ms,
-            )
+            # Emit correct terminal event based on actual status.
+            # complete_run() may transition to CANCELLED if cancel was requested.
+            if completed_record.status == RunStatus.CANCELLED:
+                self._registry.append_event(
+                    run_id, RunEventType.RUN_CANCELLED, {},
+                )
+                # Audit as cancelled
+                duration_ms = int((time.monotonic() - start_time) * 1000)
+                self._audit.record_cancelled(run_id=run_id)
+            else:
+                self._registry.append_event(
+                    run_id, RunEventType.RUN_COMPLETED, {},
+                )
+                # Audit
+                duration_ms = int((time.monotonic() - start_time) * 1000)
+                self._audit.record_completed(
+                    run_id=run_id,
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                    total_tokens=usage.total_tokens,
+                    duration_ms=duration_ms,
+                )
 
         except ToolCallForbiddenError:
             logger.error("Unexpected tool call in run %s — terminating", run_id)
