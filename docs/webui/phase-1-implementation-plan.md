@@ -932,3 +932,16 @@ The next subphase is **Phase 1E** (Agent Prompt Preview / Dry-Run Implementation
 - See `docs/webui/phase-1f-agent-run-sse.md` for full details
 
 The next subphase is **Phase 1G** (Tool Execution Safety Framework).
+
+**Phase 1F-Release Fix 4 is completed.** Cancel Transition Race is fixed, SSE lifecycle events are complete, and browser smoke enforces HTTP and event contracts.
+- Root cause: cancel handler used multiple separate lock acquisitions; Worker could complete between them
+- Fix: atomic `request_cancel()` in Registry — single lock for all state decisions
+- Worker terminal event: now emits RUN_CANCELLED when complete_run detects cancel priority
+- SSE first-connection replay: all buffered events from sequence 0 (ensures run.created / run.started)
+- Cancel API: never returns 500 for normal races; idempotent for all states
+- 8 new cancel race tests, 5 new SSE lifecycle tests
+- 630 backend tests, 355 frontend tests, 24 default smoke, 5 enabled smoke
+- See `docs/webui/phase-1f-agent-run-sse.md` Section 22 for full details
+
+Phase 1F-Release: Pending final re-verification and push preparation.
+Phase 1G is NOT started.
