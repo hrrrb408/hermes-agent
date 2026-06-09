@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00 Completed; 1F through 1G Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00 Completed; 1G Implementation Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -685,12 +685,93 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ---
 
+## Phase 1G-00: Tool Execution Safety Framework — Scope & Contract Freeze — Completed ✅
+
+**Status:** Completed
+**Date:** 2026-06-10
+**Priority:** P1 (High risk, tool execution)
+**Dependencies:** Phase 1F completed and pushed
+
+### Deliverables
+
+- `docs/webui/phase-1g-00-tool-execution-safety-scope.md` — Complete scope freeze document with:
+  - Full Tool Registry audit (71 tools, 33 toolsets, ToolEntry fields, dispatch mechanism)
+  - Full Toolset audit (33 individual, 25 platform, composite toolsets)
+  - Agent Tool Loop call chain (registration, execution, schema construction)
+  - CLI/Gateway/Dev Web tool entry points (all confirmed disabled in WebUI)
+  - Complete Tool Inventory with per-tool risk classification (R0–R5)
+  - Permanent Denylist frozen (26 tools)
+  - Candidate Allowlist frozen (6 candidates, 0 enabled)
+  - Default-Deny Decision Chain frozen (20 steps)
+  - Kill Switch contract frozen (`HERMES_TOOL_EXECUTION_ENABLED`)
+  - Dev-only Environment Guard contract frozen
+  - Provider Tool Schema boundary frozen
+  - Tool Call Request/Response DTOs frozen
+  - Parameter Validation Framework frozen (global limits, prohibited patterns)
+  - File Path Security rules frozen (allowlist, limits)
+  - Network Tool Security rules frozen (default deny)
+  - Timeout model frozen (R0: 2s, R1: 5s, hard max: 30s)
+  - Cancel model frozen (propagation chain)
+  - Concurrency and Call Limits frozen (max 3 calls, global 1 concurrent)
+  - Dry-Run response DTO frozen
+  - Execute response DTO frozen
+  - Output Validation rules frozen (64 KiB serialized, 16 KiB agent, 8 KiB preview)
+  - Redaction rules frozen (paths, secrets)
+  - Error Model frozen (22 error codes with HTTP mapping)
+  - Audit Trail frozen (state.db table, lazy initialization)
+  - Session Persistence ownership frozen (Agent Runtime sole owner)
+  - Idempotency contract frozen
+  - Frontend Information Architecture frozen
+  - OpenAPI route roadmap frozen (4 read-only, 3 dry-run, 3 execute)
+  - dev-check roadmap frozen (11 new checks)
+  - Test matrix frozen (Kill Switch, Allowlist, Denylist, validation, timeout, cancel, output, audit, integration)
+  - Risk Register (P0: none, P1: 11 items, P2: 6 items)
+  - Sub-phase roadmap frozen (1G-01 through 1G-06)
+  - Side-effect validation (zero state modification)
+  - Acceptance criteria (65 items)
+
+### Acceptance
+
+- ✅ Git baseline verified (branch, HEAD, remote sync, clean worktree)
+- ✅ Phase 1F completion confirmed
+- ✅ Production Gateway unaffected (PID 1717 running)
+- ✅ Dev Gateway stopped, ports 5180/5181 free
+- ✅ Tool Registry fully audited (71 canonical names confirmed)
+- ✅ Toolsets fully audited (33 individual toolsets documented)
+- ✅ Agent Tool Loop fully audited
+- ✅ Per-tool risk classification completed (R0: 1, R1: 4, R2: 22, R3: 22, R4: 20, R5: 4)
+- ✅ Permanent Denylist frozen (26 tools)
+- ✅ Candidate Allowlist frozen (6 candidates, 0 enabled)
+- ✅ All safety contracts frozen
+- ✅ Sub-phase roadmap frozen (1G-01 through 1G-06)
+- ✅ No business code modified
+- ✅ No API modified (OpenAPI still 27 paths)
+- ✅ No Tool Execution implemented or enabled
+- ✅ No Provider Tool Schema sent
+- ✅ No Session, Memory, or Review modification
+- ✅ memory-check PASS
+- ✅ dev-check PASS (WARN for .claude/ only)
+- ✅ Production environment unaffected
+
+---
+
 ## Phase 1G: Tool Execution Safety Framework — Not Started
 
 **Status:** Not Started
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
-**Dependencies:** Phase 1F completed
+**Dependencies:** Phase 1G-00 completed
+
+### Sub-phase Roadmap
+
+| Phase | Name | Scope |
+|-------|------|-------|
+| 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data |
+| 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
+| 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
+| 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
 ### Goal
 
@@ -698,37 +779,38 @@ Establish tool execution safety framework with allowlist, validation, audit, and
 
 ### Modification Scope
 
-To be determined after full tool audit:
+As defined in `docs/webui/phase-1g-00-tool-execution-safety-scope.md`:
 
 | Task | Description |
 |------|-------------|
-| `tools/registry.py` audit | Document every tool's registered name |
-| `toolsets.py` audit | Document which toolset each tool belongs to |
-| Per-tool audit | Parameters, output format, side effects |
-| Prohibited list | Define permanently prohibited tools |
-| Allowlist | Define initial safe tool list |
-| Schema validation | Per-tool parameter validation |
-| Output redaction | Tool response sanitization |
-| Framework code | Allowlist enforcement, audit, kill switch |
-| Frontend tool UI | Tool execution display |
-| Test files | Per-allowed-tool integration tests |
+| Static Policy Module | `STATIC_DENYLIST` (26 tools), `STATIC_ALLOWLIST` (0–6 tools) |
+| Kill Switch | `HERMES_TOOL_EXECUTION_ENABLED` enforcement |
+| Parameter Validation | Global limits, per-tool schema validation |
+| Output Validation | Size limits, redaction, serialization |
+| Audit Trail | `tool_execution_audit` table in state.db |
+| Tool Policy API | Read-only catalog and policy endpoints |
+| Dry-Run API | Validate without dispatch |
+| Frontend Tool Panel | Policy status, schema preview, dry-run interface |
 
 ### Write Capability
 
 **Default: No.** Only explicitly allowlisted, audited tools may be experimentally enabled.
 
-### Permanently Prohibited Tools
+### Permanently Prohibited Tools (26)
 
-- `terminal`, `process` (shell/system execution)
-- `write_file`, `patch` (filesystem write)
-- `execute_code` (code execution)
-- `delegate_task` (subagent spawning)
-- `browser_*` (browser automation)
-- `computer_use` (desktop control)
-- `send_message` (messaging)
-- `cronjob` (cron management)
-- `skill_manage` (skill mutation)
-- `image_generate` (image generation)
+See `docs/webui/phase-1g-00-tool-execution-safety-scope.md` Section 8 for the complete Denylist.
+
+- Shell/Terminal: `terminal`, `process`
+- Code Execution: `execute_code`
+- Filesystem Write: `write_file`, `patch`, `memory`, `skill_manage`
+- Subagent: `delegate_task`
+- Browser: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_scroll`, `browser_back`, `browser_press`, `browser_get_images`, `browser_vision`, `browser_console`, `browser_cdp`, `browser_dialog`
+- Desktop: `computer_use`
+- Messaging: `send_message`
+- Cron: `cronjob`
+- Image Gen: `image_generate`
+- Admin: `discord_admin`
+- IoT Control: `ha_call_service`
 
 ### Non-Goals
 
@@ -738,7 +820,7 @@ To be determined after full tool audit:
 
 ### Acceptance Criteria
 
-1. Tool audit complete and documented
+1. Tool audit complete and documented ✅ (Phase 1G-00)
 2. Default deny enforced
 3. Allowlist is static
 4. Each allowed tool has schema validation, timeout, output redaction, audit
@@ -944,4 +1026,21 @@ The next subphase is **Phase 1G** (Tool Execution Safety Framework).
 - See `docs/webui/phase-1f-agent-run-sse.md` Section 22 for full details
 
 Phase 1F-Release: Pending final re-verification and push preparation.
-Phase 1G is NOT started.
+
+**Phase 1G-00 is completed.** Tool Execution Safety Framework scope, inventory, risk classification, permanent denylist, candidate allowlist, validation, audit and phased implementation contracts are frozen.
+- `docs/webui/phase-1g-00-tool-execution-safety-scope.md` — Complete scope freeze document
+- 71 tools audited with canonical names, risk classification (R0–R5), and side-effect analysis
+- 33 individual toolsets audited with full tool-to-toolset mapping
+- Permanent Denylist: 26 tools frozen across 11 categories
+- Candidate Allowlist: 6 tools identified, 0 enabled (Allowlist empty until Phase 1G-E)
+- Default-Deny Decision Chain: 20 steps, fail-closed at every stage
+- Kill Switch contract: `HERMES_TOOL_EXECUTION_ENABLED`, fail-closed semantics
+- Sub-phase roadmap: 1G-01 through 1G-06 (Inventory → Policy API → Schema Preview → Dry-Run → Fixture → Execute)
+- No business code modified, no API modified (OpenAPI still 27 paths)
+- No Tool Execution implemented or enabled
+- No Provider Tool Schema sent
+- Production Gateway unaffected
+- See `docs/webui/phase-1g-00-tool-execution-safety-scope.md` for full details
+
+The next subphase is **Phase 1G-01** (Tool Inventory and Static Policy Module).
+Phase 1G implementation has NOT started.
