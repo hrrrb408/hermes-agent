@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00 Completed; 1G Implementation Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02-00 Completed; 1G-02 Implementation Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -767,7 +767,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | Phase | Name | Scope |
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
-| 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel |
+| 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — Scope frozen (1G-02-00), Implementation not started |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
@@ -880,6 +880,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1D | Memory Writer dry-run | ✅ Completed | 1D-00 | No |
 | 1E | Agent prompt preview | ✅ Completed | 0E-Release | No |
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
+| 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
 | 1G | Tool execution framework | Not Started | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
@@ -908,7 +909,10 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │
 ├── 1E (agent preview)
 │   └── 1F (agent run)
-│       └── 1G (tool framework)
+│       └── 1G-00 (tool scope freeze)
+│           └── 1G-01 (static policy)
+│               └── 1G-02-00 (policy read-only scope freeze)
+│                   └── 1G-02 (policy read-only implementation)
 │
 └── 1-Release (push all)
 ```
@@ -1055,6 +1059,23 @@ Phase 1F-Release: Pending final re-verification and push preparation.
 
 The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 Phase 1G-02 has NOT started.
+
+**Phase 1G-02-00 is completed.** Tool Policy Read-Only API and Panel scope, contracts, DTO whitelist, frontend information architecture, route governance, testing strategy, and zero-side-effect boundary are frozen.
+- `docs/webui/phase-1g-02-00-tool-policy-read-only-scope.md` — Complete scope freeze document
+- 2 GET routes frozen: `/api/dev/v1/tools/policy`, `/api/dev/v1/tools/catalog`
+- OpenAPI strategy: 27 → 29 paths after implementation
+- DTO whitelist: 15 fields per catalog item, 30+ forbidden fields
+- Error model: 8 error codes with HTTP mapping
+- Frontend IA: Tools as first-level Workspace tab with Policy Overview + Catalog sub-tabs
+- Backend service: DevToolPolicyQueryService reading only from static immutable module
+- No Registry, Handler, Provider, SessionDB, filesystem, or network access
+- Safety flags: all 7 frozen as readOnly=true, sideEffects=false, executeAvailable=false
+- 51 acceptance criteria for Phase 1G-02 implementation
+- 3-commit implementation plan: Backend → Frontend → Docs
+- Future phase boundaries frozen: 1G-03 (Schema Preview), 1G-04 (Dry-Run), 1G-05+ (Audit/Execute)
+- No business code modified, no API modified (OpenAPI still 27 paths)
+- No Tool Execution implemented or enabled
+- See `docs/webui/phase-1g-02-00-tool-policy-read-only-scope.md` for full details
 
 **Phase 1G-00 Documentation Fix is completed.** Risk classification statistics corrected to use unique Primary Risk model.
 - Root cause 1: `session_search` classified as R2 in summary but R1 in Candidate Allowlist (it is local-only FTS5 → R1)
