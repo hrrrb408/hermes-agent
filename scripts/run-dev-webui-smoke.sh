@@ -237,13 +237,21 @@ if [ ! -d "$WEBUI_DIR/node_modules/@playwright/test" ]; then
 fi
 info "Playwright:   installed"
 
-# Smoke test file
+# Smoke test files
 SMOKE_SPEC="$WEBUI_DIR/tests/smoke/phase-0e-03-smoke.spec.ts"
+TOOL_POLICY_SMOKE_SPEC="$WEBUI_DIR/tests/smoke/phase-1g-tool-policy-smoke.spec.ts"
+
 if [ ! -f "$SMOKE_SPEC" ]; then
   error "Smoke test not found: $SMOKE_SPEC"
   exit 1
 fi
 info "Smoke spec:   $SMOKE_SPEC"
+
+if [ ! -f "$TOOL_POLICY_SMOKE_SPEC" ]; then
+  error "Tool Policy smoke test not found: $TOOL_POLICY_SMOKE_SPEC"
+  exit 1
+fi
+info "Tool Policy:  $TOOL_POLICY_SMOKE_SPEC"
 
 # ── 4. Start Dev API ─────────────────────────────────────────────────────
 section "Start Dev API"
@@ -335,28 +343,32 @@ if [ "$SKIP_SMOKE" = true ]; then
   info "Dev API:   http://${DEV_API_HOST}:${DEV_API_PORT}"
   info "WebUI:     http://${WEBUI_HOST}:${WEBUI_PORT}"
 else
-  section "Smoke Tests (Phase 0E-03 Matrix)"
+  section "Smoke Tests (Phase 0E-03 + Phase 1G-02E)"
 
   info "Running Playwright smoke matrix..."
   info "Config: $WEBUI_DIR/playwright.config.ts"
-  info "Spec:   $SMOKE_SPEC"
+  info "Specs:  $SMOKE_SPEC"
+  info "       $TOOL_POLICY_SMOKE_SPEC"
 
   # Use npx from the WebUI dir so Playwright finds browsers,
   # but pass --config with absolute path for repo-root portability.
+  # Run both smoke specs in sequence; capture overall exit code.
   if [ "$KEEP_RUNNING" = true ]; then
     # Keep services running — don't let trap cleanup run on normal exit
     (
       cd "$WEBUI_DIR"
       npx playwright test \
         --config "$WEBUI_DIR/playwright.config.ts" \
-        "$SMOKE_SPEC"
+        "$SMOKE_SPEC" \
+        "$TOOL_POLICY_SMOKE_SPEC"
     ) || SMOKE_EXIT_CODE=$?
   else
     (
       cd "$WEBUI_DIR"
       npx playwright test \
         --config "$WEBUI_DIR/playwright.config.ts" \
-        "$SMOKE_SPEC"
+        "$SMOKE_SPEC" \
+        "$TOOL_POLICY_SMOKE_SPEC"
     ) || SMOKE_EXIT_CODE=$?
   fi
 fi
