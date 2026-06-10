@@ -612,3 +612,17 @@ Phase 1G as a whole is NOT complete. Only Phase 1G-02 is complete.
 | `docs/webui/phase-1g-02-00-tool-policy-read-only-scope.md` | Added (1G-02-00) |
 | `docs/webui/phase-1g-02-tool-policy-read-only-panel.md` | Added (this document, 1G-02F) |
 | `docs/webui/phase-1-implementation-plan.md` | Modified |
+
+---
+
+## Phase 1G-02 Release Test Isolation Fix
+
+**Status:** Completed
+
+Two release-blocking items were fixed:
+
+1. **Browser Guard log**: XAI OAuth tests in `test_auth_manual_paste.py` triggered `webbrowser.get`/`webbrowser.open`. Fixed with autouse fixture mocking `_can_open_graphical_browser`. Browser Supervisor tests triggered `subprocess.Popen(google-chrome)`. Fixed by adding `HERMES_E2E_BROWSER=1` env var gate to `pytestmark`.
+
+2. **Stale route count assertions**: `test_dev_web_messages.py` and `test_dev_web_sessions.py` asserted `len(business) == 11` (actual: 29). Fixed with module-level route contract checks; central governance owns the exact 29-path count.
+
+See `docs/webui/phase-1g-02-release-test-isolation-fix.md` for full details.
