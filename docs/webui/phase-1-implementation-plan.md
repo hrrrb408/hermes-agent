@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02-00 Completed; 1G-02 Implementation Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-03 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -767,7 +767,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | Phase | Name | Scope |
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
-| 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — Scope frozen (1G-02-00), Implementation not started |
+| 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
@@ -881,6 +881,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1E | Agent prompt preview | ✅ Completed | 0E-Release | No |
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
+| 1G-02 | Tool Policy Read-Only API / Panel | ✅ Completed | 1G-02-00 | No |
 | 1G | Tool execution framework | Not Started | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
@@ -912,7 +913,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │       └── 1G-00 (tool scope freeze)
 │           └── 1G-01 (static policy)
 │               └── 1G-02-00 (policy read-only scope freeze)
-│                   └── 1G-02 (policy read-only implementation)
+│                   └── 1G-02 (policy read-only implementation) ✅
+│                       └── 1G-03 (schema preview)
 │
 └── 1-Release (push all)
 ```
@@ -1058,7 +1060,22 @@ Phase 1F-Release: Pending final re-verification and push preparation.
 - See `docs/webui/phase-1g-01-tool-inventory-static-policy.md` for full details
 
 The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
-Phase 1G-02 has NOT started.
+
+**Phase 1G-02 is completed.** Tool Policy Read-Only API, Frontend Data Layer, Workspace Panel, and Browser Integration are fully implemented.
+- 2 GET routes: `/api/dev/v1/tools/policy`, `/api/dev/v1/tools/catalog`
+- DevToolPolicyQueryService — pure computation, no I/O, no side effects
+- 6 commit chain: scope → service → api → frontend → panel → integration
+- OpenAPI 27 → 29 paths, Tool GET routes = 2, Tool write routes = 0
+- STATIC_ALLOWLIST remains empty, all tools `allowed=false`
+- Provider Tool Schema not sent, Tool Dispatch = 0, Tool Audit absent
+- Frontend safety invariants enforced in Pinia store
+- 617 backend tests, 506 frontend tests, 63 smoke tests — all passing
+- 5 themes × 4 viewports = 20 browser combinations verified
+- Zero side effects on formal dev-home
+- See `docs/webui/phase-1g-02-tool-policy-read-only-panel.md` for full details
+
+The next subphase is **Phase 1G-03** (Tool Schema Preview).
+Phase 1G-03 has NOT started.
 
 **Phase 1G-02-00 is completed.** Tool Policy Read-Only API and Panel scope, contracts, DTO whitelist, frontend information architecture, route governance, testing strategy, and zero-side-effect boundary are frozen.
 - `docs/webui/phase-1g-02-00-tool-policy-read-only-scope.md` — Complete scope freeze document
