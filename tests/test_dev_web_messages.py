@@ -1091,24 +1091,38 @@ class TestOpenAPIRouteBoundary:
         assert "delete" not in paths[msg_key]
 
     def test_no_forbidden_routes(self, client_with_db):
-        """Phase 0C-05: reviews, send, upload, delete routes are absent."""
+        """Verify truly dangerous routes (send, upload, delete) are absent.
+
+        Review dry-run/execute routes were added in Phase 1F and are
+        governed by the central route governance suite.  This test only
+        ensures that production-dangerous write endpoints never appear.
+        """
         resp = client_with_db.get("/openapi.json")
         spec = resp.json()
         paths = spec.get("paths", {})
         path_strs = " ".join(paths.keys()).lower()
-        assert "/reviews" not in path_strs
         assert "/send" not in path_strs
         assert "/upload" not in path_strs
         assert "/delete" not in path_strs
 
     def test_business_routes_count(self, client_with_db):
-        """Phase 0C-05: runtime should have exactly 11 business routes."""
+        """Verify module routes exist; central governance owns the total count.
+
+        The global business-route count is the single responsibility of the
+        central route-governance test suite (test_dev_web_0c06_closure.py).
+        This test only verifies that the messages module's own routes are
+        present and correctly shaped.
+        """
         resp = client_with_db.get("/openapi.json")
         spec = resp.json()
         paths = spec.get("paths", {})
         business = [p for p in paths if p.startswith("/api/dev/v1")]
-        assert len(business) == 11, (
-            f"Expected 11 business routes, got {len(business)}: {business}"
+        # Messages module must contribute at least its session-messages route
+        assert any("messages" in p for p in business), (
+            f"Messages route not found in business paths: {business}"
+        )
+        assert len(business) >= 11, (
+            f"Expected at least 11 business routes, got {len(business)}: {business}"
         )
 
 

@@ -998,11 +998,23 @@ class TestSessionOpenAPIRoutes:
         paths = resp.json()["paths"]
         assert "/api/dev/v1/context/preview" in paths
 
-    def test_openapi_has_eleven_business_paths(self, seeded_client):
+    def test_openapi_has_minimum_business_paths(self, seeded_client):
+        """Verify module routes exist; central governance owns the total count.
+
+        The global business-route count is the single responsibility of the
+        central route-governance test suite (test_dev_web_0c06_closure.py).
+        This test only verifies that the sessions module's own routes are
+        present and correctly shaped.
+        """
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
         business = [p for p in paths if p.startswith("/api/dev/v1")]
-        assert len(business) == 11
+        # Sessions module must contribute its core routes
+        assert "/api/dev/v1/sessions" in paths
+        assert "/api/dev/v1/sessions/{sessionId}" in paths
+        assert len(business) >= 11, (
+            f"Expected at least 11 business routes, got {len(business)}: {business}"
+        )
 
 
 # ── 16. SessionDB close read-only behavior ──
