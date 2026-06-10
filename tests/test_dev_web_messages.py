@@ -1106,24 +1106,30 @@ class TestOpenAPIRouteBoundary:
         assert "/delete" not in path_strs
 
     def test_business_routes_count(self, client_with_db):
-        """Verify module routes exist; central governance owns the total count.
+        """Verify messages module routes exist; central governance owns the total.
 
         The global business-route count is the single responsibility of the
         central route-governance test suite (test_dev_web_0c06_closure.py).
         This test only verifies that the messages module's own routes are
-        present and correctly shaped.
+        present, use the correct HTTP methods, and do not expose write methods.
         """
         resp = client_with_db.get("/openapi.json")
         spec = resp.json()
         paths = spec.get("paths", {})
-        business = [p for p in paths if p.startswith("/api/dev/v1")]
-        # Messages module must contribute at least its session-messages route
-        assert any("messages" in p for p in business), (
-            f"Messages route not found in business paths: {business}"
+
+        # Messages module must contribute its session-messages route
+        msg_route = "/api/dev/v1/sessions/{sessionId}/messages"
+        assert msg_route in paths, (
+            f"Messages route {msg_route!r} not found. Available: {sorted(paths)}"
         )
-        assert len(business) >= 11, (
-            f"Expected at least 11 business routes, got {len(business)}: {business}"
-        )
+
+        # Must be GET-only — no POST, PUT, PATCH, DELETE
+        methods = set(paths[msg_route].keys())
+        assert "get" in methods, f"GET method missing on {msg_route}: {methods}"
+        for forbidden in ("post", "put", "patch", "delete"):
+            assert forbidden not in methods, (
+                f"Forbidden {forbidden.upper()} on {msg_route}: {methods}"
+            )
 
 
 # ── Request ID ──

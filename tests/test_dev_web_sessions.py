@@ -999,22 +999,39 @@ class TestSessionOpenAPIRoutes:
         assert "/api/dev/v1/context/preview" in paths
 
     def test_openapi_has_minimum_business_paths(self, seeded_client):
-        """Verify module routes exist; central governance owns the total count.
+        """Verify sessions module routes exist; central governance owns the total.
 
         The global business-route count is the single responsibility of the
         central route-governance test suite (test_dev_web_0c06_closure.py).
         This test only verifies that the sessions module's own routes are
-        present and correctly shaped.
+        present, use the correct HTTP methods, and do not expose write methods.
         """
         resp = seeded_client.get("/openapi.json")
         paths = resp.json()["paths"]
-        business = [p for p in paths if p.startswith("/api/dev/v1")]
+
         # Sessions module must contribute its core routes
-        assert "/api/dev/v1/sessions" in paths
-        assert "/api/dev/v1/sessions/{sessionId}" in paths
-        assert len(business) >= 11, (
-            f"Expected at least 11 business routes, got {len(business)}: {business}"
+        assert "/api/dev/v1/sessions" in paths, (
+            f"Session list route not found. Available: {sorted(paths)}"
         )
+        assert "/api/dev/v1/sessions/{sessionId}" in paths, (
+            f"Session detail route not found. Available: {sorted(paths)}"
+        )
+
+        # Session list: GET only — no POST, PUT, PATCH, DELETE
+        list_methods = set(paths["/api/dev/v1/sessions"].keys())
+        assert "get" in list_methods, f"GET missing on session list: {list_methods}"
+        for forbidden in ("post", "put", "patch", "delete"):
+            assert forbidden not in list_methods, (
+                f"Forbidden {forbidden.upper()} on /api/dev/v1/sessions: {list_methods}"
+            )
+
+        # Session detail: GET only — no PUT, PATCH, DELETE
+        detail_methods = set(paths["/api/dev/v1/sessions/{sessionId}"].keys())
+        assert "get" in detail_methods, f"GET missing on session detail: {detail_methods}"
+        for forbidden in ("post", "put", "patch", "delete"):
+            assert forbidden not in detail_methods, (
+                f"Forbidden {forbidden.upper()} on session detail: {detail_methods}"
+            )
 
 
 # ── 16. SessionDB close read-only behavior ──
