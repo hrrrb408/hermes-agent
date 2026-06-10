@@ -755,9 +755,9 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ---
 
-## Phase 1G: Tool Execution Safety Framework — Not Started
+## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** Not Started
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -766,7 +766,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 | Phase | Name | Scope |
 |-------|------|-------|
-| 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data |
+| 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
@@ -1042,8 +1042,19 @@ Phase 1F-Release: Pending final re-verification and push preparation.
 - Production Gateway unaffected
 - See `docs/webui/phase-1g-00-tool-execution-safety-scope.md` for full details
 
-The next subphase is **Phase 1G-01** (Tool Inventory and Static Policy Module).
-Phase 1G implementation has NOT started.
+**Phase 1G-01 is completed.** Tool Inventory and Static Policy Module implemented as `hermes_cli/dev_web_tool_policy.py`.
+- 71 canonical tools classified with unique Primary Risk (R0=1, R1=5, R2=19, R3=26, R4=17, R5=3)
+- STATIC_DENYLIST: 26 permanently denied tools
+- CANDIDATE_ALLOWLIST: 6 candidate tools (1 R0 + 5 R1, not enabled)
+- STATIC_ALLOWLIST: empty frozenset — default deny enforced
+- Pure-static, immutable, zero-import-side-effect module
+- Schema safety validation, argument structure validation, policy completeness validation
+- 81 unit tests, all passing — registry equality verified via AST
+- No Tool API, Provider Schema, Tool Dispatch, or Tool Execution
+- See `docs/webui/phase-1g-01-tool-inventory-static-policy.md` for full details
+
+The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
+Phase 1G-02 has NOT started.
 
 **Phase 1G-00 Documentation Fix is completed.** Risk classification statistics corrected to use unique Primary Risk model.
 - Root cause 1: `session_search` classified as R2 in summary but R1 in Candidate Allowlist (it is local-only FTS5 → R1)
