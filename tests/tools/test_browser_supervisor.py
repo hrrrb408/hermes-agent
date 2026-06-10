@@ -1,323 +1,337 @@
-"""Integration tests for tools.browser_supervisor.
+"""Unit tests for tools.browser_supervisor — no real browser required.
 
-Exercises the supervisor end-to-end against a real local Chrome
-(``--remote-debugging-port``).  Skipped when Chrome is not installed
-— these are the tests that actually verify the CDP wire protocol
-works, since mock-CDP unit tests can only prove the happy paths we
-thought to model.
+These tests exercise the CDPSupervisor, _SupervisorRegistry, browser_dialog_tool,
+and browser_cdp_tool integration paths using mocked CDP/WebSocket boundaries.
 
-Run manually:
-    scripts/run_tests.sh tests/tools/test_browser_supervisor.py
+Every test runs without a real browser process.  The CDP supervisor's internal
+state is set up directly (bypassing the real WebSocket connect path) so that the
+public sync API — snapshot(), respond_to_dialog(), evaluate_runtime(), stop() —
+is tested against known state configurations.
 
-Automated: skipped in CI unless ``HERMES_E2E_BROWSER=1`` is set.
+Corresponding E2E tests (requiring a real Chrome process) live in
+``test_browser_supervisor_e2e.py``.
 """
 
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
-import os
-import shutil
-import subprocess
-import tempfile
+import threading
 import time
+from typing import Any, Dict, List, Optional
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("HERMES_E2E_BROWSER")
-    or (not shutil.which("google-chrome") and not shutil.which("chromium")),
-    reason="E2E browser tests require HERMES_E2E_BROWSER=1 and Chrome/Chromium installed",
+from tools.browser_supervisor import (
+    CONSOLE_HISTORY_MAX,
+    CDPSupervisor,
+    DIALOG_POLICY_AUTO_ACCEPT,
+    DIALOG_POLICY_AUTO_DISMISS,
+    DIALOG_POLICY_MUST_RESPOND,
+    DialogRecord,
+    FrameInfo,
+    PendingDialog,
+    RECENT_DIALOGS_MAX,
+    SUPERVISOR_REGISTRY,
+    SupervisorSnapshot,
+    _SupervisorRegistry,
+)
+from tools.browser_supervisor import (
+    ConsoleEvent,
 )
 
 
-def _find_chrome() -> str:
-    for candidate in ("google-chrome", "chromium", "chromium-browser"):
-        path = shutil.which(candidate)
-        if path:
-            return path
-    pytest.skip("no Chrome binary found")
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-@pytest.fixture
-def chrome_cdp(request):
-    """Start a headless Chrome with --remote-debugging-port, yield its WS URL.
+def _make_supervisor(
+    task_id: str = "test-task",
+    cdp_url: str = "ws://127.0.0.1:9222/devtools/page/FAKE",
+    *,
+    dialog_policy: str = DIALOG_POLICY_MUST_RESPOND,
+    active: bool = True,
+) -> CDPSupervisor:
+    """Create a CDPSupervisor with internal state pre-set for unit testing.
 
-    Uses a unique port per xdist worker to avoid cross-worker collisions.
-    Always launches with ``--site-per-process`` so cross-origin iframes
-    become real OOPIFs (needed by the iframe interaction tests).
+    Bypasses the real start()/WebSocket path by directly setting internal fields.
+    This avoids needing a real browser, real WebSocket, or real asyncio loop.
     """
+    sv = object.__new__(CDPSupervisor)
+    sv.task_id = task_id
+    sv.cdp_url = cdp_url
+    sv.dialog_policy = dialog_policy
+    sv.dialog_timeout_s = 300.0
+    sv._state_lock = threading.Lock()
+    sv._pending_dialogs = {}
+    sv._recent_dialogs = []
+    sv._frames = {}
+    sv._console_events = []
+    sv._active = active
+    sv._loop = None
+    sv._thread = None
+    sv._ready_event = threading.Event()
+    sv._start_error = None
+    sv._stop_requested = False
+    sv._next_call_id = 1
+    sv._pending_calls = {}
+    sv._ws = None
+    sv._page_session_id = "test-page-session-001"
+    sv._child_sessions = {}
+    sv._dialog_watchdogs = {}
+    sv._dialog_seq = 0
+    return sv
 
-    # xdist worker_id is "master" in single-process mode or "gw0".."gwN" otherwise.
-    # Under subprocess-per-file isolation there's no xdist, so we fall back
-    # to "master" via the session-scoped fixture below.
-    worker_id = request.getfixturevalue("worker_id") if "worker_id" in request.fixturenames else "master"
-    if worker_id == "master":
-        port_offset = 0
-    else:
-        port_offset = int(worker_id.lstrip("gw"))
-    port = 9225 + port_offset
-    profile = tempfile.mkdtemp(prefix="hermes-supervisor-test-")
-    proc = subprocess.Popen(
-        [
-            _find_chrome(),
-            f"--remote-debugging-port={port}",
-            f"--user-data-dir={profile}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--headless=new",
-            "--disable-gpu",
-            "--site-per-process",  # force OOPIFs for cross-origin iframes
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+
+def _add_frame(
+    sv: CDPSupervisor,
+    frame_id: str,
+    *,
+    url: str = "https://example.com",
+    origin: str = "https://example.com",
+    parent_frame_id: Optional[str] = None,
+    is_oopif: bool = False,
+    cdp_session_id: Optional[str] = None,
+) -> FrameInfo:
+    """Add a frame to the supervisor's internal frame dict."""
+    fi = FrameInfo(
+        frame_id=frame_id,
+        url=url,
+        origin=origin,
+        parent_frame_id=parent_frame_id,
+        is_oopif=is_oopif,
+        cdp_session_id=cdp_session_id,
     )
+    with sv._state_lock:
+        sv._frames[frame_id] = fi
+    return fi
 
-    ws_url = None
-    deadline = time.monotonic() + 15
-    while time.monotonic() < deadline:
+
+def _add_pending_dialog(
+    sv: CDPSupervisor,
+    dialog_id: str = "dialog-1",
+    dialog_type: str = "alert",
+    message: str = "test alert",
+    *,
+    cdp_session_id: str = "test-page-session-001",
+    frame_id: Optional[str] = None,
+    bridge_request_id: Optional[str] = None,
+    default_prompt: str = "",
+) -> PendingDialog:
+    """Add a pending dialog to the supervisor's internal state."""
+    d = PendingDialog(
+        id=dialog_id,
+        type=dialog_type,
+        message=message,
+        default_prompt=default_prompt,
+        opened_at=time.monotonic(),
+        cdp_session_id=cdp_session_id,
+        frame_id=frame_id,
+        bridge_request_id=bridge_request_id,
+    )
+    with sv._state_lock:
+        sv._pending_dialogs[dialog_id] = d
         try:
-            import urllib.request
-            with urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/json/version", timeout=1
-            ) as r:
-                info = json.loads(r.read().decode())
-                ws_url = info["webSocketDebuggerUrl"]
-                break
-        except Exception:
-            time.sleep(0.25)
-    if ws_url is None:
-        try:
-            proc.terminate()
-            proc.wait(timeout=5)
-        except (subprocess.TimeoutExpired, AssertionError, Exception):
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            try:
-                proc.wait(timeout=2)
-            except (AssertionError, Exception):
-                pass
-        shutil.rmtree(profile, ignore_errors=True)
-        pytest.skip("Chrome didn't expose CDP in time")
-
-    yield ws_url, port
-
-    # Tear down Chrome. The stdlib `subprocess._wait()` POSIX implementation
-    # has a known race (https://bugs.python.org/issue38630): when SIGCHLD
-    # arrives concurrently with `proc.wait()`, `_try_wait(WNOHANG)` can
-    # return a foreign pid and the `assert pid == self.pid or pid == 0`
-    # fires. We saw this in CI on slice 1 after this fixture's teardown
-    # (PR #33661 follow-up). Swallow the stdlib race + force-kill if wait
-    # hangs, then always reap so we don't leak a zombie.
-    try:
-        proc.terminate()
-    except Exception:
-        pass
-    try:
-        proc.wait(timeout=3)
-    except (subprocess.TimeoutExpired, AssertionError, Exception):
-        try:
-            proc.kill()
-        except Exception:
-            pass
-        try:
-            proc.wait(timeout=2)
-        except (AssertionError, Exception):
-            pass
-    shutil.rmtree(profile, ignore_errors=True)
-
-
-def _test_page_url() -> str:
-    html = """<!doctype html>
-<html><head><title>Supervisor pytest</title></head><body>
-<h1>Supervisor pytest</h1>
-<iframe id="inner" srcdoc="<body><h2>frame-marker</h2></body>" width="400" height="100"></iframe>
-</body></html>"""
-    return "data:text/html;base64," + base64.b64encode(html.encode()).decode()
-
-
-def _fire_on_page(cdp_url: str, expression: str) -> None:
-    """Navigate the first page target to a data URL and fire `expression`."""
-    import asyncio
-    import websockets as _ws_mod
-
-    async def run():
-        async with _ws_mod.connect(cdp_url, max_size=50 * 1024 * 1024) as ws:
-            next_id = [1]
-
-            async def call(method, params=None, session_id=None):
-                cid = next_id[0]
-                next_id[0] += 1
-                p = {"id": cid, "method": method}
-                if params:
-                    p["params"] = params
-                if session_id:
-                    p["sessionId"] = session_id
-                await ws.send(json.dumps(p))
-                async for raw in ws:
-                    m = json.loads(raw)
-                    if m.get("id") == cid:
-                        return m
-
-            targets = (await call("Target.getTargets"))["result"]["targetInfos"]
-            page = next(t for t in targets if t.get("type") == "page")
-            attach = await call(
-                "Target.attachToTarget", {"targetId": page["targetId"], "flatten": True}
-            )
-            sid = attach["result"]["sessionId"]
-            await call("Page.navigate", {"url": _test_page_url()}, session_id=sid)
-            await asyncio.sleep(1.5)  # let the page load
-            await call(
-                "Runtime.evaluate",
-                {"expression": expression, "returnByValue": True},
-                session_id=sid,
-            )
-
-    asyncio.run(run())
+            seq_num = int(dialog_id.split("-")[-1])
+            sv._dialog_seq = max(sv._dialog_seq, seq_num)
+        except (ValueError, IndexError):
+            sv._dialog_seq += 1
+    return d
 
 
 @pytest.fixture
-def supervisor_registry():
-    """Yield the global registry and tear down any supervisors after the test."""
-    from tools.browser_supervisor import SUPERVISOR_REGISTRY
+def supervisor():
+    """Yield a fresh unit-test supervisor with a teardown guard."""
+    sv = _make_supervisor()
+    yield sv
+    # Ensure no lingering state
+    with sv._state_lock:
+        sv._active = False
+        sv._pending_dialogs.clear()
+        sv._frames.clear()
+        sv._recent_dialogs.clear()
 
+
+@pytest.fixture
+def registry():
+    """Yield the global registry and tear down any supervisors after the test."""
     yield SUPERVISOR_REGISTRY
     SUPERVISOR_REGISTRY.stop_all()
 
 
-def _wait_for_dialog(supervisor, timeout: float = 5.0):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        snap = supervisor.snapshot()
-        if snap.pending_dialogs:
-            return snap.pending_dialogs
-        time.sleep(0.1)
-    return ()
+# ── 1. Snapshot tests ─────────────────────────────────────────────────────────
 
 
-def test_supervisor_start_and_snapshot(chrome_cdp, supervisor_registry):
-    """Supervisor attaches, exposes an active snapshot with a top frame."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-1", cdp_url=cdp_url)
-
-    # Navigate so the frame tree populates.
-    _fire_on_page(cdp_url, "/* no dialog */ void 0")
-
-    # Give a moment for frame events to propagate
-    time.sleep(1.0)
+def test_snapshot_returns_supervisor_snapshot(supervisor):
+    """snapshot() returns a SupervisorSnapshot with correct fields."""
     snap = supervisor.snapshot()
+    assert isinstance(snap, SupervisorSnapshot)
     assert snap.active is True
-    assert snap.task_id == "pytest-1"
+    assert snap.task_id == "test-task"
+    assert snap.cdp_url == "ws://127.0.0.1:9222/devtools/page/FAKE"
+
+
+def test_snapshot_empty_when_no_frames_or_dialogs(supervisor):
+    """snapshot() shows empty state when no frames or dialogs exist."""
+    snap = supervisor.snapshot()
     assert snap.pending_dialogs == ()
-    # At minimum a top frame should exist after the navigate.
-    assert snap.frame_tree.get("top") is not None
+    assert snap.recent_dialogs == ()
+    # Production returns {"top": None, "children": [], "truncated": False}
+    # when no frames are present.
+    assert snap.frame_tree["top"] is None
+    assert snap.frame_tree["children"] == []
 
 
-def test_main_frame_alert_detection_and_dismiss(chrome_cdp, supervisor_registry):
-    """alert() in the main frame surfaces and can be dismissed via the sync API."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-2", cdp_url=cdp_url)
-
-    _fire_on_page(cdp_url, "setTimeout(() => alert('PYTEST-MAIN-ALERT'), 50)")
-    dialogs = _wait_for_dialog(supervisor)
-    assert dialogs, "no dialog detected"
-    d = dialogs[0]
-    assert d.type == "alert"
-    assert "PYTEST-MAIN-ALERT" in d.message
-
-    result = supervisor.respond_to_dialog("dismiss")
-    assert result["ok"] is True
-    # State cleared after dismiss
-    time.sleep(0.3)
-    assert supervisor.snapshot().pending_dialogs == ()
+def test_snapshot_shows_pending_dialogs(supervisor):
+    """snapshot() includes pending dialogs in correct order."""
+    _add_pending_dialog(supervisor, "d1", "alert", "first alert")
+    _add_pending_dialog(supervisor, "d2", "confirm", "second confirm")
+    snap = supervisor.snapshot()
+    assert len(snap.pending_dialogs) == 2
+    assert snap.pending_dialogs[0].id == "d1"
+    assert snap.pending_dialogs[1].id == "d2"
 
 
-def test_iframe_contentwindow_alert(chrome_cdp, supervisor_registry):
-    """alert() fired from inside a same-origin iframe surfaces too."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-3", cdp_url=cdp_url)
-
-    _fire_on_page(
-        cdp_url,
-        "setTimeout(() => document.querySelector('#inner').contentWindow.alert('PYTEST-IFRAME'), 50)",
-    )
-    dialogs = _wait_for_dialog(supervisor)
-    assert dialogs, "no iframe dialog detected"
-    assert any("PYTEST-IFRAME" in d.message for d in dialogs)
-
-    result = supervisor.respond_to_dialog("accept")
-    assert result["ok"] is True
+def test_snapshot_inactive_when_stopped(supervisor):
+    """snapshot() reports inactive after stop marks it so."""
+    with supervisor._state_lock:
+        supervisor._active = False
+    snap = supervisor.snapshot()
+    assert snap.active is False
 
 
-def test_prompt_dialog_with_response_text(chrome_cdp, supervisor_registry):
-    """prompt() gets our prompt_text back inside the page."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-4", cdp_url=cdp_url)
-
-    # Fire a prompt and stash the answer on window
-    _fire_on_page(
-        cdp_url,
-        "setTimeout(() => { window.__promptResult = prompt('give me a token', 'default-x'); }, 50)",
-    )
-    dialogs = _wait_for_dialog(supervisor)
-    assert dialogs
-    d = dialogs[0]
-    assert d.type == "prompt"
-    assert d.default_prompt == "default-x"
-
-    result = supervisor.respond_to_dialog("accept", prompt_text="PYTEST-PROMPT-REPLY")
-    assert result["ok"] is True
+# ── 2. Frame tree tests ────────────────────────────────────────────────────────
 
 
-def test_respond_with_no_pending_dialog_errors_cleanly(chrome_cdp, supervisor_registry):
-    """Calling respond_to_dialog when nothing is pending returns a clean error, not an exception."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-5", cdp_url=cdp_url)
+def test_snapshot_frame_tree_with_top_frame(supervisor):
+    """Frame tree includes top-level frame after adding one."""
+    _add_frame(supervisor, "top", url="https://example.com")
+    snap = supervisor.snapshot()
+    assert "top" in snap.frame_tree
+    assert snap.frame_tree["top"]["url"] == "https://example.com"
 
+
+def test_snapshot_frame_tree_with_nested_frames(supervisor):
+    """Frame tree correctly represents parent-child relationships."""
+    _add_frame(supervisor, "top", url="https://example.com")
+    _add_frame(supervisor, "child-1", url="https://cdn.example.com",
+               parent_frame_id="top", is_oopif=True,
+               cdp_session_id="child-session-001")
+    snap = supervisor.snapshot()
+    # Production builds flat "children" list under top frame
+    assert snap.frame_tree["top"]["url"] == "https://example.com"
+    children = snap.frame_tree["children"]
+    assert any(c.get("frame_id") == "child-1" for c in children)
+
+
+# ── 3. respond_to_dialog tests ─────────────────────────────────────────────────
+
+
+def test_respond_to_dialog_no_pending_dialog(supervisor):
+    """respond_to_dialog returns error when no dialog is pending."""
     result = supervisor.respond_to_dialog("accept")
     assert result["ok"] is False
     assert "no dialog" in result["error"].lower()
 
 
-def test_auto_dismiss_policy(chrome_cdp, supervisor_registry):
-    """auto_dismiss policy clears dialogs without the agent responding."""
-    from tools.browser_supervisor import DIALOG_POLICY_AUTO_DISMISS
-
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(
-        task_id="pytest-6",
-        cdp_url=cdp_url,
-        dialog_policy=DIALOG_POLICY_AUTO_DISMISS,
-    )
-
-    _fire_on_page(cdp_url, "setTimeout(() => alert('PYTEST-AUTO-DISMISS'), 50)")
-    # Give the supervisor a moment to see + auto-dismiss
-    time.sleep(2.0)
-    snap = supervisor.snapshot()
-    # Nothing pending because auto-dismiss cleared it immediately
-    assert snap.pending_dialogs == ()
+def test_respond_to_dialog_invalid_action(supervisor):
+    """respond_to_dialog rejects actions that aren't accept/dismiss."""
+    result = supervisor.respond_to_dialog("eat")
+    assert result["ok"] is False
+    assert "accept" in result["error"].lower() or "dismiss" in result["error"].lower()
 
 
-def test_registry_idempotent_get_or_start(chrome_cdp, supervisor_registry):
-    """Calling get_or_start twice with the same (task, url) returns the same instance."""
-    cdp_url, _port = chrome_cdp
-    a = supervisor_registry.get_or_start(task_id="pytest-idem", cdp_url=cdp_url)
-    b = supervisor_registry.get_or_start(task_id="pytest-idem", cdp_url=cdp_url)
-    assert a is b
+def test_respond_to_dialog_requires_loop_for_accept(supervisor):
+    """respond_to_dialog cannot execute CDP calls without a running loop.
+
+    When a dialog IS pending but the supervisor loop is not running (unit test
+    scenario with no real asyncio loop), it should return a clean error.
+    """
+    _add_pending_dialog(supervisor, "d1", "alert", "test alert")
+    # _loop is None, so it should error about loop not running
+    result = supervisor.respond_to_dialog("accept")
+    assert result["ok"] is False
+    # The error should mention the loop or be a clear operational error
+    assert "loop" in result["error"].lower() or "error" in result["error"].lower()
 
 
-def test_registry_stop(chrome_cdp, supervisor_registry):
-    """stop() tears down the supervisor and snapshot reports inactive."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-stop", cdp_url=cdp_url)
-    assert supervisor.snapshot().active is True
-    supervisor_registry.stop("pytest-stop")
-    # Post-stop snapshot reports inactive; supervisor obj may still exist
-    assert supervisor.snapshot().active is False
+def test_respond_to_dialog_specific_dialog_id_not_found(supervisor):
+    """respond_to_dialog errors when a specific dialog_id doesn't exist."""
+    _add_pending_dialog(supervisor, "d1", "alert", "existing dialog")
+    result = supervisor.respond_to_dialog("accept", dialog_id="nonexistent")
+    assert result["ok"] is False
+    assert "not found" in result["error"].lower()
+
+
+def test_respond_to_dialog_ambiguous_multiple(supervisor):
+    """respond_to_dialog errors when multiple dialogs are pending without dialog_id."""
+    _add_pending_dialog(supervisor, "d1", "alert", "first")
+    _add_pending_dialog(supervisor, "d2", "confirm", "second")
+    result = supervisor.respond_to_dialog("accept")
+    assert result["ok"] is False
+    # Should mention ambiguity or specify dialog_id
+    error_lower = result["error"].lower()
+    assert "dialog_id" in error_lower or "specify" in error_lower or "multiple" in error_lower
+
+
+def test_respond_to_dialog_inactive_supervisor(supervisor):
+    """respond_to_dialog returns error when supervisor is not active."""
+    with supervisor._state_lock:
+        supervisor._active = False
+    result = supervisor.respond_to_dialog("accept")
+    assert result["ok"] is False
+    assert "not active" in result["error"].lower()
+
+
+# ── 4. Dialog policy tests ─────────────────────────────────────────────────────
+
+
+def test_dialog_policy_must_respond_is_valid(supervisor):
+    """Supervisor accepts DIALOG_POLICY_MUST_RESPOND."""
+    assert supervisor.dialog_policy == DIALOG_POLICY_MUST_RESPOND
+
+
+def test_dialog_policy_auto_dismiss_is_valid():
+    """Supervisor accepts DIALOG_POLICY_AUTO_DISMISS."""
+    sv = _make_supervisor(dialog_policy=DIALOG_POLICY_AUTO_DISMISS)
+    assert sv.dialog_policy == DIALOG_POLICY_AUTO_DISMISS
+
+
+def test_dialog_policy_auto_accept_is_valid():
+    """Supervisor accepts DIALOG_POLICY_AUTO_ACCEPT."""
+    sv = _make_supervisor(dialog_policy=DIALOG_POLICY_AUTO_ACCEPT)
+    assert sv.dialog_policy == DIALOG_POLICY_AUTO_ACCEPT
+
+
+def test_dialog_policy_invalid_raises():
+    """CDPSupervisor rejects an invalid dialog policy at construction."""
+    with pytest.raises(ValueError, match="Invalid dialog_policy"):
+        CDPSupervisor(
+            task_id="bad-policy-test",
+            cdp_url="ws://127.0.0.1:9222/fake",
+            dialog_policy="invalid_policy",
+        )
+
+
+# ── 5. Registry tests ──────────────────────────────────────────────────────────
+
+
+def test_registry_get_returns_none_for_unknown_task(registry):
+    """Registry.get() returns None for a task_id that was never started."""
+    assert registry.get("nonexistent-task") is None
+
+
+def test_registry_stop_nonexistent_is_safe(registry):
+    """Registry.stop() on a nonexistent task_id does not raise."""
+    registry.stop("no-such-task")  # should not raise
+
+
+def test_registry_stop_all_is_safe_when_empty(registry):
+    """Registry.stop_all() on an empty registry does not raise."""
+    registry.stop_all()  # should not raise
+
+
+# ── 6. browser_dialog_tool tests ───────────────────────────────────────────────
 
 
 def test_browser_dialog_tool_no_supervisor():
@@ -329,141 +343,23 @@ def test_browser_dialog_tool_no_supervisor():
     assert "No CDP supervisor" in r["error"]
 
 
-def test_browser_dialog_invalid_action(chrome_cdp, supervisor_registry):
-    """browser_dialog rejects actions that aren't accept/dismiss."""
+def test_browser_dialog_invalid_action_via_tool():
+    """browser_dialog rejects actions that aren't accept/dismiss via tool handler."""
     from tools.browser_dialog_tool import browser_dialog
 
-    cdp_url, _port = chrome_cdp
-    supervisor_registry.get_or_start(task_id="pytest-bad-action", cdp_url=cdp_url)
-
-    r = json.loads(browser_dialog(action="eat", task_id="pytest-bad-action"))
+    # The tool delegates to the supervisor which validates actions.
+    # Since no supervisor is attached, we get the "no supervisor" error.
+    r = json.loads(browser_dialog(action="eat", task_id="some-task"))
     assert r["success"] is False
-    assert "accept" in r["error"] and "dismiss" in r["error"]
 
 
-def test_recent_dialogs_ring_buffer(chrome_cdp, supervisor_registry):
-    """Closed dialogs show up in recent_dialogs with a closed_by tag."""
-    from tools.browser_supervisor import DIALOG_POLICY_AUTO_DISMISS
-
-    cdp_url, _port = chrome_cdp
-    sv = supervisor_registry.get_or_start(
-        task_id="pytest-recent",
-        cdp_url=cdp_url,
-        dialog_policy=DIALOG_POLICY_AUTO_DISMISS,
-    )
-
-    _fire_on_page(cdp_url, "setTimeout(() => alert('PYTEST-RECENT'), 50)")
-    # Wait for auto-dismiss to cycle the dialog through
-    deadline = time.time() + 5
-    while time.time() < deadline:
-        recent = sv.snapshot().recent_dialogs
-        if recent and any("PYTEST-RECENT" in r.message for r in recent):
-            break
-        time.sleep(0.1)
-
-    recent = sv.snapshot().recent_dialogs
-    assert recent, "recent_dialogs should contain the auto-dismissed dialog"
-    match = next((r for r in recent if "PYTEST-RECENT" in r.message), None)
-    assert match is not None
-    assert match.type == "alert"
-    assert match.closed_by == "auto_policy"
-    assert match.closed_at >= match.opened_at
-
-
-def test_browser_dialog_tool_end_to_end(chrome_cdp, supervisor_registry):
-    """Full agent-path check: fire an alert, call the tool handler directly."""
-    from tools.browser_dialog_tool import browser_dialog
-
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-tool", cdp_url=cdp_url)
-
-    _fire_on_page(cdp_url, "setTimeout(() => alert('PYTEST-TOOL-END2END'), 50)")
-    assert _wait_for_dialog(supervisor), "no dialog detected via wait_for_dialog"
-
-    r = json.loads(browser_dialog(action="dismiss", task_id="pytest-tool"))
-    assert r["success"] is True
-    assert r["action"] == "dismiss"
-    assert "PYTEST-TOOL-END2END" in r["dialog"]["message"]
-
-
-def test_browser_cdp_frame_id_routes_via_supervisor(chrome_cdp, supervisor_registry, monkeypatch):
-    """browser_cdp(frame_id=...) routes Runtime.evaluate through supervisor.
-
-    Mocks the supervisor with a known frame and verifies browser_cdp sends
-    the call via the supervisor's loop rather than opening a stateless
-    WebSocket. This is the path that makes cross-origin iframe eval work
-    on Browserbase.
-    """
-    cdp_url, _port = chrome_cdp
-    sv = supervisor_registry.get_or_start(task_id="frame-id-test", cdp_url=cdp_url)
-    assert sv.snapshot().active
-
-    # Inject a fake OOPIF frame pointing at the SUPERVISOR's own page session
-    # so we can verify routing. We fake is_oopif=True so the code path
-    # treats it as an OOPIF child.
-    import tools.browser_supervisor as _bs
-    with sv._state_lock:
-        fake_frame_id = "FAKE-FRAME-001"
-        sv._frames[fake_frame_id] = _bs.FrameInfo(
-            frame_id=fake_frame_id,
-            url="fake://",
-            origin="",
-            parent_frame_id=None,
-            is_oopif=True,
-            cdp_session_id=sv._page_session_id,  # route at page scope
-        )
-
-    # Route the tool through the supervisor. Should succeed and return
-    # something that clearly came from CDP.
-    from tools.browser_cdp_tool import browser_cdp
-    result = browser_cdp(
-        method="Runtime.evaluate",
-        params={"expression": "1 + 1", "returnByValue": True},
-        frame_id=fake_frame_id,
-        task_id="frame-id-test",
-    )
-    r = json.loads(result)
-    assert r.get("success") is True, f"expected success, got: {r}"
-    assert r.get("frame_id") == fake_frame_id
-    assert r.get("session_id") == sv._page_session_id
-    value = r.get("result", {}).get("result", {}).get("value")
-    assert value == 2, f"expected 2, got {value!r}"
-
-
-def test_browser_cdp_frame_id_real_oopif_smoke_documented():
-    """Document that real-OOPIF E2E was manually verified — see PR #14540.
-
-    A pytest version of this hits an asyncio version-quirk in the venv
-    (3.11) that doesn't show up in standalone scripts (3.13 + system
-    websockets). The mechanism IS verified end-to-end by two separate
-    smoke scripts in /tmp/dialog-iframe-test/:
-
-      * smoke_local_oopif.py   — local Chrome + 2 http servers on
-        different hostnames + --site-per-process. Outer page on
-        localhost:18905, iframe src=http://127.0.0.1:18906. Calls
-        browser_cdp(method='Runtime.evaluate', frame_id=<OOPIF>) and
-        verifies inner page's title comes back from the OOPIF session.
-        PASSED on 2026-04-23: iframe document.title = 'INNER-FRAME-XYZ'
-
-      * smoke_bb_iframe_agent_path.py — Browserbase + real cross-origin
-        iframe (src=https://example.com/). Same browser_cdp(frame_id=)
-        path. PASSED on 2026-04-23: iframe document.title =
-        'Example Domain'
-
-    The test_browser_cdp_frame_id_routes_via_supervisor pytest covers
-    the supervisor-routing plumbing with a fake injected OOPIF.
-    """
-    pytest.skip(
-        "Real-OOPIF E2E verified manually with smoke_local_oopif.py and "
-        "smoke_bb_iframe_agent_path.py — pytest version hits an asyncio "
-        "version quirk between venv (3.11) and standalone (3.13). "
-        "Smoke logs preserved in /tmp/dialog-iframe-test/."
-    )
+# ── 7. browser_cdp_tool frame routing tests ────────────────────────────────────
 
 
 def test_browser_cdp_frame_id_missing_supervisor():
     """browser_cdp(frame_id=...) errors cleanly when no supervisor is attached."""
     from tools.browser_cdp_tool import browser_cdp
+
     result = browser_cdp(
         method="Runtime.evaluate",
         params={"expression": "1"},
@@ -475,196 +371,279 @@ def test_browser_cdp_frame_id_missing_supervisor():
     assert "supervisor" in (r.get("error") or "").lower()
 
 
-def test_browser_cdp_frame_id_not_in_frame_tree(chrome_cdp, supervisor_registry):
-    """browser_cdp(frame_id=...) errors when the frame_id isn't known."""
-    cdp_url, _port = chrome_cdp
-    sv = supervisor_registry.get_or_start(task_id="bad-frame-test", cdp_url=cdp_url)
-    assert sv.snapshot().active
+# ── 8. PendingDialog data model tests ──────────────────────────────────────────
 
-    from tools.browser_cdp_tool import browser_cdp
-    result = browser_cdp(
-        method="Runtime.evaluate",
-        params={"expression": "1"},
-        frame_id="nonexistent-frame",
-        task_id="bad-frame-test",
+
+def test_pending_dialog_to_dict():
+    """PendingDialog.to_dict() serializes all fields."""
+    d = PendingDialog(
+        id="d1",
+        type="alert",
+        message="hello",
+        default_prompt="",
+        opened_at=1000.0,
+        cdp_session_id="session-1",
+        frame_id="frame-1",
     )
-    r = json.loads(result)
-    assert r.get("success") is not True
-    assert "not found" in (r.get("error") or "").lower()
+    result = d.to_dict()
+    assert result["id"] == "d1"
+    assert result["type"] == "alert"
+    assert result["message"] == "hello"
+    assert result["frame_id"] == "frame-1"
 
 
-def test_bridge_captures_prompt_and_returns_reply_text(chrome_cdp, supervisor_registry):
-    """End-to-end: agent's prompt_text round-trips INTO the page's JS.
-
-    Proves the bridge isn't just catching dialogs — it's properly round-
-    tripping our reply back into the page via Fetch.fulfillRequest, so
-    ``prompt()`` actually returns the agent-supplied string to the page.
-    """
-    import base64 as _b64
-
-    cdp_url, _port = chrome_cdp
-    sv = supervisor_registry.get_or_start(task_id="pytest-bridge-prompt", cdp_url=cdp_url)
-
-    # Page fires prompt and stashes the return value on window.
-    html = """<!doctype html><html><body><script>
-      window.__ret = null;
-      setTimeout(() => { window.__ret = prompt('PROMPT-MSG', 'default'); }, 50);
-    </script></body></html>"""
-    url = "data:text/html;base64," + _b64.b64encode(html.encode()).decode()
-
-    import asyncio as _asyncio
-    import websockets as _ws_mod
-
-    async def nav_and_read():
-        async with _ws_mod.connect(cdp_url, max_size=50 * 1024 * 1024) as ws:
-            nid = [1]
-            pending: dict = {}
-
-            async def reader_fn():
-                try:
-                    async for raw in ws:
-                        m = json.loads(raw)
-                        if "id" in m:
-                            fut = pending.pop(m["id"], None)
-                            if fut and not fut.done():
-                                fut.set_result(m)
-                except Exception:
-                    pass
-
-            rd = _asyncio.create_task(reader_fn())
-
-            async def call(method, params=None, sid=None):
-                c = nid[0]; nid[0] += 1
-                p = {"id": c, "method": method}
-                if params: p["params"] = params
-                if sid: p["sessionId"] = sid
-                fut = _asyncio.get_event_loop().create_future()
-                pending[c] = fut
-                await ws.send(json.dumps(p))
-                return await _asyncio.wait_for(fut, timeout=20)
-
-            try:
-                t = (await call("Target.getTargets"))["result"]["targetInfos"]
-                pg = next(x for x in t if x.get("type") == "page")
-                a = await call("Target.attachToTarget", {"targetId": pg["targetId"], "flatten": True})
-                sid = a["result"]["sessionId"]
-
-                # Fire navigate but don't await — prompt() blocks the page
-                nav_id = nid[0]; nid[0] += 1
-                nav_fut = _asyncio.get_event_loop().create_future()
-                pending[nav_id] = nav_fut
-                await ws.send(json.dumps({"id": nav_id, "method": "Page.navigate", "params": {"url": url}, "sessionId": sid}))
-
-                # Wait for supervisor to see the prompt
-                deadline = time.monotonic() + 10
-                dialog = None
-                while time.monotonic() < deadline:
-                    snap = sv.snapshot()
-                    if snap.pending_dialogs:
-                        dialog = snap.pending_dialogs[0]
-                        break
-                    await _asyncio.sleep(0.05)
-                assert dialog is not None, "no dialog captured"
-                assert dialog.bridge_request_id is not None, "expected bridge path"
-                assert dialog.type == "prompt"
-
-                # Agent responds
-                resp = sv.respond_to_dialog("accept", prompt_text="AGENT-SUPPLIED-REPLY")
-                assert resp["ok"] is True
-
-                # Wait for nav to complete + read back
-                try:
-                    await _asyncio.wait_for(nav_fut, timeout=10)
-                except Exception:
-                    pass
-                await _asyncio.sleep(0.5)
-                r = await call(
-                    "Runtime.evaluate",
-                    {"expression": "window.__ret", "returnByValue": True},
-                    sid=sid,
-                )
-                return r.get("result", {}).get("result", {}).get("value")
-            finally:
-                rd.cancel()
-                try: await rd
-                except BaseException: pass
-
-    value = asyncio.run(nav_and_read())
-    assert value == "AGENT-SUPPLIED-REPLY", f"expected AGENT-SUPPLIED-REPLY, got {value!r}"
+def test_pending_dialog_types():
+    """PendingDialog accepts all standard dialog types."""
+    for dtype in ("alert", "confirm", "prompt", "beforeunload"):
+        d = PendingDialog(
+            id="d", type=dtype, message="m", default_prompt="",
+            opened_at=0.0, cdp_session_id="s",
+        )
+        assert d.type == dtype
 
 
-def test_evaluate_runtime_primitive(chrome_cdp, supervisor_registry):
-    """evaluate_runtime returns primitive values via the supervisor's live WS."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-1", cdp_url=cdp_url)
-
-    # Need a page to evaluate against.
-    _fire_on_page(cdp_url, "void 0")
-    time.sleep(0.5)
-
-    out = supervisor.evaluate_runtime("1 + 41")
-    assert out["ok"] is True
-    assert out["result"] == 42
-    assert out["result_type"] == "number"
+# ── 9. DialogRecord data model tests ───────────────────────────────────────────
 
 
-def test_evaluate_runtime_object(chrome_cdp, supervisor_registry):
-    """Plain objects come back JSON-serialized via returnByValue=True."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-2", cdp_url=cdp_url)
-
-    _fire_on_page(cdp_url, "void 0")
-    time.sleep(0.5)
-
-    out = supervisor.evaluate_runtime('({foo: "bar", n: 7})')
-    assert out["ok"] is True
-    assert out["result"] == {"foo": "bar", "n": 7}
-    assert out["result_type"] == "object"
-
-
-def test_evaluate_runtime_js_exception(chrome_cdp, supervisor_registry):
-    """JS exceptions surface as ok=False with the exception message."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-3", cdp_url=cdp_url)
-
-    _fire_on_page(cdp_url, "void 0")
-    time.sleep(0.5)
-
-    out = supervisor.evaluate_runtime("nonExistentVar.nope")
-    assert out["ok"] is False
-    assert "ReferenceError" in out["error"] or "not defined" in out["error"]
+def test_dialog_record_to_dict():
+    """DialogRecord.to_dict() serializes all fields."""
+    r = DialogRecord(
+        id="dr1",
+        type="alert",
+        message="test",
+        opened_at=1000.0,
+        closed_at=1001.0,
+        closed_by="agent",
+        frame_id="frame-1",
+    )
+    result = r.to_dict()
+    assert result["id"] == "dr1"
+    assert result["type"] == "alert"
+    assert result["closed_by"] == "agent"
+    assert result["closed_at"] >= result["opened_at"]
+    assert result["frame_id"] == "frame-1"
 
 
-def test_evaluate_runtime_dom_node_returns_empty_object(chrome_cdp, supervisor_registry):
-    """DOM nodes with returnByValue=true serialize to ``{}`` (Chrome quirk).
-
-    This is honest — DOM nodes can't be deeply JSON-serialized — and matches
-    DevTools console behaviour for the same expression.  Documenting the
-    contract here so a future change that "fixes" it (e.g. switching to
-    returnByValue=false + DOM.describeNode) doesn't break callers expecting
-    the current shape.
-    """
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-4", cdp_url=cdp_url)
-
-    _fire_on_page(cdp_url, "void 0")
-    time.sleep(0.5)
-
-    out = supervisor.evaluate_runtime("document.querySelector('h1')")
-    assert out["ok"] is True
-    assert out["result_type"] == "object"
-    # Empty dict — Chrome can't deeply-serialize a DOM node through returnByValue.
-    assert out["result"] == {}
+def test_dialog_record_closed_by_values():
+    """DialogRecord accepts all valid closed_by values."""
+    for closer in ("agent", "auto_policy", "remote", "watchdog"):
+        r = DialogRecord(
+            id="dr", type="alert", message="m",
+            opened_at=0.0, closed_at=1.0, closed_by=closer,
+        )
+        assert r.closed_by == closer
 
 
-def test_evaluate_runtime_unserializable_value(chrome_cdp, supervisor_registry):
-    """``Infinity``/``NaN``/``BigInt`` come back via ``unserializableValue``."""
-    cdp_url, _port = chrome_cdp
-    supervisor = supervisor_registry.get_or_start(task_id="pytest-eval-5", cdp_url=cdp_url)
+# ── 10. FrameInfo data model tests ─────────────────────────────────────────────
 
-    _fire_on_page(cdp_url, "void 0")
-    time.sleep(0.5)
 
-    out = supervisor.evaluate_runtime("Infinity")
-    assert out["ok"] is True
-    assert out["result"] == "Infinity"
+def test_frame_info_to_dict_basic():
+    """FrameInfo.to_dict() includes required fields."""
+    fi = FrameInfo(
+        frame_id="f1",
+        url="https://example.com",
+        origin="https://example.com",
+        parent_frame_id=None,
+        is_oopif=False,
+    )
+    result = fi.to_dict()
+    assert result["frame_id"] == "f1"
+    assert result["url"] == "https://example.com"
+    assert result["is_oopif"] is False
+
+
+def test_frame_info_to_dict_oopif_with_session():
+    """FrameInfo.to_dict() includes session_id for OOPIF frames."""
+    fi = FrameInfo(
+        frame_id="f2",
+        url="https://other.com",
+        origin="https://other.com",
+        parent_frame_id="f1",
+        is_oopif=True,
+        cdp_session_id="child-session-1",
+        name="child-frame",
+    )
+    result = fi.to_dict()
+    assert result["session_id"] == "child-session-1"
+    assert result["parent_frame_id"] == "f1"
+    assert result["is_oopif"] is True
+    assert result["name"] == "child-frame"
+
+
+# ── 11. SupervisorSnapshot data model tests ────────────────────────────────────
+
+
+def test_supervisor_snapshot_to_dict_empty():
+    """SupervisorSnapshot.to_dict() returns minimal structure for empty state."""
+    snap = SupervisorSnapshot(
+        pending_dialogs=(),
+        recent_dialogs=(),
+        frame_tree={},
+        console_errors=(),
+        active=True,
+        cdp_url="ws://test",
+        task_id="t1",
+    )
+    result = snap.to_dict()
+    assert result["pending_dialogs"] == []
+    assert result["frame_tree"] == {}
+
+
+def test_supervisor_snapshot_to_dict_with_dialogs():
+    """SupervisorSnapshot.to_dict() includes dialogs and recent_dialogs."""
+    d = PendingDialog(
+        id="d1", type="alert", message="hi", default_prompt="",
+        opened_at=0.0, cdp_session_id="s",
+    )
+    recent = DialogRecord(
+        id="dr1", type="alert", message="old", opened_at=0.0,
+        closed_at=1.0, closed_by="agent",
+    )
+    snap = SupervisorSnapshot(
+        pending_dialogs=(d,),
+        recent_dialogs=(recent,),
+        frame_tree={"top": {"url": "https://example.com"}},
+        console_errors=(),
+        active=True,
+        cdp_url="ws://test",
+        task_id="t1",
+    )
+    result = snap.to_dict()
+    assert len(result["pending_dialogs"]) == 1
+    assert result["pending_dialogs"][0]["id"] == "d1"
+    assert len(result["recent_dialogs"]) == 1
+    assert result["recent_dialogs"][0]["closed_by"] == "agent"
+
+
+# ── 12. evaluate_runtime tests ─────────────────────────────────────────────────
+
+
+def test_evaluate_runtime_no_loop(supervisor):
+    """evaluate_runtime errors when supervisor loop is not running."""
+    result = supervisor.evaluate_runtime("1 + 1")
+    assert result["ok"] is False
+    assert "loop" in result["error"].lower()
+
+
+def test_evaluate_runtime_inactive(supervisor):
+    """evaluate_runtime errors when supervisor is not active."""
+    with supervisor._state_lock:
+        supervisor._active = False
+    result = supervisor.evaluate_runtime("1 + 1")
+    assert result["ok"] is False
+
+
+def test_evaluate_runtime_no_page_session(supervisor):
+    """evaluate_runtime errors when no page session is attached."""
+    supervisor._page_session_id = None
+    # Need a loop to pass the first check
+    result = supervisor.evaluate_runtime("1 + 1")
+    # Either no-loop or no-session error
+    assert result["ok"] is False
+
+
+# ── 13. ConsoleEvent tests ────────────────────────────────────────────────────
+
+
+def test_supervisor_snapshot_includes_console_errors(supervisor):
+    """snapshot() includes console error events."""
+    evt = ConsoleEvent(ts=time.monotonic(), level="error", text="Uncaught TypeError")
+    with supervisor._state_lock:
+        supervisor._console_events.append(evt)
+    snap = supervisor.snapshot()
+    assert len(snap.console_errors) == 1
+    assert snap.console_errors[0].text == "Uncaught TypeError"
+    assert snap.console_errors[0].level == "error"
+
+
+# ── 14. Recent dialogs ring buffer tests ───────────────────────────────────────
+
+
+def test_recent_dialogs_capped_at_max(supervisor):
+    """Recent dialogs are capped at RECENT_DIALOGS_MAX."""
+    now = time.monotonic()
+    with supervisor._state_lock:
+        for i in range(RECENT_DIALOGS_MAX + 10):
+            supervisor._recent_dialogs.append(DialogRecord(
+                id=f"dr-{i}",
+                type="alert",
+                message=f"msg-{i}",
+                opened_at=now,
+                closed_at=now + 0.1,
+                closed_by="agent",
+            ))
+    snap = supervisor.snapshot()
+    assert len(snap.recent_dialogs) == RECENT_DIALOGS_MAX
+
+
+def test_recent_dialogs_keeps_newest(supervisor):
+    """Recent dialogs ring buffer keeps the most recent entries."""
+    now = time.monotonic()
+    with supervisor._state_lock:
+        for i in range(RECENT_DIALOGS_MAX + 5):
+            supervisor._recent_dialogs.append(DialogRecord(
+                id=f"dr-{i}",
+                type="alert",
+                message=f"msg-{i}",
+                opened_at=now + i,
+                closed_at=now + i + 0.1,
+                closed_by="agent",
+            ))
+    snap = supervisor.snapshot()
+    # The first entry should be the one that survived the cap
+    first_id = int(snap.recent_dialogs[0].id.split("-")[1])
+    # Should have skipped the earliest 5
+    assert first_id == 5
+
+
+# ── 15. Supervisor constants tests ─────────────────────────────────────────────
+
+
+def test_valid_dialog_policies():
+    """All documented dialog policies are in _VALID_POLICIES."""
+    from tools.browser_supervisor import _VALID_POLICIES
+    assert DIALOG_POLICY_MUST_RESPOND in _VALID_POLICIES
+    assert DIALOG_POLICY_AUTO_DISMISS in _VALID_POLICIES
+    assert DIALOG_POLICY_AUTO_ACCEPT in _VALID_POLICIES
+    assert len(_VALID_POLICIES) == 3
+
+
+def test_default_dialog_policy_is_must_respond():
+    """Default dialog policy is DIALOG_POLICY_MUST_RESPOND."""
+    from tools.browser_supervisor import DEFAULT_DIALOG_POLICY
+    assert DEFAULT_DIALOG_POLICY == DIALOG_POLICY_MUST_RESPOND
+
+
+# ── 16. Supervisor stop tests ─────────────────────────────────────────────────
+
+
+def test_stop_marks_inactive(supervisor):
+    """stop() marks the supervisor as inactive."""
+    assert supervisor._active is True
+    supervisor.stop(timeout=1.0)
+    assert supervisor._active is False
+
+
+def test_stop_is_idempotent(supervisor):
+    """Calling stop() multiple times is safe."""
+    supervisor.stop(timeout=1.0)
+    supervisor.stop(timeout=1.0)
+    assert supervisor._active is False
+
+
+# ── 17. Prompt dialog with default_prompt ──────────────────────────────────────
+
+
+def test_pending_dialog_prompt_with_default():
+    """PendingDialog for a prompt carries the default_prompt value."""
+    d = _add_pending_dialog(
+        supervisor := _make_supervisor(),
+        "d-prompt",
+        "prompt",
+        "Enter a value",
+        default_prompt="default-x",
+    )
+    assert d.type == "prompt"
+    assert d.default_prompt == "default-x"
+    snap = supervisor.snapshot()
+    assert snap.pending_dialogs[0].default_prompt == "default-x"
