@@ -33,6 +33,24 @@ from hermes_cli import auth as auth_mod
 
 
 # ---------------------------------------------------------------------------
+# Browser isolation — prevent real webbrowser.get / webbrowser.open calls
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _block_real_browser(monkeypatch):
+    """Ensure no test in this file triggers real browser or OAuth launches.
+
+    Several tests call ``_xai_oauth_loopback_login`` which internally
+    checks ``_can_open_graphical_browser()`` (calling ``webbrowser.get()``)
+    and then ``webbrowser.open()``.  By forcing the graphical-browser check
+    to ``False`` we guarantee the browser-open branch is never reached,
+    keeping the Guard log empty while still exercising the OAuth flow logic.
+    """
+    monkeypatch.setattr(auth_mod, "_can_open_graphical_browser", lambda: False)
+
+
+# ---------------------------------------------------------------------------
 # _is_remote_session — broadened detection (#26923)
 # ---------------------------------------------------------------------------
 
