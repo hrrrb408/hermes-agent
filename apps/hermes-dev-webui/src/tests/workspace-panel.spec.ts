@@ -10,9 +10,9 @@ describe('WorkspacePanel', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders all five tabs with Context selected by default', () => {
+  it('renders all six tabs with Context selected by default', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(5)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(6)
     expect(wrapper.get('#workspace-tab-context').attributes('aria-selected')).toBe('true')
   })
 
@@ -76,8 +76,8 @@ describe('WorkspacePanel', () => {
 
   it('never renders raw local paths in any tab', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    // Check all five tabs for local path leakage
-    const tabs = ['memory', 'context', 'agent', 'files', 'reviews'] as const
+    // Check all six tabs for local path leakage
+    const tabs = ['memory', 'context', 'agent', 'files', 'reviews', 'tools'] as const
     for (const tab of tabs) {
       await wrapper.get(`#workspace-tab-${tab}`).trigger('click')
       const html = wrapper.html()
@@ -89,8 +89,8 @@ describe('WorkspacePanel', () => {
 
   it('retains tab icons when collapsed', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: true } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(5)
-    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(5)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(6)
+    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(6)
     expect(wrapper.find('[role="tabpanel"]').exists()).toBe(false)
   })
 
@@ -111,7 +111,7 @@ describe('WorkspacePanel', () => {
 
   it('supports arrow-key tab navigation', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    // Tabs order: files, memory, context, reviews, agent
+    // Tabs order: files, memory, context, reviews, agent, tools
     // ArrowRight from context → reviews
     await wrapper.get('#workspace-tab-context').trigger('keydown', { key: 'ArrowRight' })
     expect(useUiStore().workspaceTab).toBe('reviews')
