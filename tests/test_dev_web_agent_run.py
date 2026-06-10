@@ -604,7 +604,7 @@ class TestAgentRunAPIEnabled:
 class TestRoutePresence:
     """Verify route registration and forbidden routes."""
 
-    def test_total_27_paths(self):
+    def test_total_29_paths(self):
         from hermes_cli.dev_web_api import create_dev_web_api_app
         from hermes_cli.dev_web_config import DevWebApiConfig
 
@@ -614,7 +614,7 @@ class TestRoutePresence:
             r for r in app.routes
             if hasattr(r, 'path') and r.path.startswith('/api/dev/v1')
         ]
-        assert len(api_paths) == 27
+        assert len(api_paths) == 29
 
     def test_agent_run_routes_present(self):
         from hermes_cli.dev_web_api import create_dev_web_api_app

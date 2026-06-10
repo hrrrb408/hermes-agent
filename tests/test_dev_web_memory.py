@@ -667,14 +667,14 @@ class TestReadOnlyGuarantees:
 
 class TestRouteBoundary:
     def test_total_business_routes(self, memory_client):
-        """Verify runtime OpenAPI has exactly 27 business paths."""
+        """Verify runtime OpenAPI has exactly 29 business paths."""
         resp = memory_client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 27
+        assert len(paths) == 29
         # Phase 1E: verify agent preview routes exist
         assert "/api/dev/v1/agent/prompt/preview" in paths
         assert "/api/dev/v1/agent/run/dry-run" in paths

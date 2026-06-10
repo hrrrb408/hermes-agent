@@ -152,6 +152,20 @@ from hermes_cli.dev_web_agent_preview_service import (
     _MAX_CATEGORIES,
     _MAX_MEMORIES,
 )
+from hermes_cli.dev_web_tool_policy_service import (
+    DevToolPolicyQueryService,
+    validate_catalog_query,
+    ToolPolicyQueryError,
+    InvalidToolPolicyQueryError,
+    InvalidToolRiskError,
+    InvalidToolCapabilityError,
+    InvalidToolPolicyStatusError,
+    InvalidToolSortError,
+    ToolPolicyDataInvalidError,
+    _DANGEROUS_PARAM_NAMES,
+    _MAX_QUERY_LENGTH,
+    _MAX_PAGE_SIZE,
+)
 
 
 # ── Query parameter enums ──
@@ -229,6 +243,7 @@ def create_dev_web_api_app(
             {"name": "Agent", "description": "Agent configuration status"},
             {"name": "Files", "description": "File browsing status"},
             {"name": "Reviews", "description": "Review queue read-only access"},
+            {"name": "Tools", "description": "Tool policy and catalog read-only access"},
         ],
     )
 
@@ -242,6 +257,7 @@ def create_dev_web_api_app(
     review_service: DevReviewQueryService | None = None
     writer_service: DevMemoryWriterDryRunService | None = None
     preview_service: DevAgentPreviewService | None = None
+    tool_policy_service: DevToolPolicyQueryService | None = None
     if config.hermes_home is not None:
         state_db_path = config.hermes_home / "state.db"
         session_service = DevSessionQueryService(state_db_path)
@@ -251,6 +267,8 @@ def create_dev_web_api_app(
         review_service = DevReviewQueryService(config.hermes_home)
         writer_service = DevMemoryWriterDryRunService(config.hermes_home)
         preview_service = DevAgentPreviewService(config.hermes_home)
+    # Tool Policy service is stateless — no hermes_home dependency
+    tool_policy_service = DevToolPolicyQueryService()
     app.state.session_service = session_service
     app.state.message_service = message_service
     app.state.memory_service = memory_service
@@ -258,6 +276,7 @@ def create_dev_web_api_app(
     app.state.review_service = review_service
     app.state.writer_service = writer_service
     app.state.preview_service = preview_service
+    app.state.tool_policy_service = tool_policy_service
 
     # ── Middleware (order matters: outermost first) ──
     app.add_middleware(RequestIdMiddleware)
@@ -274,7 +293,7 @@ def create_dev_web_api_app(
     register_error_handlers(app)
 
     # ── Routes ──
-    _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service, preview_service)
+    _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service, preview_service, tool_policy_service)
 
     return app
 
@@ -307,6 +326,7 @@ def _register_routes(
     review_service: DevReviewQueryService | None,
     writer_service: DevMemoryWriterDryRunService | None,
     preview_service: DevAgentPreviewService | None,
+    tool_policy_service: DevToolPolicyQueryService | None,
 ) -> None:
     """Register Phase 1A routes."""
 
@@ -1531,6 +1551,9 @@ def _register_routes(
     # ── Phase 1F: Agent Run (Dev-Only, SSE) ──
     _register_agent_run_routes(app, config)
 
+    # ── Phase 1G: Tool Policy Read-Only ──
+    _register_tool_policy_routes(app, config, tool_policy_service)
+
 
 def _register_writer_routes(
     app: FastAPI,
@@ -2551,3 +2574,208 @@ def _register_agent_run_routes(
                 message="Run not found.",
                 request_id=rid,
             )
+
+
+# ── Phase 1G: Tool Policy Read-Only Routes ──
+
+
+def _tool_dto_to_camel(obj: Any) -> Any:
+    """Recursively convert a frozen dataclass DTO to a camelCase dict.
+
+    Only whitelisted DTO fields are included. This function handles:
+    - Nested dataclasses (recursive conversion)
+    - Tuples/lists → list
+    - Dicts → dict with camelCase keys
+    - Primitives → as-is
+    """
+    import dataclasses
+
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        result: dict[str, Any] = {}
+        for field in dataclasses.fields(obj):
+            camel_key = _snake_to_camel(field.name)
+            result[camel_key] = _tool_dto_to_camel(getattr(obj, field.name))
+        return result
+    if isinstance(obj, tuple):
+        return [_tool_dto_to_camel(item) for item in obj]
+    if isinstance(obj, list):
+        return [_tool_dto_to_camel(item) for item in obj]
+    if isinstance(obj, dict):
+        return {_snake_to_camel(k): _tool_dto_to_camel(v) for k, v in obj.items()}
+    return obj
+
+
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    components = name.split("_")
+    return components[0] + "".join(word.capitalize() for word in components[1:])
+
+
+def _register_tool_policy_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+    tool_policy_service: DevToolPolicyQueryService | None,
+) -> None:
+    """Register Phase 1G Tool Policy read-only routes."""
+    prefix = config.api_prefix
+
+    # ── GET /tools/policy ──
+
+    @app.get(
+        f"{prefix}/tools/policy",
+        tags=["Tools"],
+        summary="Tool policy status overview",
+    )
+    def get_tool_policy_status(request: Request) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        if tool_policy_service is None:
+            return _make_error_json(
+                status_code=503,
+                code="TOOL_POLICY_UNAVAILABLE",
+                message="Tool policy service is unavailable.",
+                request_id=rid,
+            )
+
+        try:
+            dto = tool_policy_service.get_policy_status()
+        except ToolPolicyDataInvalidError as exc:
+            return _make_error_json(
+                status_code=500,
+                code="TOOL_POLICY_DATA_INVALID",
+                message=exc.message,
+                request_id=rid,
+            )
+
+        return {
+            "data": _tool_dto_to_camel(dto),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /tools/catalog ──
+
+    @app.get(
+        f"{prefix}/tools/catalog",
+        tags=["Tools"],
+        summary="Filtered, paginated tool catalog",
+    )
+    def list_tool_catalog(
+        request: Request,
+        q: str | None = Query(
+            default=None,
+            max_length=_MAX_QUERY_LENGTH,
+            description="Search tool names and rationales.",
+        ),
+        risk: str | None = Query(
+            default=None,
+            description="Filter by risk level.",
+        ),
+        capability: str | None = Query(
+            default=None,
+            description="Filter by capability.",
+        ),
+        policyStatus: str | None = Query(
+            default=None,
+            alias="policyStatus",
+            description="Filter by policy status.",
+        ),
+        page: int = Query(
+            default=1,
+            ge=1,
+            description="Page number (1-based).",
+        ),
+        pageSize: int = Query(
+            default=25,
+            ge=1,
+            le=_MAX_PAGE_SIZE,
+            alias="pageSize",
+            description="Items per page.",
+        ),
+        sort: str = Query(
+            default="nameAsc",
+            description="Sort order.",
+        ),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        if tool_policy_service is None:
+            return _make_error_json(
+                status_code=503,
+                code="TOOL_POLICY_UNAVAILABLE",
+                message="Tool policy service is unavailable.",
+                request_id=rid,
+            )
+
+        # Check for dangerous query parameters
+        raw_params = dict(request.query_params)
+        for param_name in raw_params:
+            if param_name.lower() in _DANGEROUS_PARAM_NAMES:
+                return _make_error_json(
+                    status_code=400,
+                    code="INVALID_TOOL_POLICY_QUERY",
+                    message=f"Dangerous query parameter rejected: {param_name}",
+                    request_id=rid,
+                )
+
+        try:
+            query = validate_catalog_query(
+                q=q,
+                risk=risk,
+                capability=capability,
+                policy_status=policyStatus,
+                page=page,
+                page_size=pageSize,
+                sort=sort,
+            )
+        except InvalidToolPolicyQueryError as exc:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_TOOL_POLICY_QUERY",
+                message=exc.message,
+                request_id=rid,
+            )
+        except InvalidToolRiskError as exc:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_TOOL_RISK",
+                message=exc.message,
+                request_id=rid,
+            )
+        except InvalidToolCapabilityError as exc:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_TOOL_CAPABILITY",
+                message=exc.message,
+                request_id=rid,
+            )
+        except InvalidToolPolicyStatusError as exc:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_TOOL_POLICY_STATUS",
+                message=exc.message,
+                request_id=rid,
+            )
+        except InvalidToolSortError as exc:
+            return _make_error_json(
+                status_code=400,
+                code="INVALID_TOOL_SORT",
+                message=exc.message,
+                request_id=rid,
+            )
+
+        try:
+            dto = tool_policy_service.list_tool_catalog(query)
+        except ToolPolicyDataInvalidError as exc:
+            return _make_error_json(
+                status_code=500,
+                code="TOOL_POLICY_DATA_INVALID",
+                message=exc.message,
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": _tool_dto_to_camel(dto),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }

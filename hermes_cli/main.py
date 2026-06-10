@@ -7063,7 +7063,7 @@ def _webui_check_openapi(
 
     Checks:
     - YAML is parseable
-    - Exactly 21 business paths
+    - Exactly 29 business paths
     - All allowed routes are present
     - No forbidden routes appear
     """
@@ -7104,13 +7104,16 @@ def _webui_check_openapi(
         "/reviews/{reviewId}/reject/dry-run": {"post"},
         "/reviews/{reviewId}/approve/execute": {"post"},
         "/reviews/{reviewId}/reject/execute": {"post"},
+        "/tools/policy": {"get"},
+        "/tools/catalog": {"get"},
     }
 
     # Forbidden route path substrings
     # Phase 1E: /agent/run/dry-run is allowed, but /agent/run (exact) is forbidden.
     # /agent/prompt/preview is allowed.
+    # Phase 1G: /tools/policy and /tools/catalog (GET) are allowed, but all other
+    # /tools/* routes (write, execute, dispatch, schema preview, call dry-run) are forbidden.
     FORBIDDEN_SUBSTRINGS = (
-        "/tools",
         "/files/upload",
     )
 
@@ -7120,12 +7123,25 @@ def _webui_check_openapi(
         "/agent/stream",
     )
 
+    # Forbidden tool write / execute / dispatch routes (substring match)
+    # GET /tools/policy and GET /tools/catalog are allowed above.
+    _TOOL_WRITE_ROUTE_SUBSTRINGS = (
+        "/tools/policy",  # any method besides GET is caught below
+        "/tools/catalog/",  # detail route: /tools/catalog/{toolName}
+        "/tools/schema/preview",
+        "/tools/calls",
+    )
+
     # Forbidden POST/PATCH/DELETE on reviews (GET is allowed above)
     _REVIEW_WRITE_METHODS = {"post", "patch", "delete"}
 
+    # Forbidden methods on Tool Policy routes (only GET is allowed)
+    _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog"}
+    _TOOL_ALLOWED_METHODS = {"get"}
+
     # Check path count
     add_fn(
-        "PASS" if path_count == 27 else "FAIL",
+        "PASS" if path_count == 29 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7159,6 +7175,17 @@ def _webui_check_openapi(
             if route_path == exact_path:
                 forbidden_found.append(route_path)
                 break
+        # Check for forbidden tool write / execute / dispatch routes
+        if route_path.startswith("/tools") and route_path not in _TOOL_GET_ROUTES:
+            forbidden_found.append(route_path)
+            continue
+        # Check for non-GET methods on Tool GET routes
+        if route_path in _TOOL_GET_ROUTES:
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            extra_methods = actual_methods - _TOOL_ALLOWED_METHODS
+            if extra_methods:
+                forbidden_found.append(f"{route_path} ({', '.join(sorted(extra_methods))})")
+            continue
         # Check for review write routes (POST/PATCH/DELETE on /reviews/*)
         if route_path.startswith("/reviews") and route_path not in allowed_path_set:
             actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
@@ -7218,11 +7245,58 @@ def _webui_check_openapi(
     )
 
     # Agent tool routes must not exist
-    tool_routes = [p for p in paths if p.startswith("/agent/tools") or p.startswith("/tools")]
+    agent_tool_routes = [p for p in paths if p.startswith("/agent/tools")]
     add_fn(
-        "PASS" if not tool_routes else "FAIL",
+        "PASS" if not agent_tool_routes else "FAIL",
         "Agent tool execution",
-        "absent" if not tool_routes else f"found: {', '.join(tool_routes)}",
+        "absent" if not agent_tool_routes else f"found: {', '.join(agent_tool_routes)}",
+    )
+
+    # Phase 1G: Tool Policy read-only checks
+    tool_policy_routes = {"/tools/policy", "/tools/catalog"}
+    tool_get_present = all(
+        route in paths and "get" in paths[route]
+        for route in tool_policy_routes
+    )
+    add_fn(
+        "PASS" if tool_get_present else "FAIL",
+        "Tool policy routes",
+        "2" if tool_get_present else "missing tool policy routes",
+    )
+
+    # Tool write routes must not exist
+    tool_write_routes = [
+        p for p in paths
+        if p.startswith("/tools") and p not in tool_policy_routes
+    ]
+    add_fn(
+        "PASS" if not tool_write_routes else "FAIL",
+        "Tool write routes",
+        "absent" if not tool_write_routes else f"found: {', '.join(tool_write_routes)}",
+    )
+
+    # Static allowlist must be empty
+    from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+    add_fn(
+        "PASS" if len(STATIC_ALLOWLIST) == 0 else "FAIL",
+        "Static allowlist",
+        "empty" if len(STATIC_ALLOWLIST) == 0 else f"{len(STATIC_ALLOWLIST)} tools",
+    )
+
+    # Tool execution must be disabled
+    tool_exec_disabled = os.environ.get("HERMES_TOOL_EXECUTION_ENABLED", "").strip().lower() in ("", "false", "0", "no", "off")
+    add_fn(
+        "PASS" if tool_exec_disabled else "FAIL",
+        "Tool execution",
+        "disabled" if tool_exec_disabled else "enabled (blocked)",
+    )
+
+    # Provider Tool Schema must not be sent
+    provider_schema_off = os.environ.get("HERMES_AGENT_TOOLS_ENABLED", "").strip().lower() in ("", "false", "0", "no", "off")
+    add_fn(
+        "PASS" if provider_schema_off else "FAIL",
+        "Provider tool schema",
+        "not sent" if provider_schema_off else "enabled (blocked)",
     )
 
 

@@ -32,6 +32,8 @@ tags:
     description: File browsing status
   - name: Reviews
     description: Review queue read-only access, dry-run preview, and dev-only execute
+  - name: Tools
+    description: Tool policy and catalog read-only access
 
 paths:
   /status:
@@ -1458,6 +1460,137 @@ paths:
           description: Run not found
         "503":
           description: Agent Run disabled
+
+  /tools/policy:
+    get:
+      operationId: getToolPolicyStatus
+      tags: [Tools]
+      summary: Tool policy status overview
+      description: >
+        Returns the current static tool policy configuration including inventory
+        counts, risk distribution, execution flags (all false), and safety flags.
+        All data is read-only and derived from the static policy module.
+        No Registry, Handler, Provider, or SessionDB is accessed.
+      responses:
+        "200":
+          description: Tool policy status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolPolicyStatusResponse"
+        "500":
+          description: Tool policy data integrity error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Tool policy service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tools/catalog:
+    get:
+      operationId: listToolCatalog
+      tags: [Tools]
+      summary: Filtered, paginated tool catalog
+      description: >
+        Returns a filtered, sorted, and paginated list of all tools in the
+        static policy inventory. Each item includes whitelisted metadata only —
+        no handler, callable, source path, or schema is exposed.
+        All tools have allowed=false and all execution flags are false.
+      parameters:
+        - name: q
+          in: query
+          description: Search tool names and rationale previews
+          schema:
+            type: string
+            maxLength: 120
+        - name: risk
+          in: query
+          description: Filter by risk level
+          schema:
+            type: string
+            enum: [R0, R1, R2, R3, R4, R5]
+        - name: capability
+          in: query
+          description: Filter by capability
+          schema:
+            type: string
+            enum:
+              - PURE_COMPUTE
+              - LOCAL_FILE_READ
+              - LOCAL_FILE_WRITE
+              - DATABASE_READ
+              - DATABASE_WRITE
+              - NETWORK_READ
+              - NETWORK_WRITE
+              - PROCESS_EXECUTION
+              - CODE_EXECUTION
+              - BROWSER_CONTROL
+              - DESKTOP_CONTROL
+              - CREDENTIAL_USE
+              - REMOTE_STATE_MUTATION
+              - MESSAGE_SEND
+              - MEDIA_GENERATION
+              - ADMINISTRATIVE_ACTION
+              - SCHEDULING
+              - SUB_AGENT_EXECUTION
+        - name: policyStatus
+          in: query
+          description: Filter by derived policy status
+          schema:
+            type: string
+            enum: [PERMANENTLY_DENIED, CANDIDATE, UNLISTED, STATICALLY_ALLOWED]
+        - name: page
+          in: query
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: sort
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [nameAsc, nameDesc, riskAsc, riskDesc]
+            default: nameAsc
+      responses:
+        "200":
+          description: Tool catalog list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolCatalogResponse"
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Tool policy data integrity error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Tool policy service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -3181,3 +3314,270 @@ components:
           type: boolean
         reviewQueued:
           type: boolean
+
+    # ── Phase 1G: Tool Policy ──
+
+    ToolPolicyExecution:
+      type: object
+      required: [implemented, enabled, providerSchemaSent, dispatchAvailable, auditAvailable]
+      properties:
+        implemented:
+          type: boolean
+          enum: [false]
+        enabled:
+          type: boolean
+          enum: [false]
+        providerSchemaSent:
+          type: boolean
+          enum: [false]
+        dispatchAvailable:
+          type: boolean
+          enum: [false]
+        auditAvailable:
+          type: boolean
+          enum: [false]
+
+    ToolPolicySafety:
+      type: object
+      required: [readOnly, sideEffects, writeEnabled, executeAvailable, policyMutationAvailable]
+      properties:
+        readOnly:
+          type: boolean
+          enum: [true]
+        sideEffects:
+          type: boolean
+          enum: [false]
+        writeEnabled:
+          type: boolean
+          enum: [false]
+        executeAvailable:
+          type: boolean
+          enum: [false]
+        policyMutationAvailable:
+          type: boolean
+          enum: [false]
+
+    ToolPolicyLimits:
+      type: object
+      required:
+        - maxArgumentPayloadBytes
+        - maxArgumentNestingDepth
+        - maxArgumentStringLength
+        - maxArgumentArrayLength
+        - defaultR0TimeoutSeconds
+        - defaultR1TimeoutSeconds
+        - maxToolTimeoutSeconds
+        - maxToolCallsPerRun
+        - maxGlobalConcurrency
+        - maxConcurrencyPerRun
+        - maxSerializedOutputBytes
+        - maxAgentVisibleOutputBytes
+        - maxWebPreviewOutputBytes
+      properties:
+        maxArgumentPayloadBytes:
+          type: integer
+        maxArgumentNestingDepth:
+          type: integer
+        maxArgumentStringLength:
+          type: integer
+        maxArgumentArrayLength:
+          type: integer
+        defaultR0TimeoutSeconds:
+          type: integer
+        defaultR1TimeoutSeconds:
+          type: integer
+        maxToolTimeoutSeconds:
+          type: integer
+        maxToolCallsPerRun:
+          type: integer
+        maxGlobalConcurrency:
+          type: integer
+        maxConcurrencyPerRun:
+          type: integer
+        maxSerializedOutputBytes:
+          type: integer
+        maxAgentVisibleOutputBytes:
+          type: integer
+        maxWebPreviewOutputBytes:
+          type: integer
+
+    ToolPolicyStatusData:
+      type: object
+      required: [mode, inventoryCount, riskCounts, permanentDenylistCount, candidateAllowlistCount, enabledAllowlistCount, execution, limits, safety]
+      properties:
+        mode:
+          type: string
+          enum: [DEFAULT_DENY]
+        inventoryCount:
+          type: integer
+        riskCounts:
+          type: object
+          properties:
+            R0:
+              type: integer
+            R1:
+              type: integer
+            R2:
+              type: integer
+            R3:
+              type: integer
+            R4:
+              type: integer
+            R5:
+              type: integer
+        permanentDenylistCount:
+          type: integer
+        candidateAllowlistCount:
+          type: integer
+        enabledAllowlistCount:
+          type: integer
+        execution:
+          $ref: "#/components/schemas/ToolPolicyExecution"
+        limits:
+          $ref: "#/components/schemas/ToolPolicyLimits"
+        safety:
+          $ref: "#/components/schemas/ToolPolicySafety"
+
+    ToolPolicyStatusResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ToolPolicyStatusData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    ToolCatalogItem:
+      type: object
+      required:
+        - canonicalName
+        - primaryRisk
+        - riskRank
+        - capabilities
+        - permanentlyDenied
+        - candidateAllowlisted
+        - staticallyAllowed
+        - allowed
+        - policyStatus
+        - reasonCode
+        - sourceModule
+        - rationalePreview
+        - executionAvailable
+        - schemaPreviewAvailable
+        - dryRunAvailable
+      properties:
+        canonicalName:
+          type: string
+        primaryRisk:
+          type: string
+        riskRank:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        permanentlyDenied:
+          type: boolean
+        candidateAllowlisted:
+          type: boolean
+        staticallyAllowed:
+          type: boolean
+        allowed:
+          type: boolean
+          enum: [false]
+        policyStatus:
+          type: string
+          enum: [PERMANENTLY_DENIED, CANDIDATE, UNLISTED, STATICALLY_ALLOWED]
+        reasonCode:
+          type: string
+        sourceModule:
+          type: string
+        rationalePreview:
+          type: string
+        executionAvailable:
+          type: boolean
+          enum: [false]
+        schemaPreviewAvailable:
+          type: boolean
+          enum: [false]
+        dryRunAvailable:
+          type: boolean
+          enum: [false]
+
+    ToolCatalogSummary:
+      type: object
+      required: [inventoryCount, permanentDenylistCount, candidateAllowlistCount, enabledAllowlistCount]
+      properties:
+        inventoryCount:
+          type: integer
+        permanentDenylistCount:
+          type: integer
+        candidateAllowlistCount:
+          type: integer
+        enabledAllowlistCount:
+          type: integer
+
+    ToolCatalogSafety:
+      type: object
+      required: [readOnly, sideEffects, executeAvailable]
+      properties:
+        readOnly:
+          type: boolean
+          enum: [true]
+        sideEffects:
+          type: boolean
+          enum: [false]
+        executeAvailable:
+          type: boolean
+          enum: [false]
+
+    ToolCatalogFilters:
+      type: object
+      required: [sort]
+      properties:
+        q:
+          type: string
+          nullable: true
+        risk:
+          type: string
+          nullable: true
+        capability:
+          type: string
+          nullable: true
+        policyStatus:
+          type: string
+          nullable: true
+        sort:
+          type: string
+
+    ToolCatalogData:
+      type: object
+      required: [items, page, pageSize, total, totalPages, filters, summary, safety]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolCatalogItem"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        filters:
+          $ref: "#/components/schemas/ToolCatalogFilters"
+        summary:
+          $ref: "#/components/schemas/ToolCatalogSummary"
+        safety:
+          $ref: "#/components/schemas/ToolCatalogSafety"
+
+    ToolCatalogResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ToolCatalogData"
+        meta:
+          $ref: "#/components/schemas/Meta"
