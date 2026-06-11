@@ -1650,7 +1650,8 @@ paths:
       description: >
         Returns a policy decision (would_allow, would_block, would_redact,
         requires_review) without executing the tool. No tool handler is called,
-        no provider schema is sent, and no audit record is written.
+        no provider schema is sent, and a dev-only audit record is written
+        when the audit write succeeds (auditWritten does not imply tool execution).
         This endpoint is non-mutating despite using POST method.
       requestBody:
         required: true
@@ -3930,8 +3931,7 @@ components:
           description: Always false. Provider schema sending requires separate phase.
         auditWritten:
           type: boolean
-          enum: [false]
-          description: Always false. Audit requires separate phase.
+          description: Whether a local dev-only dry-run audit event was safely written. true means the audit JSONL write succeeded; false means no audit was written or the audit write failed. This does not imply tool execution, dispatch, provider schema sending, or provider API access.
 
     ToolDryRunResponse:
       type: object
