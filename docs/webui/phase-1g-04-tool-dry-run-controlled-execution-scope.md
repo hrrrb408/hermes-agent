@@ -791,4 +791,63 @@ After creating the docs-only commit:
 
 ---
 
+## 20. Phase 1G-04-02 Completion Record
+
+### Phase 1G-04-02: Dry-Run Read-Only API Design
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-02 |
+| Title | Dry-Run Read-Only API Design Scope Freeze |
+| Status | Completed locally |
+| Date | 2026-06-11 |
+| Branch | dev-huangruibang |
+| Base commit | 821716bf5e95678a666a1b77ab5812b3ad81b8cc |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-02-dry-run-read-only-api-design.md` | API design document: endpoint, DTOs, error codes, route governance, security boundary, sanitization, future tests, future OpenAPI, future UI notes |
+
+### What Was Designed
+
+1. **Recommended endpoint**: `POST /api/dev/v1/tools/dry-run` — non-mutating policy decision endpoint
+2. **Request DTO**: `canonicalName` (required), `argumentsPreview` (optional object), `sourceContext`, `uiOrigin`, `requestId`
+3. **Response DTO**: Standard envelope with `ok`/`data`/`error`, policy decision fields, invariant guarantees (`executionAllowed=false`, etc.)
+4. **Error codes**: 6 codes covering validation, policy unavailability, and internal errors
+5. **Unknown tool behavior**: HTTP 200 with `exists=false` and `decision=would_block` (frozen decision)
+6. **Route governance impact**: +1 dry-run route, Tool write routes remains 0, separate governance bucket
+7. **Security boundary**: No tool handler calls, no dispatch, no execution, no provider schema, no audit
+8. **Input sanitization**: Reuses Phase 1G-04-01 sanitizer semantics
+9. **Future test scope**: 23 planned tests across decision, validation, security, and governance categories
+10. **Future OpenAPI schema names**: 6 recommended schema names
+11. **Future UI requirements**: "No tool executed" notice, no Execute terminology, redaction display
+12. **Audit behavior**: Not implemented, deferred to Phase 1G-04-06
+
+### What Was NOT Implemented
+
+- No API route added
+- No OpenAPI path added or modified
+- No runtime route changed
+- No frontend source changed
+- No router changed
+- No provider schema sending
+- No tool handler call
+- No tool dispatch
+- No tool execution
+- No audit storage
+- No STATIC_ALLOWLIST population
+
+### Route Governance (unchanged)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 31 |
+| Runtime routes | 31 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+
+---
+
 *Phase 1G-04-00 Design Scope Freeze — Tool Dry-Run / Controlled Execution: design-only, docs-only, no implementation, no execution, no provider schema send, no tool dispatch, no tool audit, no allowlist change.*
