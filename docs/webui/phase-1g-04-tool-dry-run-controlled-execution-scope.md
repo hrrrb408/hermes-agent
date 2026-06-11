@@ -909,4 +909,148 @@ After creating the docs-only commit:
 
 ---
 
+## 22. Phase 1G-04-04 Completion Record
+
+### Phase 1G-04-04: Dry-Run API Implementation
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-04 |
+| Title | Tool Dry-Run API Implementation |
+| Status | Completed / Pushed |
+| Date | 2026-06-11 |
+| Branch | dev-huangruibang |
+| Commit | 1340e5105f92665a09b9fc9fd03c0ce8006147c2 |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `hermes_cli/dev_web_api.py` | Added `_register_tool_dry_run_routes()` — 1 POST route handler |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | Added 1 path + 6 schemas for dry-run |
+| `tests/test_dev_web_tool_dry_run_api.py` | 44 API-level tests covering decisions, validation, security, governance |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-04 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-04 status |
+
+### What Was Implemented
+
+1. **Route**: `POST /api/dev/v1/tools/dry-run` — non-mutating policy decision endpoint
+2. **Handler**: calls existing `dry_run_tool_policy()` and `sanitize_arguments_preview()` from `dev_web_tool_dry_run.py`
+3. **Request validation**: canonicalName required, argumentsPreview optional object, sourceContext/uiOrigin/requestId optional strings
+4. **Response**: standard envelope with data/meta, invariant execution flags always false
+5. **Error codes**: TOOL_DRY_RUN_INVALID_REQUEST, TOOL_DRY_RUN_INVALID_CANONICAL_NAME, TOOL_DRY_RUN_INVALID_ARGUMENTS, TOOL_DRY_RUN_POLICY_UNAVAILABLE, TOOL_DRY_RUN_INTERNAL_ERROR
+6. **44 tests**: 9 decision tests, 2 denylist/unknown, 19 validation, 8 security, 2 envelope, 6 governance
+
+### What Was NOT Implemented
+
+- No tool handler calls
+- No tool dispatch
+- No tool execution
+- No provider schema sending
+- No audit storage
+- No STATIC_ALLOWLIST population
+- No frontend source changes
+- No Dry-Run UI
+
+### Route Governance
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+---
+
+## 23. Phase 1G-04-05 Completion Record
+
+### Phase 1G-04-05: Dry-Run API Browser / Network / A11y Safety Verification
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-05 |
+| Title | Tool Dry-Run API Browser / Network / A11y Safety Verification |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-11 |
+| Branch | dev-huangruibang |
+| Base commit | 1340e5105f92665a09b9fc9fd03c0ce8006147c2 |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `apps/hermes-dev-webui/tests/smoke/phase-1g-04-dry-run-api-safety-smoke.spec.ts` | 18 Playwright smoke tests covering API, redaction, unknown tools, validation, network safety, UI non-exposure, A11y, execution flag invariants |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-04 and 1G-04-05 completion records |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-04 and 1G-04-05 status |
+
+### What Was Verified
+
+1. **API Smoke** (3 tests): POST dry-run returns safe decisions, R0/R1 tools return would_allow, dry-run POST not counted as tool write
+2. **Redaction Smoke** (1 test): Secret arguments are redacted, no raw secrets in response
+3. **Unknown Tool Smoke** (1 test): Returns 200 with exists=false and would_block, not 404
+4. **Validation Error Smoke** (3 tests): Missing/invalid fields return 400, no stack trace leakage, no provider info
+5. **Network Safety** (3 tests): No external provider requests, no execute/dispatch/audit write requests, dry-run classified in separate bucket
+6. **UI Non-Exposure** (2 tests): No Execute/Dispatch/Provider-Schema buttons, no misleading execution text — skipped when WebUI not running
+7. **A11y Safety** (1 test): Existing landmarks present, no unlabeled buttons, no dangerous execute buttons — skipped when WebUI not running
+8. **Execution Flag Invariant** (4 tests): R0, R1, denylisted, and unknown tools all have all four flags false
+
+### Safety Verification Results
+
+| Check | Result |
+|-------|--------|
+| No provider requests | ✅ Verified |
+| No Provider Schema sent | ✅ Verified |
+| No Tool Handler called | ✅ Verified |
+| No Tool Dispatch | ✅ Verified |
+| No Tool Execution | ✅ Verified |
+| No Tool Audit write | ✅ Verified |
+| No STATIC_ALLOWLIST change | ✅ Verified |
+| No raw secrets returned | ✅ Verified |
+| No external network requests | ✅ Verified |
+| No execute/dispatch/audit writes | ✅ Verified |
+| No new Dry-Run UI | ✅ Verified |
+| No new Execute buttons | ✅ Verified |
+
+### Test Results
+
+| Suite | Result |
+|-------|--------|
+| Browser smoke (18 tests) | 15 passed, 3 skipped (WebUI not running) |
+| Frontend type-check | PASS |
+| Frontend lint | PASS |
+| Frontend build | PASS |
+| Backend Dry-Run API (44 tests) | 44 passed, 2 skipped |
+| Backend Dry-Run model (425 tests) | 425 passed |
+| Route governance (124 tests) | 124 passed, 5 deselected |
+| compileall | PASS |
+| ruff | PASS |
+| memory-check | PASS |
+| dev-check | WARN (dirty worktree only) |
+
+### What Was NOT Implemented
+
+- No API code changes
+- No OpenAPI changes
+- No frontend source changes
+- No frontend route changes
+- No Dry-Run UI implementation
+- No Audit Storage implementation
+- No Controlled Execution start
+
+### Route Governance (unchanged from 1G-04-04)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+---
+
 *Phase 1G-04-00 Design Scope Freeze — Tool Dry-Run / Controlled Execution: design-only, docs-only, no implementation, no execution, no provider schema send, no tool dispatch, no tool audit, no allowlist change.*
