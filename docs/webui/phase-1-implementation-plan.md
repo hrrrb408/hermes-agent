@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04 Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Design Scope Freeze In Progress; 1G-04-01 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 Design Scope Freeze In Progress, 1G-04-01 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -769,7 +769,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
-| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 Design Scope Freeze In Progress |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
@@ -882,7 +882,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
 | 1G-02 | Tool Policy Read-Only API / Panel | ✅ Completed | 1G-02-00 | No |
-| 1G | Tool execution framework | Not Started | 1F | Default No |
+| 1G | Tool execution framework | In Progress (1G-04-00 design freeze) | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
 ---
@@ -914,7 +914,8 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │           └── 1G-01 (static policy)
 │               └── 1G-02-00 (policy read-only scope freeze)
 │                   └── 1G-02 (policy read-only implementation) ✅
-│                       └── 1G-03 (schema preview)
+│                       └── 1G-03 (schema preview) ✅
+│                           └── 1G-04-00 (dry-run/execution design scope freeze) ✅
 │
 └── 1-Release (push all)
 ```
@@ -1074,7 +1075,7 @@ The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 - Zero side effects on formal dev-home
 - See `docs/webui/phase-1g-02-tool-policy-read-only-panel.md` for full details
 
-The next subphase is **Phase 1G-03** (Tool Schema Preview).
+The next subphase is **Phase 1G-04** (Tool Call Dry-Run). Phase 1G-04-00 (Design Scope Freeze) is in progress.
 Phase 1G-03-04 is completed.
 
 **Phase 1G-03-05 is completed.** Schema Preview Panel UI implemented as a read-only interface on top of the existing frontend data layer.
@@ -1106,6 +1107,22 @@ Phase 1G-03-04 is completed.
 - Frontend: 649 passed, type-check PASS, build PASS
 - dev-check: OpenAPI=31, Runtime=31, Tool GET=4, Tool write=0, STATIC_ALLOWLIST=empty, Provider Schema not sent
 - No code changes, no push, Phase 1G-04 not started
+
+**Phase 1G-04-00 is completed.** Tool Dry-Run / Controlled Execution Design Scope Freeze.
+- `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` — Complete design scope freeze document
+- Dry-Run semantics defined (non-executing simulation, no handler call, no provider call, no mutation)
+- Controlled Execution preconditions defined (12 preconditions, all must be true)
+- Risk Tier R0–R5 admission policy documented (dry-run eligibility vs execution eligibility)
+- Candidate Allowlist policy documented (advisory only, not executable)
+- API roadmap: 8 sub-phases (1G-04-00 through 1G-04-07 + beyond)
+- UI roadmap: Dry-Run button visually distinct from Execute, no Execute button in design phase
+- Audit roadmap: Dry-Run audit and Execution audit design, no implementation
+- Kill switches documented: all three remain disabled
+- Route governance: OpenAPI=31, Runtime=31, Tool GET=4, Tool write=0 (unchanged)
+- STATIC_ALLOWLIST remains empty, Tool Execution disabled, Provider Schema not sent
+- No code changes, no API changes, no OpenAPI changes, no frontend changes
+- No push, Phase 1G-04-01 not started, Controlled Execution not started
+- See `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` for full details
 
 **Phase 1G-03-04 is completed.** Schema Preview frontend types, GET-only API client, and Pinia store data layer implemented.
 - `apps/hermes-dev-webui/src/types/api/toolSchemaPreview.ts` — TypeScript types matching OpenAPI contract (ToolSchemaPreviewField, ToolSchemaPreviewItem, ToolSchemaPreviewCatalogData, ToolSchemaPreviewLookupData, etc.)
