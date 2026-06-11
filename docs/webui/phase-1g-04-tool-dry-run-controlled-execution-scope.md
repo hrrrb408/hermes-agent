@@ -1053,4 +1053,66 @@ After creating the docs-only commit:
 
 ---
 
+## 24. Phase 1G-04-06 Completion Record
+
+### Phase 1G-04-06: Dry-Run Audit Storage Scope / Design
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-06 |
+| Title | Dry-Run Audit Storage Scope / Design Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-11 |
+| Branch | dev-huangruibang |
+| Base commit | 6b4de050e7c296e3189535c09abbdd5b753caa1e |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-06-dry-run-audit-storage-scope.md` | Audit storage scope/design freeze: event model, sensitive data policy, storage location, retention/rotation, failure modes, future allowed/forbidden files, test plan |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-06 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-06 status |
+
+### What Was Designed
+
+1. **Audit goal**: Record local, non-mutating, already-redacted Dry-Run decision results
+2. **Non-goals**: No execution recording, no raw arguments, no audit UI, no audit API
+3. **Audit event model**: 30 fields including eventId, eventType, timestamp, canonicalName, decision, reasonCodes, redactedArgumentsPreview, invariant execution flags (always false)
+4. **Sensitive data policy**: Reuses existing sanitizer, 18 forbidden field names, 4 secret value patterns, no raw storage
+5. **Storage location**: `$HERMES_HOME/gateway/dev/audit/tool-dry-run-audit.jsonl` (dev-only, local-only)
+6. **Retention/rotation**: max 32 KiB event, max 5 MiB file, max 3 rotated files, append-only JSONL
+7. **Failure modes**: Audit failure never enables execution, never calls provider, never leaks secrets
+8. **Future allowed files**: `dev_web_tool_dry_run_audit.py` (new), `dev_web_api.py` (modify), test files, doc files
+9. **Future forbidden files**: All frontend, OpenAPI, main.py, agent, tools, toolsets, runtime, memory, review, env, .claude
+10. **Future implementation phase**: Phase 1G-04-07 (Internal Audit Writer)
+11. **Deferred items**: Audit viewer UI, audit search API, audit export, audit read route
+
+### What Was NOT Implemented
+
+- No audit storage module
+- No audit storage file
+- No audit API route
+- No OpenAPI path added or modified
+- No runtime route changed
+- No frontend source changed
+- No tool handler call
+- No tool dispatch
+- No tool execution
+- No audit write
+- No STATIC_ALLOWLIST population
+
+### Route Governance (unchanged from 1G-04-05)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+---
+
 *Phase 1G-04-00 Design Scope Freeze — Tool Dry-Run / Controlled Execution: design-only, docs-only, no implementation, no execution, no provider schema send, no tool dispatch, no tool audit, no allowlist change.*

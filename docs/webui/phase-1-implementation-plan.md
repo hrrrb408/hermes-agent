@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed)
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed)
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -769,7 +769,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
-| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
@@ -882,7 +882,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
 | 1G-02 | Tool Policy Read-Only API / Panel | ✅ Completed | 1G-02-00 | No |
-| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally) | 1F | Default No |
+| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally, 1G-04-06 completed locally) | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
 ---
@@ -921,6 +921,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │                                       └── 1G-04-03 (dry-run API implementation scope freeze) ✅
 │                                           └── 1G-04-04 (dry-run API implementation) ✅ Pushed
 │                                               └── 1G-04-05 (dry-run browser/network/a11y verification) ✅ Completed locally
+│                                                   └── 1G-04-06 (dry-run audit storage scope/design) ✅ Completed locally
 │
 └── 1-Release (push all)
 ```
@@ -1280,3 +1281,20 @@ Phase 1G-03-04 is completed.
 - Spotify section expanded from 1 grouped entry to 7 individual entries with unique risk levels
 - No safety policy changes, no Denylist/Candidate composition changes, no business code changes
 - See `docs/webui/phase-1g-00-tool-execution-safety-scope.md` Section 39 for full fix record
+
+**Phase 1G-04-06 is completed locally.** Dry-Run Audit Storage Scope / Design Freeze.
+- `docs/webui/phase-1g-04-06-dry-run-audit-storage-scope.md` — Audit storage scope/design freeze: event model, sensitive data policy, storage location, retention/rotation, failure modes, future allowed/forbidden files, test plan
+- Audit goal: Record local, non-mutating, already-redacted Dry-Run decision results
+- Non-goals: No execution recording, no raw arguments, no audit UI, no audit API
+- Audit event model: 30 fields with invariant execution flags (always false)
+- Sensitive data policy: Reuses existing sanitizer, 18 forbidden field names, 4 secret value patterns
+- Storage location: `$HERMES_HOME/gateway/dev/audit/tool-dry-run-audit.jsonl` (dev-only, local-only)
+- Retention/rotation: max 32 KiB event, max 5 MiB file, max 3 rotated files
+- Failure modes: Audit failure never enables execution, never calls provider
+- Future implementation phase: Phase 1G-04-07 (Internal Audit Writer)
+- No audit storage implemented, no audit file created, no API code changes
+- No OpenAPI changes, no route changes, no frontend changes
+- Route governance: OpenAPI=32, Runtime=32, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=0
+- STATIC_ALLOWLIST remains empty, Tool Execution disabled, Provider Schema not sent
+- Local docs-only commit created, not pushed
+- See `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` Section 24 for completion record
