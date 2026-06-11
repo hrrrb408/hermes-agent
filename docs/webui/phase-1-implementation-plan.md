@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -768,7 +768,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
-| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — Scope Frozen |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
@@ -1076,6 +1076,20 @@ The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 
 The next subphase is **Phase 1G-03** (Tool Schema Preview).
 Phase 1G-03 has NOT started.
+
+**Phase 1G-03-00 is completed.** Tool Schema Preview scope, data model boundary, redaction rules, DTO whitelist, forbidden fields, risk-based availability, API principles, frontend principles, testing strategy, and phase breakdown are frozen.
+- `docs/webui/phase-1g-03-tool-schema-preview-scope.md` — Complete scope freeze document
+- Schema Preview: read-only, local-only, no Provider Schema send, no Tool Execution
+- R0–R3 tools (51) eligible for preview; R4–R5 tools (20) show unavailable reason
+- DTO whitelist: 9 top-level fields + 7 per-field fields
+- Forbidden fields: 7 categories (callable, paths, runtime, secrets, raw data, dynamic, config)
+- Sanitizer enforces: description truncation (240 chars), nested depth limit (4), enum limit (20), field count limit (100)
+- API: 2 candidate GET routes (`/schemas`, `/schemas/{name}`), OpenAPI 29 → 31
+- Frontend: read-only sub-tab, no execute/dry-run buttons
+- Phase breakdown: 7 sub-tasks (1G-03-01 through 1G-03-07)
+- No business code modified, no API modified, no frontend modified
+- No Tool Execution implemented or enabled
+- See `docs/webui/phase-1g-03-tool-schema-preview-scope.md` for full details
 
 **Phase 1G-02-00 is completed.** Tool Policy Read-Only API and Panel scope, contracts, DTO whitelist, frontend information architecture, route governance, testing strategy, and zero-side-effect boundary are frozen.
 - `docs/webui/phase-1g-02-00-tool-policy-read-only-scope.md` — Complete scope freeze document
