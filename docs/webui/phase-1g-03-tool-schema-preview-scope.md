@@ -882,11 +882,11 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ## 17. Next Step
 
-Phase 1G-03-03 is completed. The next sub-phase is:
+Phase 1G-03-04 is completed. The next sub-phase is:
 
-- Phase 1G-03-04 (Frontend Types, API Client and Store) may begin
-- Phase 1G-03-04 must comply with all contracts in this document
-- Phase 1G-03-04 must not deviate from any frozen boundary
+- Phase 1G-03-05 (Schema Preview Panel UI) may begin
+- Phase 1G-03-05 must comply with all contracts in this document
+- Phase 1G-03-05 must not deviate from any frozen boundary
 
 ---
 
@@ -1124,3 +1124,104 @@ Phase 1G-03-03 is completed. The next sub-phase is:
 - No STATIC_DENYLIST change
 - No CANDIDATE_ALLOWLIST change
 - Phase 1G-03-04 not started
+
+---
+
+## 21. Phase 1G-03-04 Completion Record
+
+**Phase:** 1G-03-04 — Frontend Types, GET-only API Client and Store
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** 52becfa2cd85ff545c4102069ee4e83314ade5b9
+
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `apps/hermes-dev-webui/src/types/api/toolSchemaPreview.ts` | New — TypeScript types for Schema Preview DTOs |
+| `apps/hermes-dev-webui/src/api/toolSchemaPreview.ts` | New — GET-only API client methods |
+| `apps/hermes-dev-webui/src/stores/toolSchemaPreview.ts` | New — Pinia store for Schema Preview data layer |
+| `apps/hermes-dev-webui/src/tests/tool-schema-preview-api.spec.ts` | New — 24 API client unit tests |
+| `apps/hermes-dev-webui/src/tests/tool-schema-preview-store.spec.ts` | New — 49 store unit tests |
+
+### Implementation Summary
+
+1. **TypeScript types:** `ToolSchemaPreviewField`, `ToolSchemaPreviewItem`, `ToolSchemaPreviewCatalogData`, `ToolSchemaPreviewCatalogResponse`, `ToolSchemaPreviewLookupData`, `ToolSchemaPreviewLookupResponse` — all matching OpenAPI contract fields with camelCase naming. Union types for `SchemaPreviewRedactionStatus`, `SchemaPreviewReasonCode`, `SchemaPreviewShape`, `SchemaPreviewLookupReason`.
+2. **API client:** `fetchToolSchemaPreviewCatalog(signal?)` and `fetchToolSchemaPreviewByCanonicalName(canonicalName, signal?)` — both use `apiGet()` from existing client module. canonicalName is URL-encoded via `encodeURIComponent()`. No request body, no POST/PUT/PATCH/DELETE.
+3. **Pinia store:** `useToolSchemaPreviewStore` — manages catalog/preview loading state, error handling, abort/race protection via sequence numbers. Getters: `items`, `availableItems`, `unavailableItems`, `totalCount`, `availableCount`, `unavailableCount`, `hasCatalog`, `hasSelectedPreview`, `isCatalogLoading`, `isPreviewLoading`. Actions: `fetchCatalog()`, `fetchPreview(canonicalName)`, `resetCatalog()`, `resetSelectedPreview()`, `resetErrors()`, `resetAll()`, abort methods.
+4. **No execution actions:** Store does not expose execute, dryRun, dispatch, provider send, enableTool, or allowlist mutation actions.
+5. **No persistence:** Store does not write to localStorage or sessionStorage.
+6. **No polling:** Store does not start background polling.
+
+### Type Design Alignment
+
+| OpenAPI Schema | TypeScript Type |
+|---------------|----------------|
+| ToolSchemaPreviewField | `ToolSchemaPreviewField` |
+| ToolSchemaPreviewItem | `ToolSchemaPreviewItem` |
+| ToolSchemaPreviewCatalogData | `ToolSchemaPreviewCatalogData` |
+| ToolSchemaPreviewCatalogResponse | `ToolSchemaPreviewCatalogResponse` |
+| ToolSchemaPreviewLookupData | `ToolSchemaPreviewLookupData` |
+| ToolSchemaPreviewLookupResponse | `ToolSchemaPreviewLookupResponse` |
+
+### Frontend Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Catalog API (GET, URL, body, signal, response, errors) | 12 |
+| Lookup API (GET, URL, encoding, body, response, errors) | 12 |
+| Network safety (no execute/dry-run/provider/dispatch) | 5 |
+| Initial state | 8 |
+| Catalog loading (success, error, abort, race) | 8 |
+| Preview loading (success, 404, error, abort, race) | 9 |
+| Computed / getters | 10 |
+| Reset actions | 5 |
+| Abort / cleanup | 2 |
+| Store safety (no dangerous actions) | 7 |
+| **Total** | **73** |
+
+### Quality Gates
+
+| Gate | Result |
+|------|--------|
+| Frontend unit tests | 579 passed (26 files) |
+| TypeScript type-check | PASS |
+| ESLint | PASS |
+| Production build | PASS |
+| Backend governance (261 tests) | PASS |
+| compileall | PASS |
+| toolsets compile | PASS |
+| memory-check | PASS |
+| dev-check | PASS (WARN: dirty worktree only) |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 31 (unchanged) |
+| Runtime routes | 31 (unchanged) |
+| Tool GET routes | 4 (unchanged) |
+| Tool write routes | 0 (unchanged) |
+| STATIC_ALLOWLIST | empty (unchanged) |
+| Tool Execution | disabled (unchanged) |
+| Provider Tool Schema | not sent (unchanged) |
+| Tool Dispatch | 0 (unchanged) |
+| Tool Audit | absent (unchanged) |
+| UI components created | 0 |
+| Router routes changed | 0 |
+| `hermes_cli/` modified | No |
+| `docs/webui/openapi/` modified | No |
+
+### What Was NOT Done
+
+- No UI components created
+- No router routes added
+- No backend API changes
+- No OpenAPI changes
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No browser smoke tests
+- Phase 1G-03-05 not started
