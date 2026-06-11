@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 1G-03-00 |
 | Title | Tool Schema Preview Scope, Contract and Safety Freeze |
-| Status | Scope Frozen |
+| Status | Phase 1G-03-06 Completed |
 | Date | 2026-06-11 |
 | Author | Dev Agent (Phase 1G-03-00 scope freeze) |
 | Dependencies | Phase 1G-02 completed and pushed |
@@ -882,11 +882,11 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ## 17. Next Step
 
-Phase 1G-03-05 is completed. The next sub-phase is:
+Phase 1G-03-06 is completed. The next sub-phase is:
 
-- Phase 1G-03-06 (Browser Smoke, A11y and Network Safety) may begin
-- Phase 1G-03-06 must comply with all contracts in this document
-- Phase 1G-03-06 must not deviate from any frozen boundary
+- Phase 1G-03-07 (Docs, Release Verification and Push) may begin
+- Phase 1G-03-07 must comply with all contracts in this document
+- Phase 1G-03-07 must not deviate from any frozen boundary
 
 ---
 
@@ -1333,5 +1333,95 @@ Phase 1G-03-05 is completed. The next sub-phase is:
 - No tool dispatch mechanism
 - No tool audit created
 - No STATIC_ALLOWLIST change
-- No browser smoke tests
+- Browser smoke tests deferred to Phase 1G-03-06
 - Phase 1G-03-06 not started
+
+---
+
+## 23. Phase 1G-03-06 Completion Record
+
+**Phase:** 1G-03-06 — Browser Smoke, A11y, Network Safety & Theme Verification
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** ebbc97b900446a7e3c1df574834189ef5a8c73f8
+
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `apps/hermes-dev-webui/tests/smoke/phase-1g-03-schema-preview-smoke.spec.ts` | New — 44 Playwright browser smoke tests |
+| `docs/webui/phase-1g-03-06-schema-preview-browser-smoke.md` | New — Verification report |
+| `docs/webui/phase-1g-03-tool-schema-preview-scope.md` | Modified — This completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Modified — Phase status update |
+
+### Verification Summary
+
+1. **Browser smoke:** 44 Playwright tests pass against real Dev API (2.5m)
+2. **Network safety:** All schema API requests are GET-only; 0 POST/PUT/PATCH/DELETE; 0 external/provider requests
+3. **A11y smoke:** Tab/tabpanel roles, listbox/option roles, region roles, label associations, aria-busy, role="status", keyboard navigation — all pass
+4. **Theme verification:** All 5 themes (obsidian, paper, song, ink, sakura-night) × 4 viewports (1440×900, 1280×800, 1024×768, 768×900) — 20 combinations pass
+5. **Read-only boundary:** No execution CTAs (Run/Execute/Dry Run/Send to Provider/Call Tool/Test Tool/Enable Tool/Save Allowlist/Dispatch/Audit) found
+6. **No secrets exposure:** No handler, callable, source path, API key, or secret text visible in panel
+
+### Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Full Integration (render, catalog, search, filters, selection, fields, keyboard) | 8 |
+| HTTP Method Safety (GET-only, no tool writes) | 2 |
+| Network Safety (no external, no forbidden patterns) | 2 |
+| Read-Only Boundary (no mutation controls, no raw schema/secrets) | 2 |
+| Error and Retry | 1 |
+| Theme/Viewport Matrix (5 themes × 4 viewports) | 20 |
+| Accessibility (ARIA roles, labels, keyboard, aria-busy) | 9 |
+| **Total** | **44** |
+
+### Quality Gates
+
+| Gate | Result |
+|------|--------|
+| Frontend unit tests | 649 passed (27 files) |
+| Browser smoke (schema preview) | 44 passed (2.5m) |
+| Browser smoke (tool policy regression) | 39 passed (3.0m) |
+| TypeScript type-check | PASS |
+| ESLint | PASS |
+| Production build | PASS |
+| Backend governance (261 tests) | PASS |
+| compileall | PASS |
+| toolsets compile | PASS |
+| memory-check | PASS |
+| dev-check | WARN (dirty worktree only) |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| Backend API modified | No |
+| OpenAPI modified | No |
+| hermes_cli/main.py modified | No |
+| Router modified | No |
+| Provider Schema sent | No |
+| Tool handler called | No |
+| Tool dispatch | 0 |
+| Tool execution | disabled |
+| Tool audit | absent |
+| STATIC_ALLOWLIST | empty |
+| Tool write routes | 0 |
+| Execution CTA | absent |
+| Raw schema exposed | No |
+| Production Gateway PID 1717 | Running, unaffected |
+| Dev services | All stopped |
+| Ports 5180/5181 | Free |
+
+### What Was NOT Done
+
+- No backend API changes
+- No OpenAPI changes
+- No router routes added
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No push
+- Phase 1G-03-07 not started
