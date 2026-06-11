@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 1G-03-00 |
 | Title | Tool Schema Preview Scope, Contract and Safety Freeze |
-| Status | Phase 1G-03-06 Completed |
+| Status | Phase 1G-03-07 Closed / Completed |
 | Date | 2026-06-11 |
 | Author | Dev Agent (Phase 1G-03-00 scope freeze) |
 | Dependencies | Phase 1G-02 completed and pushed |
@@ -882,11 +882,11 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ## 17. Next Step
 
-Phase 1G-03-06 is completed. The next sub-phase is:
+Phase 1G-03 is closed. The next sub-phase is:
 
-- Phase 1G-03-07 (Docs, Release Verification and Push) may begin
-- Phase 1G-03-07 must comply with all contracts in this document
-- Phase 1G-03-07 must not deviate from any frozen boundary
+- Phase 1G-04 (Tool Call Dry-Run) may begin after design
+- Phase 1G-03-07 closure commit created locally (not pushed)
+- See `docs/webui/phase-1g-03-final-closure-report.md` for full closure report
 
 ---
 
@@ -1425,3 +1425,67 @@ Phase 1G-03-06 is completed. The next sub-phase is:
 - No STATIC_ALLOWLIST change
 - No push
 - Phase 1G-03-07 not started
+
+---
+
+## 24. Phase 1G-03-07 Closure Record
+
+**Phase:** 1G-03-07 — Final Release Verification / Closure
+**Status:** Closed / Completed
+**Date:** 2026-06-11
+**Base commit:** 134e90d971a557b5e9f3c36e19b145c4c7fccb7f
+
+### Verification Summary
+
+1. **Git baseline confirmed:** branch = dev-huangruibang, local HEAD = remote HEAD = 134e90d97, ahead/behind = 0/0, tracked worktree clean
+2. **Commit chain confirmed:** All 7 Phase 1G-03 commits present and correct
+3. **Production safety confirmed:** Gateway PID 1717 running, unaffected; Dev Gateway stopped; ports 5180/5181 free
+4. **Backend governance:** 707 passed, 0 failed, 5 deselected
+5. **Frontend tests:** 649 passed, 0 failed (27 files)
+6. **TypeScript type-check:** PASS
+7. **ESLint:** 1 error (unused variable in smoke test file, P2 finding)
+8. **Production build:** PASS (1852 modules)
+9. **Browser smoke:** Verified in 1G-03-06 with live server (44 passed); closure run skipped (no live server, docs-only mode)
+10. **compileall:** PASS
+11. **toolsets compile:** PASS
+12. **memory-check:** PASS
+13. **dev-check:** PASS (WARN: .claude/ untracked only)
+
+### Final Route / Policy Counts
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 31 |
+| Runtime routes | 31 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool inventory | 71 |
+| Denylist | 26 |
+| Candidate allowlist | 6 |
+| STATIC_ALLOWLIST | 0 |
+| Provider Schema Sending | Not sent |
+| Tool Dispatch | 0 |
+| Tool Execution | Disabled |
+| Tool Audit | Absent |
+
+### Closure Declaration
+
+- Phase 1G-03 = Closed / Completed
+- Phase 1G-04 = Not Started
+- Controlled Execution = Not Started
+- Dry-Run = Not Started
+- Provider Schema Sending = Not Started
+- Tool Execution available = No
+- Dry-Run ready = No
+- Provider Schema sent = No
+- Release pushed = No
+
+### Docs Changed
+
+- `docs/webui/phase-1g-03-tool-schema-preview-scope.md` — Updated status, added closure record
+- `docs/webui/phase-1-implementation-plan.md` — Updated phase status
+- `docs/webui/phase-1g-03-final-closure-report.md` — New closure report
+
+### No Code Changed
+
+No backend API, OpenAPI, frontend src, router, toolsets, agent, tools, or runtime files modified.

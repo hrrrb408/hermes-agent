@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01, 1G-03-02, 1G-03-03, 1G-03-04, 1G-03-05, 1G-03-06 Completed; 1G-03-07 Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 ✓, 1G-03-03 ✓, 1G-03-04 ✓, 1G-03-05 ✓, 1G-03-06 ✓, 1G-03-07 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -768,7 +768,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
-| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02 ✓ (Service), 1G-03-03 ✓ (API/OpenAPI), 1G-03-04 ✓ (Frontend Data Layer), 1G-03-05 ✓ (Panel UI), 1G-03-06 ✓ (Browser Smoke/A11y/Theme), 1G-03-07 Not Started |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
@@ -1097,7 +1097,15 @@ Phase 1G-03-04 is completed.
 - A11y confirmed: tab/tabpanel/listbox/option/region roles, label associations, aria-busy, role="status", keyboard navigation
 - Theme verification: obsidian, paper, song, ink, sakura-night all pass across 1440×900, 1280×800, 1024×768, 768×900
 - No backend API, OpenAPI, router, or source modifications
-- Phase 1G-03-07 (Docs, Release Verification and Push) not started
+- Phase 1G-03-07 (Closure) completed — docs-only closure commit created locally
+
+**Phase 1G-03-07 is completed.** Final release verification and closure for Tool Schema Preview.
+- `docs/webui/phase-1g-03-final-closure-report.md` — New closure report with full verification results
+- `docs/webui/phase-1g-03-tool-schema-preview-scope.md` — Updated status to Closed, added closure record
+- Backend governance: 707 passed, 0 failed
+- Frontend: 649 passed, type-check PASS, build PASS
+- dev-check: OpenAPI=31, Runtime=31, Tool GET=4, Tool write=0, STATIC_ALLOWLIST=empty, Provider Schema not sent
+- No code changes, no push, Phase 1G-04 not started
 
 **Phase 1G-03-04 is completed.** Schema Preview frontend types, GET-only API client, and Pinia store data layer implemented.
 - `apps/hermes-dev-webui/src/types/api/toolSchemaPreview.ts` — TypeScript types matching OpenAPI contract (ToolSchemaPreviewField, ToolSchemaPreviewItem, ToolSchemaPreviewCatalogData, ToolSchemaPreviewLookupData, etc.)
