@@ -882,11 +882,11 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ## 17. Next Step
 
-Phase 1G-03-04 is completed. The next sub-phase is:
+Phase 1G-03-05 is completed. The next sub-phase is:
 
-- Phase 1G-03-05 (Schema Preview Panel UI) may begin
-- Phase 1G-03-05 must comply with all contracts in this document
-- Phase 1G-03-05 must not deviate from any frozen boundary
+- Phase 1G-03-06 (Browser Smoke, A11y and Network Safety) may begin
+- Phase 1G-03-06 must comply with all contracts in this document
+- Phase 1G-03-06 must not deviate from any frozen boundary
 
 ---
 
@@ -1225,3 +1225,113 @@ Phase 1G-03-04 is completed. The next sub-phase is:
 - No STATIC_ALLOWLIST change
 - No browser smoke tests
 - Phase 1G-03-05 not started
+
+---
+
+## 22. Phase 1G-03-05 Completion Record
+
+**Phase:** 1G-03-05 — Schema Preview Panel UI
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** 61613182cef4305919af378f211961dc17715ed2
+
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `apps/hermes-dev-webui/src/components/workspace/ToolSchemaPreviewPanel.vue` | New — Schema Preview read-only panel component |
+| `apps/hermes-dev-webui/src/components/workspace/ToolPolicyPanel.vue` | Modified — Added Schema Preview as third sub-tab |
+| `apps/hermes-dev-webui/src/stores/toolPolicy.ts` | Minimal — Added 'schema-preview' to ToolPolicySubTab union |
+| `apps/hermes-dev-webui/src/tests/tool-schema-preview-panel.spec.ts` | New — 70 component unit tests |
+| `apps/hermes-dev-webui/src/tests/tool-policy-panel.spec.ts` | Minimal — Updated sub-tab count and keyboard navigation expectations |
+| `docs/webui/phase-1g-03-tool-schema-preview-scope.md` | Modified — Phase 1G-03-05 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Modified — Phase status update |
+
+### Implementation Summary
+
+1. **ToolSchemaPreviewPanel.vue:** Single-file Vue 3 component implementing:
+   - Read-only notice ("Schema Preview is read-only", "Provider schema is not sent", "Tool execution remains disabled")
+   - Summary cards (totalCount, availableCount, unavailableCount)
+   - Client-side filters: search by canonicalName/capability/reasonCode, availability filter (all/available/unavailable), risk filter (R0-R5)
+   - Tool list with: canonicalName, risk badge, availability status, redaction status badge, capability badges, unavailable reason
+   - Detail panel with: risk, schemaShape, reasonCode, redactionStatus, capabilities, unavailableReason
+   - Input field list: fieldName, fieldType, required badge, descriptionPreview, enumPreview, defaultPresence, constraintsPreview
+   - Loading/error/empty/retry states for both catalog and preview
+   - Keyboard navigation (ArrowUp/Down, Home/End, Enter/Space)
+   - Clear filters button
+   - Responsive layout (stack on <768px)
+   - Semantic CSS variables for theme compatibility
+
+2. **ToolPolicyPanel.vue:** Added third sub-tab "Schema Preview" alongside "Policy Overview" and "Catalog". Updated keyboard navigation for 3 tabs. Schema Preview tab renders ToolSchemaPreviewPanel.
+
+3. **store change:** Added `'schema-preview'` to `ToolPolicySubTab` union type in `toolPolicy.ts`.
+
+### UI Design
+
+- **Integration location:** Third sub-tab in ToolPolicyPanel (under Workspace > Tools)
+- **Data flow:** Panel mount → `store.fetchCatalog()` → user selects item → `store.fetchPreview(canonicalName)` → retry → `store.fetchCatalog()` / `store.fetchPreview()` → unmount → `store.abortAllRequests()`
+- **Client-side filtering:** Catalog data fetched once, filtered locally by search/availability/risk
+- **No polling, no localStorage, no router navigation, no direct API calls from UI**
+
+### Component Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Panel Rendering (title, notice, summary, items, filters) | 10 |
+| Loading / Error / Empty / Retry (catalog, preview, not found) | 8 |
+| Search and Filter (search, availability, risk, combined, clear) | 10 |
+| Selection and Detail (click, keyboard, fields, enums, constraints, empty) | 13 |
+| Sub-Tab Navigation (ARIA, keyboard, End key) | 4 |
+| Accessibility (roles, aria-selected, maxlength, aria-busy, aria-label) | 7 |
+| Read-only boundary (12 forbidden button types, no raw schema, no handler/secret) | 14 |
+| Network safety (GET-only, no dangerous store actions) | 2 |
+| Lifecycle (unmount abort, idle check) | 2 |
+| **Total** | **70** |
+
+### Quality Gates
+
+| Gate | Result |
+|------|--------|
+| Frontend unit tests | 649 passed (27 files) |
+| TypeScript type-check | PASS |
+| ESLint | PASS |
+| Production build | PASS (1852 modules, 290 KB JS gzip 85 KB) |
+| Backend governance (261 tests) | PASS |
+| compileall | PASS |
+| toolsets compile | PASS |
+| memory-check | PASS |
+| dev-check | WARN (dirty worktree only) |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 31 (unchanged) |
+| Runtime routes | 31 (unchanged) |
+| Tool GET routes | 4 (unchanged) |
+| Tool write routes | 0 (unchanged) |
+| STATIC_ALLOWLIST | empty (unchanged) |
+| Tool Execution | disabled (unchanged) |
+| Provider Tool Schema | not sent (unchanged) |
+| Tool Dispatch | 0 (unchanged) |
+| Tool Audit | absent (unchanged) |
+| Router routes changed | 0 |
+| `hermes_cli/dev_web_api.py` modified | No |
+| `docs/webui/openapi/` modified | No |
+| `hermes_cli/main.py` modified | No |
+| Execution CTA present | No |
+| Raw schema shown | No |
+| Handler/callable/path/secret shown | No |
+
+### What Was NOT Done
+
+- No backend API changes
+- No OpenAPI changes
+- No router routes added
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No browser smoke tests
+- Phase 1G-03-06 not started

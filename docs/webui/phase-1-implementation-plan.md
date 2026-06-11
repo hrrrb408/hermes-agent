@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01, 1G-03-02, 1G-03-03, 1G-03-04 Completed; 1G-03-05 Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01, 1G-03-02, 1G-03-03, 1G-03-04, 1G-03-05 Completed; 1G-03-06 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 ✓, 1G-03-03 ✓, 1G-03-04 ✓, 1G-03-05 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 ✓, 1G-03-03 ✓, 1G-03-04 ✓, 1G-03-05 ✓, 1G-03-06 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -768,7 +768,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
-| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02 ✓ (Service), 1G-03-03 ✓ (API/OpenAPI), 1G-03-04 ✓ (Frontend Data Layer), 1G-03-05+ Not Started |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02 ✓ (Service), 1G-03-03 ✓ (API/OpenAPI), 1G-03-04 ✓ (Frontend Data Layer), 1G-03-05 ✓ (Panel UI), 1G-03-06 Not Started |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
@@ -1077,6 +1077,18 @@ The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 The next subphase is **Phase 1G-03** (Tool Schema Preview).
 Phase 1G-03-04 is completed.
 
+**Phase 1G-03-05 is completed.** Schema Preview Panel UI implemented as a read-only interface on top of the existing frontend data layer.
+- `apps/hermes-dev-webui/src/components/workspace/ToolSchemaPreviewPanel.vue` — New single-file component with: read-only notice, summary cards, client-side search/filter, tool list with risk badges/availability/redaction status, detail panel with field-level info, loading/error/empty/retry states, keyboard navigation, responsive layout
+- `apps/hermes-dev-webui/src/components/workspace/ToolPolicyPanel.vue` — Added Schema Preview as third sub-tab (overview / catalog / schema-preview)
+- `apps/hermes-dev-webui/src/stores/toolPolicy.ts` — Added 'schema-preview' to ToolPolicySubTab union
+- `apps/hermes-dev-webui/src/tests/tool-schema-preview-panel.spec.ts` — 70 component tests (render, loading/error/empty, search/filter, selection/detail, sub-tab navigation, accessibility, read-only boundary, network safety, lifecycle)
+- `apps/hermes-dev-webui/src/tests/tool-policy-panel.spec.ts` — Updated sub-tab count (2→3) and keyboard navigation expectations
+- Frontend unit tests: 649 passed (27 files), TypeScript type-check PASS, ESLint PASS, build PASS
+- Backend governance: 261 passed, compileall PASS, memory-check PASS, dev-check PASS
+- No router routes, no backend API changes, no OpenAPI changes, no hermes_cli/main.py changes
+- No provider schema sending, no tool execution, no tool dispatch, no tool audit, no STATIC_ALLOWLIST change
+- Phase 1G-03-06 (Browser Smoke, A11y, Network Safety) not started
+
 **Phase 1G-03-04 is completed.** Schema Preview frontend types, GET-only API client, and Pinia store data layer implemented.
 - `apps/hermes-dev-webui/src/types/api/toolSchemaPreview.ts` — TypeScript types matching OpenAPI contract (ToolSchemaPreviewField, ToolSchemaPreviewItem, ToolSchemaPreviewCatalogData, ToolSchemaPreviewLookupData, etc.)
 - `apps/hermes-dev-webui/src/api/toolSchemaPreview.ts` — GET-only API client with `fetchToolSchemaPreviewCatalog()` and `fetchToolSchemaPreviewByCanonicalName()`, both using existing `apiGet()` helper
@@ -1088,7 +1100,7 @@ Phase 1G-03-04 is completed.
 - OpenAPI paths = 31 (unchanged), Runtime routes = 31 (unchanged), Tool GET = 4 (unchanged), Tool write = 0 (unchanged)
 - No UI components, no router routes, no backend changes, no OpenAPI changes
 - No provider schema sending, no tool execution, no tool dispatch, no tool audit, no STATIC_ALLOWLIST change
-- Phase 1G-03-05 (Schema Preview Panel UI) not started
+- Phase 1G-03-06 (Browser Smoke, A11y, Network Safety) not started
 
 **Phase 1G-03-03 is completed.** Schema Preview GET-only API and OpenAPI implemented. OpenAPI paths and runtime routes increased from 29 to 31, Tool GET routes increased from 2 to 4, Tool write routes remained 0.
 
@@ -1111,7 +1123,7 @@ Phase 1G-03-04 is completed.
 - No API routes added, no OpenAPI changes, no frontend changes
 - Phase 1G-03-03 (Schema Preview API and OpenAPI) completed — 2 GET routes, 31 OpenAPI paths, 4 Tool GET routes, 0 Tool write routes
 - Phase 1G-03-04 (Frontend Data Layer) completed — types, GET-only API client, Pinia store, 73 unit tests
-- Phase 1G-03-05 (Schema Preview Panel UI) not started
+- Phase 1G-03-06 (Browser Smoke, A11y, Network Safety) not started
 
 **Phase 1G-03-01 is completed.** Static Tool Schema Preview model and sanitizer implemented.
 - `hermes_cli/dev_web_tool_schema_preview.py` — New module with frozen dataclasses (`SchemaPreviewField`, `SchemaPreviewAvailability`, `ToolSchemaPreview`), sanitizer (`sanitize_schema()`), risk-based availability (`determine_schema_preview_availability()`), and builder (`build_schema_preview()`)

@@ -48,7 +48,7 @@ const DEFAULT_FILTERS: Readonly<ToolCatalogFilters> = {
   sort: 'nameAsc',
 }
 
-export type ToolPolicySubTab = 'overview' | 'catalog'
+export type ToolPolicySubTab = 'overview' | 'catalog' | 'schema-preview'
 
 export const useToolPolicyStore = defineStore('workspace-tool-policy', () => {
   // ── State ──

@@ -215,13 +215,14 @@ describe('ToolPolicyPanel sub-tabs', () => {
     return mount(ToolPolicyPanel)
   }
 
-  it('renders two sub-tabs: Policy Overview and Catalog', () => {
+  it('renders three sub-tabs: Policy Overview, Catalog, and Schema Preview', () => {
     mockPolicyResolve(makePolicyData())
     const wrapper = mountPanel()
     const subTabs = wrapper.findAll('[role="tab"]')
-    expect(subTabs).toHaveLength(2)
+    expect(subTabs).toHaveLength(3)
     expect(wrapper.text()).toContain('Policy Overview')
     expect(wrapper.text()).toContain('Catalog')
+    expect(wrapper.text()).toContain('Schema Preview')
   })
 
   it('Policy Overview is default selected', () => {
@@ -272,9 +273,9 @@ describe('ToolPolicyPanel sub-tabs', () => {
     // Home → overview
     await wrapper.get('#tool-policy-tab-catalog').trigger('keydown', { key: 'Home' })
     expect(store.activeSubTab).toBe('overview')
-    // End → catalog
+    // End → schema-preview (last tab)
     await wrapper.get('#tool-policy-tab-overview').trigger('keydown', { key: 'End' })
-    expect(store.activeSubTab).toBe('catalog')
+    expect(store.activeSubTab).toBe('schema-preview')
   })
 
   it('loads policy on mount', async () => {

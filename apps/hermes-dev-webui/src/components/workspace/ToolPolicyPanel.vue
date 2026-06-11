@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useToolPolicyStore, type ToolPolicySubTab } from '@/stores/toolPolicy'
 import ToolPolicyOverview from './ToolPolicyOverview.vue'
 import ToolCatalog from './ToolCatalog.vue'
+import ToolSchemaPreviewPanel from './ToolSchemaPreviewPanel.vue'
 
 const store = useToolPolicyStore()
 
@@ -24,7 +25,7 @@ function setSubTab(tab: ToolPolicySubTab): void {
 }
 
 function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void {
-  const tabs: ToolPolicySubTab[] = ['overview', 'catalog']
+  const tabs: ToolPolicySubTab[] = ['overview', 'catalog', 'schema-preview']
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
 
@@ -79,6 +80,20 @@ function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void 
       >
         Catalog
       </button>
+      <button
+        id="tool-policy-tab-schema-preview"
+        type="button"
+        role="tab"
+        class="tool-policy-tab"
+        :class="{ 'tool-policy-tab--active': store.activeSubTab === 'schema-preview' }"
+        :aria-selected="store.activeSubTab === 'schema-preview'"
+        aria-controls="tool-policy-tabpanel-schema-preview"
+        :tabindex="store.activeSubTab === 'schema-preview' ? 0 : -1"
+        @click="setSubTab('schema-preview')"
+        @keydown="handleSubTabKeyDown($event, 'schema-preview')"
+      >
+        Schema Preview
+      </button>
     </div>
 
     <!-- Overview sub-panel -->
@@ -101,6 +116,17 @@ function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void 
       tabindex="0"
     >
       <ToolCatalog />
+    </div>
+
+    <!-- Schema Preview sub-panel -->
+    <div
+      v-if="store.activeSubTab === 'schema-preview'"
+      id="tool-policy-tabpanel-schema-preview"
+      role="tabpanel"
+      aria-labelledby="tool-policy-tab-schema-preview"
+      tabindex="0"
+    >
+      <ToolSchemaPreviewPanel />
     </div>
   </section>
 </template>
