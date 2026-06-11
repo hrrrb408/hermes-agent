@@ -174,6 +174,10 @@ from hermes_cli.dev_web_tool_dry_run import (
     dry_run_tool_policy as _dry_run_tool_policy,
     STATIC_ALLOWLIST as _DRY_RUN_STATIC_ALLOWLIST,
 )
+from hermes_cli.dev_web_tool_dry_run_audit import (
+    build_dry_run_audit_event as _build_dry_run_audit_event,
+    write_dry_run_audit_event as _write_dry_run_audit_event,
+)
 
 
 # ── Query parameter enums ──
@@ -2877,12 +2881,17 @@ def _register_tool_dry_run_routes(
     One POST route that exposes the existing pure dry-run policy engine
     as a local-only, non-mutating decision endpoint.
 
+    Phase 1G-04-07: Internal audit writer integration.
+    After computing the dry-run policy decision, a dev-only local JSONL
+    audit event is written. auditWritten in the response reflects whether
+    the audit event was successfully written, not tool execution.
+
     Guarantees:
       - No tool handler called
       - No tool dispatch
       - No provider schema sent
       - No provider API called
-      - No audit written
+      - Audit write failure does not enable execution
       - No runtime mutation
       - No STATIC_ALLOWLIST mutation
     """
@@ -2910,7 +2919,8 @@ def _register_tool_dry_run_routes(
         summary="Evaluate dry-run policy for a proposed tool call",
         description="Returns a policy decision (would_allow, would_block, would_redact, "
         "requires_review) without executing the tool. No tool handler is called, "
-        "no provider schema is sent, and no audit record is written.",
+        "no provider schema is sent. A dev-only audit record is written when the "
+        "audit write succeeds (auditWritten=true does not imply tool execution).",
     )
     def tool_dry_run(
         request: Request,
@@ -2918,6 +2928,10 @@ def _register_tool_dry_run_routes(
     ) -> dict:
         rid = getattr(request.state, "request_id", "")
         ts = _utc_now_iso()
+
+        # Step 1: Record start time for duration measurement
+        import time
+        start_time = time.monotonic()
 
         # Step 2: Validate canonicalName
         canonical_name = body.get("canonicalName")
@@ -3039,8 +3053,53 @@ def _register_tool_dry_run_routes(
                 request_id=rid,
             )
 
-        # Step 7: Return safe response envelope
+        # Step 7: Compute duration
+        duration_ms = int((time.monotonic() - start_time) * 1000)
+
+        # Step 8: Build and write audit event (best-effort)
+        audit_written = False
+        audit_error_reason = None
+        try:
+            event = _build_dry_run_audit_event(
+                dry_run_result=result,
+                source_context=source_context,
+                ui_origin=ui_origin,
+                request_id=request_id_field or rid,
+                duration_ms=duration_ms,
+                result_status="ok",
+            )
+            audit_result = _write_dry_run_audit_event(
+                event,
+                hermes_home=(
+                    config.hermes_home
+                    if config.hermes_home is not None
+                    else None
+                ),
+            )
+            audit_written = audit_result.written
+            if not audit_written and audit_result.error_code:
+                audit_error_reason = audit_result.error_code
+        except Exception:
+            # Audit write failure must not enable execution
+            audit_written = False
+
+        # Step 9: Build response with audit status
+        response_data = result.to_safe_dict()
+        response_data["auditWritten"] = audit_written
+
+        # If audit write failed, add a safe policy note
+        if not audit_written and audit_error_reason:
+            notes = list(response_data.get("policyNotes", []))
+            notes.append(
+                "Audit write failed; dry-run decision returned without execution."
+            )
+            response_data["policyNotes"] = notes
+            reasons = list(response_data.get("reasonCodes", []))
+            reasons.append("AUDIT_WRITE_FAILED")
+            response_data["reasonCodes"] = reasons
+
+        # Step 10: Return safe response envelope
         return {
-            "data": result.to_safe_dict(),
+            "data": response_data,
             "meta": {"requestId": rid, "timestamp": ts},
         }

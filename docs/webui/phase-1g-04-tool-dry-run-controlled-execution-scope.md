@@ -1116,3 +1116,87 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-00 Design Scope Freeze — Tool Dry-Run / Controlled Execution: design-only, docs-only, no implementation, no execution, no provider schema send, no tool dispatch, no tool audit, no allowlist change.*
+
+---
+
+## 25. Phase 1G-04-07 Completion Record
+
+### Phase 1G-04-07: Internal Audit Writer Implementation
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-07 |
+| Title | Tool Dry-Run Internal Audit Writer |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | 91abc32656842a9923202698deab814def193dd6 |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `hermes_cli/dev_web_tool_dry_run_audit.py` | New audit writer module: event builder, defensive sanitizer, JSONL append, file rotation, path validation |
+| `tests/test_dev_web_tool_dry_run_audit.py` | 42 audit writer unit tests: event model, path validation, JSONL append, size/rotation, failure modes, security boundaries |
+| `hermes_cli/dev_web_api.py` | Dry-Run API handler integrated with audit writer; auditWritten reflects audit write status |
+| `tests/test_dev_web_tool_dry_run_api.py` | Updated to 61 tests: audit integration with HERMES_HOME, audit failure safety, route governance |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-07 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-07 status |
+| `docs/webui/phase-1g-04-06-dry-run-audit-storage-scope.md` | Updated with 1G-04-07 implementation note |
+
+### What Was Implemented
+
+1. **Audit writer module** (`dev_web_tool_dry_run_audit.py`): stdlib-only, no provider/tool handler/dispatch imports
+2. **Event builder** (`build_dry_run_audit_event`): Constructs JSON-safe audit event from ToolDryRunResult
+3. **Defensive sanitizer**: Secondary redaction pass on all event values, forbidden field names, secret value patterns
+4. **Event writer** (`write_dry_run_audit_event`): JSONL append with rotation, size limits, path validation
+5. **Path validation**: HERMES_HOME enforcement, production path rejection, state.db rejection
+6. **File rotation**: max 5 MiB per file, max 3 retained files (current + 2 rotated)
+7. **Event size limit**: max 32 KiB per event, oversized events rejected safely
+8. **Dry-Run API integration**: Handler calls audit writer after policy decision
+9. **Response semantics**: `auditWritten=true` means audit write success only (not tool execution)
+10. **Failure safety**: Audit write failure returns `auditWritten=false`, adds safe policyNote/reasonCode
+
+### What Was NOT Implemented
+
+- No audit read API route
+- No audit search/list API route
+- No audit viewer UI
+- No audit export functionality
+- No OpenAPI path added or modified
+- No runtime route changed
+- No frontend source changed
+- No tool handler call
+- No tool dispatch
+- No tool execution
+- No STATIC_ALLOWLIST population
+- No Controlled Execution started
+
+### Route Governance (unchanged from 1G-04-06)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+### Test Results
+
+| Test Suite | Result |
+|------------|--------|
+| Audit writer tests | 42 passed |
+| Dry-Run API tests | 61 passed, 2 skipped |
+| Dry-Run model regression | 425 passed |
+| Related backend regression | 1111 passed, 2 skipped |
+| Route governance | 124 passed, 5 deselected |
+| compileall | PASS |
+| ruff | PASS |
+| memory-check | PASS |
+| dev-check | PASS (WARN: dirty worktree expected) |
+
+---
+
+*Phase 1G-04-07 Internal Audit Writer: audit writer module implemented, Dry-Run API integrated, dev-only JSONL audit storage, no new routes, no OpenAPI change, no frontend change, no tool execution, no provider schema sent, no allowlist change, no Controlled Execution.*

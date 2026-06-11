@@ -534,3 +534,30 @@ production state.db
 ---
 
 *Phase 1G-04-06 Dry-Run Audit Storage Scope / Design: scope/design-only, docs-only, no audit implementation, no audit file creation, no API code changes, no OpenAPI changes, no frontend changes, no route changes, no provider schema sending, no tool dispatch, no tool execution, no allowlist change.*
+
+---
+
+## 14. Implementation Status
+
+**Phase 1G-04-07 has implemented the audit writer based on this design.**
+
+Implementation details:
+
+| Design Element | Implementation Status |
+|----------------|----------------------|
+| Audit event model (30 fields) | ✅ Implemented in `build_dry_run_audit_event()` |
+| Sensitive data policy | ✅ Defensive sanitization in `_sanitize_event_value()` |
+| Forbidden field names (18) | ✅ `_FORBIDDEN_FIELD_STEMS` matches design |
+| Secret value patterns (4) | ✅ `_SECRET_VALUE_PATTERNS` matches design |
+| Storage path | ✅ `$HERMES_HOME/gateway/dev/audit/tool-dry-run-audit.jsonl` |
+| Append-only JSONL | ✅ UTF-8, single-line JSON per event |
+| Max event size (32 KiB) | ✅ `_MAX_EVENT_BYTES = 32 * 1024` |
+| Max file size (5 MiB) | ✅ `_MAX_FILE_BYTES = 5 * 1024 * 1024` |
+| Max retained files (3) | ✅ `_MAX_RETAINED_FILES = 3` (current + 2 rotated) |
+| Rotation behavior | ✅ `.1`, `.2` naming, oldest deleted |
+| Write failure safety | ✅ Never enables execution, never calls provider |
+| HERMES_HOME validation | ✅ Rejects missing, rejects production, rejects state.db |
+| Dry-Run API integration | ✅ `auditWritten` reflects write success, not execution |
+| Deferred: Audit viewer UI | ❌ Not implemented |
+| Deferred: Audit read/search API | ❌ Not implemented |
+| Deferred: Audit export | ❌ Not implemented |
