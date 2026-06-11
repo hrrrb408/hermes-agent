@@ -882,11 +882,11 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ## 17. Next Step
 
-Phase 1G-03-02 is completed. The next sub-phase is:
+Phase 1G-03-03 is completed. The next sub-phase is:
 
-- Phase 1G-03-03 (Schema Preview GET-only API and OpenAPI) may begin
-- Phase 1G-03-03 must comply with all contracts in this document
-- Phase 1G-03-03 must not deviate from any frozen boundary
+- Phase 1G-03-04 (Frontend Types, API Client and Store) may begin
+- Phase 1G-03-04 must comply with all contracts in this document
+- Phase 1G-03-04 must not deviate from any frozen boundary
 
 ---
 
@@ -1019,3 +1019,108 @@ Phase 1G-03-02 is completed. The next sub-phase is:
 - No STATIC_DENYLIST change
 - No CANDIDATE_ALLOWLIST change
 - Phase 1G-03-03 not started
+
+---
+
+## 20. Phase 1G-03-03 Completion Record
+
+**Phase:** 1G-03-03 — Schema Preview GET-only API and OpenAPI
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** 0371c1853917169d767f89c69bd2c1683c061336
+
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `hermes_cli/dev_web_api.py` | Modified — Added 2 GET routes for schema preview |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | Modified — 29→31 paths, new schemas |
+| `tests/test_dev_web_tool_schema_preview_api.py` | New — 58 API unit tests |
+| `tests/test_dev_check_webui.py` | Modified — Governance counts updated (29→31) |
+| `tests/test_dev_web_0c06_closure.py` | Modified — Business paths count updated (29→31) |
+| `tests/test_dev_web_tool_policy_api.py` | Modified — Tool GET routes count (2→4), runtime paths (29→31) |
+| `hermes_cli/main.py` | Modified — dev-check governance updated (31 paths, 4 tool GET routes) |
+| `docs/webui/phase-1g-03-tool-schema-preview-scope.md` | Modified — Phase 1G-03-03 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Modified — Phase status update |
+
+### Implementation Summary
+
+1. **GET /api/dev/v1/tools/schemas:** Catalog endpoint returning all 71 tool schema previews. Items sorted by canonicalName. Response includes totalCount, availableCount, unavailableCount, items.
+2. **GET /api/dev/v1/tools/schemas/{canonicalName}:** Single tool lookup by exact canonical name. Returns 200 with found=true for existing tools, 404 for missing tools with TOOL_SCHEMA_PREVIEW_NOT_FOUND error code.
+3. **OpenAPI paths:** Increased from 29 to 31. New schemas: ToolSchemaPreviewCatalogResponse, ToolSchemaPreviewLookupResponse, ToolSchemaPreviewItem, ToolSchemaPreviewField, ToolSchemaPreviewCatalogData, ToolSchemaPreviewLookupData.
+4. **No write methods:** POST/PUT/PATCH/DELETE return 405 on both new endpoints.
+
+### Architecture Constraints Verified
+
+- Service uses default empty schema source (no real tool imports)
+- API does not import tools.registry or any provider module
+- No tool handler invocation, no tool dispatch, no tool audit
+- No environment reads, no runtime DB access
+- JSON-safe output via service's to_safe_dict()
+- Exact match only — no fuzzy matching, no case folding
+
+### Route Counts
+
+| Metric | Before | After |
+|--------|--------|-------|
+| OpenAPI paths | 29 | 31 |
+| Runtime routes | 29 | 31 |
+| Tool GET routes | 2 | 4 |
+| Tool write routes | 0 | 0 |
+
+### Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Catalog GET (response, counts, sorting, safety) | 13 |
+| Single GET (found, fields, JSON safety) | 8 |
+| Not Found (404, error code, edge cases) | 5 |
+| Method Safety (POST/PUT/PATCH/DELETE on both) | 8 |
+| Existing API Unchanged | 7 |
+| Boundary Safety (no registry, no provider, allowlist) | 6 |
+| OpenAPI Static (paths, schemas, GET-only) | 9 |
+| Runtime Routes (counts) | 3 |
+| **Total** | **58+ governance** |
+
+### Regression Verification
+
+| Test Suite | Result |
+|-----------|--------|
+| Sanitizer + Service (222 tests) | PASS |
+| Tool Policy regression (303 tests) | PASS |
+| Route governance (261 tests) | PASS |
+| compileall | PASS |
+| toolsets compile | PASS |
+| Ruff | PASS |
+| memory-check | PASS |
+| dev-check | PASS (WARN: dirty worktree only) |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| Provider Tool Schema | not sent (unchanged) |
+| Tool Dispatch | 0 (unchanged) |
+| Tool Execution | disabled (unchanged) |
+| Tool Audit | absent (unchanged) |
+| STATIC_ALLOWLIST | empty (unchanged) |
+| STATIC_DENYLIST | 26 tools (unchanged) |
+| CANDIDATE_ALLOWLIST | 6 tools (unchanged) |
+| Frontend files modified | 0 |
+| Existing /tools/policy behavior | unchanged |
+| Existing /tools/catalog behavior | unchanged |
+| Existing catalog schemaPreviewAvailable | false (unchanged) |
+| Existing catalog dryRunAvailable | false (unchanged) |
+| Existing catalog executionAvailable | false (unchanged) |
+
+### What Was NOT Done
+
+- No frontend code modified
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No STATIC_DENYLIST change
+- No CANDIDATE_ALLOWLIST change
+- Phase 1G-03-04 not started

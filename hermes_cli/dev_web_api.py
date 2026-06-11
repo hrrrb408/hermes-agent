@@ -166,6 +166,10 @@ from hermes_cli.dev_web_tool_policy_service import (
     _MAX_QUERY_LENGTH,
     _MAX_PAGE_SIZE,
 )
+from hermes_cli.dev_web_tool_schema_preview_service import (
+    list_schema_previews as _list_schema_previews,
+    get_schema_preview as _get_schema_preview,
+)
 
 
 # ── Query parameter enums ──
@@ -1554,6 +1558,9 @@ def _register_routes(
     # ── Phase 1G: Tool Policy Read-Only ──
     _register_tool_policy_routes(app, config, tool_policy_service)
 
+    # ── Phase 1G-03: Tool Schema Preview Read-Only ──
+    _register_schema_preview_routes(app, config)
+
 
 def _register_writer_routes(
     app: FastAPI,
@@ -2777,5 +2784,75 @@ def _register_tool_policy_routes(
         ts = _utc_now_iso()
         return {
             "data": _tool_dto_to_camel(dto),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+
+# ── Phase 1G-03: Tool Schema Preview Read-Only Routes ──
+
+
+def _register_schema_preview_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+) -> None:
+    """Register Phase 1G-03 Tool Schema Preview read-only routes.
+
+    Two GET-only routes that expose safe, redacted schema previews for all
+    71 tools in the policy inventory. No POST/PATCH/PUT/DELETE, no tool
+    execution, no provider schema sending, no handler invocation.
+    """
+    prefix = config.api_prefix
+
+    # ── GET /tools/schemas ──
+
+    @app.get(
+        f"{prefix}/tools/schemas",
+        tags=["Tools"],
+        summary="Schema preview catalog for all tools",
+        description="Returns safe, redacted schema previews for all 71 tools "
+        "in the policy inventory. No handler, callable, source path, or "
+        "secret is exposed. All data is read-only and derived from the "
+        "static policy module and optional schema source.",
+    )
+    def list_tool_schema_previews(request: Request) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        catalog = _list_schema_previews()
+
+        return {
+            "data": catalog.to_safe_dict(),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+    # ── GET /tools/schemas/{canonicalName} ──
+
+    @app.get(
+        f"{prefix}/tools/schemas/{{canonicalName}}",
+        tags=["Tools"],
+        summary="Schema preview for a single tool",
+        description="Returns the safe, redacted schema preview for a single "
+        "tool by its exact canonical name. No fuzzy matching, no case "
+        "folding. Returns 404 for tools not in the policy inventory.",
+    )
+    def get_tool_schema_preview(
+        request: Request,
+        canonicalName: str,
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+
+        result = _get_schema_preview(canonicalName)
+
+        if not result.found:
+            return _make_error_json(
+                status_code=404,
+                code="TOOL_SCHEMA_PREVIEW_NOT_FOUND",
+                message=f"Tool schema preview not found for '{canonicalName}'.",
+                request_id=rid,
+            )
+
+        ts = _utc_now_iso()
+        return {
+            "data": result.to_safe_dict(),
             "meta": {"requestId": rid, "timestamp": ts},
         }

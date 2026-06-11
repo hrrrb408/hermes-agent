@@ -1592,6 +1592,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /tools/schemas:
+    get:
+      operationId: listToolSchemaPreviews
+      tags: [Tools]
+      summary: Schema preview catalog for all tools
+      description: >
+        Returns safe, redacted schema previews for all 71 tools in the policy
+        inventory. Each preview includes sanitized field definitions, risk-based
+        availability, and redaction status. No handler, callable, source path,
+        secret, or raw schema is ever exposed. All data is read-only.
+        No tool execution, no provider schema sending, no handler invocation.
+      responses:
+        "200":
+          description: Schema preview catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolSchemaPreviewCatalogResponse"
+
+  /tools/schemas/{canonicalName}:
+    get:
+      operationId: getToolSchemaPreview
+      tags: [Tools]
+      summary: Schema preview for a single tool
+      description: >
+        Returns the safe, redacted schema preview for a single tool by its
+        exact canonical name. No fuzzy matching, no case folding, no alias
+        resolution. Returns 404 for tools not in the policy inventory.
+        No tool execution, no provider schema sending, no handler invocation.
+      parameters:
+        - name: canonicalName
+          in: path
+          required: true
+          description: Exact tool canonical name
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schema preview for the requested tool
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolSchemaPreviewLookupResponse"
+        "404":
+          description: Tool not found in policy inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     # ── Common ──
@@ -3579,5 +3629,142 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/ToolCatalogData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Phase 1G-03: Tool Schema Preview ──
+
+    ToolSchemaPreviewField:
+      type: object
+      required: [fieldName, fieldType, required, descriptionPreview, enumPreview, defaultPresence, constraintsPreview]
+      properties:
+        fieldName:
+          type: string
+          description: Parameter name
+        fieldType:
+          type: string
+          description: >
+            Sanitized JSON Schema type. One of: string, number, integer,
+            boolean, array, object, null, unknown.
+        required:
+          type: boolean
+          description: Whether this field is required
+        descriptionPreview:
+          type: string
+          nullable: true
+          maxLength: 240
+          description: Truncated description (max 240 chars)
+        enumPreview:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          nullable: true
+          description: Enum values (max 20 items, each max 80 chars)
+        defaultPresence:
+          type: boolean
+          description: Whether a default value exists (value NOT exposed)
+        constraintsPreview:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Brief constraint summary (max 120 chars)
+
+    ToolSchemaPreviewItem:
+      type: object
+      required:
+        - canonicalName
+        - risk
+        - capabilities
+        - schemaPreviewAvailable
+        - schemaShape
+        - inputFields
+        - redactionStatus
+        - reasonCode
+        - unavailableReason
+      properties:
+        canonicalName:
+          type: string
+          description: Tool canonical name
+        risk:
+          type: string
+          description: Primary risk level (R0–R5)
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Tool capability tags
+        schemaPreviewAvailable:
+          type: boolean
+          description: Whether schema preview is available
+        schemaShape:
+          type: string
+          description: Top-level schema shape (object, array, primitive, unknown)
+        inputFields:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolSchemaPreviewField"
+          description: Redacted field definitions
+        redactionStatus:
+          type: string
+          description: One of clean, redacted, unavailable
+        reasonCode:
+          type: string
+          description: >
+            Reason code when preview is unavailable. Null when available.
+            Values: RISK_R4_EXECUTION, RISK_R5_SYSTEM, PERMANENTLY_DENIED,
+            UNLISTED, UNAVAILABLE_EMPTY_SCHEMA, UNAVAILABLE_SCHEMA_SOURCE_ERROR, etc.
+        unavailableReason:
+          type: string
+          nullable: true
+          description: Human-readable unavailability reason
+
+    ToolSchemaPreviewCatalogData:
+      type: object
+      required: [totalCount, availableCount, unavailableCount, items]
+      properties:
+        totalCount:
+          type: integer
+          description: Total number of tools in the policy inventory
+        availableCount:
+          type: integer
+          description: Number of tools with schema preview available
+        unavailableCount:
+          type: integer
+          description: Number of tools without schema preview
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolSchemaPreviewItem"
+
+    ToolSchemaPreviewCatalogResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ToolSchemaPreviewCatalogData"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    ToolSchemaPreviewLookupData:
+      type: object
+      required: [found, preview, reasonCode]
+      properties:
+        found:
+          type: boolean
+          description: Whether the canonical name exists in the policy inventory
+        preview:
+          $ref: "#/components/schemas/ToolSchemaPreviewItem"
+          nullable: true
+        reasonCode:
+          type: string
+          description: 'Result code: "FOUND" when found, "NOT_FOUND" when not found'
+
+    ToolSchemaPreviewLookupResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: "#/components/schemas/ToolSchemaPreviewLookupData"
         meta:
           $ref: "#/components/schemas/Meta"

@@ -7063,7 +7063,7 @@ def _webui_check_openapi(
 
     Checks:
     - YAML is parseable
-    - Exactly 29 business paths
+    - Exactly 31 business paths
     - All allowed routes are present
     - No forbidden routes appear
     """
@@ -7106,6 +7106,8 @@ def _webui_check_openapi(
         "/reviews/{reviewId}/reject/execute": {"post"},
         "/tools/policy": {"get"},
         "/tools/catalog": {"get"},
+        "/tools/schemas": {"get"},
+        "/tools/schemas/{canonicalName}": {"get"},
     }
 
     # Forbidden route path substrings
@@ -7124,7 +7126,8 @@ def _webui_check_openapi(
     )
 
     # Forbidden tool write / execute / dispatch routes (substring match)
-    # GET /tools/policy and GET /tools/catalog are allowed above.
+    # GET /tools/policy, GET /tools/catalog, GET /tools/schemas, and
+    # GET /tools/schemas/{canonicalName} are allowed above.
     _TOOL_WRITE_ROUTE_SUBSTRINGS = (
         "/tools/policy",  # any method besides GET is caught below
         "/tools/catalog/",  # detail route: /tools/catalog/{toolName}
@@ -7135,13 +7138,13 @@ def _webui_check_openapi(
     # Forbidden POST/PATCH/DELETE on reviews (GET is allowed above)
     _REVIEW_WRITE_METHODS = {"post", "patch", "delete"}
 
-    # Forbidden methods on Tool Policy routes (only GET is allowed)
-    _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog"}
+    # Forbidden methods on Tool routes (only GET is allowed)
+    _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog", "/tools/schemas", "/tools/schemas/{canonicalName}"}
     _TOOL_ALLOWED_METHODS = {"get"}
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 29 else "FAIL",
+        "PASS" if path_count == 31 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7252,22 +7255,27 @@ def _webui_check_openapi(
         "absent" if not agent_tool_routes else f"found: {', '.join(agent_tool_routes)}",
     )
 
-    # Phase 1G: Tool Policy read-only checks
-    tool_policy_routes = {"/tools/policy", "/tools/catalog"}
+    # Phase 1G: Tool Policy + Schema Preview read-only checks
+    tool_get_routes_all = {
+        "/tools/policy",
+        "/tools/catalog",
+        "/tools/schemas",
+        "/tools/schemas/{canonicalName}",
+    }
     tool_get_present = all(
         route in paths and "get" in paths[route]
-        for route in tool_policy_routes
+        for route in tool_get_routes_all
     )
     add_fn(
         "PASS" if tool_get_present else "FAIL",
         "Tool policy routes",
-        "2" if tool_get_present else "missing tool policy routes",
+        "4" if tool_get_present else "missing tool GET routes",
     )
 
     # Tool write routes must not exist
     tool_write_routes = [
         p for p in paths
-        if p.startswith("/tools") and p not in tool_policy_routes
+        if p.startswith("/tools") and p not in tool_get_routes_all
     ]
     add_fn(
         "PASS" if not tool_write_routes else "FAIL",
