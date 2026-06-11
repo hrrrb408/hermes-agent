@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01 Completed; 1G-03-02 Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01, 1G-03-02 Completed; 1G-03-03 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 ✓, 1G-03-03 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -768,7 +768,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
-| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02+ Not Started |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02 ✓ (Service), 1G-03-03+ Not Started |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
@@ -1075,7 +1075,26 @@ The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 - See `docs/webui/phase-1g-02-tool-policy-read-only-panel.md` for full details
 
 The next subphase is **Phase 1G-03** (Tool Schema Preview).
-Phase 1G-03-01 is completed.
+Phase 1G-03-02 is completed.
+
+**Phase 1G-03-02 is completed.** Schema Preview Read-Only Service implemented.
+- `hermes_cli/dev_web_tool_schema_preview_service.py` — New service module with dependency-injected schema source (`SchemaSourceCallable`), catalog query (`list_schema_previews()`), single-tool lookup (`get_schema_preview()`), catalog model (`ToolSchemaPreviewCatalog`), and lookup result model (`ToolSchemaPreviewLookupResult`)
+- `tests/test_dev_web_tool_schema_preview_service.py` — 71 unit tests covering import safety, catalog count (71), stable sorting, single lookup (found/not-found), fake source integration, empty schema, invalid schema, source exception isolation, risk/denylist/candidate behavior, no-execution verification, JSON-safe output, summary counts, and existing API regression
+- `hermes_cli/dev_web_tool_schema_preview.py` — Minimal addition: `REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR` reason code
+- `tests/test_dev_web_tool_schema_preview.py` — 4 new tests for the reason code (151 total, was 147)
+- Schema source is injectable; default source returns `None` (no real tool handler imports)
+- Catalog total = 71, canonicalName set equals Tool Policy inventory
+- With full schema source: available = 45 (R0–R3 not denied), unavailable = 26 (denylist)
+- With empty source: all 71 unavailable
+- Risk rules from 1G-03-01 enforced: R4/R5/denylist unavailable, R3 available with redaction, R0/R1/R2 available
+- Source exceptions isolated per-tool — catalog query never fails entirely
+- Exact-match lookup only — no fuzzy matching, no case folding
+- stdlib only, zero import side effects, no file IO, no network IO, no provider imports, no tool handler imports
+- OpenAPI paths = 29 (unchanged), Tool GET routes = 2 (unchanged), Tool write routes = 0 (unchanged)
+- STATIC_ALLOWLIST empty, Tool Execution disabled, Provider Schema not sent, Tool Audit absent
+- Existing Tool Policy API behavior unchanged (`schemaPreviewAvailable` still `false` in catalog)
+- No API routes added, no OpenAPI changes, no frontend changes
+- Phase 1G-03-03 (Schema Preview API) not started
 
 **Phase 1G-03-01 is completed.** Static Tool Schema Preview model and sanitizer implemented.
 - `hermes_cli/dev_web_tool_schema_preview.py` — New module with frozen dataclasses (`SchemaPreviewField`, `SchemaPreviewAvailability`, `ToolSchemaPreview`), sanitizer (`sanitize_schema()`), risk-based availability (`determine_schema_preview_availability()`), and builder (`build_schema_preview()`)

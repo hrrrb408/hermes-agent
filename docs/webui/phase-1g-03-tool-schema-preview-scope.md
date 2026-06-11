@@ -876,17 +876,17 @@ Browser smoke tests for Phase 1G-03 must verify:
 - No STATIC_ALLOWLIST change
 - No STATIC_DENYLIST change
 - No CANDIDATE_ALLOWLIST change
-- Phase 1G-03-02 not started
+- Phase 1G-03-02 completed (see Section 19)
 
 ---
 
 ## 17. Next Step
 
-Phase 1G-03-01 is completed. The next sub-phase is:
+Phase 1G-03-02 is completed. The next sub-phase is:
 
-- Phase 1G-03-02 (Schema Preview Read-Only Service) may begin
-- Phase 1G-03-02 must comply with all contracts in this document
-- Phase 1G-03-02 must not deviate from any frozen boundary
+- Phase 1G-03-03 (Schema Preview GET-only API and OpenAPI) may begin
+- Phase 1G-03-03 must comply with all contracts in this document
+- Phase 1G-03-03 must not deviate from any frozen boundary
 
 ---
 
@@ -904,3 +904,118 @@ Phase 1G-03-01 is completed. The next sub-phase is:
 ---
 
 *Phase 1G-03-00 Scope Freeze — Tool Schema Preview: read-only, local-only, no Provider Schema send, no Tool Dispatch, no Tool Execution, no Tool Audit, no allowlist change.*
+
+---
+
+## 19. Phase 1G-03-02 Completion Record
+
+**Phase:** 1G-03-02 — Schema Preview Read-Only Service
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** 67cbd42c9e994f5ee4ac126556dc2803d147d1eb
+
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `hermes_cli/dev_web_tool_schema_preview_service.py` | New — Read-only service with injectable schema source, catalog query, and single-tool lookup |
+| `tests/test_dev_web_tool_schema_preview_service.py` | New — 71 unit tests covering all service behaviors |
+| `hermes_cli/dev_web_tool_schema_preview.py` | Minimal — Added `REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR` reason code |
+| `tests/test_dev_web_tool_schema_preview.py` | Minimal — Added 4 tests for new reason code (151 total, was 147) |
+
+### Implementation Summary
+
+1. **Schema source abstraction:** `SchemaSourceCallable = Callable[[str], Mapping[str, Any] | None]` — dependency-injected schema source, default returns `None`
+2. **Catalog query:** `list_schema_previews(schema_source)` — returns `ToolSchemaPreviewCatalog` with all 71 tools, sorted by canonicalName, with summary counts
+3. **Single-tool lookup:** `get_schema_preview(canonical_name, schema_source)` — returns `ToolSchemaPreviewLookupResult` with explicit found/not-found handling
+4. **Catalog model:** `ToolSchemaPreviewCatalog` — total_count, available_count, unavailable_count, items tuple, JSON-safe `to_safe_dict()`
+5. **Lookup result model:** `ToolSchemaPreviewLookupResult` — found, preview, reason_code, JSON-safe `to_safe_dict()`
+6. **Source error isolation:** Source exceptions caught per-tool, converted to `UNAVAILABLE_SCHEMA_SOURCE_ERROR` without crashing catalog
+7. **Exact match only:** No fuzzy matching, no case folding, no alias resolution
+
+### Architecture Constraints Verified
+
+- stdlib only (no third-party imports)
+- import side effects = 0 (beyond static policy constants)
+- no file IO, no network IO, no environment reads
+- no provider imports, no tool handler imports, no runtime DB access
+- dependency-injected schema source (default does not import real tools)
+- deterministic, JSON-serializable output
+- stable sorting by canonicalName
+- explicit not-found and unavailable handling
+
+### Catalog Behavior
+
+| Source | Total | Available | Unavailable |
+|--------|-------|-----------|-------------|
+| Default (empty) | 71 | 0 | 71 |
+| Full schema | 71 | 45 | 26 |
+| Error source | 71 | 0 | 71 |
+
+### Risk/Policy Integration
+
+| Category | Count | Schema Preview Available |
+|----------|-------|--------------------------|
+| R0 tools | 1 | Yes (if schema exists) |
+| R1 tools | 5 | Yes (if schema exists) |
+| R2 tools | 19 | Yes (if schema exists) |
+| R3 tools | 26 | Yes with enhanced redaction (if schema exists) |
+| R4 tools | 17 | No (all permanently denied) |
+| R5 tools | 3 | No (all permanently denied) |
+| Denylist | 26 | No (PERMANENTLY_DENIED) |
+| Candidate (6) | 6 | Yes (if schema exists) |
+
+### Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Import safety | 4 |
+| Catalog count | 5 |
+| Stable sorting | 3 |
+| Single lookup | 8 |
+| Fake source integration | 7 |
+| Empty schema source | 4 |
+| Invalid schema | 4 |
+| Source exception isolation | 5 |
+| Risk / Denylist / Candidate | 14 |
+| No execution | 4 |
+| JSON-safe output | 6 |
+| Summary counts | 5 |
+| Existing API regression | 2 |
+| **Total** | **71** |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| API routes added | 0 |
+| OpenAPI paths | 29 (unchanged) |
+| Runtime routes | 29 (unchanged) |
+| Tool GET routes | 2 (unchanged) |
+| Tool write routes | 0 (unchanged) |
+| STATIC_ALLOWLIST | empty (unchanged) |
+| Tool Execution | disabled (unchanged) |
+| Provider Tool Schema | not sent (unchanged) |
+| Tool Dispatch | 0 (unchanged) |
+| Tool Audit | absent (unchanged) |
+| Frontend files modified | 0 |
+| `hermes_cli/dev_web_api.py` modified | No |
+| `docs/webui/openapi/` modified | No |
+| `apps/hermes-dev-webui/src/` modified | No |
+| Existing catalog `schemaPreviewAvailable` | `false` (unchanged) |
+| Existing catalog `dryRunAvailable` | `false` (unchanged) |
+| Existing catalog `executionAvailable` | `false` (unchanged) |
+
+### What Was NOT Done
+
+- No API routes added
+- No OpenAPI specification modified
+- No frontend code modified
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No STATIC_DENYLIST change
+- No CANDIDATE_ALLOWLIST change
+- Phase 1G-03-03 not started

@@ -53,6 +53,7 @@ from hermes_cli.dev_web_tool_schema_preview import (
     REASON_UNAVAILABLE_PERMANENTLY_DENIED,
     REASON_UNAVAILABLE_RISK_R4,
     REASON_UNAVAILABLE_RISK_R5,
+    REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR,
     REASON_UNAVAILABLE_UNLISTED,
     REDACTED_DEPTH_LIMIT,
     REDACTED_FIELD_LIMIT,
@@ -1396,3 +1397,24 @@ class TestDefaultPresence:
         )
         fields = {f.field_name: f for f in preview.input_fields}
         assert fields["query"].default_presence is False
+
+
+# ===========================================================================
+# 1G-03-02 supplement: REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR
+# ===========================================================================
+
+
+class TestSchemaSourceErrorReasonCode:
+    """Verify the new reason code added for service-level source errors."""
+
+    def test_reason_code_value(self):
+        assert REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR == "UNAVAILABLE_SCHEMA_SOURCE_ERROR"
+
+    def test_reason_code_is_string(self):
+        assert isinstance(REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR, str)
+
+    def test_reason_code_not_empty(self):
+        assert len(REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR) > 0
+
+    def test_reason_code_starts_with_unavailable(self):
+        assert REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR.startswith("UNAVAILABLE_")
