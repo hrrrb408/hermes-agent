@@ -810,6 +810,7 @@ test.describe('Schema Preview Accessibility', () => {
     await setupSchemaPreviewPanel(page, 'obsidian', { width: 1440, height: 900 })
 
     const searchInput = page.locator('#sp-search')
+    await expect(searchInput).toBeVisible()
     // Check that there's a label associated
     const labelForSearch = page.locator('label[for="sp-search"]')
     expect(await labelForSearch.count()).toBe(1)

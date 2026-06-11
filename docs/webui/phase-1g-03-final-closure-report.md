@@ -99,7 +99,7 @@ Build a read-only Tool Schema Preview system that displays sanitized schema info
 | Unit tests passed | 649 |
 | Unit tests failed | 0 |
 | TypeScript type-check | PASS |
-| ESLint | 1 error — unused variable in smoke test file (non-production code, P2 finding) |
+| ESLint | PASS (lint blocker fixed in Phase 1G-03-07A) |
 | Production build | PASS (1852 modules, 290 KB JS / 85 KB gzip, 237 KB CSS / 43 KB gzip) |
 
 ### 5.3 Browser Smoke
@@ -269,7 +269,7 @@ None.
 
 ### P2
 
-1. **Lint error in smoke test file:** `phase-1g-03-schema-preview-smoke.spec.ts:812` has an unused variable `searchInput`. This was introduced in Phase 1G-03-06. Fix requires editing test code, which is forbidden during closure. Should be cleaned up in Phase 1G-04 or a dedicated lint-fix task.
+1. **Lint error in smoke test file (FIXED in 1G-03-07A):** `phase-1g-03-schema-preview-smoke.spec.ts:812` had an unused variable `searchInput`. Fixed by adding `await expect(searchInput).toBeVisible()` — a semantically correct visibility assertion that uses the variable. `npm run lint` now passes.
 2. **Browser smoke not CI-integrated:** Playwright smoke tests require a live Dev WebUI server and are not yet integrated into CI. Manual verification was performed in Phase 1G-03-06.
 3. **No screenshot artifacts:** Visual verification relies on Playwright assertions rather than captured screenshots.
 4. **Phase 1G-04 Controlled Execution not yet designed:** The next phase (Dry-Run) requires design work before implementation begins.

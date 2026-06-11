@@ -1443,7 +1443,7 @@ Phase 1G-03 is closed. The next sub-phase is:
 4. **Backend governance:** 707 passed, 0 failed, 5 deselected
 5. **Frontend tests:** 649 passed, 0 failed (27 files)
 6. **TypeScript type-check:** PASS
-7. **ESLint:** 1 error (unused variable in smoke test file, P2 finding)
+7. **ESLint:** PASS (lint blocker fixed in Phase 1G-03-07A)
 8. **Production build:** PASS (1852 modules)
 9. **Browser smoke:** Verified in 1G-03-06 with live server (44 passed); closure run skipped (no live server, docs-only mode)
 10. **compileall:** PASS
