@@ -785,18 +785,112 @@ Browser smoke tests for Phase 1G-03 must verify:
 
 ---
 
-## 16. Next Step
+## 16. Phase 1G-03-01 Completion Record
 
-After this scope freeze document is committed:
+**Phase:** 1G-03-01 — Static Schema Preview Model and Sanitizer
+**Status:** Completed
+**Date:** 2026-06-11
+**Base commit:** 287142c7411643a5091fa7394bcdba303961e9bd
 
-- Phase 1G-03-01 (Static Schema Preview Model and Sanitizer) may begin
-- Phase 1G-03-01 must comply with all contracts in this document
-- Phase 1G-03-01 must not deviate from any frozen boundary
-- Phase 1G-03-01 must not begin until this scope freeze is committed
+### Deliverables
+
+| File | Status |
+|------|--------|
+| `hermes_cli/dev_web_tool_schema_preview.py` | New — Static schema preview model, sanitizer, and availability logic |
+| `tests/test_dev_web_tool_schema_preview.py` | New — 147 unit tests covering all sanitizer behaviors |
+
+### Implementation Summary
+
+1. **Data models:** `SchemaPreviewField`, `SchemaPreviewAvailability`, `ToolSchemaPreview` (frozen dataclasses)
+2. **Sanitizer:** `sanitize_schema()` — pure function with forbidden field redaction, secret pattern detection, description/enum/constraints truncation, nested depth limit (4), field count limit (100), cycle-safe recursion
+3. **Risk-based availability:** `determine_schema_preview_availability()` — R0/R1/R2 available, R3 available with enhanced redaction, R4/R5 unavailable, permanent denylist unavailable, candidate allowlist available
+4. **Builder:** `build_schema_preview()` — top-level pure function producing JSON-safe `ToolSchemaPreview`
+5. **Convenience:** `preview_from_policy_name()` — looks up tool in policy inventory
+6. **Serialization:** `to_safe_dict()` — whitelist-only JSON-safe output on all models
+
+### Architecture Constraints Verified
+
+- stdlib only (no third-party imports)
+- import side effects = 0 (beyond static policy constants)
+- no file IO, no network IO, no environment reads
+- no provider imports, no tool handler imports, no runtime DB access
+- deterministic, JSON-serializable output
+- explicit constants for all limits
+- explicit reason codes for all outcomes
+
+### Test Coverage
+
+| Category | Tests |
+|----------|-------|
+| Import safety | 4 |
+| Basic sanitization | 7 |
+| Forbidden field redaction | 28 |
+| Secret pattern redaction | 12 |
+| Truncation | 12 |
+| Depth limit | 2 |
+| Field count limit | 2 |
+| Cycle safety | 2 |
+| Risk-based availability | 12 |
+| No execution boundaries | 3 |
+| JSON-safe output | 6 |
+| Empty/invalid schema | 5 |
+| Type normalization | 14 |
+| Schema shape detection | 8 |
+| STATIC_ALLOWLIST invariant | 2 |
+| Denylist override | 2 |
+| Candidate allowlist | 3 |
+| preview_from_policy_name | 4 |
+| Inventory counts | 4 |
+| R3 enhanced redaction | 2 |
+| Default presence | 3 |
+| **Total** | **147** |
+
+### Boundary Verification
+
+| Metric | Value |
+|--------|-------|
+| API routes added | 0 |
+| OpenAPI paths | 29 (unchanged) |
+| Runtime routes | 29 (unchanged) |
+| Tool GET routes | 2 (unchanged) |
+| Tool write routes | 0 (unchanged) |
+| STATIC_ALLOWLIST | empty (unchanged) |
+| Tool Execution | disabled (unchanged) |
+| Provider Tool Schema | not sent (unchanged) |
+| Tool Dispatch | 0 (unchanged) |
+| Tool Audit | absent (unchanged) |
+| Frontend files modified | 0 |
+| `hermes_cli/dev_web_api.py` modified | No |
+| `docs/webui/openapi/` modified | No |
+| `apps/hermes-dev-webui/src/` modified | No |
+
+### What Was NOT Done
+
+- No API routes added
+- No OpenAPI specification modified
+- No frontend code modified
+- No provider schema sending
+- No tool execution enabled
+- No tool dispatch mechanism
+- No tool audit created
+- No STATIC_ALLOWLIST change
+- No STATIC_DENYLIST change
+- No CANDIDATE_ALLOWLIST change
+- Phase 1G-03-02 not started
 
 ---
 
-## 17. Git Commit
+## 17. Next Step
+
+Phase 1G-03-01 is completed. The next sub-phase is:
+
+- Phase 1G-03-02 (Schema Preview Read-Only Service) may begin
+- Phase 1G-03-02 must comply with all contracts in this document
+- Phase 1G-03-02 must not deviate from any frozen boundary
+
+---
+
+## 18. Git Commit
 
 | Field | Value |
 |-------|-------|

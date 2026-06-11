@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Not Started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03-01 Completed; 1G-03-02 Not Started
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03 Not Started)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03-00 ✓, 1G-03-01 ✓, 1G-03-02 Not Started)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -768,7 +768,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 |-------|------|-------|
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
-| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — Scope Frozen |
+| 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — 1G-03-01 ✓ (Model/Sanitizer), 1G-03-02+ Not Started |
 | 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
@@ -1075,7 +1075,17 @@ The next subphase is **Phase 1G-02** (Tool Policy Read-Only API / Panel).
 - See `docs/webui/phase-1g-02-tool-policy-read-only-panel.md` for full details
 
 The next subphase is **Phase 1G-03** (Tool Schema Preview).
-Phase 1G-03 has NOT started.
+Phase 1G-03-01 is completed.
+
+**Phase 1G-03-01 is completed.** Static Tool Schema Preview model and sanitizer implemented.
+- `hermes_cli/dev_web_tool_schema_preview.py` — New module with frozen dataclasses (`SchemaPreviewField`, `SchemaPreviewAvailability`, `ToolSchemaPreview`), sanitizer (`sanitize_schema()`), risk-based availability (`determine_schema_preview_availability()`), and builder (`build_schema_preview()`)
+- `tests/test_dev_web_tool_schema_preview.py` — 147 unit tests covering import safety, sanitization, forbidden field redaction, secret pattern detection, truncation, depth/field count limits, cycle safety, risk-based availability, no-execution boundaries, JSON-safe output
+- stdlib only, zero import side effects, no file IO, no network IO, no provider imports, no tool handler imports
+- OpenAPI paths = 29 (unchanged), Tool GET routes = 2 (unchanged), Tool write routes = 0 (unchanged)
+- STATIC_ALLOWLIST empty, Tool Execution disabled, Provider Schema not sent, Tool Audit absent
+- No API routes, no OpenAPI changes, no frontend changes
+- Phase 1G-03-02 (Schema Preview Read-Only Service) not started
+- See `docs/webui/phase-1g-03-tool-schema-preview-scope.md` Section 16 for completion record
 
 **Phase 1G-03-00 is completed.** Tool Schema Preview scope, data model boundary, redaction rules, DTO whitelist, forbidden fields, risk-based availability, API principles, frontend principles, testing strategy, and phase breakdown are frozen.
 - `docs/webui/phase-1g-03-tool-schema-preview-scope.md` — Complete scope freeze document
