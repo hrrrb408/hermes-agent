@@ -713,4 +713,82 @@ After creating the docs-only commit:
 
 ---
 
+## 19. Phase 1G-04-01 Completion Record
+
+### Phase 1G-04-01: Tool Dry-Run Policy Service Model
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-01 |
+| Title | Tool Dry-Run Policy Service Model |
+| Status | Completed locally |
+| Date | 2026-06-11 |
+| Branch | dev-huangruibang |
+| Base commit | d0790abf8d05ddfeb469fcd7aea8ac42d7364032 |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `hermes_cli/dev_web_tool_dry_run.py` | Pure dry-run policy model: decisions, reason codes, argument sanitizer, risk-tier engine |
+| `tests/test_dev_web_tool_dry_run.py` | 425 unit tests covering models, risk tiers, redaction, no side effects, catalog, summary |
+
+### What Was Implemented
+
+1. **Dry-Run Decision constants**: `would_allow`, `would_block`, `would_redact`, `requires_review`
+2. **Dry-Run Reason codes**: 18 reason codes covering all decision paths
+3. **Argument sanitizer**: Secret key/value redaction, forbidden field tracking, depth/string/list limits, JSON-safe output
+4. **Frozen dataclasses**: `ToolDryRunRequest`, `ToolDryRunResult`, `ToolDryRunPolicySummary`
+5. **Policy engine**: `dry_run_tool_policy()` — pure function, risk-tier based decisions
+6. **Catalog query**: `list_tool_dry_run_policies()` — all 71 tools, sorted alphabetically
+7. **Summary**: `compute_dry_run_policy_summary()` — aggregate counts by decision type
+
+### Decision Matrix (as implemented)
+
+| Tool Status | Decision | Reason |
+|-------------|----------|--------|
+| Unknown (not in inventory) | `would_block` | `WOULD_BLOCK_UNKNOWN_TOOL` |
+| Permanent denylist | `would_block` | `WOULD_BLOCK_DENYLISTED` |
+| R5 (high-risk system) | `would_block` | `WOULD_BLOCK_R5_SYSTEM_RISK` |
+| R4 (process/execution) | `would_block` | `WOULD_BLOCK_R4_EXECUTION_RISK` |
+| R3 (controlled write, no sensitive args) | `requires_review` | `REQUIRES_REVIEW_R3` |
+| R3 (controlled write, sensitive args) | `would_redact` | `REQUIRES_REVIEW_R3` + redaction codes |
+| R2 (external network) | `requires_review` | `REQUIRES_REVIEW_R2` |
+| R1 (local read) | `would_allow` | `WOULD_ALLOW_STATIC_POLICY` + `DRY_RUN_ONLY_NO_EXECUTION` |
+| R0 (pure compute) | `would_allow` | `WOULD_ALLOW_STATIC_POLICY` + `DRY_RUN_ONLY_NO_EXECUTION` |
+
+### Invariants Verified
+
+- `execution_allowed` is ALWAYS `False`
+- `dispatch_allowed` is ALWAYS `False`
+- `provider_schema_allowed` is ALWAYS `False`
+- `audit_written` is ALWAYS `False`
+- `STATIC_ALLOWLIST` remains empty
+- stdlib only, no file IO, no network, no environment mutation
+- Deterministic output
+
+### What Was NOT Implemented
+
+- No API route added
+- No OpenAPI path added
+- No frontend source changed
+- No router changed
+- No provider schema sending
+- No tool handler call
+- No tool dispatch
+- No tool execution
+- No audit storage
+- No STATIC_ALLOWLIST population
+
+### Route Governance (unchanged)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 31 |
+| Runtime routes | 31 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+
+---
+
 *Phase 1G-04-00 Design Scope Freeze — Tool Dry-Run / Controlled Execution: design-only, docs-only, no implementation, no execution, no provider schema send, no tool dispatch, no tool audit, no allowlist change.*
