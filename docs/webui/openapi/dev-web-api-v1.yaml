@@ -1642,6 +1642,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /tools/dry-run:
+    post:
+      operationId: toolDryRun
+      tags: [Tools]
+      summary: Evaluate dry-run policy for a proposed tool call
+      description: >
+        Returns a policy decision (would_allow, would_block, would_redact,
+        requires_review) without executing the tool. No tool handler is called,
+        no provider schema is sent, and no audit record is written.
+        This endpoint is non-mutating despite using POST method.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolDryRunRequest"
+      responses:
+        "200":
+          description: Dry-run policy decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolDryRunResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolDryRunResponse"
+        "503":
+          description: Policy unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolDryRunResponse"
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolDryRunResponse"
+
 components:
   schemas:
     # ── Common ──
@@ -3768,3 +3810,168 @@ components:
           $ref: "#/components/schemas/ToolSchemaPreviewLookupData"
         meta:
           $ref: "#/components/schemas/Meta"
+
+    # ── Phase 1G-04: Tool Dry-Run ──
+
+    ToolDryRunRequest:
+      type: object
+      required: [canonicalName]
+      properties:
+        canonicalName:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Exact tool canonical name to evaluate.
+        argumentsPreview:
+          type: object
+          nullable: true
+          description: >
+            Proposed arguments for dry-run evaluation. Must be a JSON object
+            if present. Never executed or dispatched.
+        sourceContext:
+          type: string
+          nullable: true
+          maxLength: 512
+          description: Optional source context description.
+        uiOrigin:
+          type: string
+          nullable: true
+          maxLength: 256
+          description: Optional UI component identifier.
+        requestId:
+          type: string
+          nullable: true
+          maxLength: 128
+          description: Client-side request correlation ID. Not durable, not stored.
+
+    ToolDryRunDecision:
+      type: string
+      enum: [would_allow, would_block, would_redact, requires_review]
+      description: >
+        Dry-run policy decision values:
+        - would_allow: Tool would be allowed for dry-run simulation (R0/R1)
+        - would_block: Tool would be blocked (denylist, R4, R5, unknown)
+        - would_redact: Tool arguments would be redacted (R3 with sensitive args)
+        - requires_review: Tool requires additional review (R2, R3 without sensitive args)
+
+    ToolDryRunErrorCode:
+      type: string
+      enum:
+        - TOOL_DRY_RUN_INVALID_REQUEST
+        - TOOL_DRY_RUN_INVALID_CANONICAL_NAME
+        - TOOL_DRY_RUN_INVALID_ARGUMENTS
+        - TOOL_DRY_RUN_POLICY_UNAVAILABLE
+        - TOOL_DRY_RUN_INTERNAL_ERROR
+      description: Error codes for dry-run API responses.
+
+    ToolDryRunData:
+      type: object
+      required:
+        - canonicalName
+        - exists
+        - riskTier
+        - decision
+        - reasonCodes
+        - policyNotes
+        - redactedArgumentsPreview
+        - forbiddenFields
+        - missingRequiredFields
+        - executionAllowed
+        - dispatchAllowed
+        - providerSchemaAllowed
+        - auditWritten
+      properties:
+        canonicalName:
+          type: string
+          description: The requested tool canonical name.
+        exists:
+          type: boolean
+          description: Whether the tool exists in the policy inventory.
+        riskTier:
+          type: string
+          nullable: true
+          description: Risk tier string (e.g. "R0") or null if unknown.
+        decision:
+          $ref: "#/components/schemas/ToolDryRunDecision"
+        reasonCodes:
+          type: array
+          items:
+            type: string
+          description: Machine-readable reason codes for the decision.
+        policyNotes:
+          type: array
+          items:
+            type: string
+          description: Human-readable policy notes.
+        redactedArgumentsPreview:
+          type: object
+          description: Sanitized arguments with secrets redacted.
+        forbiddenFields:
+          type: array
+          items:
+            type: string
+          description: Field paths that were redacted.
+        missingRequiredFields:
+          type: array
+          items:
+            type: string
+          description: "Required fields not present (future: schema validation)."
+        executionAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Execution requires separate phase approval.
+        dispatchAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false.
+        providerSchemaAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider schema sending requires separate phase.
+        auditWritten:
+          type: boolean
+          enum: [false]
+          description: Always false. Audit requires separate phase.
+
+    ToolDryRunResponse:
+      type: object
+      required: [ok, data, error, meta]
+      properties:
+        ok:
+          type: boolean
+          description: True for success, false for error.
+        data:
+          $ref: "#/components/schemas/ToolDryRunData"
+          nullable: true
+        error:
+          type: object
+          nullable: true
+          required: [code, message]
+          properties:
+            code:
+              $ref: "#/components/schemas/ToolDryRunErrorCode"
+            message:
+              type: string
+              description: Human-readable error description.
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    ToolDryRunPolicySummary:
+      type: object
+      required: [totalCount, dryRunAllowCount, blockedCount, reviewCount, redactedCount]
+      properties:
+        totalCount:
+          type: integer
+          description: Total tools in inventory.
+        dryRunAllowCount:
+          type: integer
+          description: Tools that would be allowed for dry-run simulation.
+        blockedCount:
+          type: integer
+          description: Tools that would be blocked.
+        reviewCount:
+          type: integer
+          description: Tools that require review.
+        redactedCount:
+          type: integer
+          description: Tools that would require argument redaction.

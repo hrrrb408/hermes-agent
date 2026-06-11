@@ -573,13 +573,17 @@ class TestToolPolicyRouteBoundary:
         assert len(tool_get_routes) == 4
 
     def test_no_tool_write_routes(self, client):
-        """Verify no tool POST/PUT/PATCH/DELETE routes exist."""
+        """Verify no tool POST/PUT/PATCH/DELETE routes exist (dry-run POST excluded)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         write_methods = {"post", "put", "patch", "delete"}
+        # Tool dry-run POST is non-mutating — excluded from write count
+        _TOOL_DRY_RUN_ROUTES = {"/api/dev/v1/tools/dry-run"}
         tool_write_routes = []
         for p, methods in spec["paths"].items():
             if not p.startswith("/api/dev/v1/tools"):
+                continue
+            if p in _TOOL_DRY_RUN_ROUTES:
                 continue
             actual = set(methods.keys()) & write_methods
             if actual:
@@ -684,14 +688,14 @@ class TestToolPolicyServiceDelegation:
 class TestToolPolicyOpenAPIConsistency:
     """Verify runtime routes match the static OpenAPI spec."""
 
-    def test_runtime_has_31_business_paths(self, client):
+    def test_runtime_has_32_business_paths(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 31
+        assert len(paths) == 32
 
     def test_tools_policy_in_runtime(self, client):
         resp = client.get("/openapi.json")

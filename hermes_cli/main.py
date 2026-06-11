@@ -7108,13 +7108,15 @@ def _webui_check_openapi(
         "/tools/catalog": {"get"},
         "/tools/schemas": {"get"},
         "/tools/schemas/{canonicalName}": {"get"},
+        "/tools/dry-run": {"post"},
     }
 
     # Forbidden route path substrings
     # Phase 1E: /agent/run/dry-run is allowed, but /agent/run (exact) is forbidden.
     # /agent/prompt/preview is allowed.
     # Phase 1G: /tools/policy and /tools/catalog (GET) are allowed, but all other
-    # /tools/* routes (write, execute, dispatch, schema preview, call dry-run) are forbidden.
+    # /tools/* routes (write, execute, dispatch, schema preview) are forbidden.
+    # Phase 1G-04: /tools/dry-run (POST) is allowed as a non-mutating policy decision endpoint.
     FORBIDDEN_SUBSTRINGS = (
         "/files/upload",
     )
@@ -7140,11 +7142,13 @@ def _webui_check_openapi(
 
     # Forbidden methods on Tool routes (only GET is allowed)
     _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog", "/tools/schemas", "/tools/schemas/{canonicalName}"}
+    _TOOL_DRY_RUN_ROUTES = {"/tools/dry-run"}
+    _TOOL_DRY_RUN_ALLOWED_METHODS = {"post"}
     _TOOL_ALLOWED_METHODS = {"get"}
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 31 else "FAIL",
+        "PASS" if path_count == 32 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7179,8 +7183,15 @@ def _webui_check_openapi(
                 forbidden_found.append(route_path)
                 break
         # Check for forbidden tool write / execute / dispatch routes
-        if route_path.startswith("/tools") and route_path not in _TOOL_GET_ROUTES:
+        if route_path.startswith("/tools") and route_path not in _TOOL_GET_ROUTES and route_path not in _TOOL_DRY_RUN_ROUTES:
             forbidden_found.append(route_path)
+            continue
+        # Check for non-POST methods on Tool dry-run routes
+        if route_path in _TOOL_DRY_RUN_ROUTES:
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            extra_methods = actual_methods - _TOOL_DRY_RUN_ALLOWED_METHODS
+            if extra_methods:
+                forbidden_found.append(f"{route_path} ({', '.join(sorted(extra_methods))})")
             continue
         # Check for non-GET methods on Tool GET routes
         if route_path in _TOOL_GET_ROUTES:
@@ -7262,6 +7273,10 @@ def _webui_check_openapi(
         "/tools/schemas",
         "/tools/schemas/{canonicalName}",
     }
+    # Phase 1G-04: Tool dry-run is a non-mutating POST — not a write route
+    tool_dry_run_routes_all = {
+        "/tools/dry-run",
+    }
     tool_get_present = all(
         route in paths and "get" in paths[route]
         for route in tool_get_routes_all
@@ -7275,12 +7290,23 @@ def _webui_check_openapi(
     # Tool write routes must not exist
     tool_write_routes = [
         p for p in paths
-        if p.startswith("/tools") and p not in tool_get_routes_all
+        if p.startswith("/tools") and p not in tool_get_routes_all and p not in tool_dry_run_routes_all
     ]
     add_fn(
         "PASS" if not tool_write_routes else "FAIL",
         "Tool write routes",
         "absent" if not tool_write_routes else f"found: {', '.join(tool_write_routes)}",
+    )
+
+    # Phase 1G-04: Tool dry-run routes (non-mutating POST, separate bucket)
+    tool_dry_run_present = all(
+        route in paths and "post" in paths[route]
+        for route in tool_dry_run_routes_all
+    )
+    add_fn(
+        "PASS" if tool_dry_run_present else "FAIL",
+        "Tool dry-run routes",
+        "1" if tool_dry_run_present else "missing tool dry-run route",
     )
 
     # Static allowlist must be empty

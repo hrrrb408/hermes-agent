@@ -170,6 +170,10 @@ from hermes_cli.dev_web_tool_schema_preview_service import (
     list_schema_previews as _list_schema_previews,
     get_schema_preview as _get_schema_preview,
 )
+from hermes_cli.dev_web_tool_dry_run import (
+    dry_run_tool_policy as _dry_run_tool_policy,
+    STATIC_ALLOWLIST as _DRY_RUN_STATIC_ALLOWLIST,
+)
 
 
 # ── Query parameter enums ──
@@ -1561,6 +1565,9 @@ def _register_routes(
     # ── Phase 1G-03: Tool Schema Preview Read-Only ──
     _register_schema_preview_routes(app, config)
 
+    # ── Phase 1G-04: Tool Dry-Run Read-Only ──
+    _register_tool_dry_run_routes(app, config)
+
 
 def _register_writer_routes(
     app: FastAPI,
@@ -2852,6 +2859,187 @@ def _register_schema_preview_routes(
             )
 
         ts = _utc_now_iso()
+        return {
+            "data": result.to_safe_dict(),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+
+# ── Phase 1G-04: Tool Dry-Run Read-Only Routes ──
+
+
+def _register_tool_dry_run_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+) -> None:
+    """Register Phase 1G-04 Tool Dry-Run read-only route.
+
+    One POST route that exposes the existing pure dry-run policy engine
+    as a local-only, non-mutating decision endpoint.
+
+    Guarantees:
+      - No tool handler called
+      - No tool dispatch
+      - No provider schema sent
+      - No provider API called
+      - No audit written
+      - No runtime mutation
+      - No STATIC_ALLOWLIST mutation
+    """
+    prefix = config.api_prefix
+
+    # ── Error codes ──
+
+    _TOOL_DRY_RUN_INVALID_REQUEST = "TOOL_DRY_RUN_INVALID_REQUEST"
+    _TOOL_DRY_RUN_INVALID_CANONICAL_NAME = "TOOL_DRY_RUN_INVALID_CANONICAL_NAME"
+    _TOOL_DRY_RUN_INVALID_ARGUMENTS = "TOOL_DRY_RUN_INVALID_ARGUMENTS"
+    _TOOL_DRY_RUN_POLICY_UNAVAILABLE = "TOOL_DRY_RUN_POLICY_UNAVAILABLE"
+    _TOOL_DRY_RUN_INTERNAL_ERROR = "TOOL_DRY_RUN_INTERNAL_ERROR"
+
+    # Validation limits
+    _MAX_CANONICAL_NAME_LENGTH = 256
+    _MAX_SOURCE_CONTEXT_LENGTH = 512
+    _MAX_UI_ORIGIN_LENGTH = 256
+    _MAX_REQUEST_ID_LENGTH = 128
+
+    # ── POST /tools/dry-run ──
+
+    @app.post(
+        f"{prefix}/tools/dry-run",
+        tags=["Tools"],
+        summary="Evaluate dry-run policy for a proposed tool call",
+        description="Returns a policy decision (would_allow, would_block, would_redact, "
+        "requires_review) without executing the tool. No tool handler is called, "
+        "no provider schema is sent, and no audit record is written.",
+    )
+    def tool_dry_run(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        # Step 2: Validate canonicalName
+        canonical_name = body.get("canonicalName")
+        if canonical_name is None:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_DRY_RUN_INVALID_CANONICAL_NAME,
+                message="canonicalName is required.",
+                request_id=rid,
+            )
+        if not isinstance(canonical_name, str):
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_DRY_RUN_INVALID_CANONICAL_NAME,
+                message="canonicalName must be a string.",
+                request_id=rid,
+            )
+        canonical_name = canonical_name.strip()
+        if not canonical_name:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_DRY_RUN_INVALID_CANONICAL_NAME,
+                message="canonicalName must not be empty.",
+                request_id=rid,
+            )
+        if len(canonical_name) > _MAX_CANONICAL_NAME_LENGTH:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_DRY_RUN_INVALID_CANONICAL_NAME,
+                message=f"canonicalName exceeds maximum length ({_MAX_CANONICAL_NAME_LENGTH}).",
+                request_id=rid,
+            )
+
+        # Step 4: Validate argumentsPreview (optional, must be object if present)
+        arguments_preview = body.get("argumentsPreview")
+        if arguments_preview is not None:
+            if not isinstance(arguments_preview, dict):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_ARGUMENTS,
+                    message="argumentsPreview must be a JSON object or null.",
+                    request_id=rid,
+                )
+
+        # Step 5: Validate optional string fields
+        source_context = body.get("sourceContext")
+        if source_context is not None:
+            if not isinstance(source_context, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message="sourceContext must be a string or null.",
+                    request_id=rid,
+                )
+            if len(source_context) > _MAX_SOURCE_CONTEXT_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message=f"sourceContext exceeds maximum length ({_MAX_SOURCE_CONTEXT_LENGTH}).",
+                    request_id=rid,
+                )
+
+        ui_origin = body.get("uiOrigin")
+        if ui_origin is not None:
+            if not isinstance(ui_origin, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message="uiOrigin must be a string or null.",
+                    request_id=rid,
+                )
+            if len(ui_origin) > _MAX_UI_ORIGIN_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message=f"uiOrigin exceeds maximum length ({_MAX_UI_ORIGIN_LENGTH}).",
+                    request_id=rid,
+                )
+
+        request_id_field = body.get("requestId")
+        if request_id_field is not None:
+            if not isinstance(request_id_field, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message="requestId must be a string or null.",
+                    request_id=rid,
+                )
+            if len(request_id_field) > _MAX_REQUEST_ID_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message=f"requestId exceeds maximum length ({_MAX_REQUEST_ID_LENGTH}).",
+                    request_id=rid,
+                )
+
+        # Step 6: Call the pure dry-run policy engine
+        try:
+            result = _dry_run_tool_policy(
+                canonical_name,
+                arguments_preview,
+                source_context=source_context,
+                ui_origin=ui_origin,
+            )
+        except Exception as exc:
+            # Defensive: policy inventory load failure
+            exc_name = type(exc).__name__
+            if "import" in exc_name.lower() or "module" in exc_name.lower():
+                return _make_error_json(
+                    status_code=503,
+                    code=_TOOL_DRY_RUN_POLICY_UNAVAILABLE,
+                    message="Dry-run policy is unavailable.",
+                    request_id=rid,
+                )
+            return _make_error_json(
+                status_code=500,
+                code=_TOOL_DRY_RUN_INTERNAL_ERROR,
+                message="An unexpected error occurred during dry-run evaluation.",
+                request_id=rid,
+            )
+
+        # Step 7: Return safe response envelope
         return {
             "data": result.to_safe_dict(),
             "meta": {"requestId": rid, "timestamp": ts},
