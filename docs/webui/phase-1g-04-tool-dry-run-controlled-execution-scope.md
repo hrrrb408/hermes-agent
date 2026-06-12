@@ -1435,3 +1435,159 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-10 Execute Route Contract / OpenAPI Scope Freeze: route contract and OpenAPI scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no execution implementation, no tool handler call, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## 29. Phase 1G-04-11 Completion Record
+
+### Phase 1G-04-11: Backend Execute Gate Skeleton
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-11 |
+| Title | Backend Execute Gate Skeleton |
+| Status | Completed locally / Pushed in commit `3c9220978` |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Commit | `3c9220978448d5c5f728f3bf51764378654065ab` |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `hermes_cli/dev_web_tool_execute.py` | **New** — blocked-only execute gate skeleton: decision constants, error codes, gate constants, secret/forbidden-field redaction, request/result models, 9-gate evaluation, blocked result builder, policy summary |
+| `hermes_cli/dev_web_api.py` | **Modify** — added `_register_tool_execute_routes()` registering `POST /api/dev/v1/tools/execute` |
+| `docs/webui/openapi/dev-web-api-v1.yaml` | **Modify** — added 1 path + execute schemas (`ToolExecuteRequest`, `ToolExecuteDecision`, `ToolExecuteErrorCode`, `ToolExecuteGateStatusItem`, `ToolExecuteAuditStatus`, `ToolExecuteResultPreview`, `ToolExecuteData`, `ToolExecuteResponse`) |
+| `hermes_cli/main.py` | **Modify** — updated dev-check route governance expectations |
+| `tests/test_dev_web_tool_execute.py` | **New** — execute gate unit tests |
+| `tests/test_dev_web_tool_execute_api.py` | **New** — execute API integration tests |
+| `tests/test_dev_check_webui.py` | **Modify** — updated route governance expectations |
+| `tests/test_dev_web_0c06_closure.py` | **Modify** — updated route governance expectations |
+| `tests/test_dev_web_tool_dry_run_api.py` | **Modify** — route governance alignment |
+| `tests/test_dev_web_tool_policy_api.py` | **Modify** — route governance alignment |
+| `tests/test_dev_web_tool_schema_preview_api.py` | **Modify** — route governance alignment |
+
+### What Was Implemented
+
+1. **Execute route**: `POST /api/dev/v1/tools/execute` — classified as Tool execution route
+2. **Blocked-only gate stack**: 9 gates evaluated in order — kill_switch, agent_tools, static_allowlist, known_tool, denylist, risk_tier, dry_run_preflight, digest, confirmation
+3. **Kill switch contract**: exact lowercase `"true"` only; unset / empty / any other value blocks
+4. **Skeleton digest gate**: accepts any non-empty digest; real verification deferred to Phase 1G-04-12+
+5. **Skeleton confirmation gate**: checks token presence only; no issuance, no verification
+6. **Hard block after all gates**: even when every gate passes, returns `decision=blocked`, `errorCode=execution_not_implemented`
+7. **All execution flags false**: `executionAllowed`, `dispatchAllowed`, `providerSchemaAllowed`, `toolHandlerCalled`, `providerApiCalled`, `executionStarted`, `executionAttempted` always `false`
+8. **Stdlib-only module**: no provider, handler, dispatch, agent, or toolsets execution imports
+
+### What Was NOT Implemented
+
+- No confirmation token issuance
+- No confirmation token verification
+- No token store
+- No digest verification (skeleton accepts any non-empty digest)
+- No dry-run historical lookup
+- No pre-execution audit (`auditAttempted=false`)
+- No post-execution audit
+- No Tool Handler call
+- No Tool Dispatch
+- No Tool Execution
+- No Provider Schema sending
+- No Provider API call
+- No STATIC_ALLOWLIST population
+- No frontend source changes
+- No frontend execute UI
+
+### Route Governance (changed from 1G-04-10)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+
+---
+
+*Phase 1G-04-11 Backend Execute Gate Skeleton: blocked-only execute route added (33 paths / 1 execution route), all execution flags false, no token issuance, no digest verification, no handler call, no dispatch, no execution, no provider schema send, STATIC_ALLOWLIST empty, Controlled Execution not started.*
+
+---
+
+## 30. Phase 1G-04-12 Completion Record
+
+### Phase 1G-04-12: Confirmation Token / Digest Backend Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-12 |
+| Title | Confirmation Token / Digest Backend Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | `3c9220978448d5c5f728f3bf51764378654065ab` |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-12-confirmation-token-digest-scope.md` | Confirmation token / digest backend scope freeze: phase definition, current baseline, confirmation token goal, digest binding goal, non-goals, future token lifecycle, token payload draft, token storage strategy, token expiry and replay prevention, digest canonicalization strategy, digest mismatch contract, dry-run preflight binding, audit binding, future execute route behavior delta, future OpenAPI strategy, future allowed files, future forbidden files, test matrix (30 tests), entry/exit criteria |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-11 and Phase 1G-04-12 completion records |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-11 and Phase 1G-04-12 status |
+
+### What Was Frozen
+
+1. **Confirmation token scope**: necessary-but-never-sufficient human-confirmation proof generated only after dry-run preflight; binds to canonicalName, arguments digest, risk tier, dry-run decision, audit event, requestId, timestamp
+2. **Digest binding scope**: SHA-256 over canonical JSON of normalized execute input; prevents argument/canonicalName/stale-dry-run substitution; rejects mismatches before handler lookup
+3. **Future token lifecycle**: 12-step flow from dry-run through handler lookup — frozen, not implemented
+4. **Token payload draft**: 15 fields (version, tokenId, requestId, canonicalName, riskTier, policyVersion, dryRunRequestId, dryRunDecision, dryRunDecisionDigest, dryRunAuditEventId, argumentsDigest, issuedAt, expiresAt, singleUse, issuer); excludes raw arguments and secrets
+5. **Token storage strategy**: dev-only, ephemeral, never production state.db, never ~/.hermes, never git; file-backed stores only hashed identifiers and metadata
+6. **Token expiry / replay prevention**: ≤ 5-minute expiry, single-use; confirmation_missing / confirmation_invalid / confirmation_expired / confirmation_reused error mapping; replay prevention before handler lookup
+7. **Digest canonicalization strategy**: sha256(canonical_json(NormalizedExecuteDigestInput)) over canonicalName, riskTier, policyVersion, dryRunDecision, sanitizedArgumentsPreview, dryRunRequestId, dryRunAuditEventId
+8. **Digest mismatch contract**: blocked_by_digest_mismatch with toolHandlerCalled=false, executionStarted=false, providerApiCalled=false
+9. **Dry-run preflight binding**: execute must reference prior would_allow with auditWritten=true; current dry-run historical lookup not implemented in this phase
+10. **Audit binding**: token binds to dry-run audit event id; future pre/post execution audit include token id/hash and digest; never raw token secret or raw arguments
+11. **Future execute route behavior delta**: token/digest backend may validate token shape, expiry, single-use, and digest match; route may remain blocked-only; does not imply handler call or execution
+12. **Future OpenAPI strategy**: no path change; may refine existing execute schemas and add confirmation_expired / confirmation_reused error codes; path count stays 33
+13. **Future allowed files**: 9 existing files plus optional 2 new token-module files (future only)
+14. **Future forbidden files**: 13 categories permanently forbidden
+15. **Test matrix**: 30 future tests across token issuance, lifecycle, binding, digest, no-side-effect, audit safety, route governance
+16. **Entry criteria**: 13 conditions for starting token / digest implementation
+17. **Exit criteria**: 14 conditions for completing token / digest implementation
+
+### What Was NOT Implemented
+
+- No confirmation token issuance
+- No confirmation token verification
+- No token store
+- No digest verification
+- No dry-run historical lookup
+- No pre/post execution audit
+- No execute route behavior change
+- No OpenAPI change
+- No new route added
+- No route governance change
+- No Tool Handler call
+- No Tool Dispatch
+- No Tool Execution
+- No Provider Schema sending
+- No Provider API call
+- No STATIC_ALLOWLIST modification
+- No frontend change
+- No audit read API
+- No audit viewer
+- No code changes of any kind
+
+### Route Governance (unchanged from 1G-04-11)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+
+---
+
+*Phase 1G-04-12 Confirmation Token / Digest Backend Scope Freeze: confirmation token and digest binding backend scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no digest verification implementation, no execute route behavior change, no audit read API, no audit viewer, no tool handler call, no provider schema send, no allowlist change, no Controlled Execution started.*
