@@ -1862,3 +1862,69 @@ The execute route remains blocked-only. Even when clarify passes all dry-run loo
 ---
 
 *Phase 1G-04-16 Dry-Run Historical Lookup Read-Only Implementation: read-only lookup implemented, execute gate integrated, all paths blocked, no token, no digest verification, no handler, no dispatch, no execution, no provider, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-17: Preflight Production Path Guard Hardening
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-17 |
+| Title | Preflight Production Path Guard Hardening / Still Blocked-Only |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-16 completed locally |
+
+### Summary
+
+Hardened the dry-run execute preflight lookup's production path guard from equality-only (`home == prod_home`) to containment-based checks using `Path.relative_to()`. The new guard blocks:
+- Exact production home
+- Production home subtrees
+- Resolved audit paths inside production home
+- Symlink/path traversal into production home
+- Path traversal escaping the dev audit directory
+
+Paths like `.hermes-dev` are NOT falsely blocked because containment uses `Path.relative_to()`, not string prefix matching.
+
+The execute route remains blocked-only. No behavior expansion. No new routes.
+
+### Delta from 1G-04-16
+
+- Modified: `hermes_cli/dev_web_tool_execute_preflight.py` (containment guard)
+- New helper: `_is_relative_to()` in preflight module
+- New tests: 23 preflight containment tests
+- Updated tests: 5 execute model tests + 4 execute API tests
+- New doc: `phase-1g-04-17-preflight-production-path-guard-hardening.md`
+
+### Not Implemented
+
+- Confirmation token issuance
+- Confirmation token verification
+- Token store
+- Digest verification
+- Pre/post execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-16)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-17 Preflight Production Path Guard Hardening: containment-based production guard implemented, production subtree blocked, symlink/path traversal blocked, dev audit directory containment enforced, execute route remains blocked-only, no token, no digest verification, no handler, no dispatch, no execution, no provider, no Controlled Execution started.*

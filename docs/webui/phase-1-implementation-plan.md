@@ -1463,3 +1463,13 @@ Phase 1G-03-04 is completed.
 - Not implemented: confirmation token, digest verification, token store, pre/post execution audit, handler lookup, dispatch, execution, provider schema, provider API, frontend execute UI, audit read API, audit viewer, real Controlled Execution
 - Local commit created, not pushed
 - Next = future confirmation token issuance / verification scope or implementation only after user approval; real Controlled Execution not started
+
+**Phase 1G-04-17 is completed locally.** Preflight Production Path Guard Hardening / Still Blocked-Only.
+- `hermes_cli/dev_web_tool_execute_preflight.py` — Hardened production path guard from equality-only (`home == prod_home`) to containment-based checks using `Path.relative_to()`. Added `_is_relative_to()` helper. New guards: production subtree containment, resolved audit path production containment, dev audit directory containment, symlink/path traversal protection. No file opened before guard passes.
+- `.hermes-dev` style paths NOT falsely blocked (containment uses `Path.relative_to()`, not string prefix)
+- Execute route remains blocked-only; valid lookup still blocks at confirmation token boundary
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; no allowlist expansion
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- Not implemented: confirmation token, digest verification, token store, pre/post execution audit, handler lookup, dispatch, execution, provider schema, provider API, frontend execute UI, audit read API, audit viewer, real Controlled Execution
+- Local commit created, not pushed
+- Next = future confirmation token issuance / verification scope or implementation only after user approval; real Controlled Execution not started

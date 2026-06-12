@@ -46,6 +46,8 @@ from hermes_cli.dev_web_tool_execute_preflight import (
     verify_risk_tier_binding,
     verify_policy_version_binding,
     verify_digest_binding,
+    _is_relative_to,
+    _resolve_audit_path,
     _PRODUCTION_HERMES_HOME,
     _AUDIT_DIR_RELATIVE,
     _AUDIT_FILENAME,
@@ -811,3 +813,268 @@ class TestRequestIdNotFound:
         )
         assert result.found is False
         assert result.error_code == ERROR_DRY_RUN_NOT_FOUND
+
+
+# ===================================================================
+# 17. Production Path Containment Guard Tests (Phase 1G-04-17)
+# ===================================================================
+
+
+class TestProductionPathContainmentGuard:
+    """Tests for the hardened production path containment guard.
+
+    Phase 1G-04-17: Production path guard changed from equality-only
+    to containment-based checks using Path.relative_to().
+
+    Covers:
+      - exact production home blocks before file open
+      - production subtree blocks before file open
+      - symlinked HERMES_HOME resolving into production home blocks
+      - path traversal escaping dev audit directory blocks
+      - .hermes-dev style path is NOT falsely blocked (string prefix ≠ containment)
+      - no file open attempted when production containment violation happens
+      - valid dev HERMES_HOME still works
+    """
+
+    def test_exact_production_home_blocks(self, now):
+        """HERMES_HOME exactly equals production home → fail closed."""
+        result = lookup_dry_run_record(
+            hermes_home=_PRODUCTION_HERMES_HOME,
+            dry_run_request_id="any-id",
+            canonical_name="clarify",
+            now=now,
+        )
+        assert result.found is False
+        assert result.error_code == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_production_subtree_gateway_blocks(self, now):
+        """HERMES_HOME inside production subtree → fail closed."""
+        prod_subtree = str(Path(_PRODUCTION_HERMES_HOME) / "gateway")
+        result = lookup_dry_run_record(
+            hermes_home=prod_subtree,
+            dry_run_request_id="any-id",
+            canonical_name="clarify",
+            now=now,
+        )
+        assert result.found is False
+        assert result.error_code == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_production_subtree_deep_blocks(self, now):
+        """Deep production subtree HERMES_HOME → fail closed."""
+        prod_deep = str(
+            Path(_PRODUCTION_HERMES_HOME) / "gateway" / "dev" / "audit"
+        )
+        result = lookup_dry_run_record(
+            hermes_home=prod_deep,
+            dry_run_request_id="any-id",
+            canonical_name="clarify",
+            now=now,
+        )
+        assert result.found is False
+        assert result.error_code == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_hermes_dev_not_falsely_blocked(self, tmp_hermes_home, now):
+        """Paths like .hermes-dev must NOT be falsely blocked by string prefix."""
+        # tmp_hermes_home is a temp path, definitely not production.
+        # This test confirms the guard doesn't use string prefix matching.
+        # A path like /tmp/test/.hermes-dev should not match /Users/.../.hermes
+        fake_dev = tmp_hermes_home / ".hermes-dev"
+        fake_dev.mkdir(parents=True, exist_ok=True)
+        audit_dir = fake_dev / _AUDIT_DIR_RELATIVE
+        audit_dir.mkdir(parents=True, exist_ok=True)
+
+        result = lookup_dry_run_record(
+            hermes_home=str(fake_dev),
+            dry_run_request_id="any-id",
+            canonical_name="clarify",
+            now=now,
+        )
+        # Should not be blocked by production containment guard.
+        # Will fail with dry_run_not_found (no audit file) but NOT
+        # with dry_run_lookup_unavailable (production guard).
+        assert result.found is False
+        assert result.error_code == ERROR_DRY_RUN_NOT_FOUND
+
+    def test_no_file_open_on_production_containment_violation(self, now, monkeypatch):
+        """No file is opened when production containment check fails."""
+        import builtins
+        original_open = builtins.open
+
+        def _guard_open(*args, **kwargs):
+            raise AssertionError("File should not be opened during production guard check")
+
+        monkeypatch.setattr(builtins, "open", _guard_open)
+
+        try:
+            result = lookup_dry_run_record(
+                hermes_home=_PRODUCTION_HERMES_HOME,
+                dry_run_request_id="any-id",
+                canonical_name="clarify",
+                now=now,
+            )
+            assert result.found is False
+            assert result.error_code == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+        finally:
+            monkeypatch.setattr(builtins, "open", original_open)
+
+    def test_no_file_open_on_production_subtree(self, now, monkeypatch):
+        """No file is opened when production subtree containment check fails."""
+        import builtins
+        original_open = builtins.open
+
+        def _guard_open(*args, **kwargs):
+            raise AssertionError("File should not be opened during production guard check")
+
+        monkeypatch.setattr(builtins, "open", _guard_open)
+
+        try:
+            prod_subtree = str(Path(_PRODUCTION_HERMES_HOME) / "sessions")
+            result = lookup_dry_run_record(
+                hermes_home=prod_subtree,
+                dry_run_request_id="any-id",
+                canonical_name="clarify",
+                now=now,
+            )
+            assert result.found is False
+            assert result.error_code == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+        finally:
+            monkeypatch.setattr(builtins, "open", original_open)
+
+    def test_valid_dev_home_still_works(self, tmp_hermes_home, audit_path, now):
+        """Valid dev HERMES_HOME with audit file still returns found."""
+        _write_events(audit_path, [
+            _make_audit_event(request_id="test-containment-valid"),
+        ])
+        result = lookup_dry_run_record(
+            hermes_home=str(tmp_hermes_home),
+            dry_run_request_id="test-containment-valid",
+            canonical_name="clarify",
+            now=now,
+        )
+        assert result.found is True
+        assert result.error_code is None
+
+
+# ===================================================================
+# 18. _is_relative_to Helper Tests
+# ===================================================================
+
+
+class TestIsRelativeToHelper:
+    """Tests for the _is_relative_to path containment helper."""
+
+    def test_child_inside_parent(self):
+        assert _is_relative_to(Path("/a/b/c"), Path("/a/b")) is True
+
+    def test_child_equals_parent(self):
+        assert _is_relative_to(Path("/a/b"), Path("/a/b")) is True
+
+    def test_child_outside_parent(self):
+        assert _is_relative_to(Path("/a/b"), Path("/x/y")) is False
+
+    def test_sibling_not_contained(self):
+        assert _is_relative_to(Path("/a/b"), Path("/a/c")) is False
+
+    def test_hermes_dev_not_inside_hermes(self):
+        """Key safety property: .hermes-dev is NOT inside .hermes."""
+        prod = Path("/Users/test/.hermes")
+        dev = Path("/Users/test/.hermes-dev")
+        assert _is_relative_to(dev, prod) is False
+
+    def test_hermes_subdir_inside_hermes(self):
+        """Production subtree IS inside production home."""
+        prod = Path("/Users/test/.hermes")
+        sub = Path("/Users/test/.hermes/gateway")
+        assert _is_relative_to(sub, prod) is True
+
+    def test_deep_subdir_inside_parent(self):
+        prod = Path("/Users/test/.hermes")
+        deep = Path("/Users/test/.hermes/gateway/dev/audit/file.jsonl")
+        assert _is_relative_to(deep, prod) is True
+
+
+# ===================================================================
+# 19. _resolve_audit_path Containment Tests
+# ===================================================================
+
+
+class TestResolveAuditPathContainment:
+    """Direct tests on _resolve_audit_path containment guards."""
+
+    def test_production_home_returns_empty_path(self):
+        path, error = _resolve_audit_path(hermes_home=_PRODUCTION_HERMES_HOME)
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_production_subtree_returns_empty_path(self):
+        path, error = _resolve_audit_path(
+            hermes_home=str(Path(_PRODUCTION_HERMES_HOME) / "gateway")
+        )
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_valid_dev_home_returns_path(self, tmp_path):
+        dev_home = tmp_path / "hermes-dev"
+        dev_home.mkdir()
+        path, error = _resolve_audit_path(hermes_home=str(dev_home))
+        assert error is None
+        assert path is not None
+        assert str(path).endswith(_AUDIT_FILENAME)
+
+    def test_missing_hermes_home_env_returns_error(self, monkeypatch):
+        monkeypatch.delenv("HERMES_HOME", raising=False)
+        path, error = _resolve_audit_path()
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_empty_hermes_home_env_returns_error(self, monkeypatch):
+        monkeypatch.setenv("HERMES_HOME", "")
+        path, error = _resolve_audit_path()
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_path_traversal_escaping_audit_dir_returns_error(self, tmp_path):
+        """Path traversal via .. that escapes audit directory → fail closed."""
+        # Create a home with the expected audit dir structure
+        dev_home = tmp_path / "hermes-dev"
+        audit_dir = dev_home / _AUDIT_DIR_RELATIVE
+        audit_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a symlink inside the audit dir pointing outside
+        escape_target = tmp_path / "escaped"
+        escape_target.mkdir()
+        escape_file = escape_target / "sensitive.txt"
+        escape_file.write_text("secret data")
+
+        symlink_path = audit_dir / _AUDIT_FILENAME
+        # On some systems, symlink may not be supported; skip if so
+        try:
+            symlink_path.symlink_to(escape_file)
+        except OSError:
+            pytest.skip("symlink not supported on this system")
+
+        path, error = _resolve_audit_path(hermes_home=str(dev_home))
+        # The resolved path is outside the audit dir → fail closed
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_symlink_to_production_home_returns_error(self, tmp_path):
+        """Symlinked HERMES_HOME resolving into production → fail closed."""
+        # Create a symlink that points into production home
+        symlink_home = tmp_path / "fake-home"
+        try:
+            symlink_home.symlink_to(_PRODUCTION_HERMES_HOME)
+        except OSError:
+            pytest.skip("symlink not supported on this system")
+
+        path, error = _resolve_audit_path(hermes_home=str(symlink_home))
+        assert path == Path()
+        assert error == ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    def test_hermes_dev_pathstyle_not_falsely_blocked(self, tmp_path):
+        """Paths like hermes-dev or .hermes-dev are not falsely blocked."""
+        dev_home = tmp_path / ".hermes-dev"
+        dev_home.mkdir()
+        path, error = _resolve_audit_path(hermes_home=str(dev_home))
+        assert error is None
+        assert path is not None

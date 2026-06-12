@@ -20,6 +20,7 @@ All tests verify:
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -639,3 +640,89 @@ class TestDryRunLookupAPI:
         })
         data = resp.json()["data"]
         assert data["executionStarted"] is False
+
+
+# ===================================================================
+# 10. Production Path Containment Guard API Tests (Phase 1G-04-17)
+# ===================================================================
+
+
+@pytest.fixture
+def client_prod_home(tmp_path):
+    """TestClient with HERMES_HOME set to production path."""
+    config = DevWebApiConfig(
+        hermes_home=Path("/Users/huangruibang/.hermes"),
+    )
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+@pytest.fixture
+def client_prod_subtree(tmp_path):
+    """TestClient with HERMES_HOME set to production subtree."""
+    config = DevWebApiConfig(
+        hermes_home=Path("/Users/huangruibang/.hermes/gateway/dev"),
+    )
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+class TestProductionContainmentAPI:
+    """API-level tests for production path containment guard."""
+
+    def test_production_home_blocks(self, client_prod_home) -> None:
+        """API request with production HERMES_HOME → blocked."""
+        resp = client_prod_home.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-any",
+            "confirmationToken": "fake-token",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+
+    def test_production_subtree_blocks(self, client_prod_subtree) -> None:
+        """API request with production subtree HERMES_HOME → blocked."""
+        resp = client_prod_subtree.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-any",
+            "confirmationToken": "fake-token",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_production_home_all_flags_false(self, client_prod_home) -> None:
+        """Production HERMES_HOME → all side-effect flags false."""
+        resp = client_prod_home.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-any",
+            "confirmationToken": "fake-token",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+        assert data["executionStarted"] is False
+        assert data["executionAttempted"] is False
+        assert data["executionCompleted"] is False
+
+    def test_valid_dev_home_behavior_unchanged(self, client_with_audit) -> None:
+        """Valid dev HERMES_HOME API behavior unchanged."""
+        client, audit_path = client_with_audit
+        import json
+        event = _make_audit_event(request_id="dr-api-valid")
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-api-valid",
+            "confirmationToken": "fake-token",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        # Should reach confirmation gate (blocked by confirmation_not_implemented)
+        # or earlier gate depending on kill switch state in test client

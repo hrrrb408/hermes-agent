@@ -22,8 +22,8 @@ Architecture constraints:
   - never accesses ~/.hermes
   - never accesses production state.db
 
-Phase: 1G-04-16 — Dry-Run Historical Lookup Read-Only Implementation
-Status: Read-only lookup (no execution, no token, no digest verification)
+Phase: 1G-04-17 — Preflight Production Path Guard Hardening
+Status: Read-only lookup with containment-based production guard (no execution, no token, no digest verification)
 """
 
 from __future__ import annotations
@@ -119,6 +119,20 @@ class DryRunHistoricalLookupResult:
 # ---------------------------------------------------------------------------
 
 
+def _is_relative_to(child: Path, parent: Path) -> bool:
+    """Check if *child* path is inside or equal to *parent* path.
+
+    Uses ``Path.relative_to()`` for proper path containment semantics
+    (not string prefix matching).  Both arguments must already be resolved
+    by the caller if symlink handling is required.
+    """
+    try:
+        child.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 def _resolve_audit_path(
     hermes_home: str | os.PathLike[str] | None = None,
 ) -> tuple[Path, str | None]:
@@ -127,10 +141,14 @@ def _resolve_audit_path(
     Returns:
         (audit_file_path, error_code_or_none)
 
-    Guarantees:
-        - Path is always under HERMES_HOME
-        - Path never points to ~/.hermes
-        - Path never points to production state.db
+    Guarantees (hardened in Phase 1G-04-17):
+        - HERMES_HOME must not be production home or inside production subtree
+        - Resolved audit path must not be production home or inside production subtree
+        - Resolved audit path must be inside the expected dev audit directory
+        - Symlink/path traversal into production home is blocked
+        - Symlink/path traversal escaping dev audit directory is blocked
+        - No file is opened if any containment check fails
+        - Path containment uses Path.relative_to(), not string prefix
     """
     if hermes_home is not None:
         home = Path(hermes_home).resolve()
@@ -140,18 +158,29 @@ def _resolve_audit_path(
             return Path(), ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
         home = Path(home_str).resolve()
 
-    # Reject production path
+    # ── Production path containment guard ──
+    # Block if home is exactly production home or inside production subtree.
+    # Uses Path containment (not string prefix) to avoid false positives
+    # on paths like /Users/.../.hermes-dev which share a string prefix
+    # with /Users/.../.hermes but are not inside it.
     prod_home = Path(_PRODUCTION_HERMES_HOME).resolve()
-    if home == prod_home:
+
+    if home == prod_home or _is_relative_to(home, prod_home):
         return Path(), ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
 
-    # Build audit path
+    # Build audit path and resolve it
     audit_path = home / _AUDIT_DIR_RELATIVE / _AUDIT_FILENAME
+    resolved_audit = audit_path.resolve()
 
-    # Validate resolved path is under home
-    try:
-        audit_path.resolve().relative_to(home)
-    except ValueError:
+    # Block if resolved audit path is production home or inside production subtree.
+    # This catches symlink/path traversal that resolves into production.
+    if resolved_audit == prod_home or _is_relative_to(resolved_audit, prod_home):
+        return Path(), ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
+
+    # Block if resolved audit path escapes the expected dev audit directory.
+    # The audit file must resolve inside $HERMES_HOME/gateway/dev/audit/.
+    expected_audit_dir = (home / _AUDIT_DIR_RELATIVE).resolve()
+    if not _is_relative_to(resolved_audit, expected_audit_dir):
         return Path(), ERROR_DRY_RUN_LOOKUP_UNAVAILABLE
 
     return audit_path, None

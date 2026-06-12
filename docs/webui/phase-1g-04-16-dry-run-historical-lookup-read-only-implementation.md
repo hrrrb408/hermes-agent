@@ -355,6 +355,7 @@ None identified.
 - Clarify handler-level audit still needs future phase
 - Lookup performance can be optimized later
 - Multi-file audit rotation support may be future work
+- Production path guard used equality-only check (`home == prod_home`) rather than containment-based check — **Resolved in Phase 1G-04-17**: production path guard now uses containment-based checks via `Path.relative_to()` rather than equality-only checks. Production subtree, symlink/path traversal, and audit directory escape are now all blocked before any file is opened.
 
 ---
 

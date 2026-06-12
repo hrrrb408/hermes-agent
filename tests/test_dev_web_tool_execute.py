@@ -870,3 +870,83 @@ class TestDryRunLookupIntegration:
             )
         assert result.tool_handler_called is False
         assert result.provider_api_called is False
+
+    def test_production_home_hermes_home_blocks_before_lookup(self) -> None:
+        """Production HERMES_HOME blocks before any lookup."""
+        from hermes_cli.dev_web_tool_execute_preflight import _PRODUCTION_HERMES_HOME
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-any",
+                dry_run_decision_digest="sha256:test",
+                confirmation_token="fake-token",
+                hermes_home=_PRODUCTION_HERMES_HOME,
+            )
+        assert result.execution_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+
+    def test_production_subtree_hermes_home_blocks(self) -> None:
+        """Production subtree HERMES_HOME blocks."""
+        from hermes_cli.dev_web_tool_execute_preflight import _PRODUCTION_HERMES_HOME
+        from pathlib import Path
+        prod_subtree = str(Path(_PRODUCTION_HERMES_HOME) / "gateway" / "dev")
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-any",
+                hermes_home=prod_subtree,
+            )
+        assert result.execution_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+
+    def test_production_guard_failure_keeps_side_effect_flags_false(self) -> None:
+        """Production guard failure → all side-effect flags remain false."""
+        from hermes_cli.dev_web_tool_execute_preflight import _PRODUCTION_HERMES_HOME
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-any",
+                confirmation_token="fake-token",
+                hermes_home=_PRODUCTION_HERMES_HOME,
+            )
+        assert result.execution_allowed is False
+        assert result.dispatch_allowed is False
+        assert result.provider_schema_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+        assert result.execution_started is False
+        assert result.execution_attempted is False
+
+    def test_valid_dev_lookup_still_blocks_at_confirmation(self, tmp_hermes_home, audit_path) -> None:
+        """Valid dev lookup still blocks at confirmation token boundary."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-valid-confirmation"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-valid-confirmation",
+                confirmation_token="fake-token",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
+        assert result.decision == DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
+
+    def test_fake_confirmation_token_still_blocks(self, tmp_hermes_home, audit_path) -> None:
+        """Fake confirmation token still blocks because verification not implemented."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-fake-token"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-fake-token",
+                dry_run_decision_digest="sha256:test",
+                confirmation_token="obviously-fake-token",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
