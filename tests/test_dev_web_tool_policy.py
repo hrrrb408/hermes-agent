@@ -316,23 +316,33 @@ class TestCandidateAllowlist:
     def test_candidate_allowlist_exact_names(self) -> None:
         assert CANDIDATE_ALLOWLIST == self.EXPECTED_CANDIDATES
 
-    def test_static_allowlist_is_empty(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
-        assert STATIC_ALLOWLIST == frozenset()
+    def test_static_allowlist_is_clarify_only(self) -> None:
+        assert len(STATIC_ALLOWLIST) == 1
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
-    def test_candidate_does_not_mean_enabled(self) -> None:
+    def test_candidate_does_not_mean_enabled_except_clarify(self) -> None:
         for name in CANDIDATE_ALLOWLIST:
             entry = TOOL_POLICY_INVENTORY[name]
             assert entry.candidate_allowlisted
-            assert not entry.statically_allowed, (
-                f"Candidate {name} is marked statically_allowed"
-            )
+            if name == "clarify":
+                assert entry.statically_allowed, (
+                    f"clarify must be statically_allowed after Phase 1G-04-14"
+                )
+            else:
+                assert not entry.statically_allowed, (
+                    f"Candidate {name} is marked statically_allowed but not allowlisted"
+                )
 
-    def test_no_tool_is_statically_allowed(self) -> None:
+    def test_only_clarify_is_statically_allowed(self) -> None:
         for name, entry in TOOL_POLICY_INVENTORY.items():
-            assert not entry.statically_allowed, (
-                f"{name} is statically_allowed in this phase"
-            )
+            if name == "clarify":
+                assert entry.statically_allowed, (
+                    f"clarify must be statically_allowed after Phase 1G-04-14"
+                )
+            else:
+                assert not entry.statically_allowed, (
+                    f"{name} is statically_allowed but not on STATIC_ALLOWLIST"
+                )
 
 
 # ===================================================================
@@ -357,13 +367,14 @@ class TestDecisions:
         assert d.permanently_denied
         assert d.reason_code == REASON_TOOL_PERMANENTLY_DENIED
 
-    def test_candidate_tool_still_fails_closed(self) -> None:
+    def test_clarify_is_allowed_on_static_allowlist(self) -> None:
         d = evaluate_static_tool_policy("clarify")
-        assert not d.allowed
+        assert d.allowed
         assert d.known
         assert d.candidate_allowlisted
+        assert d.statically_allowed
         assert not d.permanently_denied
-        assert d.reason_code == REASON_TOOL_NOT_ALLOWED
+        assert d.reason_code == "TOOL_ALLOWED"
 
     def test_r2_tool_fails_closed(self) -> None:
         d = evaluate_static_tool_policy("web_search")
@@ -391,10 +402,13 @@ class TestDecisions:
         assert not d.known
         assert d.reason_code == REASON_TOOL_NOT_FOUND
 
-    def test_all_tools_not_allowed(self) -> None:
+    def test_only_clarify_allowed_others_not(self) -> None:
         for name in ALL_CANONICAL_TOOLS:
             d = evaluate_static_tool_policy(name)
-            assert not d.allowed, f"{name} was allowed"
+            if name == "clarify":
+                assert d.allowed, f"clarify should be allowed"
+            else:
+                assert not d.allowed, f"{name} was allowed"
 
     def test_decision_is_frozen(self) -> None:
         d = evaluate_static_tool_policy("terminal")

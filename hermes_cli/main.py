@@ -7342,12 +7342,13 @@ def _webui_check_openapi(
         "default disabled" if tool_execution_default_disabled else "enabled (development only)",
     )
 
-    # Static allowlist must be empty
+    # Static allowlist must be exactly {"clarify"} (Phase 1G-04-14)
     from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+    allowlist_ok = STATIC_ALLOWLIST == frozenset({"clarify"})
     add_fn(
-        "PASS" if len(STATIC_ALLOWLIST) == 0 else "FAIL",
+        "PASS" if allowlist_ok else "FAIL",
         "Static allowlist",
-        "empty" if len(STATIC_ALLOWLIST) == 0 else f"{len(STATIC_ALLOWLIST)} tools",
+        ", ".join(sorted(STATIC_ALLOWLIST)) if allowlist_ok else f"expected clarify, got {sorted(STATIC_ALLOWLIST)}",
     )
 
     # Tool execution must be disabled

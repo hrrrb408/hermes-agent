@@ -724,3 +724,26 @@ None identified. This phase is docs-only with no code changes.
 | 9 | Execute route still does not execute tools | Expected — blocked-only |
 | 10 | Frontend execute UI not implemented | Expected — future phase |
 | 11 | Browser smoke not re-run | Expected — no code changes |
+
+---
+
+## 23. Post-Phase Update (Phase 1G-04-14)
+
+Phase 1G-04-14 has implemented the STATIC_ALLOWLIST delta defined in Section 10 of this document:
+
+```
+STATIC_ALLOWLIST changed from frozenset() to frozenset({"clarify"}).
+```
+
+This is the only allowlist activation in Phase 1G-04-14.
+This does not enable Tool Handler lookup.
+This does not enable dispatch.
+This does not enable execution.
+This does not send Provider Schema.
+This does not call Provider API.
+This does not bypass dry-run.
+This does not bypass confirmation token.
+This does not bypass digest verification.
+This does not start real Controlled Execution.
+
+See `docs/webui/phase-1g-04-14-clarify-allowlist-activation.md` for full details.

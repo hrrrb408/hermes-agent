@@ -234,22 +234,48 @@ class TestKillSwitch:
 
 
 class TestAllowlistGate:
-    """Verify allowlist gate blocks when empty."""
+    """Verify allowlist gate behavior with clarify as the only allowed tool."""
 
-    def test_allowlist_empty_blocks_after_kill_switches_true(self) -> None:
-        """When kill switches true but allowlist empty, blocked_by_allowlist."""
+    def test_non_allowlisted_tool_blocked_after_kill_switches_true(self) -> None:
+        """When kill switches true but tool not in allowlist, blocked_by_allowlist."""
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False):
+            result = evaluate_tool_execute_request("read_file")
+        assert result.decision == DECISION_BLOCKED_BY_ALLOWLIST
+        assert result.error_code == ERROR_ALLOWLIST_MISSING
+        assert result.execution_allowed is False
+
+    def test_clarify_passes_allowlist_gate(self) -> None:
+        """clarify passes the allowlist gate when kill switches are true."""
         with patch.dict(os.environ, {
             "HERMES_TOOL_EXECUTION_ENABLED": "true",
             "HERMES_AGENT_TOOLS_ENABLED": "true",
         }, clear=False):
             result = evaluate_tool_execute_request("clarify")
-        assert result.decision == DECISION_BLOCKED_BY_ALLOWLIST
-        assert result.error_code == ERROR_ALLOWLIST_MISSING
+        # Should pass allowlist but block on later gates (dry-run missing)
+        assert result.decision != DECISION_BLOCKED_BY_ALLOWLIST
         assert result.execution_allowed is False
 
-    def test_static_allowlist_is_empty(self) -> None:
-        """STATIC_ALLOWLIST must remain empty."""
-        assert len(STATIC_ALLOWLIST) == 0
+    def test_clarify_blocked_by_later_gates_no_dry_run(self) -> None:
+        """clarify passes allowlist but blocked by dry-run gate."""
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False):
+            result = evaluate_tool_execute_request("clarify")
+        assert result.execution_allowed is False
+        assert result.decision == DECISION_BLOCKED_REQUIRES_DRY_RUN
+
+    def test_static_allowlist_is_clarify_only(self) -> None:
+        """STATIC_ALLOWLIST must be exactly frozenset({"clarify"})."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert len(STATIC_ALLOWLIST) == 1
+
+    def test_static_allowlist_is_frozenset(self) -> None:
+        """STATIC_ALLOWLIST must be a frozenset."""
+        assert isinstance(STATIC_ALLOWLIST, frozenset)
 
 
 # ===================================================================
@@ -266,10 +292,10 @@ class TestToolClassification:
             "HERMES_TOOL_EXECUTION_ENABLED": "true",
             "HERMES_AGENT_TOOLS_ENABLED": "true",
         }, clear=False):
-            # Allowlist is empty, so we can't reach unknown tool gate
-            # But we can verify that the unknown tool is not executed
+            # Unknown tool blocked by allowlist gate (not in STATIC_ALLOWLIST)
             result = evaluate_tool_execute_request("nonexistent_tool_xyz")
         assert result.execution_allowed is False
+        assert result.decision == DECISION_BLOCKED_BY_ALLOWLIST
 
     def test_denylisted_tool_blocked(self) -> None:
         """Denylisted tool is blocked."""
@@ -278,7 +304,7 @@ class TestToolClassification:
             "HERMES_AGENT_TOOLS_ENABLED": "true",
         }, clear=False):
             result = evaluate_tool_execute_request("terminal")
-        # Allowlist empty, so blocked by allowlist first
+        # Terminal is not in STATIC_ALLOWLIST, so blocked by allowlist first
         assert result.execution_allowed is False
         assert result.decision == DECISION_BLOCKED_BY_ALLOWLIST
 
@@ -525,9 +551,9 @@ class TestNoSideEffects:
         assert "model_tools" not in source
 
     def test_does_not_mutate_static_allowlist(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         evaluate_tool_execute_request("clarify")
-        assert len(STATIC_ALLOWLIST) == 0
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_does_not_import_subprocess_or_socket(self) -> None:
         import hermes_cli.dev_web_tool_execute as execute_mod
@@ -556,10 +582,10 @@ class TestPolicySummary:
         summary = compute_execute_policy_summary()
         assert summary.agent_tools_enabled is False
 
-    def test_summary_allowlist_empty(self) -> None:
+    def test_summary_allowlist_has_clarify(self) -> None:
         summary = compute_execute_policy_summary()
-        assert summary.static_allowlist_size == 0
-        assert summary.static_allowlist_tools == ()
+        assert summary.static_allowlist_size == 1
+        assert summary.static_allowlist_tools == ("clarify",)
 
     def test_summary_execution_disabled(self) -> None:
         summary = compute_execute_policy_summary()

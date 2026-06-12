@@ -1668,4 +1668,52 @@ After creating the docs-only commit:
 
 ---
 
-*Phase 1G-04-13 First Executable Tool Candidate Selection / Allowlist Activation Scope Freeze: first executable tool candidate selection and allowlist activation policy scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no STATIC_ALLOWLIST modification, no allowlist activation, no token implementation, no digest verification implementation, no execute route behavior change, no tool handler call, no provider schema send, no Controlled Execution started.*
+## Phase 1G-04-14: Clarify Allowlist Activation / Still Blocked-Only
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-14 |
+| Title | Clarify Allowlist Activation / Still Blocked-Only |
+| Status | Completed locally / not pushed |
+| Date | 2026-06-12 |
+| Commit | Local only |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+### What Changed
+
+- `STATIC_ALLOWLIST` changed from `frozenset()` to `frozenset({"clarify"})`
+- `clarify` ToolPolicyEntry `statically_allowed` changed from `False` to `True`
+- Execute Gate 3 changed from empty-allowlist check to membership check
+- `evaluate_static_tool_policy("clarify")` now returns `allowed=True`
+- Dev-check updated to verify `STATIC_ALLOWLIST == frozenset({"clarify"})`
+- All tests updated to reflect the new allowlist state
+
+### What Did NOT Change
+
+- Only `clarify` is allowlisted — no wildcard, category, risk-tier, or dynamic allowlist
+- Execute route remains blocked-only — `clarify` still blocked by later gates
+- No handler lookup, no dispatch, no execution
+- No Provider Schema sent, no Provider API called
+- No confirmation token, no digest verification, no dry-run historical lookup
+- No pre/post execution audit
+- No real Controlled Execution started
+- No OpenAPI changes, no frontend changes, no route count changes
+
+### Route Governance (unchanged)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+
+### Test Results
+
+1141 passed, 0 failed, 2 skipped.
+
+---
+
+*Phase 1G-04-14 Clarify Allowlist Activation / Still Blocked-Only: STATIC_ALLOWLIST changed from frozenset() to frozenset({"clarify"}), clarify is the only allowlisted canonicalName, execute route remains blocked-only, no handler lookup, no dispatch, no execution, no provider schema, no provider API, no token, no digest, no real Controlled Execution, no OpenAPI changes, no frontend changes, no route count changes.*

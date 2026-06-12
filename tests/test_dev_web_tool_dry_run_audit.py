@@ -633,15 +633,15 @@ class TestFailureModes:
 class TestSecurityBoundary:
     """Verify no violations of security boundaries."""
 
-    def test_static_allowlist_remains_empty(self) -> None:
-        """STATIC_ALLOWLIST must be empty before and after audit."""
-        assert STATIC_ALLOWLIST == frozenset()
+    def test_static_allowlist_remains_clarify_only(self) -> None:
+        """STATIC_ALLOWLIST must be exactly {"clarify"} before and after audit."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         event = build_dry_run_audit_event(
             dry_run_result=dry_run_tool_policy("read_file"),
             result_status="ok",
         )
-        # Static allowlist is checked inside build — verify still empty
-        assert STATIC_ALLOWLIST == frozenset()
+        # Static allowlist is checked inside build — verify unchanged
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_no_provider_imports(self) -> None:
         """Audit module must not import provider code."""

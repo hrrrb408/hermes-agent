@@ -142,10 +142,10 @@ class TestToolPolicyStatus:
         data = resp.json()["data"]
         assert data["candidateAllowlistCount"] == 6
 
-    def test_enabled_allowlist_count_0(self, client):
+    def test_enabled_allowlist_count_1_clarify(self, client):
         resp = client.get(f"{API}/tools/policy")
         data = resp.json()["data"]
-        assert data["enabledAllowlistCount"] == 0
+        assert data["enabledAllowlistCount"] == 1
 
     def test_execution_flags_all_false(self, client):
         resp = client.get(f"{API}/tools/policy")
@@ -234,7 +234,7 @@ class TestToolCatalogBasic:
         assert summary["inventoryCount"] == 71
         assert summary["permanentDenylistCount"] == 26
         assert summary["candidateAllowlistCount"] == 6
-        assert summary["enabledAllowlistCount"] == 0
+        assert summary["enabledAllowlistCount"] == 1
 
     def test_safety(self, client):
         resp = client.get(f"{API}/tools/catalog")

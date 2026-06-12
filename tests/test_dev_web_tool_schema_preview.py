@@ -819,8 +819,8 @@ class TestRiskBasedAvailability:
         assert result.preview_available is True
 
     def test_static_allowlist_does_not_change(self) -> None:
-        """STATIC_ALLOWLIST must remain empty."""
-        assert len(STATIC_ALLOWLIST) == 0
+        """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_preview_not_equal_execution(self) -> None:
         """preview_available != execution_available (conceptual test)."""
@@ -1132,10 +1132,10 @@ class TestSchemaShapeDetection:
 
 
 class TestStaticAllowlistInvariant:
-    """STATIC_ALLOWLIST must remain empty."""
+    """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
 
-    def test_static_allowlist_empty(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
+    def test_static_allowlist_clarify_only(self) -> None:
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_static_allowlist_is_frozenset(self) -> None:
         assert isinstance(STATIC_ALLOWLIST, frozenset)
@@ -1254,8 +1254,8 @@ class TestInventoryCounts:
     def test_candidate_6(self) -> None:
         assert len(CANDIDATE_ALLOWLIST) == 6
 
-    def test_static_allowlist_0(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
+    def test_static_allowlist_1_clarify(self) -> None:
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
 
 # ===========================================================================

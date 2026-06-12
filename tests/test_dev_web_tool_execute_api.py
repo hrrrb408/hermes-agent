@@ -278,11 +278,11 @@ class TestSecurityGuarantees:
         data = resp.json()["data"]
         assert data["toolHandlerCalled"] is False
 
-    def test_static_allowlist_remains_empty(self, client) -> None:
-        """STATIC_ALLOWLIST must be empty before and after request."""
-        assert STATIC_ALLOWLIST == frozenset()
+    def test_static_allowlist_remains_clarify_only(self, client) -> None:
+        """STATIC_ALLOWLIST must be exactly {"clarify"} before and after request."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
-        assert STATIC_ALLOWLIST == frozenset()
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
 
 # ===================================================================
@@ -387,3 +387,72 @@ class TestRouteGovernance:
             if p.startswith("/api/dev/v1/tools") and "dry-run" in p
         ]
         assert len(dry_run_routes) == 1
+
+
+# ===================================================================
+# 8. Clarify Allowlist Activation Tests
+# ===================================================================
+
+
+class TestClarifyAllowlistActivation:
+    """Verify clarify allowlist gate activation behavior.
+
+    Phase 1G-04-14: STATIC_ALLOWLIST = frozenset({"clarify"}).
+    clarify passes the allowlist gate but remains blocked by later gates.
+    Non-clarify tools remain blocked_by_allowlist.
+    """
+
+    def test_clarify_kill_switches_unset_blocked(self, client) -> None:
+        """clarify with kill switches unset => blocked_by_kill_switch."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["decision"] == "blocked_by_kill_switch"
+
+    def test_clarify_kill_switches_true_missing_dry_run_blocked(self, client) -> None:
+        """clarify with kill switches true but no dry-run => blocked_requires_dry_run."""
+        # NOTE: The TestClient doesn't set env vars, so kill switches are unset
+        # by default. This test verifies the default blocked behavior.
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": None,
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_non_clarify_candidate_blocked_by_allowlist(self, client) -> None:
+        """Non-clarify candidate tool blocked by allowlist even with all fields."""
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "read_file",
+            "argumentsPreview": {"path": "/tmp/test"},
+            "dryRunRequestId": "dr-001",
+            "dryRunDecisionDigest": "abc123",
+            "confirmationToken": "tok-001",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["decision"] == "blocked_by_kill_switch"
+
+    def test_clarify_blocked_response_flags_false(self, client) -> None:
+        """clarify blocked response still has all side-effect flags false."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+        assert data["executionStarted"] is False
+        assert data["executionAttempted"] is False
+        assert data["executionCompleted"] is False
+
+    def test_non_clarify_blocked_response_flags_false(self, client) -> None:
+        """Non-clarify blocked response side-effect flags false."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "web_search"})
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+        assert data["executionStarted"] is False

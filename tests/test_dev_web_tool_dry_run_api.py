@@ -375,12 +375,12 @@ class TestSecurityGuarantees:
         # auditWritten is always a boolean (may be true or false depending on env)
         assert isinstance(data["auditWritten"], bool)
 
-    def test_static_allowlist_remains_empty(self, client) -> None:
-        """STATIC_ALLOWLIST must be empty before and after request."""
-        assert STATIC_ALLOWLIST == frozenset()
+    def test_static_allowlist_remains_clarify_only(self, client) -> None:
+        """STATIC_ALLOWLIST must be exactly {"clarify"} before and after request."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         tool = next(t for t in ALL_CANONICAL_TOOLS if t not in STATIC_DENYLIST)
         client.post(DRY_RUN_URL, json={"canonicalName": tool})
-        assert STATIC_ALLOWLIST == frozenset()
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
 
 # ===================================================================
@@ -775,14 +775,14 @@ class TestAuditFailureSafety:
         assert data["dispatchAllowed"] is False
         assert data["providerSchemaAllowed"] is False
 
-    def test_static_allowlist_remains_empty_on_audit_failure(
+    def test_static_allowlist_remains_clarify_only_on_audit_failure(
         self, client
     ) -> None:
-        """STATIC_ALLOWLIST remains empty even when audit fails."""
-        assert STATIC_ALLOWLIST == frozenset()
+        """STATIC_ALLOWLIST remains frozenset({"clarify"}) even when audit fails."""
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         tool = next(t for t in ALL_CANONICAL_TOOLS if t not in STATIC_DENYLIST)
         client.post(DRY_RUN_URL, json={"canonicalName": tool})
-        assert STATIC_ALLOWLIST == frozenset()
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_route_governance_unchanged_with_audit(
         self, client

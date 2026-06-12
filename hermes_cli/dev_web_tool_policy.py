@@ -173,7 +173,7 @@ _R0_ENTRIES: tuple[ToolPolicyEntry, ...] = (
         capabilities=frozenset({ToolCapability.PURE_COMPUTE}),
         permanently_denied=False,
         candidate_allowlisted=True,
-        statically_allowed=False,
+        statically_allowed=True,
         source="tools/clarify_tool.py",
         rationale="Purely interactive — asks user a question. No I/O, no network, no state mutation.",
     ),
@@ -1016,7 +1016,7 @@ CANDIDATE_ALLOWLIST: frozenset[str] = frozenset(
     name for name, entry in TOOL_POLICY_INVENTORY.items() if entry.candidate_allowlisted
 )
 
-STATIC_ALLOWLIST: frozenset[str] = frozenset()
+STATIC_ALLOWLIST: frozenset[str] = frozenset({"clarify"})
 
 _TOOLS_BY_RISK_RAW: dict[ToolRiskLevel, frozenset[str]] = {}
 for _risk in ToolRiskLevel:
@@ -1096,9 +1096,9 @@ def _verify_inventory_integrity() -> None:
     if cand_unknown:
         errors.append(f"Candidate names not in inventory: {cand_unknown}")
 
-    # Static allowlist must be empty
-    if len(STATIC_ALLOWLIST) != 0:
-        errors.append(f"STATIC_ALLOWLIST: expected 0, got {len(STATIC_ALLOWLIST)}")
+    # Static allowlist must contain exactly {"clarify"} (Phase 1G-04-14)
+    if len(STATIC_ALLOWLIST) != 1 or STATIC_ALLOWLIST != frozenset({"clarify"}):
+        errors.append(f"STATIC_ALLOWLIST: expected {{'clarify'}}, got {STATIC_ALLOWLIST}")
 
     # Denylist ⊆ inventory (already checked above)
     # Candidate ⊆ inventory (already checked above)
@@ -1199,8 +1199,8 @@ def evaluate_static_tool_policy(requested_name: str) -> ToolPolicyDecision:
     **Exact match only.**  No case folding, no whitespace stripping, no
     prefix or wildcard matching, no alias resolution.
 
-    Returns a ``ToolPolicyDecision`` with ``allowed=False`` for every tool
-    in this phase (``STATIC_ALLOWLIST`` is empty).
+    Returns a ``ToolPolicyDecision`` with ``allowed=True`` for tools on the
+    static allowlist (currently only ``clarify``), ``allowed=False`` otherwise.
     """
     entry = TOOL_POLICY_INVENTORY.get(requested_name)
 
@@ -1228,6 +1228,20 @@ def evaluate_static_tool_policy(requested_name: str) -> ToolPolicyDecision:
             allowed=False,
             primary_risk=entry.primary_risk,
             reason_code=REASON_TOOL_PERMANENTLY_DENIED,
+        )
+
+    # Known and on static allowlist → allowed.
+    if entry.statically_allowed:
+        return ToolPolicyDecision(
+            requested_name=requested_name,
+            canonical_name=entry.canonical_name,
+            known=True,
+            permanently_denied=False,
+            candidate_allowlisted=entry.candidate_allowlisted,
+            statically_allowed=True,
+            allowed=True,
+            primary_risk=entry.primary_risk,
+            reason_code="TOOL_ALLOWED",
         )
 
     # Known but not on static allowlist → not allowed (default deny).
@@ -1520,8 +1534,8 @@ def validate_static_tool_policy() -> ToolPolicyValidationResult:
     if len(CANDIDATE_ALLOWLIST) != 6:
         errors.append(f"Candidate: expected 6, got {len(CANDIDATE_ALLOWLIST)}")
 
-    if len(STATIC_ALLOWLIST) != 0:
-        errors.append(f"Static Allowlist: expected 0, got {len(STATIC_ALLOWLIST)}")
+    if STATIC_ALLOWLIST != frozenset({"clarify"}):
+        errors.append(f"Static Allowlist: expected {{'clarify'}}, got {STATIC_ALLOWLIST}")
 
     deny_unknown = STATIC_DENYLIST - ALL_CANONICAL_TOOLS
     if deny_unknown:

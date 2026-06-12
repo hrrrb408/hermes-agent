@@ -391,10 +391,10 @@ class TestSchemaPreviewBoundarySafety:
         # The schema preview service module also should not import provider
         assert "dev_web_tool_schema_preview_service" in module_source
 
-    def test_static_allowlist_remains_empty(self, client):
-        """STATIC_ALLOWLIST must remain empty after schema preview routes."""
+    def test_static_allowlist_remains_clarify_only(self, client):
+        """STATIC_ALLOWLIST must remain frozenset({"clarify"}) after schema preview routes."""
         from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
-        assert len(STATIC_ALLOWLIST) == 0
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_denylist_unchanged(self, client):
         from hermes_cli.dev_web_tool_policy import STATIC_DENYLIST

@@ -426,16 +426,16 @@ class TestCandidateAllowlist:
 
 
 class TestStaticAllowlist:
-    """STATIC_ALLOWLIST must remain empty."""
+    """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
 
-    def test_static_allowlist_is_empty(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
+    def test_static_allowlist_is_clarify_only(self) -> None:
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
-    def test_empty_allowlist_does_not_allow_execution(self) -> None:
+    def test_allowlist_does_not_allow_dry_run_execution(self) -> None:
         for name in ALL_CANONICAL_TOOLS:
             result = dry_run_tool_policy(name)
             assert result.execution_allowed is False, (
-                f"{name} execution_allowed=True with empty STATIC_ALLOWLIST"
+                f"{name} execution_allowed=True with STATIC_ALLOWLIST={STATIC_ALLOWLIST}"
             )
 
 
@@ -678,9 +678,9 @@ class TestNoSideEffects:
         assert os.environ == env_before
 
     def test_does_not_alter_static_allowlist(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 0
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
         dry_run_tool_policy("clarify")
-        assert len(STATIC_ALLOWLIST) == 0
+        assert STATIC_ALLOWLIST == frozenset({"clarify"})
 
     def test_does_not_write_audit(self) -> None:
         """Module source contains no audit storage logic."""

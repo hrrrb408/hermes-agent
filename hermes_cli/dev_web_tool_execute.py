@@ -428,13 +428,16 @@ def evaluate_tool_execute_request(
     # ── Gate 3: Static allowlist ──
     from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
 
-    if len(STATIC_ALLOWLIST) == 0:
+    if canonical_name not in STATIC_ALLOWLIST:
         gates.append(ToolExecuteGateStatus(
             gate=GATE_STATIC_ALLOWLIST,
             passed=False,
             error_code=ERROR_ALLOWLIST_MISSING,
         ))
-        policy_notes.append("Static allowlist is empty. No tools are eligible for execution.")
+        policy_notes.append(
+            f"Tool '{canonical_name}' is not on the static allowlist. "
+            f"Only {sorted(STATIC_ALLOWLIST)} are eligible for execution."
+        )
         reason_codes.append(ERROR_ALLOWLIST_MISSING)
         error_code = ERROR_ALLOWLIST_MISSING
         decision = DECISION_BLOCKED_BY_ALLOWLIST
