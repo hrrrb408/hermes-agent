@@ -1717,3 +1717,87 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-14 Clarify Allowlist Activation / Still Blocked-Only: STATIC_ALLOWLIST changed from frozenset() to frozenset({"clarify"}), clarify is the only allowlisted canonicalName, execute route remains blocked-only, no handler lookup, no dispatch, no execution, no provider schema, no provider API, no token, no digest, no real Controlled Execution, no OpenAPI changes, no frontend changes, no route count changes.*
+
+---
+
+## 33. Phase 1G-04-15 Completion Record
+
+### Phase 1G-04-15: Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-15 |
+| Title | Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | `2e60523ecf7d13a845e765c01609aae67d4f74b9` |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-15-dry-run-historical-lookup-preflight-binding-scope.md` | Dry-run historical lookup / confirmation-digest preflight binding scope freeze: phase definition, current baseline, dry-run historical lookup goal, historical record source, lookup input contract, lookup output contract, lookup failure contract, preflight gate order (21 gates), confirmation token binding goal, digest binding goal, expiry strategy, replay prevention strategy, audit binding strategy, execute route behavior delta, route governance strategy, future OpenAPI strategy, future allowed files, future forbidden files, future test matrix (33 tests), entry criteria, exit criteria, acceptance criteria |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-15 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-15 status |
+
+### What Was Frozen
+
+1. **Dry-run historical lookup goal**: read-only retrieval of prior dry-run decision via `dryRunRequestId`; necessary but never sufficient; blocks before handler lookup
+2. **Historical record source**: dev-only dry-run audit JSONL (`$HERMES_HOME/gateway/dev/audit/tool-dry-run-audit.jsonl`); forbidden sources: `~/.hermes`, production state.db, committed runtime files, frontend localStorage, browser cache, provider logs
+3. **Lookup input contract**: 7 fields (`dryRunRequestId` required, `canonicalName` required, `dryRunDecisionDigest` required, `auditEventId` optional, `argumentsDigest` optional, `policyVersion` optional, `riskTier` optional); `policyVersion` must match or fail closed
+4. **Lookup output contract**: 15 fields (found, dryRunRequestId, canonicalName, decision, riskTier, policyVersion, sanitizedArgumentsPreview, argumentsDigest, dryRunDecisionDigest, auditWritten, auditEventId, createdAt, expiresAt, lookupSource, redactionStatus); excludes raw arguments, secrets, credentials, headers, cookies, raw token secret
+5. **Lookup failure contract**: 12 error codes (dry_run_missing, dry_run_not_found, dry_run_expired, dry_run_not_allowed, dry_run_audit_missing, dry_run_digest_missing, dry_run_digest_mismatch, dry_run_canonical_name_mismatch, dry_run_policy_version_mismatch, dry_run_risk_tier_mismatch, dry_run_arguments_mismatch, dry_run_lookup_unavailable); all failures block before handler lookup; all failures keep executionAllowed=false
+6. **Preflight gate order**: 21 gates frozen (request shape → kill switches → static allowlist → known tool → denylist/risk-tier → dryRunRequestId → dry-run lookup → dry-run decision → auditWritten → canonicalName binding → riskTier binding → policyVersion binding → arguments digest binding → confirmationToken present → token verification → token expiry → token reuse → token digest binding → digest verification → pre-execution audit → handler lookup)
+7. **Confirmation token binding goal**: binds to dryRunRequestId, dryRunDecisionDigest, canonicalName, arguments digest, auditEventId, policyVersion, riskTier; verified before handler lookup; failure never calls provider
+8. **Digest binding goal**: prevents argument substitution, canonicalName substitution, stale dry-run reuse, policy-version drift, risk-tier drift; sha256(canonical_json(input)) over 8 fields
+9. **Expiry strategy**: dry-run reference TTL ≤ 5 minutes; confirmation token TTL ≤ dry-run TTL; expiry blocks before token verification and digest verification respectively
+10. **Replay prevention strategy**: dryRunRequestId not indefinitely reusable; confirmationToken single-use; consumed token blocks on reuse; replay prevention before handler lookup
+11. **Audit binding strategy**: lookup references dry-run audit event; preflight records lookup pass/fail; pre/post execution audit include dryRunRequestId, dryRunDecisionDigest, token id/hash, digest; never raw secrets or raw token secret
+12. **Execute route behavior delta**: current (blocked-only, clarify allowlisted, no lookup) vs. future (can lookup, can verify binding, may still remain blocked-only); key principle: lookup/token/digest do not imply execution
+13. **Route governance strategy**: no count change in 1G-04-15; 33/33/4/0/1/1 maintained
+14. **Future OpenAPI strategy**: no path change; may refine existing execute schemas and add error codes; 33 paths maintained
+15. **Future allowed files**: 10 existing backend files + 4 optional new modules (not created in this phase)
+16. **Future forbidden files**: frontend, agent, tools, toolsets, runtime, memory, review, .env, .claude, ~/.hermes, production state.db
+17. **Future test matrix**: 33 tests across dry-run lookup (11), confirmation token (7), combined paths (4), safety invariants (7), route governance (4)
+18. **Entry criteria**: 13 conditions for starting implementation
+19. **Exit criteria**: 19 conditions for completing implementation
+
+### What Was NOT Implemented
+
+- No dry-run historical lookup implementation
+- No confirmation token issuance
+- No confirmation token verification
+- No token store
+- No digest verification
+- No pre/post execution audit
+- No execute route behavior change
+- No OpenAPI change
+- No new route added
+- No route governance change
+- No Tool Handler call
+- No Tool Dispatch
+- No Tool Execution
+- No Provider Schema sending
+- No Provider API call
+- No STATIC_ALLOWLIST modification
+- No frontend change
+- No audit read API
+- No audit viewer
+- No code changes of any kind
+
+### Route Governance (unchanged from 1G-04-14)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-15 Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze: scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dry-run historical lookup implementation, no token implementation, no digest verification implementation, no handler call, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*

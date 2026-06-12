@@ -769,7 +769,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
-| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally (gate design freeze), 1G-04-09 Completed locally (implementation scope freeze), 1G-04-10 Completed locally (execute route contract / OpenAPI scope freeze), 1G-04-11 Completed and Pushed (backend execute gate skeleton, blocked-only), 1G-04-12 Completed locally (confirmation token / digest backend scope freeze), 1G-04-13 Completed locally (first executable tool candidate / allowlist activation scope freeze), 1G-04-14 Completed locally (clarify allowlist activation, still blocked-only) |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally (gate design freeze), 1G-04-09 Completed locally (implementation scope freeze), 1G-04-10 Completed locally (execute route contract / OpenAPI scope freeze), 1G-04-11 Completed and Pushed (backend execute gate skeleton, blocked-only), 1G-04-12 Completed locally (confirmation token / digest backend scope freeze), 1G-04-13 Completed locally (first executable tool candidate / allowlist activation scope freeze), 1G-04-14 Completed locally (clarify allowlist activation, still blocked-only), 1G-04-15 Completed locally (dry-run historical lookup / confirmation-digest preflight binding scope freeze) |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
@@ -930,6 +930,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │                                                                           └── 1G-04-12 (confirmation token / digest backend scope freeze) ✅ Completed locally
 │                                                                               └── 1G-04-13 (first executable tool candidate / allowlist activation scope freeze) ✅ Completed locally
 │                                                                                   └── 1G-04-14 (clarify allowlist activation, still blocked-only) ✅ Completed locally
+│                                                                                       └── 1G-04-15 (dry-run historical lookup / confirmation-digest preflight binding scope freeze) ✅ Completed locally
 │
 └── 1-Release (push all)
 ```
@@ -1438,3 +1439,13 @@ Phase 1G-03-04 is completed.
 - 1141 tests passed, 0 failed
 - Local commit created, not pushed
 - Next = future dry-run historical lookup / confirmation token / digest implementation or handler audit only after user approval
+
+**Phase 1G-04-15 is completed locally.** Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze.
+- `docs/webui/phase-1g-04-15-dry-run-historical-lookup-preflight-binding-scope.md` — Dry-run historical lookup / confirmation-digest preflight binding scope freeze: dry-run historical lookup goal (read-only retrieval via dryRunRequestId, necessary but never sufficient), historical record source (dev-only audit JSONL, forbidden: ~/.hermes/production/state.db/frontend/provider logs), lookup input contract (7 fields, dryRunRequestId required, policyVersion must match or fail closed), lookup output contract (15 fields, excludes raw arguments/secrets/credentials), lookup failure contract (12 error codes, all block before handler lookup, all keep executionAllowed=false), preflight gate order (21 gates frozen), confirmation token binding goal (binds to dryRunRequestId/digest/canonicalName/arguments/policyVersion/riskTier), digest binding goal (sha256 over 8 canonical fields, prevents substitution/drift), expiry strategy (dry-run TTL ≤ 5 min, token TTL ≤ dry-run TTL), replay prevention strategy (single-use tokens, consumed blocks on reuse), audit binding strategy (lookup references audit event, pre/post audit include digest, never raw secrets), execute route behavior delta (current blocked-only vs. future lookup+binding, may still remain blocked), route governance strategy (no count change, 33/33/4/0/1/1), future OpenAPI strategy (no path change, may refine schemas, 33 paths), future allowed files (10 existing + 4 optional new), future forbidden files (13 categories), future test matrix (33 tests), entry criteria (13 conditions), exit criteria (19 conditions)
+- Dry-run historical lookup scope frozen; confirmation-digest preflight binding scope frozen
+- NOT implemented: dry-run historical lookup, confirmation token issuance/verification, token store, digest verification, pre/post execution audit, execute route behavior change, OpenAPI change, new route, Tool Handler call, Provider Schema send, STATIC_ALLOWLIST change, frontend, audit read API, audit viewer
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; Execute route remains blocked-only
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes
+- Local docs-only commit created, not pushed
+- Next = future dry-run historical lookup implementation only after user approval; real Controlled Execution not started
