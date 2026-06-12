@@ -1928,3 +1928,76 @@ The execute route remains blocked-only. No behavior expansion. No new routes.
 ---
 
 *Phase 1G-04-17 Preflight Production Path Guard Hardening: containment-based production guard implemented, production subtree blocked, symlink/path traversal blocked, dev audit directory containment enforced, execute route remains blocked-only, no token, no digest verification, no handler, no dispatch, no execution, no provider, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-18: Confirmation Token Issuance / Verification Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-18 |
+| Title | Confirmation Token Issuance / Verification Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-17 completed locally |
+
+### Summary
+
+Froze the future confirmation token issuance, verification, storage, TTL, single-use, and dry-run binding design as a docs-only scope document. Defined the complete token lifecycle, binding contract, hash strategy, verification gate order (29 gates), failure contract (15 error codes), audit strategy, digest verification boundary, and future test matrix (36 tests).
+
+### Delta from 1G-04-17
+
+- New doc: `docs/webui/phase-1g-04-18-confirmation-token-scope.md`
+- Updated: Phase 1G-04 scope doc, implementation plan, Phase 1G-04-17 cross-reference
+
+### Confirmation Token Scope Frozen
+
+1. **Token goal**: Short-lived, single-use, dev-only approval artifact; necessary but never sufficient
+2. **Issuance source**: Only after successful dry-run (would_allow + auditWritten + allowlisted); preferred Option A (extend dry-run response) over Option B (new endpoint)
+3. **Binding contract**: 11 bound fields (dryRunRequestId, dryRunDecisionDigest, canonicalName, riskTier, policyVersion, auditEventId, argumentsDigest, redactionVersion, issuedAt, expiresAt, nonce)
+4. **Payload strategy**: Raw token = `base64url(random_256bit_secret)`; opaque, no JSON claims
+5. **Hash strategy**: Store only HMAC-SHA256(server secret, raw token) or SHA-256(raw token); never store raw token
+6. **Token store**: Dev-only, file-backed JSONL recommended at `$HERMES_HOME/gateway/dev/tokens/confirmation-tokens.jsonl`; forbidden: ~/.hermes, production state.db, repo, frontend, provider logs
+7. **TTL**: ≤ 5 minutes; token expiresAt ≤ dry-run expiresAt; expired blocks before digest verification
+8. **Single-use**: Consumed before pre-execution audit readiness; reused token blocks with `confirmation_reused`
+9. **Verification gate order**: 29 gates frozen (Gates 1–13 existing + Gates 14–29 new token gates)
+10. **Failure contract**: 15 error codes; all block before handler lookup; all keep side-effect flags false
+11. **Audit strategy**: Record tokenId, tokenHash prefix, binding fields; never raw token, secrets, or arguments
+12. **Digest verification boundary**: Token verification ≠ digest verification; separate concerns; token checks recorded fields, digest independently verifies current request
+13. **Execute route behavior delta**: Token implementation does not imply real execution; route may remain blocked after token verification
+14. **Route governance**: No count change; 33/33/4/0/1/1 maintained
+15. **Future OpenAPI**: No path change; may refine existing schemas
+16. **Future test matrix**: 36 tests across issuance (10), verification (14), safety invariants (7), governance (5)
+
+### Not Implemented
+
+- Confirmation token issuance
+- Confirmation token verification
+- Token store
+- Digest verification
+- Pre/post execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-17)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-18 Confirmation Token Issuance / Verification Scope Freeze: confirmation token issuance, verification, storage, TTL, single-use, and dry-run binding design frozen, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*

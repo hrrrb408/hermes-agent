@@ -334,3 +334,11 @@ All tests pass:
 - [x] No push
 - [x] Phase 1G-04-18 not started
 - [x] Real Controlled Execution not started
+
+---
+
+## 14. Next Dependency
+
+Confirmation token issuance / verification is scoped in Phase 1G-04-18. See `docs/webui/phase-1g-04-18-confirmation-token-scope.md` for the frozen confirmation token design scope.
+
+Production path guard hardening remains a prerequisite for safe future token store access — the containment-based guard ensures the token store will never be read from or written to production paths.
