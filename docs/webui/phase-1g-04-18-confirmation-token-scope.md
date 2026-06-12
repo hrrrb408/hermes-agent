@@ -969,3 +969,11 @@ The following are acceptable P2 risks that do not block this phase:
 ---
 
 *Phase 1G-04-18 Confirmation Token Issuance / Verification Scope Freeze: confirmation token issuance, verification, storage, TTL, single-use, and dry-run binding design only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token verification, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Next Dependency
+
+Phase 1G-04-19 freezes the minimal backend implementation boundary for the future token subsystem. See `docs/webui/phase-1g-04-19-confirmation-token-implementation-scope.md` for the frozen minimal backend implementation scope.
+
+Phase 1G-04-19 still does not implement token issuance, verification, store, TTL, single-use, digest verification, or execution. It only defines the exact boundaries for what a future implementation phase may and may not do.

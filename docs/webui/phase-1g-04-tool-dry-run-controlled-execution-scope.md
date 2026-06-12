@@ -2001,3 +2001,82 @@ Froze the future confirmation token issuance, verification, storage, TTL, single
 ---
 
 *Phase 1G-04-18 Confirmation Token Issuance / Verification Scope Freeze: confirmation token issuance, verification, storage, TTL, single-use, and dry-run binding design frozen, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-19: Confirmation Token Minimal Backend Implementation Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-19 |
+| Title | Confirmation Token Minimal Backend Implementation Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-18 completed locally |
+
+### Summary
+
+Froze the exact minimal backend implementation boundaries for a future confirmation token implementation phase as a docs-only scope document. Defined the future module boundary, token issuance helper scope, token verification helper scope, token store scope, token hash/tokenId scope, TTL scope, single-use scope, execute route token gate integration scope (gates 15–30), failure contract (16 error codes), route governance strategy, future allowed/forbidden files, future test matrix (43 tests), and entry/exit criteria.
+
+### Delta from 1G-04-18
+
+- New doc: `docs/webui/phase-1g-04-19-confirmation-token-implementation-scope.md`
+- Updated: Phase 1G-04 scope doc, implementation plan, Phase 1G-04-18 doc next dependency
+
+### Minimal Backend Implementation Boundary Frozen
+
+1. **Future module boundary**: `hermes_cli/dev_web_tool_execute_confirmation.py` — 15 responsibilities, 14 prohibitions
+2. **Future issuance helper**: `issue_confirmation_token()` — 16 responsibilities, never stores raw token
+3. **Future verification helper**: `verify_confirmation_token()` — 22 responsibilities, never exposes raw token or tokenHash fully
+4. **Future token store**: `$HERMES_HOME/gateway/dev/tokens/confirmation-tokens.jsonl` — dev-only, 7 path guard rules, 4 prohibitions (no raw token/arguments/secrets/credentials)
+5. **Future token hash / tokenId**: `HMAC-SHA256(server secret, rawToken)` preferred; `SHA-256(rawToken)` fallback with documented limitation
+6. **Future TTL**: ≤ 5 minutes; `expiresAt` ≤ dry-run `expiresAt`; missing `expiresAt` fails closed
+7. **Future single-use**: Recommended append-only JSONL event model (Option A) over destructive rewrite (Option B)
+8. **Future execute route integration**: Gates 15–30; even after valid token verification, blocks at gates 28–30 (digest verification not implemented / pre-execution audit not implemented / handler lookup not enabled)
+9. **Future failure contract**: 16 error codes; all block before handler lookup; all keep side-effect flags false
+10. **Future route governance**: No route change; 33/33/4/0/1/1 maintained
+11. **Future test matrix**: 43 tests (14 issuance, 14 verification, 10 safety invariants, 5 route governance)
+12. **Entry criteria**: 13 conditions for starting implementation
+13. **Exit criteria**: 25 conditions for completing implementation
+
+### Key Principle Reiterated
+
+A valid token is necessary but not sufficient. A verified token still does not execute a tool. A verified token still does not permit handler lookup unless a later explicit phase enables it.
+
+### Not Implemented
+
+- Confirmation token issuance
+- Confirmation token verification
+- Token store
+- Token hash
+- Token TTL
+- Token single-use consumption
+- Digest verification
+- Pre/post execution audit
+- Execute route behavior change
+- OpenAPI change
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-18)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-19 Confirmation Token Minimal Backend Implementation Scope Freeze: minimal backend implementation boundary frozen, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token verification, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
