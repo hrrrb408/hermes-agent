@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -769,7 +769,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
-| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally (gate design freeze) |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
@@ -882,7 +882,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
 | 1G-02 | Tool Policy Read-Only API / Panel | ✅ Completed | 1G-02-00 | No |
-| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally, 1G-04-06 completed locally, 1G-04-07 completed locally) | 1F | Default No |
+| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally, 1G-04-06 completed locally, 1G-04-07 completed locally, 1G-04-08 completed locally) | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
 ---
@@ -923,6 +923,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │                                               └── 1G-04-05 (dry-run browser/network/a11y verification) ✅ Completed locally
 │                                                   └── 1G-04-06 (dry-run audit storage scope/design) ✅ Completed locally
 │                                                       └── 1G-04-07 (dry-run internal audit writer) ✅ Completed locally
+│                                                           └── 1G-04-08 (controlled execution gate scope/design freeze) ✅ Completed locally
 │
 └── 1-Release (push all)
 ```
@@ -1316,3 +1317,24 @@ Phase 1G-03-04 is completed.
 - STATIC_ALLOWLIST remains empty, Tool Execution disabled, Provider Schema not sent
 - Related backend regression: 1111 passed, 2 skipped
 - Local commit created, not pushed
+
+**Phase 1G-04-08 is completed locally.** Controlled Execution Scope / Gate Design Freeze.
+- `docs/webui/phase-1g-04-08-controlled-execution-gate-scope.md` — Complete gate design freeze: 15-gate stack, kill switches, allowlist strategy, human confirmation, dry-run preflight, audit preconditions, provider schema boundary, tool handler boundary, execution result boundary, future API/OpenAPI/frontend strategies, test plan (32 tests)
+- Gate stack: Gate 0 (build-time) through Gate 14 (post-execution audit), failure of any gate blocks execution
+- Kill switches: 3 existing + 1 future, all default false, explicit "true" required
+- Allowlist strategy: STATIC_ALLOWLIST empty, R0/R1 eligible after all gates, R2 requires review, R3/R4/R5 blocked
+- Human confirmation: Token bound to canonicalName, argument digest, riskTier, requestId; single-use, 5-minute expiry
+- Dry-run preflight: Every execution must originate from dry-run `would_allow`; audit write must succeed
+- Audit preconditions: Pre-execution audit required (blocks on failure), post-execution audit best-effort
+- Provider schema boundary: Controlled Execution does not imply Provider Schema Sending; separate phase required
+- Tool handler boundary: Handler called only after all gates pass; policy isolated from handler
+- Execution result boundary: Sanitized, 64 KiB max, timeout per tier (R0: 2s, R1: 5s, hard max: 30s)
+- Future route: `POST /api/dev/v1/tools/execute` (not added in this phase)
+- Test plan: 32 future tests (kill switches, allowlist, risk tier, dry-run, confirmation, security, audit, governance)
+- Risk classification: P0 (12 items), P1 (21 items), P2 (8 items)
+- Docs-only, no code changes, no OpenAPI changes, no route changes, no frontend changes
+- Route governance: OpenAPI=32, Runtime=32, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=0
+- STATIC_ALLOWLIST remains empty, Tool Execution disabled, Provider Schema not sent
+- Controlled Execution not implemented, not started
+- Local docs-only commit created, not pushed
+- Phase 1G-04-09 not started

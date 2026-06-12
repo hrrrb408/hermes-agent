@@ -1200,3 +1200,79 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-07 Internal Audit Writer: audit writer module implemented, Dry-Run API integrated, dev-only JSONL audit storage, no new routes, no OpenAPI change, no frontend change, no tool execution, no provider schema sent, no allowlist change, no Controlled Execution.*
+
+---
+
+## 26. Phase 1G-04-08 Completion Record
+
+### Phase 1G-04-08: Controlled Execution Scope / Gate Design Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-08 |
+| Title | Controlled Execution Scope / Gate Design Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | 5bed1369b3d2927a304ea094e16d516d8f639ee7 |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-08-controlled-execution-gate-scope.md` | Controlled Execution gate scope/design freeze: gate stack (15 gates), kill switches, allowlist strategy, human confirmation, dry-run preflight, audit preconditions, provider schema boundary, tool handler boundary, execution result boundary, future API/OpenAPI/frontend strategies, test plan (32 tests), P0/P1/P2 risks, acceptance criteria |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-08 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-08 status |
+
+### What Was Designed
+
+1. **Gate stack**: 15 gates (Gate 0–14) defining the complete execution pathway from build-time capability through post-execution audit
+2. **Kill switches**: 3 environment variables (`HERMES_TOOL_EXECUTION_ENABLED`, `HERMES_AGENT_TOOLS_ENABLED`, `HERMES_AGENT_RUN_ENABLED`) plus future `HERMES_PROVIDER_SCHEMA_ENABLED`
+3. **Kill switch contract**: Unset=false, Empty=false, anything except "true"=false, production=false, dev=false
+4. **Allowlist strategy**: STATIC_ALLOWLIST empty, one-by-one review, R0/R1 eligible initially, R2 requires review, R3/R4/R5 blocked
+5. **Human confirmation**: Token bound to canonicalName, argument digest, riskTier, decision, requestId, timestamp, expiry; single-use only
+6. **Dry-run preflight**: Every execution originates from dry-run `would_allow`; audit write must succeed
+7. **Audit preconditions**: Pre-execution audit required (blocks on failure), post-execution audit best-effort
+8. **Provider schema boundary**: Controlled Execution does not imply Provider Schema Sending; separate phase required
+9. **Tool handler boundary**: Handler called only after all gates; policy decision isolated from handler lookup
+10. **Execution result boundary**: Sanitized, size-limited (64 KiB), timeout-limited (R0: 2s, R1: 5s, hard max: 30s), no stack traces
+11. **Future API strategy**: `POST /api/dev/v1/tools/execute` (not added in this phase)
+12. **Future OpenAPI strategy**: Execution response types (preflight_blocked, confirmation_failed, audit_failed, handler_failed, execution_succeeded, execution_timeout, output_too_large)
+13. **Future frontend strategy**: No Execute button until backend gates exist; explicit confirmation required; visual distinction from Dry-Run
+14. **Test plan**: 32 future tests covering kill switches, allowlist, risk tier, dry-run preflight, human confirmation, security boundaries, audit, route governance
+15. **Risk classification**: P0 (12 items), P1 (21 items), P2 (8 items)
+
+### What Was NOT Implemented
+
+- No Controlled Execution implementation
+- No tool execution
+- No new execution route
+- No Tool Handler call
+- No Provider Schema sending
+- No Provider API call
+- No Tool Dispatch
+- No audit read API
+- No audit viewer UI
+- No OpenAPI path added or modified
+- No runtime route changed
+- No frontend source changed
+- No STATIC_ALLOWLIST population
+- No allowlist activation
+- No risk tier changes
+- No kill switch activation
+- No code changes of any kind
+
+### Route Governance (unchanged from 1G-04-07)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+---
+
+*Phase 1G-04-08 Controlled Execution Scope / Gate Design Freeze: scope/gate design only, docs-only, no implementation, no execution route, no OpenAPI change, no frontend change, no tool handler call, no provider schema send, no allowlist change, no route change, no Controlled Execution started.*
