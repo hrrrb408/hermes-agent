@@ -977,3 +977,5 @@ The following are acceptable P2 risks that do not block this phase:
 Phase 1G-04-19 freezes the minimal backend implementation boundary for the future token subsystem. See `docs/webui/phase-1g-04-19-confirmation-token-implementation-scope.md` for the frozen minimal backend implementation scope.
 
 Phase 1G-04-19 still does not implement token issuance, verification, store, TTL, single-use, digest verification, or execution. It only defines the exact boundaries for what a future implementation phase may and may not do.
+
+Phase 1G-04-20 implemented the minimal backend confirmation token subsystem as scoped by Phase 1G-04-19. See `docs/webui/phase-1g-04-20-confirmation-token-minimal-backend-implementation.md` for implementation details.

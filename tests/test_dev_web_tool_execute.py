@@ -38,12 +38,16 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_BY_DIGEST_MISMATCH,
     DECISION_BLOCKED_REQUIRES_CONFIRMATION,
     DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN,
+    DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
     DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
     ERROR_ALLOWLIST_MISSING,
     ERROR_CONFIRMATION_MISSING,
     ERROR_CONFIRMATION_NOT_IMPLEMENTED,
+    ERROR_CONFIRMATION_NOT_FOUND,
+    ERROR_CONFIRMATION_REUSED,
+    ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     ERROR_DRY_RUN_MISSING,
     ERROR_DRY_RUN_NOT_FOUND,
     ERROR_DRY_RUN_EXPIRED,
@@ -799,7 +803,7 @@ class TestDryRunLookupIntegration:
     def test_clarify_valid_dry_run_fake_confirmation_blocks(
         self, tmp_hermes_home, audit_path,
     ) -> None:
-        """Valid dry-run + fake confirmationToken → blocked (token verification not implemented)."""
+        """Valid dry-run + fake confirmationToken → blocked (token not found in store)."""
         self._write_events(audit_path, [
             _make_audit_event(request_id="dr-valid-2"),
         ])
@@ -812,7 +816,8 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert result.execution_allowed is False
-        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
+        # Token verification is now implemented — fake token fails as not found
+        assert result.error_code == ERROR_CONFIRMATION_NOT_FOUND
         assert result.decision == DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
 
     def test_all_side_effect_flags_false_on_lookup_success(
@@ -932,11 +937,12 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert result.execution_allowed is False
-        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
+        # Token verification is now implemented — fake token fails as not found
+        assert result.error_code == ERROR_CONFIRMATION_NOT_FOUND
         assert result.decision == DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
 
     def test_fake_confirmation_token_still_blocks(self, tmp_hermes_home, audit_path) -> None:
-        """Fake confirmation token still blocks because verification not implemented."""
+        """Fake confirmation token still blocks because token is not found in store."""
         self._write_events(audit_path, [
             _make_audit_event(request_id="dr-fake-token"),
         ])
@@ -949,4 +955,118 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert result.execution_allowed is False
-        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
+        # Token verification is now implemented — fake token fails as not found
+        assert result.error_code == ERROR_CONFIRMATION_NOT_FOUND
+
+    def test_valid_confirmation_token_still_blocks_at_digest_boundary(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Valid confirmation token still blocks at digest verification boundary."""
+        from datetime import datetime, timezone
+        from hermes_cli.dev_web_tool_execute_confirmation import (
+            issue_confirmation_token,
+        )
+        from hermes_cli.dev_web_tool_execute_preflight import (
+            DryRunHistoricalLookupResult,
+        )
+
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-token-valid"),
+        ])
+        # Issue a real token
+        now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+        dr_record = DryRunHistoricalLookupResult(
+            found=True, error_code=None,
+            dry_run_request_id="dr-token-valid",
+            canonical_name="clarify", decision="would_allow",
+            risk_tier="R0", policy_version=None, arguments_digest=None,
+            dry_run_decision_digest=None, audit_written=True,
+            audit_event_id=None, created_at=now.isoformat(),
+            expires_at=None, lookup_source="test", redaction_status="none",
+        )
+        token_result = issue_confirmation_token(
+            hermes_home=str(tmp_hermes_home),
+            dry_run_record=dr_record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-token-valid",
+            now=now,
+        )
+        assert token_result.issued is True
+
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-token-valid",
+                confirmation_token=token_result.raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        # Valid token passes verification, but still blocks
+        assert result.execution_allowed is False
+        assert result.dispatch_allowed is False
+        assert result.provider_schema_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+        assert result.execution_started is False
+        assert result.execution_attempted is False
+        assert result.execution_completed is False
+        # Blocked at digest verification boundary
+        assert result.error_code == ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+        assert result.decision == DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+
+    def test_valid_token_is_consumed_and_reuse_blocks(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Valid token consumed on verification, reuse blocks."""
+        from datetime import datetime, timezone
+        from hermes_cli.dev_web_tool_execute_confirmation import (
+            issue_confirmation_token,
+        )
+        from hermes_cli.dev_web_tool_execute_preflight import (
+            DryRunHistoricalLookupResult,
+        )
+
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-reuse-test"),
+        ])
+        now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+        dr_record = DryRunHistoricalLookupResult(
+            found=True, error_code=None,
+            dry_run_request_id="dr-reuse-test",
+            canonical_name="clarify", decision="would_allow",
+            risk_tier="R0", policy_version=None, arguments_digest=None,
+            dry_run_decision_digest=None, audit_written=True,
+            audit_event_id=None, created_at=now.isoformat(),
+            expires_at=None, lookup_source="test", redaction_status="none",
+        )
+        token_result = issue_confirmation_token(
+            hermes_home=str(tmp_hermes_home),
+            dry_run_record=dr_record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-reuse-test",
+            now=now,
+        )
+        assert token_result.issued is True
+
+        # First use — token consumed but still blocked at digest boundary
+        with self._kill_switches_true():
+            r1 = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-reuse-test",
+                confirmation_token=token_result.raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert r1.execution_allowed is False
+        assert r1.error_code == ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+
+        # Second use — token already consumed
+        with self._kill_switches_true():
+            r2 = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-reuse-test",
+                confirmation_token=token_result.raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert r2.execution_allowed is False
+        assert r2.error_code == ERROR_CONFIRMATION_REUSED

@@ -178,6 +178,9 @@ from hermes_cli.dev_web_tool_dry_run_audit import (
     build_dry_run_audit_event as _build_dry_run_audit_event,
     write_dry_run_audit_event as _write_dry_run_audit_event,
 )
+from hermes_cli.dev_web_tool_execute_confirmation import (
+    issue_confirmation_token as _issue_confirmation_token,
+)
 from hermes_cli.dev_web_tool_execute import (
     evaluate_tool_execute_request as _evaluate_tool_execute_request,
     compute_execute_policy_summary as _compute_execute_policy_summary,
@@ -3033,6 +3036,17 @@ def _register_tool_dry_run_routes(
                     request_id=rid,
                 )
 
+        # Step 5a: Validate issueConfirmationToken (optional boolean)
+        issue_confirmation_token_flag = body.get("issueConfirmationToken")
+        if issue_confirmation_token_flag is not None:
+            if not isinstance(issue_confirmation_token_flag, bool):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_DRY_RUN_INVALID_REQUEST,
+                    message="issueConfirmationToken must be a boolean or null.",
+                    request_id=rid,
+                )
+
         # Step 6: Call the pure dry-run policy engine
         try:
             result = _dry_run_tool_policy(
@@ -3102,6 +3116,59 @@ def _register_tool_dry_run_routes(
             reasons = list(response_data.get("reasonCodes", []))
             reasons.append("AUDIT_WRITE_FAILED")
             response_data["reasonCodes"] = reasons
+
+        # Step 9a: Issue confirmation token if requested and eligible
+        if (
+            issue_confirmation_token_flag is True
+            and result.decision == "would_allow"
+            and audit_written
+            and result.canonical_name in _DRY_RUN_STATIC_ALLOWLIST
+        ):
+            try:
+                from hermes_cli.dev_web_tool_execute_preflight import (
+                    DryRunHistoricalLookupResult,
+                )
+                # Build a minimal dry-run record for token issuance
+                dry_run_record_for_token = DryRunHistoricalLookupResult(
+                    found=True,
+                    error_code=None,
+                    dry_run_request_id=request_id_field or rid,
+                    canonical_name=result.canonical_name,
+                    decision=result.decision,
+                    risk_tier=result.risk_tier,
+                    policy_version=None,
+                    arguments_digest=None,
+                    dry_run_decision_digest=None,
+                    audit_written=True,
+                    audit_event_id=audit_result.event_id if audit_result.written else None,
+                    created_at=_utc_now_iso(),
+                    expires_at=None,
+                    lookup_source=None,
+                    redaction_status="applied" if result.forbidden_fields else "none",
+                )
+                token_result = _issue_confirmation_token(
+                    hermes_home=(
+                        config.hermes_home
+                        if config.hermes_home is not None
+                        else None
+                    ),
+                    dry_run_record=dry_run_record_for_token,
+                    canonical_name=result.canonical_name,
+                    risk_tier=result.risk_tier,
+                    policy_version=None,
+                    dry_run_request_id=request_id_field or rid,
+                    dry_run_decision_digest=None,
+                    audit_event_id=audit_result.event_id if audit_result.written else None,
+                    arguments_digest=None,
+                    redaction_version=None,
+                )
+                if token_result.issued and token_result.raw_token is not None:
+                    response_data["confirmationToken"] = token_result.raw_token
+                    response_data["confirmationTokenId"] = token_result.token_id
+                    response_data["confirmationTokenExpiresAt"] = token_result.expires_at
+            except Exception:
+                # Token issuance failure does not affect dry-run response
+                pass
 
         # Step 10: Return safe response envelope
         return {

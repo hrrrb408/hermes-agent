@@ -3884,6 +3884,15 @@ components:
           nullable: true
           maxLength: 128
           description: Client-side request correlation ID. Not durable, not stored.
+        issueConfirmationToken:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            If true, and the dry-run decision is would_allow, and audit is written,
+            and the canonicalName is on the static allowlist, a confirmation token
+            will be issued and returned in the response. Token is only issued for
+            allowlisted tools with successful dry-run results.
 
     ToolDryRunDecision:
       type: string
@@ -3972,6 +3981,27 @@ components:
         auditWritten:
           type: boolean
           description: Whether a local dev-only dry-run audit event was safely written. true means the audit JSONL write succeeded; false means no audit was written or the audit write failed. This does not imply tool execution, dispatch, provider schema sending, or provider API access.
+        confirmationToken:
+          type: string
+          nullable: true
+          description: >
+            Opaque confirmation token string. Only present when issueConfirmationToken=true
+            in the request, dry-run decision is would_allow, audit is written, and the
+            canonicalName is on the static allowlist. This token is returned exactly once
+            and must be provided in the execute request. It is not stored server-side.
+        confirmationTokenId:
+          type: string
+          nullable: true
+          description: >
+            Token ID for correlation and audit. Only present when a confirmation token
+            was issued. Safe for logging and display.
+        confirmationTokenExpiresAt:
+          type: string
+          nullable: true
+          format: date-time
+          description: >
+            ISO 8601 timestamp when the confirmation token expires. Only present when
+            a confirmation token was issued. Token TTL is at most 5 minutes.
 
     ToolDryRunResponse:
       type: object
@@ -4078,8 +4108,10 @@ components:
         - blocked_by_denylist
         - blocked_by_risk_tier
         - blocked_by_digest_mismatch
+        - blocked_requires_confirmation_token
+        - blocked_digest_verification_not_implemented
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-11.
+        Execute gate decision. All values represent blocked states in Phase 1G-04-20.
         would_execute, executed, and execution_failed are reserved for future phases
         and are not returned by the current implementation.
 
@@ -4106,6 +4138,23 @@ components:
         - confirmation_missing
         - confirmation_invalid
         - confirmation_not_implemented
+        - confirmation_expired
+        - confirmation_reused
+        - confirmation_store_unavailable
+        - confirmation_not_found
+        - confirmation_dry_run_mismatch
+        - confirmation_digest_mismatch
+        - confirmation_canonical_name_mismatch
+        - confirmation_risk_tier_mismatch
+        - confirmation_policy_version_mismatch
+        - confirmation_audit_event_mismatch
+        - confirmation_arguments_mismatch
+        - confirmation_consume_failed
+        - confirmation_issuance_rejected
+        - confirmation_production_path
+        - confirmation_not_allowed
+        - confirmation_audit_not_written
+        - digest_verification_not_implemented
         - digest_mismatch
         - validation_failed
         - execution_not_implemented

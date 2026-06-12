@@ -921,4 +921,32 @@ The following are acceptable P2 risks that do not block this phase:
 
 ---
 
+## Post-Implementation Note (Phase 1G-04-20)
+
+Implemented in Phase 1G-04-20:
+- Minimal backend token issuance (`issue_confirmation_token()`)
+- Minimal backend token verification (`verify_confirmation_token()`)
+- Dev-only token JSONL store (`$HERMES_HOME/gateway/dev/tokens/confirmation-tokens.jsonl`)
+- Token hash (HMAC-SHA256 with deterministic dev key) / tokenId derivation
+- TTL (≤ 5 minutes, capped at dry-run expiresAt)
+- Single-use consumption (append-only consumed event)
+- Dry-run token issuance integration (`issueConfirmationToken` flag)
+- Execute route token verification gate (Gates 15–27)
+- Valid token still blocks at digest verification boundary (Gate 28)
+- Token store path containment guard
+- OpenAPI schema-only updates
+- 50 new confirmation module tests
+
+Still not implemented:
+- Digest verification
+- Pre-execution audit
+- Post-execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider call
+- Real Controlled Execution
+
+---
+
 *Phase 1G-04-19 Confirmation Token Minimal Backend Implementation Scope Freeze: minimal backend implementation boundary frozen, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token verification, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*

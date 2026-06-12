@@ -49,6 +49,7 @@ DECISION_BLOCKED_BY_DENYLIST = "blocked_by_denylist"
 DECISION_BLOCKED_BY_RISK_TIER = "blocked_by_risk_tier"
 DECISION_BLOCKED_BY_DIGEST_MISMATCH = "blocked_by_digest_mismatch"
 DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN = "blocked_requires_confirmation_token"
+DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED = "blocked_digest_verification_not_implemented"
 
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
@@ -71,6 +72,16 @@ ERROR_DRY_RUN_DIGEST_MISSING = "dry_run_digest_missing"
 ERROR_CONFIRMATION_MISSING = "confirmation_missing"
 ERROR_CONFIRMATION_INVALID = "confirmation_invalid"
 ERROR_CONFIRMATION_NOT_IMPLEMENTED = "confirmation_not_implemented"
+ERROR_CONFIRMATION_EXPIRED = "confirmation_expired"
+ERROR_CONFIRMATION_REUSED = "confirmation_reused"
+ERROR_CONFIRMATION_STORE_UNAVAILABLE = "confirmation_store_unavailable"
+ERROR_CONFIRMATION_NOT_FOUND = "confirmation_not_found"
+ERROR_CONFIRMATION_DRY_RUN_MISMATCH = "confirmation_dry_run_mismatch"
+ERROR_CONFIRMATION_DIGEST_MISMATCH = "confirmation_digest_mismatch"
+ERROR_CONFIRMATION_CANONICAL_NAME_MISMATCH = "confirmation_canonical_name_mismatch"
+ERROR_CONFIRMATION_RISK_TIER_MISMATCH = "confirmation_risk_tier_mismatch"
+ERROR_CONFIRMATION_CONSUME_FAILED = "confirmation_consume_failed"
+ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED = "digest_verification_not_implemented"
 ERROR_DIGEST_MISMATCH = "digest_mismatch"
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
@@ -103,6 +114,16 @@ GATE_DRY_RUN_BINDING_RISK = "dry_run_binding_risk"
 GATE_DRY_RUN_BINDING_POLICY = "dry_run_binding_policy"
 GATE_DRY_RUN_BINDING_DIGEST = "dry_run_binding_digest"
 GATE_CONFIRMATION = "confirmation"
+GATE_CONFIRMATION_STORE = "confirmation_store"
+GATE_CONFIRMATION_LOOKUP = "confirmation_lookup"
+GATE_CONFIRMATION_EXPIRY = "confirmation_expiry"
+GATE_CONFIRMATION_REUSE = "confirmation_reuse"
+GATE_CONFIRMATION_BINDING_DRY_RUN = "confirmation_binding_dry_run"
+GATE_CONFIRMATION_BINDING_DIGEST = "confirmation_binding_digest"
+GATE_CONFIRMATION_BINDING_CANONICAL = "confirmation_binding_canonical"
+GATE_CONFIRMATION_BINDING_RISK = "confirmation_binding_risk"
+GATE_CONFIRMATION_CONSUME = "confirmation_consume"
+GATE_DIGEST_VERIFICATION = "digest_verification"
 GATE_DIGEST = "digest"
 GATE_VALIDATION = "validation"
 
@@ -809,7 +830,7 @@ def evaluate_tool_execute_request(
         gate=GATE_DRY_RUN_BINDING_DIGEST, passed=True, error_code=None,
     ))
 
-    # ── Gate 15: Confirmation token ──
+    # ── Gate 15: Confirmation token present ──
     if not confirmation_token:
         gates.append(ToolExecuteGateStatus(
             gate=GATE_CONFIRMATION,
@@ -818,7 +839,7 @@ def evaluate_tool_execute_request(
         ))
         policy_notes.append(
             "Confirmation token is required before execution. "
-            "Token issuance is a future phase."
+            "Request a token via the dry-run endpoint with issueConfirmationToken=true."
         )
         reason_codes.append(ERROR_CONFIRMATION_MISSING)
         error_code = ERROR_CONFIRMATION_MISSING
@@ -833,18 +854,71 @@ def evaluate_tool_execute_request(
             risk_tier=risk_tier,
         )
 
-    # Even with confirmation token present, token verification is not implemented
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_CONFIRMATION, passed=False,
-        error_code=ERROR_CONFIRMATION_NOT_IMPLEMENTED,
+        gate=GATE_CONFIRMATION, passed=True, error_code=None,
+    ))
+
+    # ── Gate 16–27: Confirmation token verification ──
+    from hermes_cli.dev_web_tool_execute_confirmation import (
+        verify_confirmation_token as _verify_token,
+    )
+
+    token_result = _verify_token(
+        hermes_home=hermes_home,
+        raw_token=confirmation_token,
+        dry_run_request_id=dry_run_request_id,
+        dry_run_decision_digest=dry_run_decision_digest,
+        canonical_name=canonical_name,
+        risk_tier=risk_tier,
+        policy_version=None,
+        audit_event_id=lookup_result.audit_event_id,
+        arguments_digest=None,
+        consume=True,
+    )
+
+    if not token_result.verified:
+        # Map token verification error to gate status
+        token_error = token_result.error_code or ERROR_CONFIRMATION_INVALID
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_CONFIRMATION,
+            passed=False,
+            error_code=token_error,
+        ))
+        policy_notes.append(
+            f"Confirmation token verification failed: {token_error}."
+        )
+        reason_codes.append(token_error)
+        error_code = token_error
+        decision = DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    # Token verified — record gate pass
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_CONFIRMATION, passed=True, error_code=None,
+    ))
+
+    # ── Gate 28: Digest verification not implemented ──
+    # Even with a valid confirmation token, execution remains blocked
+    # because digest verification is not yet implemented.
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DIGEST_VERIFICATION, passed=False,
+        error_code=ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     ))
     policy_notes.append(
-        "Confirmation token verification is not implemented in this phase. "
-        "Blocked by token verification not implemented."
+        "Confirmation token verified, but digest verification is not "
+        "implemented in this phase. Execution remains blocked."
     )
-    reason_codes.append(ERROR_CONFIRMATION_NOT_IMPLEMENTED)
-    error_code = ERROR_CONFIRMATION_NOT_IMPLEMENTED
-    decision = DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
+    reason_codes.append(ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED)
+    error_code = ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+    decision = DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED
 
     return _build_blocked_result(
         canonical_name=canonical_name,

@@ -2080,3 +2080,69 @@ A valid token is necessary but not sufficient. A verified token still does not e
 ---
 
 *Phase 1G-04-19 Confirmation Token Minimal Backend Implementation Scope Freeze: minimal backend implementation boundary frozen, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no token verification, no token store, no digest verification, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-20: Confirmation Token Minimal Backend Implementation / Still Blocked-Only
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-20 |
+| Title | Confirmation Token Minimal Backend Implementation / Still Blocked-Only |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+### What Changed
+
+- New module: `hermes_cli/dev_web_tool_execute_confirmation.py` (token issuance + verification)
+- Modified: `hermes_cli/dev_web_tool_execute.py` (token verification gate + digest verification boundary)
+- Modified: `hermes_cli/dev_web_api.py` (dry-run token issuance integration)
+- Modified: `docs/webui/openapi/dev-web-api-v1.yaml` (schema-only: new fields + error codes)
+- New tests: 50 confirmation module tests
+- Updated tests: 3 execute tests + 2 new execute tests
+- New doc: `phase-1g-04-20-confirmation-token-minimal-backend-implementation.md`
+
+### Implemented
+
+- Confirmation token issuance (dev-only, after eligible dry-run)
+- Confirmation token verification (hash lookup, TTL, single-use, binding checks)
+- Dev-only token JSONL store (`$HERMES_HOME/gateway/dev/tokens/confirmation-tokens.jsonl`)
+- Token hash (HMAC-SHA256) / tokenId derivation
+- TTL (≤ 5 minutes, capped at dry-run expiresAt)
+- Single-use consumption (append-only consumed event)
+- Dry-run token issuance integration (`issueConfirmationToken` flag)
+- Execute route token verification gate (Gates 15–27)
+- Token store path containment guard (production-safe)
+- Execute route blocks at digest verification boundary after valid token
+
+### Not Implemented
+
+- Digest verification
+- Pre-execution audit
+- Post-execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-19)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-20 Confirmation Token Minimal Backend Implementation / Still Blocked-Only: token issuance, verification, dev-only JSONL store, hash/tokenId, TTL, single-use, dry-run integration, execute token verification gate implemented. Execute route remains blocked-only at digest verification boundary. No handler lookup, no dispatch, no execution, no provider schema, no provider API, no frontend changes, no route count changes, STATIC_ALLOWLIST unchanged, no real Controlled Execution started.*
