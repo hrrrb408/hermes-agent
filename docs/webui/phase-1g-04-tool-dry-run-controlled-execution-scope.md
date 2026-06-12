@@ -1356,3 +1356,82 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-09 Controlled Execution Implementation Scope Freeze: implementation scope definition only, docs-only, no code changes, no OpenAPI changes, no route changes, no frontend changes, no test changes, no execution implementation, no tool handler call, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## 28. Phase 1G-04-10 Completion Record
+
+### Phase 1G-04-10: Execute Route Contract / OpenAPI Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-10 |
+| Title | Execute Route Contract / OpenAPI Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | `f5644ccadf61cd557ce743c2e9924db4c81ca54a` |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-10-execute-route-contract-openapi-scope.md` | Execute route contract / OpenAPI scope freeze: future route definition, route governance delta, Tool write vs Tool execution classification, request/response schema drafts, decision enum draft, gate status model, audit status model, result preview model, error code draft, blocked-by-default contract, dry-run preflight contract, confirmation contract, future OpenAPI file strategy, future runtime file strategy, future forbidden files, test matrix (31 tests), entry/exit criteria |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-10 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-10 status |
+
+### What Was Frozen
+
+1. **Future route definition**: `POST /api/dev/v1/tools/execute` — classified as Tool execution route, not added in this phase
+2. **Route governance delta**: OpenAPI 32→33, Runtime 32→33, Tool execution 0→1 (future only, not applied)
+3. **Tool write vs Tool execution classification**: Execute route counted as execution, not write; Tool write routes remain 0
+4. **Request schema draft**: 9 fields (canonicalName, argumentsPreview, dryRunRequestId, dryRunDecisionDigest, confirmationToken, requestId, sourceContext, uiOrigin, clientCreatedAt) with required/optional classification and prohibited content rules
+5. **Response schema draft**: Standard envelope with ToolExecuteData (17 fields), invariant defaults (executionAllowed=false, dispatchAllowed=false, providerSchemaAllowed=false, toolHandlerCalled=false, providerApiCalled=false)
+6. **Decision enum draft**: 12 values covering all blocked states, `would_execute`, `executed`, `execution_failed`
+7. **Gate status model**: 14 gates with per-gate pass/fail/reason/message/blocking status
+8. **Audit status model**: 5 fields covering dry-run, pre-execution, and post-execution audit status
+9. **Result preview model**: 7 fields with max 64 KiB preview, no raw secrets/stack traces
+10. **Error code draft**: 22 error codes covering validation, policy, dry-run, confirmation, digest, audit, handler, execution, sanitization, and internal errors
+11. **Blocked-by-default contract**: All switches unset → blocked_by_kill_switch; STATIC_ALLOWLIST empty → blocked_by_allowlist; no blocked response may call Tool Handler
+12. **Dry-run preflight contract**: Execute must reference valid dry-run would_allow with auditWritten=true; dry-run success does not imply execution
+13. **Confirmation contract**: Single-use, ≤ 5-minute expiry, binds to 7 fields; no implicit/auto/bypass confirmation
+14. **Future OpenAPI file strategy**: 9 changes to dev-web-api-v1.yaml when route added (not modified in this phase)
+15. **Future runtime file strategy**: 11 allowed files for future modification (not modified in this phase)
+16. **Future forbidden files**: 13 categories permanently forbidden
+17. **Test matrix**: 31 future tests across route governance, blocked-by-default, dry-run preflight, confirmation, digest, security boundary
+18. **Entry criteria**: 14 conditions for starting execute route implementation
+19. **Exit criteria**: 12 conditions for completing execute route implementation
+
+### What Was NOT Implemented
+
+- No execute route added
+- No OpenAPI path added or modified
+- No runtime route changed
+- No frontend source changed
+- No router changed
+- No Tool Handler call
+- No Tool Dispatch
+- No Tool Execution
+- No Provider Schema sending
+- No Provider API call
+- No STATIC_ALLOWLIST population
+- No allowlist activation
+- No audit read API
+- No audit viewer UI
+- No Controlled Execution started
+- No code changes of any kind
+
+### Route Governance (unchanged from 1G-04-09)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 32 |
+| Runtime routes | 32 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 0 |
+
+---
+
+*Phase 1G-04-10 Execute Route Contract / OpenAPI Scope Freeze: route contract and OpenAPI scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no execution implementation, no tool handler call, no provider schema send, no allowlist change, no Controlled Execution started.*
