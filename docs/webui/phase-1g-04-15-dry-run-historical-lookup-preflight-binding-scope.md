@@ -588,3 +588,5 @@ After dry-run historical lookup implementation:
 ---
 
 *Phase 1G-04-15 Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze: scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dry-run historical lookup implementation, no token implementation, no digest verification implementation, no handler call, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+> **Update (Phase 1G-04-16):** The dry-run historical lookup defined in this scope document has been implemented as a read-only lookup in Phase 1G-04-16. See `docs/webui/phase-1g-04-16-dry-run-historical-lookup-read-only-implementation.md` for implementation details.

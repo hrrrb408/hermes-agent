@@ -1449,3 +1449,17 @@ Phase 1G-03-04 is completed.
 - Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes
 - Local docs-only commit created, not pushed
 - Next = future dry-run historical lookup implementation only after user approval; real Controlled Execution not started
+
+**Phase 1G-04-16 is completed locally.** Dry-Run Historical Lookup Read-Only Implementation / Still Blocked-Only.
+- `hermes_cli/dev_web_tool_execute_preflight.py` — New read-only lookup helper: reads dev-only audit JSONL, searches by dryRunRequestId, returns DryRunHistoricalLookupResult, fail-closed on missing/malformed/not found/expired, does not write files, does not access ~/.hermes, does not expose raw secrets
+- `hermes_cli/dev_web_tool_execute.py` — Integrated lookup gates: Gate 7 dryRunRequestId present, Gate 8 dry-run historical lookup, Gate 9 decision must be would_allow, Gate 10 auditWritten must be true, Gate 11 canonicalName binding, Gate 12 riskTier binding, Gate 13 policyVersion binding (no-op), Gate 14 digest binding (no-op), Gate 15 confirmationToken present, Gate 16 confirmation token verification blocks (not implemented); all side-effect flags remain false on every path
+- `hermes_cli/dev_web_api.py` — Pass hermes_home to evaluate_tool_execute_request
+- `docs/webui/openapi/dev-web-api-v1.yaml` — Added 9 error codes to ToolExecuteErrorCode enum (dry_run_not_found, dry_run_expired, dry_run_not_allowed, dry_run_audit_missing, dry_run_canonical_name_mismatch, dry_run_risk_tier_mismatch, dry_run_policy_version_mismatch, dry_run_lookup_unavailable, confirmation_not_implemented)
+- `docs/webui/phase-1g-04-16-dry-run-historical-lookup-read-only-implementation.md` — Phase documentation
+- New tests: 35 preflight reader tests; Updated tests: 82 execute + 56 execute-api tests
+- Known limitations: policyVersion/argumentsDigest/dryRunDecisionDigest not stored in audit events (binding checks are no-ops), auditWritten uses "presence = written" mapping
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; Execute route remains blocked-only
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- Not implemented: confirmation token, digest verification, token store, pre/post execution audit, handler lookup, dispatch, execution, provider schema, provider API, frontend execute UI, audit read API, audit viewer, real Controlled Execution
+- Local commit created, not pushed
+- Next = future confirmation token issuance / verification scope or implementation only after user approval; real Controlled Execution not started

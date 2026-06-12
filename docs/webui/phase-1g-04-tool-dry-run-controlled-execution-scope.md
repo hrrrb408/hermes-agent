@@ -1801,3 +1801,64 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-15 Dry-Run Historical Lookup / Confirmation-Digest Preflight Binding Scope Freeze: scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dry-run historical lookup implementation, no token implementation, no digest verification implementation, no handler call, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-16: Dry-Run Historical Lookup Read-Only Implementation
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-16 |
+| Title | Dry-Run Historical Lookup Read-Only Implementation / Still Blocked-Only |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Dependencies | Phase 1G-04-15 completed locally |
+
+### Summary
+
+Implemented read-only dry-run historical lookup from dev-only audit JSONL. The execute route now retrieves prior dry-run records by `dryRunRequestId` and verifies decision, auditWritten, canonicalName, riskTier, policyVersion, and digest bindings before reaching the confirmation token gate.
+
+The execute route remains blocked-only. Even when clarify passes all dry-run lookup and binding gates, it is blocked by the confirmation token boundary because token verification is not implemented.
+
+### Delta from 1G-04-15
+
+- New module: `hermes_cli/dev_web_tool_execute_preflight.py` (read-only lookup helper)
+- Modified: `hermes_cli/dev_web_tool_execute.py` (integrated lookup gates)
+- Modified: `hermes_cli/dev_web_api.py` (pass hermes_home to evaluator)
+- Modified: OpenAPI `ToolExecuteErrorCode` enum (added 9 new error codes)
+- New tests: 35 preflight reader tests
+- Updated tests: 82 execute + 56 execute-api tests
+- New doc: `phase-1g-04-16-dry-run-historical-lookup-read-only-implementation.md`
+
+### Not Implemented
+
+- Confirmation token issuance
+- Confirmation token verification
+- Token store
+- Digest verification
+- Pre/post execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-15)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-16 Dry-Run Historical Lookup Read-Only Implementation: read-only lookup implemented, execute gate integrated, all paths blocked, no token, no digest verification, no handler, no dispatch, no execution, no provider, no Controlled Execution started.*

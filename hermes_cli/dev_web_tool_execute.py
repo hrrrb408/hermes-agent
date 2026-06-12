@@ -22,8 +22,8 @@ Architecture constraints:
   - executionCompleted is ALWAYS False
   - executionAttempted is ALWAYS False
 
-Phase: 1G-04-11 — Backend Execute Gate Skeleton
-Status: Blocked-only (no real tool execution)
+Phase: 1G-04-16 — Dry-Run Historical Lookup Read-Only Implementation
+Status: Blocked-only (no real tool execution, lookup integrated)
 """
 
 from __future__ import annotations
@@ -48,6 +48,7 @@ DECISION_BLOCKED_BY_ALLOWLIST = "blocked_by_allowlist"
 DECISION_BLOCKED_BY_DENYLIST = "blocked_by_denylist"
 DECISION_BLOCKED_BY_RISK_TIER = "blocked_by_risk_tier"
 DECISION_BLOCKED_BY_DIGEST_MISMATCH = "blocked_by_digest_mismatch"
+DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN = "blocked_requires_confirmation_token"
 
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
@@ -69,7 +70,16 @@ ERROR_DRY_RUN_MISSING = "dry_run_missing"
 ERROR_DRY_RUN_DIGEST_MISSING = "dry_run_digest_missing"
 ERROR_CONFIRMATION_MISSING = "confirmation_missing"
 ERROR_CONFIRMATION_INVALID = "confirmation_invalid"
+ERROR_CONFIRMATION_NOT_IMPLEMENTED = "confirmation_not_implemented"
 ERROR_DIGEST_MISMATCH = "digest_mismatch"
+ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
+ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
+ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
+ERROR_DRY_RUN_AUDIT_MISSING = "dry_run_audit_missing"
+ERROR_DRY_RUN_CANONICAL_NAME_MISMATCH = "dry_run_canonical_name_mismatch"
+ERROR_DRY_RUN_RISK_TIER_MISMATCH = "dry_run_risk_tier_mismatch"
+ERROR_DRY_RUN_POLICY_VERSION_MISMATCH = "dry_run_policy_version_mismatch"
+ERROR_DRY_RUN_LOOKUP_UNAVAILABLE = "dry_run_lookup_unavailable"
 ERROR_VALIDATION_FAILED = "validation_failed"
 ERROR_INTERNAL = "internal_error"
 
@@ -85,6 +95,13 @@ GATE_KNOWN_TOOL = "known_tool"
 GATE_DENYLIST = "denylist"
 GATE_RISK_TIER = "risk_tier"
 GATE_DRY_RUN_PREFLIGHT = "dry_run_preflight"
+GATE_DRY_RUN_LOOKUP = "dry_run_lookup"
+GATE_DRY_RUN_DECISION = "dry_run_decision"
+GATE_DRY_RUN_AUDIT = "dry_run_audit"
+GATE_DRY_RUN_BINDING_CANONICAL = "dry_run_binding_canonical"
+GATE_DRY_RUN_BINDING_RISK = "dry_run_binding_risk"
+GATE_DRY_RUN_BINDING_POLICY = "dry_run_binding_policy"
+GATE_DRY_RUN_BINDING_DIGEST = "dry_run_binding_digest"
 GATE_CONFIRMATION = "confirmation"
 GATE_DIGEST = "digest"
 GATE_VALIDATION = "validation"
@@ -350,10 +367,11 @@ def evaluate_tool_execute_request(
     source_context: str | None = None,
     ui_origin: str | None = None,
     client_created_at: str | None = None,
+    hermes_home: str | None = None,
 ) -> ToolExecuteResult:
     """Evaluate a tool execute request through the gate stack.
 
-    This function is **blocked-only** in Phase 1G-04-11.
+    This function is **blocked-only** in Phase 1G-04-16.
     Every request returns a blocked response with all execution flags false.
     No tool handler is called, no dispatch occurs, no provider is contacted.
 
@@ -364,9 +382,16 @@ def evaluate_tool_execute_request(
       4. Known tool (must exist in inventory)
       5. Denylist (must not be denylisted)
       6. Risk tier (R0/R1 only eligible in future)
-      7. Dry-run preflight (must have prior dry-run)
-      8. Dry-run digest (must match)
-      9. Confirmation token (must be present)
+      7. Dry-run preflight (dryRunRequestId must be present)
+      8. Dry-run historical lookup (must find prior dry-run record)
+      9. Dry-run decision (must be would_allow)
+     10. Dry-run audit written (must be true)
+     11. canonicalName binding
+     12. riskTier binding
+     13. policyVersion binding
+     14. digest binding (if available)
+     15. Confirmation token (must be present)
+     16. Confirmation token verification (not implemented → blocked)
     """
     gates: list[ToolExecuteGateStatus] = []
     policy_notes: list[str] = []
@@ -543,33 +568,10 @@ def evaluate_tool_execute_request(
         ))
         policy_notes.append(
             "Dry-run preflight is required before execution. "
-            "Dry-run historical lookup is a future phase."
+            "A prior dry-run request ID must be provided."
         )
         reason_codes.append(ERROR_DRY_RUN_MISSING)
         error_code = ERROR_DRY_RUN_MISSING
-        decision = DECISION_BLOCKED_REQUIRES_DRY_RUN
-        return _build_blocked_result(
-            canonical_name=canonical_name,
-            gates=gates,
-            policy_notes=policy_notes,
-            reason_codes=reason_codes,
-            error_code=error_code,
-            decision=decision,
-            risk_tier=risk_tier,
-        )
-
-    if not dry_run_decision_digest:
-        gates.append(ToolExecuteGateStatus(
-            gate=GATE_DRY_RUN_PREFLIGHT,
-            passed=False,
-            error_code=ERROR_DRY_RUN_DIGEST_MISSING,
-        ))
-        policy_notes.append(
-            "Dry-run decision digest is required. "
-            "Digest verification is a future phase."
-        )
-        reason_codes.append(ERROR_DRY_RUN_DIGEST_MISSING)
-        error_code = ERROR_DRY_RUN_DIGEST_MISSING
         decision = DECISION_BLOCKED_REQUIRES_DRY_RUN
         return _build_blocked_result(
             canonical_name=canonical_name,
@@ -585,14 +587,229 @@ def evaluate_tool_execute_request(
         gate=GATE_DRY_RUN_PREFLIGHT, passed=True, error_code=None,
     ))
 
-    # ── Gate 8: Digest validation (skeleton) ──
-    # In this phase, we accept any non-empty digest — real validation is future
-    # But we still block because confirmation token is needed
+    # ── Gate 8: Dry-run historical lookup ──
+    from hermes_cli.dev_web_tool_execute_preflight import (
+        lookup_dry_run_record,
+        verify_decision_allowed,
+        verify_audit_written,
+        verify_canonical_name_binding,
+        verify_risk_tier_binding,
+        verify_policy_version_binding,
+        verify_digest_binding,
+        ERROR_DRY_RUN_NOT_FOUND as _LOOKUP_NOT_FOUND,
+        ERROR_DRY_RUN_EXPIRED as _LOOKUP_EXPIRED,
+        ERROR_DRY_RUN_NOT_ALLOWED as _LOOKUP_NOT_ALLOWED,
+        ERROR_DRY_RUN_AUDIT_MISSING as _LOOKUP_AUDIT_MISSING,
+        ERROR_DRY_RUN_CANONICAL_NAME_MISMATCH as _LOOKUP_CN_MISMATCH,
+        ERROR_DRY_RUN_RISK_TIER_MISMATCH as _LOOKUP_RT_MISMATCH,
+        ERROR_DRY_RUN_POLICY_VERSION_MISMATCH as _LOOKUP_PV_MISMATCH,
+        ERROR_DRY_RUN_DIGEST_MISMATCH as _LOOKUP_DIGEST_MISMATCH,
+        ERROR_DRY_RUN_LOOKUP_UNAVAILABLE as _LOOKUP_UNAVAILABLE,
+    )
+
+    lookup_result = lookup_dry_run_record(
+        hermes_home=hermes_home,
+        dry_run_request_id=dry_run_request_id,
+        canonical_name=canonical_name,
+    )
+
+    if not lookup_result.found:
+        lookup_error = lookup_result.error_code or _LOOKUP_UNAVAILABLE
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_LOOKUP,
+            passed=False,
+            error_code=lookup_error,
+        ))
+        policy_notes.append(
+            f"Dry-run historical lookup failed: {lookup_error}. "
+            "No prior dry-run record found for the given request ID."
+        )
+        reason_codes.append(lookup_error)
+        error_code = lookup_error
+        decision = DECISION_BLOCKED_REQUIRES_DRY_RUN
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_DIGEST, passed=True, error_code=None,
+        gate=GATE_DRY_RUN_LOOKUP, passed=True, error_code=None,
     ))
 
-    # ── Gate 9: Confirmation token ──
+    # ── Gate 9: Dry-run decision must be would_allow ──
+    decision_error = verify_decision_allowed(lookup_result)
+    if decision_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_DECISION,
+            passed=False,
+            error_code=decision_error,
+        ))
+        policy_notes.append(
+            f"Dry-run decision was '{lookup_result.decision}', "
+            "not 'would_allow'. Execution requires a prior allowed dry-run."
+        )
+        reason_codes.append(decision_error)
+        error_code = decision_error
+        decision = DECISION_BLOCKED_REQUIRES_DRY_RUN
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_DECISION, passed=True, error_code=None,
+    ))
+
+    # ── Gate 10: Dry-run auditWritten must be true ──
+    audit_error = verify_audit_written(lookup_result)
+    if audit_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_AUDIT,
+            passed=False,
+            error_code=audit_error,
+        ))
+        policy_notes.append(
+            "Dry-run record found but audit was not written. "
+            "Execution requires a dry-run with a written audit event."
+        )
+        reason_codes.append(audit_error)
+        error_code = audit_error
+        decision = DECISION_BLOCKED_REQUIRES_AUDIT
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_AUDIT, passed=True, error_code=None,
+    ))
+
+    # ── Gate 11: canonicalName binding ──
+    cn_error = verify_canonical_name_binding(lookup_result, canonical_name)
+    if cn_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_BINDING_CANONICAL,
+            passed=False,
+            error_code=cn_error,
+        ))
+        policy_notes.append(
+            f"canonicalName mismatch: execute request has '{canonical_name}', "
+            f"dry-run record has '{lookup_result.canonical_name}'."
+        )
+        reason_codes.append(cn_error)
+        error_code = cn_error
+        decision = DECISION_BLOCKED_BY_DIGEST_MISMATCH
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_BINDING_CANONICAL, passed=True, error_code=None,
+    ))
+
+    # ── Gate 12: riskTier binding ──
+    rt_error = verify_risk_tier_binding(lookup_result, risk_tier)
+    if rt_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_BINDING_RISK,
+            passed=False,
+            error_code=rt_error,
+        ))
+        policy_notes.append(
+            f"riskTier mismatch: execute request has '{risk_tier}', "
+            f"dry-run record has '{lookup_result.risk_tier}'."
+        )
+        reason_codes.append(rt_error)
+        error_code = rt_error
+        decision = DECISION_BLOCKED_BY_DIGEST_MISMATCH
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_BINDING_RISK, passed=True, error_code=None,
+    ))
+
+    # ── Gate 13: policyVersion binding ──
+    pv_error = verify_policy_version_binding(lookup_result, None)
+    if pv_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_BINDING_POLICY,
+            passed=False,
+            error_code=pv_error,
+        ))
+        policy_notes.append("policyVersion mismatch between execute and dry-run.")
+        reason_codes.append(pv_error)
+        error_code = pv_error
+        decision = DECISION_BLOCKED_BY_DIGEST_MISMATCH
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_BINDING_POLICY, passed=True, error_code=None,
+    ))
+
+    # ── Gate 14: digest binding (if available) ──
+    digest_error = verify_digest_binding(lookup_result, dry_run_decision_digest)
+    if digest_error:
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_DRY_RUN_BINDING_DIGEST,
+            passed=False,
+            error_code=digest_error,
+        ))
+        policy_notes.append("dryRunDecisionDigest mismatch with historical record.")
+        reason_codes.append(digest_error)
+        error_code = digest_error
+        decision = DECISION_BLOCKED_BY_DIGEST_MISMATCH
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DRY_RUN_BINDING_DIGEST, passed=True, error_code=None,
+    ))
+
+    # ── Gate 15: Confirmation token ──
     if not confirmation_token:
         gates.append(ToolExecuteGateStatus(
             gate=GATE_CONFIRMATION,
@@ -616,18 +833,18 @@ def evaluate_tool_execute_request(
             risk_tier=risk_tier,
         )
 
-    # Even with confirmation token, in this phase we still block
-    # because no real handler exists and execution is not implemented
+    # Even with confirmation token present, token verification is not implemented
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_CONFIRMATION, passed=True, error_code=None,
+        gate=GATE_CONFIRMATION, passed=False,
+        error_code=ERROR_CONFIRMATION_NOT_IMPLEMENTED,
     ))
     policy_notes.append(
-        "All gates passed but execution is not implemented in this phase. "
-        "Blocked by skeleton implementation."
+        "Confirmation token verification is not implemented in this phase. "
+        "Blocked by token verification not implemented."
     )
-    reason_codes.append("EXECUTION_NOT_IMPLEMENTED")
-    error_code = "execution_not_implemented"
-    decision = DECISION_BLOCKED
+    reason_codes.append(ERROR_CONFIRMATION_NOT_IMPLEMENTED)
+    error_code = ERROR_CONFIRMATION_NOT_IMPLEMENTED
+    decision = DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
 
     return _build_blocked_result(
         canonical_name=canonical_name,

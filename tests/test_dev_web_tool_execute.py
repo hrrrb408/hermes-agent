@@ -1,6 +1,6 @@
 """Tests for hermes_cli.dev_web_tool_execute — Tool Execute Gate Skeleton.
 
-Phase 1G-04-11: Backend Execute Gate Skeleton.
+Phase 1G-04-16: Dry-Run Historical Lookup Read-Only Implementation.
 
 All tests verify blocked-only behavior with no side effects:
   - No tool handler calls
@@ -37,12 +37,21 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_BY_RISK_TIER,
     DECISION_BLOCKED_BY_DIGEST_MISMATCH,
     DECISION_BLOCKED_REQUIRES_CONFIRMATION,
+    DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
+    DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
     ERROR_ALLOWLIST_MISSING,
     ERROR_CONFIRMATION_MISSING,
-    ERROR_DRY_RUN_DIGEST_MISSING,
+    ERROR_CONFIRMATION_NOT_IMPLEMENTED,
     ERROR_DRY_RUN_MISSING,
+    ERROR_DRY_RUN_NOT_FOUND,
+    ERROR_DRY_RUN_EXPIRED,
+    ERROR_DRY_RUN_NOT_ALLOWED,
+    ERROR_DRY_RUN_AUDIT_MISSING,
+    ERROR_DRY_RUN_CANONICAL_NAME_MISMATCH,
+    ERROR_DRY_RUN_RISK_TIER_MISMATCH,
+    ERROR_DRY_RUN_LOOKUP_UNAVAILABLE,
     ERROR_KILL_SWITCH_DISABLED,
     ERROR_RISK_TIER_BLOCKED,
     ERROR_TOOL_DENYLISTED,
@@ -51,6 +60,13 @@ from hermes_cli.dev_web_tool_execute import (
     GATE_CONFIRMATION,
     GATE_DENYLIST,
     GATE_DRY_RUN_PREFLIGHT,
+    GATE_DRY_RUN_LOOKUP,
+    GATE_DRY_RUN_DECISION,
+    GATE_DRY_RUN_AUDIT,
+    GATE_DRY_RUN_BINDING_CANONICAL,
+    GATE_DRY_RUN_BINDING_RISK,
+    GATE_DRY_RUN_BINDING_POLICY,
+    GATE_DRY_RUN_BINDING_DIGEST,
     GATE_KILL_SWITCH,
     GATE_KNOWN_TOOL,
     GATE_RISK_TIER,
@@ -343,13 +359,19 @@ class TestDryRunPreflight:
         assert result.execution_allowed is False
         # Default kill switch blocks first
 
-    def test_missing_dry_run_digest_blocks(self) -> None:
-        """Missing dryRunDecisionDigest blocks."""
-        result = evaluate_tool_execute_request(
-            "clarify",
-            dry_run_request_id="dr-001",
-        )
+    def test_dry_run_id_provided_but_no_audit_blocks_at_lookup(self) -> None:
+        """dryRunRequestId provided but no audit file → blocks at lookup."""
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False):
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-001",
+                hermes_home=None,  # No audit file available
+            )
         assert result.execution_allowed is False
+        assert result.decision == DECISION_BLOCKED_REQUIRES_DRY_RUN
 
 
 # ===================================================================
@@ -601,3 +623,250 @@ class TestPolicySummary:
         summary = compute_execute_policy_summary()
         with pytest.raises(AttributeError):
             summary.execution_enabled = True  # type: ignore[misc]
+
+
+# ===================================================================
+# 12. Dry-Run Historical Lookup Integration Tests
+# ===================================================================
+
+
+def _make_audit_event(
+    request_id="test-dry-run-001",
+    canonical_name="clarify",
+    decision="would_allow",
+    risk_tier="R0",
+    timestamp=None,
+):
+    """Build a sample audit event dict for testing."""
+    from datetime import datetime, timezone, timedelta
+    ts = timestamp or (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    return {
+        "eventId": "evt-test-001",
+        "eventType": "tool_dry_run",
+        "timestamp": ts,
+        "schemaVersion": 1,
+        "phase": "1G-04-07",
+        "requestId": request_id,
+        "canonicalName": canonical_name,
+        "toolExists": True,
+        "riskTier": risk_tier,
+        "decision": decision,
+        "reasonCodes": ["WOULD_ALLOW_STATIC_POLICY"],
+        "policyNotes": [],
+        "forbiddenFields": [],
+        "missingRequiredFields": [],
+        "redactionApplied": False,
+        "redactionReasonCodes": [],
+        "redactedArgumentsPreview": {},
+        "sourceContext": None,
+        "uiOrigin": None,
+        "executionAllowed": False,
+        "dispatchAllowed": False,
+        "providerSchemaAllowed": False,
+        "auditWritten": False,
+        "staticAllowlistSize": 1,
+        "candidateAllowlistMatched": False,
+        "denylistMatched": False,
+        "durationMs": 5,
+        "resultStatus": "ok",
+        "errorCode": None,
+        "errorClass": None,
+    }
+
+
+class TestDryRunLookupIntegration:
+    """Integration tests for dry-run historical lookup in execute gate."""
+
+    @pytest.fixture
+    def tmp_hermes_home(self, tmp_path):
+        return tmp_path / "hermes-home-dev"
+
+    @pytest.fixture
+    def audit_dir(self, tmp_hermes_home):
+        d = tmp_hermes_home / "gateway" / "dev" / "audit"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @pytest.fixture
+    def audit_path(self, audit_dir):
+        return audit_dir / "tool-dry-run-audit.jsonl"
+
+    def _write_events(self, audit_path, events):
+        with open(audit_path, "a", encoding="utf-8") as f:
+            for event in events:
+                f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+    def _kill_switches_true(self):
+        return patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False)
+
+    def test_clarify_missing_dry_run_request_id_blocks(self, tmp_hermes_home) -> None:
+        """clarify missing dryRunRequestId → blocked."""
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.decision == DECISION_BLOCKED_REQUIRES_DRY_RUN
+        assert result.error_code == ERROR_DRY_RUN_MISSING
+
+    def test_clarify_dry_run_not_found(self, tmp_hermes_home, audit_path) -> None:
+        """clarify dryRunRequestId not found → blocked."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="other-id"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-not-found",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.decision == DECISION_BLOCKED_REQUIRES_DRY_RUN
+        assert result.error_code == ERROR_DRY_RUN_NOT_FOUND
+
+    def test_clarify_dry_run_expired(self, tmp_hermes_home, audit_path) -> None:
+        """clarify dry-run expired → blocked."""
+        from datetime import datetime, timedelta, timezone
+        old_ts = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-expired", timestamp=old_ts),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-expired",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_DRY_RUN_EXPIRED
+
+    def test_clarify_dry_run_decision_not_would_allow(self, tmp_hermes_home, audit_path) -> None:
+        """clarify dry-run decision would_block → blocked."""
+        self._write_events(audit_path, [
+            _make_audit_event(
+                request_id="dr-blocked",
+                decision="would_block",
+            ),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-blocked",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_DRY_RUN_NOT_ALLOWED
+
+    def test_clarify_canonical_name_mismatch(self, tmp_hermes_home, audit_path) -> None:
+        """canonicalName mismatch → blocked."""
+        self._write_events(audit_path, [
+            _make_audit_event(
+                request_id="dr-mismatch",
+                canonical_name="read_file",  # Different from execute request
+            ),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-mismatch",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_DRY_RUN_CANONICAL_NAME_MISMATCH
+
+    def test_clarify_valid_dry_run_missing_confirmation_blocks(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Valid dry-run but missing confirmationToken → blocked at confirmation gate."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-valid"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-valid",
+                dry_run_decision_digest="sha256:test",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_CONFIRMATION_MISSING
+        assert result.decision == DECISION_BLOCKED_REQUIRES_CONFIRMATION
+
+    def test_clarify_valid_dry_run_fake_confirmation_blocks(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Valid dry-run + fake confirmationToken → blocked (token verification not implemented)."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-valid-2"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-valid-2",
+                dry_run_decision_digest="sha256:test",
+                confirmation_token="fake-token-123",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_CONFIRMATION_NOT_IMPLEMENTED
+        assert result.decision == DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN
+
+    def test_all_side_effect_flags_false_on_lookup_success(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """All side-effect flags false even when lookup succeeds."""
+        self._write_events(audit_path, [
+            _make_audit_event(request_id="dr-valid-3"),
+        ])
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-valid-3",
+                confirmation_token="fake-token",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.dispatch_allowed is False
+        assert result.provider_schema_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+        assert result.execution_started is False
+
+    def test_kill_switch_unset_blocks_before_lookup(self, tmp_hermes_home) -> None:
+        """Kill switches unset → blocks before lookup."""
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("HERMES_TOOL_EXECUTION_ENABLED", None)
+            os.environ.pop("HERMES_AGENT_TOOLS_ENABLED", None)
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-any",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_KILL_SWITCH_DISABLED
+
+    def test_non_clarify_blocks_before_lookup(self, tmp_hermes_home) -> None:
+        """Non-clarify tool → blocks at allowlist before lookup."""
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "read_file",
+                dry_run_request_id="dr-any",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_ALLOWLIST_MISSING
+
+    def test_handler_not_called_on_lookup_failure(self, tmp_hermes_home) -> None:
+        """Handler is not called when lookup fails."""
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-not-found",
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False

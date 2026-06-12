@@ -3342,6 +3342,11 @@ def _register_tool_execute_routes(
                 source_context=source_context,
                 ui_origin=ui_origin,
                 client_created_at=client_created_at,
+                hermes_home=(
+                    str(config.hermes_home)
+                    if config.hermes_home is not None
+                    else None
+                ),
             )
         except Exception as exc:
             return _make_error_json(

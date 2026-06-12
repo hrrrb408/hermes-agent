@@ -1,6 +1,6 @@
 """Tests for POST /api/dev/v1/tools/execute — Tool Execute Gate Skeleton API.
 
-Phase 1G-04-11: Backend Execute Gate Skeleton.
+Phase 1G-04-16: Dry-Run Historical Lookup Read-Only Implementation.
 
 All tests verify:
   - Route exists and returns 200 blocked
@@ -455,4 +455,187 @@ class TestClarifyAllowlistActivation:
         assert data["providerSchemaAllowed"] is False
         assert data["toolHandlerCalled"] is False
         assert data["providerApiCalled"] is False
+        assert data["executionStarted"] is False
+
+
+# ===================================================================
+# 9. Dry-Run Historical Lookup API Tests
+# ===================================================================
+
+
+def _make_audit_event(
+    request_id="test-dry-run-001",
+    canonical_name="clarify",
+    decision="would_allow",
+    risk_tier="R0",
+    timestamp=None,
+):
+    """Build a sample audit event dict for testing."""
+    from datetime import datetime, timezone, timedelta
+    ts = timestamp or (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    return {
+        "eventId": "evt-test-001",
+        "eventType": "tool_dry_run",
+        "timestamp": ts,
+        "schemaVersion": 1,
+        "phase": "1G-04-07",
+        "requestId": request_id,
+        "canonicalName": canonical_name,
+        "toolExists": True,
+        "riskTier": risk_tier,
+        "decision": decision,
+        "reasonCodes": ["WOULD_ALLOW_STATIC_POLICY"],
+        "policyNotes": [],
+        "forbiddenFields": [],
+        "missingRequiredFields": [],
+        "redactionApplied": False,
+        "redactionReasonCodes": [],
+        "redactedArgumentsPreview": {},
+        "sourceContext": None,
+        "uiOrigin": None,
+        "executionAllowed": False,
+        "dispatchAllowed": False,
+        "providerSchemaAllowed": False,
+        "auditWritten": False,
+        "staticAllowlistSize": 1,
+        "candidateAllowlistMatched": False,
+        "denylistMatched": False,
+        "durationMs": 5,
+        "resultStatus": "ok",
+        "errorCode": None,
+        "errorClass": None,
+    }
+
+
+@pytest.fixture
+def client_with_audit(tmp_path):
+    """TestClient with a real HERMES_HOME and audit file."""
+    hermes_home = tmp_path / "hermes-home-dev"
+    audit_dir = hermes_home / "gateway" / "dev" / "audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+
+    config = DevWebApiConfig(hermes_home=hermes_home)
+    app = create_dev_web_api_app(config)
+    return TestClient(app), audit_dir / "tool-dry-run-audit.jsonl"
+
+
+class TestDryRunLookupAPI:
+    """API-level tests for dry-run historical lookup integration."""
+
+    def test_clarify_missing_dry_run_request_id_blocked(self, client_with_audit) -> None:
+        """clarify missing dryRunRequestId → blocked."""
+        client, _ = client_with_audit
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        # Default: blocked_by_kill_switch (kill switches not set in test)
+
+    def test_clarify_dry_run_not_found_blocked(self, client_with_audit) -> None:
+        """clarify dryRunRequestId not found → blocked."""
+        client, _ = client_with_audit
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-not-found",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_clarify_valid_dry_run_missing_confirmation_blocked(
+        self, client_with_audit,
+    ) -> None:
+        """clarify valid dry-run but missing confirmationToken → blocked."""
+        client, audit_path = client_with_audit
+        # Write a valid audit event
+        import json
+        event = _make_audit_event(request_id="dr-valid")
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-valid",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_clarify_valid_dry_run_fake_confirmation_blocked(
+        self, client_with_audit,
+    ) -> None:
+        """clarify valid dry-run + fake confirmationToken → blocked."""
+        client, audit_path = client_with_audit
+        import json
+        event = _make_audit_event(request_id="dr-valid-2")
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-valid-2",
+            "confirmationToken": "fake-token-123",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+
+    def test_all_response_flags_false_with_lookup(
+        self, client_with_audit,
+    ) -> None:
+        """All response side-effect flags false with lookup."""
+        client, audit_path = client_with_audit
+        import json
+        event = _make_audit_event(request_id="dr-flags")
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-flags",
+            "confirmationToken": "fake-token",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+        assert data["executionStarted"] is False
+        assert data["executionAttempted"] is False
+
+    def test_dry_run_decision_not_would_allow_blocked(
+        self, client_with_audit,
+    ) -> None:
+        """dry-run decision would_block → blocked."""
+        client, audit_path = client_with_audit
+        import json
+        event = _make_audit_event(
+            request_id="dr-blocked",
+            decision="would_block",
+        )
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-blocked",
+        })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_no_execution_started_with_valid_lookup(
+        self, client_with_audit,
+    ) -> None:
+        """Even with valid lookup, execution not started."""
+        client, audit_path = client_with_audit
+        import json
+        event = _make_audit_event(request_id="dr-no-exec")
+        with open(audit_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "dryRunRequestId": "dr-no-exec",
+            "confirmationToken": "any-token",
+        })
+        data = resp.json()["data"]
         assert data["executionStarted"] is False

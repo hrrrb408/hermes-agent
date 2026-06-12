@@ -4093,9 +4093,19 @@ components:
         - tool_denylisted
         - risk_tier_blocked
         - dry_run_missing
+        - dry_run_not_found
+        - dry_run_expired
+        - dry_run_not_allowed
+        - dry_run_audit_missing
+        - dry_run_canonical_name_mismatch
+        - dry_run_risk_tier_mismatch
+        - dry_run_policy_version_mismatch
+        - dry_run_digest_mismatch
+        - dry_run_lookup_unavailable
         - dry_run_digest_missing
         - confirmation_missing
         - confirmation_invalid
+        - confirmation_not_implemented
         - digest_mismatch
         - validation_failed
         - execution_not_implemented
