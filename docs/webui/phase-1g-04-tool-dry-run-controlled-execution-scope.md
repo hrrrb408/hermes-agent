@@ -1591,3 +1591,81 @@ After creating the docs-only commit:
 ---
 
 *Phase 1G-04-12 Confirmation Token / Digest Backend Scope Freeze: confirmation token and digest binding backend scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no token implementation, no digest verification implementation, no execute route behavior change, no audit read API, no audit viewer, no tool handler call, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## 31. Phase 1G-04-13 Completion Record
+
+### Phase 1G-04-13: First Executable Tool Candidate Selection / Allowlist Activation Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-13 |
+| Title | First Executable Tool Candidate Selection / Allowlist Activation Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-12 |
+| Branch | dev-huangruibang |
+| Base commit | `8c2bb40cffcec66ae5569c2093cdc62db440acc3` |
+
+### Deliverables
+
+| File | Description |
+|------|-------------|
+| `docs/webui/phase-1g-04-13-first-executable-tool-allowlist-scope.md` | First executable tool candidate selection / allowlist activation scope freeze: phase definition, current baseline, first executable candidate goal, candidate eligibility criteria (18 criteria), candidate exclusion criteria (13 exclusions), candidate selection strategy (10 steps), candidate recommendation (`clarify` R0 recommended, shortlist of 6), allowlist activation goal, allowlist activation rules (17 rules), STATIC_ALLOWLIST future delta, kill switch relationship, dry-run/confirmation/digest relationship, execute route behavior delta, route governance strategy, future OpenAPI strategy, future allowed files, future forbidden files, future test matrix (28 tests), entry criteria (12 conditions), exit criteria (15 conditions) |
+| `docs/webui/phase-1g-04-tool-dry-run-controlled-execution-scope.md` | Updated with Phase 1G-04-13 completion record |
+| `docs/webui/phase-1-implementation-plan.md` | Updated Phase 1G-04-13 status |
+
+### What Was Frozen
+
+1. **First executable candidate goal**: the first tool that may later be considered for STATIC_ALLOWLIST activation; chosen for safety, determinism, testability, and minimal blast radius; candidate selection is not allowlist activation; allowlist activation is not execution
+2. **Candidate eligibility criteria**: 18 mandatory criteria including R0/R1, local-only, deterministic, no network, no provider, no secrets, no shell, no production state, bounded output, JSON-safe, redaction-compatible, side-effect-free, and on CANDIDATE_ALLOWLIST
+3. **Candidate exclusion criteria**: 13 exclusion categories covering R2+, network, provider, credentials, filesystem mutation, shell, long-running, production state, secrets, browser, frontend, audit, and non-candidate tools
+4. **Candidate selection strategy**: 10-step filtering process from 71-tool inventory → R0/R1 → local-only → no network/provider/secret/shell/mutation → bounded output → introspection-preferred → well-tested → simple arguments → redact-able output
+5. **Candidate recommendation**: `clarify` (R0) recommended as first executable candidate — pure computation, no I/O, no filesystem, no DB, no network, no state mutation, bounded input/output, comprehensive test coverage; shortlist of all 6 CANDIDATE_ALLOWLIST tools evaluated with safety assessment
+6. **Allowlist activation goal**: one-by-one, reviewed, committed as separate implementation phase, tested, reversible
+7. **Allowlist activation rules**: 17 rules including no wildcard, no category, no risk-tier, no auto-promotion, no config/env fill, exact canonicalName only, one commit per tool, governance tests required, no handler/dispatch/execution by itself
+8. **STATIC_ALLOWLIST future delta**: `frozenset()` → `frozenset({"clarify"})` if confirmed; not applied in Phase 1G-04-13; delta application requires 7 conditions
+9. **Kill switch relationship**: necessary but not sufficient; exact `"true"` required; independent from allowlist; all remaining gates still apply
+10. **Dry-run / confirmation / digest relationship**: allowlisting does not bypass any gate — dry-run, audit, confirmation token, digest verification, denylist, risk-tier, redaction all still required
+11. **Execute route behavior delta**: current baseline (blocked-only, empty allowlist) vs. future (single tool passes Gate 3, all other gates still apply); allowlist activation does not imply execution/handler/provider
+12. **Route governance strategy**: no change in Phase 1G-04-13; no change expected for future allowlist activation; 33/33/4/0/1/1 maintained
+13. **Future OpenAPI strategy**: no path change; 33 paths maintained; response schema refinements may occur without path changes
+14. **Future allowed files**: 7 backend files, 4 test files, 2 doc files, 2 optional new files (if independent module needed)
+15. **Future forbidden files**: 13 categories including frontend, agent, tools, toolsets, runtime, memory, review, .env, .claude, ~/.hermes, production state.db, OpenAPI YAML
+16. **Future test matrix**: 28 tests across allowlist, kill switch, gate stack, execution boundary, route governance, and delta management categories
+17. **Entry criteria**: 12 conditions for starting allowlist activation implementation
+18. **Exit criteria**: 15 conditions for completing allowlist activation implementation
+
+### What Was NOT Implemented
+
+- No STATIC_ALLOWLIST modification
+- No STATIC_ALLOWLIST population
+- No allowlist activation implementation
+- No tool handler integration
+- No tool dispatch implementation
+- No real tool execution
+- No confirmation token implementation
+- No digest verification implementation
+- No provider integration
+- No frontend execute UI implementation
+- No audit read API
+- No audit viewer
+- No code changes of any kind
+- No OpenAPI file changes
+- No route changes
+- No execute route behavior changes
+
+### Route Governance (unchanged from 1G-04-11/12)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+
+---
+
+*Phase 1G-04-13 First Executable Tool Candidate Selection / Allowlist Activation Scope Freeze: first executable tool candidate selection and allowlist activation policy scope definition only, docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no STATIC_ALLOWLIST modification, no allowlist activation, no token implementation, no digest verification implementation, no execute route behavior change, no tool handler call, no provider schema send, no Controlled Execution started.*
