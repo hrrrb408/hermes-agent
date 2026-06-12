@@ -1,0 +1,389 @@
+"""Tests for POST /api/dev/v1/tools/execute — Tool Execute Gate Skeleton API.
+
+Phase 1G-04-11: Backend Execute Gate Skeleton.
+
+All tests verify:
+  - Route exists and returns 200 blocked
+  - No tool handler calls
+  - No provider calls
+  - No dispatch calls
+  - No STATIC_ALLOWLIST mutation
+  - No raw secrets in response
+  - executionAllowed is always false
+  - dispatchAllowed is always false
+  - providerSchemaAllowed is always false
+  - toolHandlerCalled is always false
+  - providerApiCalled is always false
+  - executionStarted is always false
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+
+from hermes_cli.dev_web_api import create_dev_web_api_app
+from hermes_cli.dev_web_config import DevWebApiConfig
+from hermes_cli.dev_web_tool_policy import (
+    ALL_CANONICAL_TOOLS,
+    STATIC_ALLOWLIST,
+    STATIC_DENYLIST,
+)
+
+API = "/api/dev/v1"
+EXECUTE_URL = f"{API}/tools/execute"
+
+
+@pytest.fixture
+def client():
+    """TestClient without HERMES_HOME."""
+    config = DevWebApiConfig(hermes_home=None)
+    app = create_dev_web_api_app(config)
+    return TestClient(app)
+
+
+# ===================================================================
+# 1. Route Existence Tests
+# ===================================================================
+
+
+class TestRouteExistence:
+    """Verify the execute route exists."""
+
+    def test_execute_route_exists(self, client) -> None:
+        """POST /tools/execute must exist."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        assert resp.status_code == 200
+
+    def test_execute_route_returns_200_blocked_by_default(self, client) -> None:
+        """Default response is 200 with blocked decision."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "data" in body
+        data = body["data"]
+        assert data["decision"] == "blocked_by_kill_switch"
+        assert data["executionAllowed"] is False
+
+    def test_execute_route_uses_post_only(self, client) -> None:
+        """Only POST is allowed on /tools/execute."""
+        resp = client.get(EXECUTE_URL)
+        assert resp.status_code == 405
+
+
+# ===================================================================
+# 2. Request Validation Tests
+# ===================================================================
+
+
+class TestRequestValidation:
+    """Verify request validation."""
+
+    def test_invalid_json_returns_400(self, client) -> None:
+        resp = client.post(
+            EXECUTE_URL,
+            content=b"not json",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code in (400, 422)
+
+    def test_missing_canonical_name_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"argumentsPreview": {}})
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["code"] == "TOOL_EXECUTE_INVALID_CANONICAL_NAME"
+
+    def test_empty_canonical_name_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": ""})
+        assert resp.status_code == 400
+
+    def test_whitespace_canonical_name_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "   "})
+        assert resp.status_code == 400
+
+    def test_non_string_canonical_name_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": 123})
+        assert resp.status_code in (400, 422)
+
+    def test_arguments_preview_non_object_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": "string",
+        })
+        assert resp.status_code == 400
+
+    def test_arguments_preview_array_returns_400(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": [1, 2],
+        })
+        assert resp.status_code == 400
+
+    def test_null_arguments_preview_accepted(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": None,
+        })
+        assert resp.status_code == 200
+
+
+# ===================================================================
+# 3. Blocked Decision Tests
+# ===================================================================
+
+
+class TestBlockedDecisions:
+    """Verify blocked decisions for various tools."""
+
+    def test_unknown_tool_returns_200_blocked(self, client) -> None:
+        """Unknown tool returns 200 with blocked decision."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "nonexistent_tool_xyz"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+
+    def test_denylisted_tool_returns_blocked(self, client) -> None:
+        """Denylisted tool returns blocked."""
+        denylisted = next(iter(STATIC_DENYLIST))
+        resp = client.post(EXECUTE_URL, json={"canonicalName": denylisted})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_r0_tool_blocked(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_r1_tool_blocked(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "read_file"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_r2_tool_blocked(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "web_search"})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+    def test_with_all_fields_still_blocked(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": {"key": "value"},
+            "dryRunRequestId": "dr-001",
+            "dryRunDecisionDigest": "abc123",
+            "confirmationToken": "tok-001",
+            "requestId": "req-001",
+            "sourceContext": "test",
+            "uiOrigin": "test-panel",
+            "clientCreatedAt": "2026-01-01T00:00:00Z",
+        })
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+
+
+# ===================================================================
+# 4. Execution Flags Invariant Tests
+# ===================================================================
+
+
+class TestExecutionFlagsInvariant:
+    """All execution flags must always be false."""
+
+    def _assert_all_flags_false(self, data: dict) -> None:
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["providerApiCalled"] is False
+        assert data["executionAttempted"] is False
+        assert data["executionStarted"] is False
+        assert data["executionCompleted"] is False
+
+    def test_default_request_flags_false(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        self._assert_all_flags_false(resp.json()["data"])
+
+    def test_unknown_tool_flags_false(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "nonexistent"})
+        self._assert_all_flags_false(resp.json()["data"])
+
+    def test_denylisted_tool_flags_false(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "terminal"})
+        self._assert_all_flags_false(resp.json()["data"])
+
+    def test_with_arguments_flags_false(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": {"key": "value"},
+        })
+        self._assert_all_flags_false(resp.json()["data"])
+
+    def test_with_all_fields_flags_false(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": {"key": "value"},
+            "dryRunRequestId": "dr-001",
+            "dryRunDecisionDigest": "abc123",
+            "confirmationToken": "tok-001",
+        })
+        self._assert_all_flags_false(resp.json()["data"])
+
+    @pytest.mark.parametrize("name", list(ALL_CANONICAL_TOOLS)[:10])
+    def test_known_tools_flags_false(self, client, name: str) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": name})
+        self._assert_all_flags_false(resp.json()["data"])
+
+
+# ===================================================================
+# 5. Security Tests
+# ===================================================================
+
+
+class TestSecurityGuarantees:
+    """Verify no execution, no secrets, no side effects."""
+
+    def test_secret_arguments_are_redacted(self, client) -> None:
+        """Response never contains raw secret values."""
+        resp = client.post(EXECUTE_URL, json={
+            "canonicalName": "clarify",
+            "argumentsPreview": {
+                "api_key": "sk-abcdef1234567890",
+                "password": "super-secret-pass",
+                "safe_field": "this is safe",
+            },
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        text = json.dumps(body)
+        assert "sk-abcdef1234567890" not in text
+        assert "super-secret-pass" not in text
+
+    def test_no_provider_routes_called(self, client) -> None:
+        """Response confirms no provider calls."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        data = resp.json()["data"]
+        assert data["providerApiCalled"] is False
+        assert data["providerSchemaAllowed"] is False
+
+    def test_no_tool_handler_monkeypatch_called(self, client) -> None:
+        """toolHandlerCalled is false — no handler invoked."""
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        data = resp.json()["data"]
+        assert data["toolHandlerCalled"] is False
+
+    def test_static_allowlist_remains_empty(self, client) -> None:
+        """STATIC_ALLOWLIST must be empty before and after request."""
+        assert STATIC_ALLOWLIST == frozenset()
+        client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        assert STATIC_ALLOWLIST == frozenset()
+
+
+# ===================================================================
+# 6. Response Envelope Tests
+# ===================================================================
+
+
+class TestResponseEnvelope:
+    """Verify response envelope shape."""
+
+    def test_success_envelope_shape(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
+        body = resp.json()
+        assert "data" in body
+        assert "meta" in body
+        assert "requestId" in body["meta"]
+        assert "timestamp" in body["meta"]
+        data = body["data"]
+        expected_keys = {
+            "canonicalName", "exists", "riskTier", "decision",
+            "gateStatus", "auditStatus", "resultPreview",
+            "executionAttempted", "executionStarted", "executionCompleted",
+            "executionAllowed", "dispatchAllowed", "providerSchemaAllowed",
+            "toolHandlerCalled", "providerApiCalled",
+            "errorCode", "policyNotes", "reasonCodes",
+        }
+        assert set(data.keys()) == expected_keys
+
+    def test_error_envelope_shape(self, client) -> None:
+        resp = client.post(EXECUTE_URL, json={"canonicalName": ""})
+        body = resp.json()
+        assert "error" in body
+        error = body["error"]
+        assert "code" in error
+        assert "message" in error
+
+
+# ===================================================================
+# 7. Route Governance Tests
+# ===================================================================
+
+
+class TestRouteGovernance:
+    """Verify route governance for execute route."""
+
+    def test_business_paths_count_is_33(self, client) -> None:
+        """Runtime OpenAPI must report 33 business paths."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
+        assert len(paths) == 33
+
+    def test_execute_route_exists_in_openapi(self, client) -> None:
+        """POST /tools/execute must exist in OpenAPI."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        assert "/api/dev/v1/tools/execute" in spec["paths"]
+        assert "post" in spec["paths"]["/api/dev/v1/tools/execute"]
+
+    def test_post_routes_count_is_14(self, client) -> None:
+        """14 POST routes total (13 existing + 1 tool execute)."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        post_routes = [
+            p for p, m in spec["paths"].items()
+            if "post" in m and p.startswith("/api/dev/v1/")
+        ]
+        assert len(post_routes) == 14
+        assert "/api/dev/v1/tools/execute" in post_routes
+
+    def test_tool_write_routes_remain_0(self, client) -> None:
+        """No tool write routes exist."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        tool_routes = {p: m for p, m in spec["paths"].items() if p.startswith("/api/dev/v1/tools")}
+        write_routes = []
+        for path, methods in tool_routes.items():
+            for method in methods:
+                if method in ("put", "patch", "delete"):
+                    write_routes.append(f"{method.upper()} {path}")
+                if method == "post" and "dry-run" not in path and "execute" not in path:
+                    write_routes.append(f"POST {path}")
+        assert len(write_routes) == 0, f"Unexpected tool write routes: {write_routes}"
+
+    def test_tool_execution_routes_count_is_1(self, client) -> None:
+        """Exactly 1 tool execution route exists."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        execution_routes = [
+            p for p in spec["paths"]
+            if p.startswith("/api/dev/v1/tools") and "execute" in p
+        ]
+        assert len(execution_routes) == 1
+        assert "/api/dev/v1/tools/execute" in execution_routes
+
+    def test_tool_dry_run_routes_remain_1(self, client) -> None:
+        """Exactly 1 tool dry-run route exists."""
+        resp = client.get("/openapi.json")
+        spec = resp.json()
+        dry_run_routes = [
+            p for p in spec["paths"]
+            if p.startswith("/api/dev/v1/tools") and "dry-run" in p
+        ]
+        assert len(dry_run_routes) == 1

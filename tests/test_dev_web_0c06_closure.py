@@ -402,21 +402,21 @@ class TestOpenAPIContract:
     """Verify static and runtime OpenAPI consistency."""
 
     def test_business_paths_count(self, client):
-        """Phase 1G-04: 32 implemented business paths (11 base + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 4 agent run + 2 tool policy + 2 schema preview + 1 tool dry-run)."""
+        """Phase 1G-04-11: 33 implemented business paths (11 base + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 4 agent run + 2 tool policy + 2 schema preview + 1 tool dry-run + 1 tool execute)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_post_routes(self, client):
-        """Phase 1G-04: 13 POST routes (context/preview + 2 review dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 2 agent run + 1 tool dry-run)."""
+        """Phase 1G-04-11: 14 POST routes (context/preview + 2 review dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 2 agent run + 1 tool dry-run + 1 tool execute)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         post_routes = []
         for path, methods in spec["paths"].items():
             if "post" in methods and path.startswith("/api/dev/v1/"):
                 post_routes.append(path)
-        assert len(post_routes) == 13
+        assert len(post_routes) == 14
         assert "/api/dev/v1/context/preview" in post_routes
         assert "/api/dev/v1/reviews/{reviewId}/approve/dry-run" in post_routes
         assert "/api/dev/v1/reviews/{reviewId}/reject/dry-run" in post_routes
@@ -430,6 +430,7 @@ class TestOpenAPIContract:
         assert "/api/dev/v1/agent/runs" in post_routes
         assert "/api/dev/v1/agent/runs/{runId}/cancel" in post_routes
         assert "/api/dev/v1/tools/dry-run" in post_routes
+        assert "/api/dev/v1/tools/execute" in post_routes
 
     def test_no_write_schemas(self, client):
         resp = client.get("/openapi.json")
@@ -438,7 +439,6 @@ class TestOpenAPIContract:
         assert "write_memory" not in text
         assert "create_session" not in text
         assert "run_agent" not in text
-        assert "execute_tool" not in text
 
     def test_record_preview_described(self, client):
         """Verify recordPreview field exists in the static OpenAPI spec."""

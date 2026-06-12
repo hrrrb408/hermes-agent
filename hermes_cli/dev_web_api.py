@@ -178,6 +178,10 @@ from hermes_cli.dev_web_tool_dry_run_audit import (
     build_dry_run_audit_event as _build_dry_run_audit_event,
     write_dry_run_audit_event as _write_dry_run_audit_event,
 )
+from hermes_cli.dev_web_tool_execute import (
+    evaluate_tool_execute_request as _evaluate_tool_execute_request,
+    compute_execute_policy_summary as _compute_execute_policy_summary,
+)
 
 
 # ── Query parameter enums ──
@@ -306,6 +310,7 @@ def create_dev_web_api_app(
 
     # ── Routes ──
     _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service, preview_service, tool_policy_service)
+    _register_tool_execute_routes(app, config)
 
     return app
 
@@ -3101,5 +3106,253 @@ def _register_tool_dry_run_routes(
         # Step 10: Return safe response envelope
         return {
             "data": response_data,
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+
+def _register_tool_execute_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+) -> None:
+    """Register Phase 1G-04-11 tool execute gate skeleton routes.
+
+    Safety guarantees:
+      - Blocked-by-default: all requests return blocked
+      - No tool handler called
+      - No tool dispatch
+      - No provider schema sent
+      - No provider API called
+      - No STATIC_ALLOWLIST mutation
+      - No audit file write (skeleton only)
+      - No runtime mutation
+    """
+    prefix = config.api_prefix
+
+    # ── Error codes ──
+
+    _TOOL_EXECUTE_INVALID_REQUEST = "TOOL_EXECUTE_INVALID_REQUEST"
+    _TOOL_EXECUTE_INVALID_CANONICAL_NAME = "TOOL_EXECUTE_INVALID_CANONICAL_NAME"
+    _TOOL_EXECUTE_INVALID_ARGUMENTS = "TOOL_EXECUTE_INVALID_ARGUMENTS"
+    _TOOL_EXECUTE_INVALID_FIELD = "TOOL_EXECUTE_INVALID_FIELD"
+    _TOOL_EXECUTE_INTERNAL_ERROR = "TOOL_EXECUTE_INTERNAL_ERROR"
+
+    # Validation limits
+    _MAX_CANONICAL_NAME_LENGTH = 256
+    _MAX_DRY_RUN_REQUEST_ID_LENGTH = 256
+    _MAX_DRY_RUN_DIGEST_LENGTH = 256
+    _MAX_CONFIRMATION_TOKEN_LENGTH = 512
+    _MAX_REQUEST_ID_LENGTH = 128
+    _MAX_SOURCE_CONTEXT_LENGTH = 256
+    _MAX_UI_ORIGIN_LENGTH = 256
+    _MAX_CLIENT_CREATED_AT_LENGTH = 64
+
+    # ── POST /tools/execute ──
+
+    @app.post(
+        f"{prefix}/tools/execute",
+        tags=["Tools"],
+        summary="Execute gate skeleton (blocked-only)",
+        description="Evaluates a tool execution request through the gate stack. "
+        "This route is blocked-by-default in Phase 1G-04-11. No tool handler is called, "
+        "no dispatch occurs, no provider schema is sent, and no provider API is called. "
+        "All responses have executionAllowed=false, dispatchAllowed=false, "
+        "providerSchemaAllowed=false, toolHandlerCalled=false, providerApiCalled=false, "
+        "executionStarted=false. This route is classified as a Tool execution route, "
+        "not a Tool write route.",
+    )
+    def tool_execute(
+        request: Request,
+        body: dict[str, Any] = Body(default={}),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        # Step 1: Validate canonicalName
+        canonical_name = body.get("canonicalName")
+        if canonical_name is None:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_EXECUTE_INVALID_CANONICAL_NAME,
+                message="canonicalName is required.",
+                request_id=rid,
+            )
+        if not isinstance(canonical_name, str):
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_EXECUTE_INVALID_CANONICAL_NAME,
+                message="canonicalName must be a string.",
+                request_id=rid,
+            )
+        canonical_name = canonical_name.strip()
+        if not canonical_name:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_EXECUTE_INVALID_CANONICAL_NAME,
+                message="canonicalName must not be empty.",
+                request_id=rid,
+            )
+        if len(canonical_name) > _MAX_CANONICAL_NAME_LENGTH:
+            return _make_error_json(
+                status_code=400,
+                code=_TOOL_EXECUTE_INVALID_CANONICAL_NAME,
+                message=f"canonicalName exceeds maximum length ({_MAX_CANONICAL_NAME_LENGTH}).",
+                request_id=rid,
+            )
+
+        # Step 2: Validate argumentsPreview (optional, must be object if present)
+        arguments_preview = body.get("argumentsPreview")
+        if arguments_preview is not None:
+            if not isinstance(arguments_preview, dict):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_ARGUMENTS,
+                    message="argumentsPreview must be a JSON object or null.",
+                    request_id=rid,
+                )
+
+        # Step 3: Validate optional string fields
+        dry_run_request_id = body.get("dryRunRequestId")
+        if dry_run_request_id is not None:
+            if not isinstance(dry_run_request_id, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="dryRunRequestId must be a string or null.",
+                    request_id=rid,
+                )
+            if len(dry_run_request_id) > _MAX_DRY_RUN_REQUEST_ID_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"dryRunRequestId exceeds maximum length ({_MAX_DRY_RUN_REQUEST_ID_LENGTH}).",
+                    request_id=rid,
+                )
+
+        dry_run_decision_digest = body.get("dryRunDecisionDigest")
+        if dry_run_decision_digest is not None:
+            if not isinstance(dry_run_decision_digest, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="dryRunDecisionDigest must be a string or null.",
+                    request_id=rid,
+                )
+            if len(dry_run_decision_digest) > _MAX_DRY_RUN_DIGEST_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"dryRunDecisionDigest exceeds maximum length ({_MAX_DRY_RUN_DIGEST_LENGTH}).",
+                    request_id=rid,
+                )
+
+        confirmation_token = body.get("confirmationToken")
+        if confirmation_token is not None:
+            if not isinstance(confirmation_token, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="confirmationToken must be a string or null.",
+                    request_id=rid,
+                )
+            if len(confirmation_token) > _MAX_CONFIRMATION_TOKEN_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"confirmationToken exceeds maximum length ({_MAX_CONFIRMATION_TOKEN_LENGTH}).",
+                    request_id=rid,
+                )
+
+        request_id_field = body.get("requestId")
+        if request_id_field is not None:
+            if not isinstance(request_id_field, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="requestId must be a string or null.",
+                    request_id=rid,
+                )
+            if len(request_id_field) > _MAX_REQUEST_ID_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"requestId exceeds maximum length ({_MAX_REQUEST_ID_LENGTH}).",
+                    request_id=rid,
+                )
+
+        source_context = body.get("sourceContext")
+        if source_context is not None:
+            if not isinstance(source_context, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="sourceContext must be a string or null.",
+                    request_id=rid,
+                )
+            if len(source_context) > _MAX_SOURCE_CONTEXT_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"sourceContext exceeds maximum length ({_MAX_SOURCE_CONTEXT_LENGTH}).",
+                    request_id=rid,
+                )
+
+        ui_origin = body.get("uiOrigin")
+        if ui_origin is not None:
+            if not isinstance(ui_origin, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="uiOrigin must be a string or null.",
+                    request_id=rid,
+                )
+            if len(ui_origin) > _MAX_UI_ORIGIN_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"uiOrigin exceeds maximum length ({_MAX_UI_ORIGIN_LENGTH}).",
+                    request_id=rid,
+                )
+
+        client_created_at = body.get("clientCreatedAt")
+        if client_created_at is not None:
+            if not isinstance(client_created_at, str):
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message="clientCreatedAt must be a string or null.",
+                    request_id=rid,
+                )
+            if len(client_created_at) > _MAX_CLIENT_CREATED_AT_LENGTH:
+                return _make_error_json(
+                    status_code=400,
+                    code=_TOOL_EXECUTE_INVALID_FIELD,
+                    message=f"clientCreatedAt exceeds maximum length ({_MAX_CLIENT_CREATED_AT_LENGTH}).",
+                    request_id=rid,
+                )
+
+        # Step 4: Call the pure execute gate evaluator
+        try:
+            result = _evaluate_tool_execute_request(
+                canonical_name,
+                arguments_preview,
+                dry_run_request_id=dry_run_request_id,
+                dry_run_decision_digest=dry_run_decision_digest,
+                confirmation_token=confirmation_token,
+                request_id=request_id_field,
+                source_context=source_context,
+                ui_origin=ui_origin,
+                client_created_at=client_created_at,
+            )
+        except Exception as exc:
+            return _make_error_json(
+                status_code=500,
+                code=_TOOL_EXECUTE_INTERNAL_ERROR,
+                message="An unexpected error occurred during execute gate evaluation.",
+                request_id=rid,
+            )
+
+        # Step 5: Return safe response envelope
+        return {
+            "data": result.to_safe_dict(),
             "meta": {"requestId": rid, "timestamp": ts},
         }

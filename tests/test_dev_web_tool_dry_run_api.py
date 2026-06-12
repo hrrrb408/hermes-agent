@@ -427,12 +427,12 @@ class TestResponseEnvelope:
 class TestRouteGovernance:
     """Verify route governance counts updated correctly."""
 
-    def test_business_paths_count_is_32(self, client) -> None:
-        """Runtime OpenAPI must report 32 business paths."""
+    def test_business_paths_count_is_33(self, client) -> None:
+        """Runtime OpenAPI must report 33 business paths."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_tool_dry_run_route_exists(self, client) -> None:
         """POST /tools/dry-run must exist in OpenAPI."""
@@ -441,45 +441,42 @@ class TestRouteGovernance:
         assert "/api/dev/v1/tools/dry-run" in spec["paths"]
         assert "post" in spec["paths"]["/api/dev/v1/tools/dry-run"]
 
-    def test_post_routes_count_is_13(self, client) -> None:
-        """13 POST routes total (12 existing + 1 tool dry-run)."""
+    def test_post_routes_count_is_14(self, client) -> None:
+        """14 POST routes total (12 existing + 1 tool dry-run + 1 tool execute)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         post_routes = [
             p for p, m in spec["paths"].items()
             if "post" in m and p.startswith("/api/dev/v1/")
         ]
-        assert len(post_routes) == 13
+        assert len(post_routes) == 14
         assert "/api/dev/v1/tools/dry-run" in post_routes
 
     def test_tool_write_routes_remain_0(self, client) -> None:
-        """No tool write routes exist — only GET and dry-run POST."""
+        """No tool write routes exist — only GET, dry-run POST, and execute POST."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         tool_routes = {p: m for p, m in spec["paths"].items() if p.startswith("/api/dev/v1/tools")}
-        # Tool routes: policy (GET), catalog (GET), schemas (GET), schemas/{name} (GET), dry-run (POST)
+        # Tool routes: policy (GET), catalog (GET), schemas (GET), schemas/{name} (GET), dry-run (POST), execute (POST)
         write_routes = []
         for path, methods in tool_routes.items():
             for method in methods:
                 if method in ("put", "patch", "delete"):
                     write_routes.append(f"{method.upper()} {path}")
-                if method == "post" and "dry-run" not in path:
+                if method == "post" and "dry-run" not in path and "execute" not in path:
                     write_routes.append(f"POST {path}")
         assert len(write_routes) == 0, f"Unexpected tool write routes: {write_routes}"
 
-    def test_tool_execution_routes_remain_0(self, client) -> None:
-        """No tool execution routes exist."""
+    def test_tool_execution_route_count_is_1(self, client) -> None:
+        """Exactly 1 tool execution route exists (blocked-only)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
-        tool_paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/tools")]
-        # dry-run contains "run" but is not an execution route
-        execution_indicators = ["execute", "dispatch", "invoke", "call"]
-        for path in tool_paths:
-            for indicator in execution_indicators:
-                assert indicator not in path.lower(), f"Execution route found: {path}"
-            # "run" alone would match dry-run, so check for exact "run" segments
-            if "run" in path.lower() and "dry-run" not in path.lower():
-                pytest.fail(f"Execution route found: {path}")
+        execute_routes = [
+            p for p in spec["paths"]
+            if p.startswith("/api/dev/v1/tools") and "execute" in p
+        ]
+        assert len(execute_routes) == 1
+        assert "/api/dev/v1/tools/execute" in execute_routes
 
     def test_dry_run_route_count_is_1(self, client) -> None:
         """Exactly 1 tool dry-run route exists."""
@@ -794,7 +791,7 @@ class TestAuditFailureSafety:
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_no_audit_failure_500(self, client) -> None:
         """Audit failure must not cause 500."""

@@ -1685,6 +1685,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ToolDryRunResponse"
 
+  /tools/execute:
+    post:
+      operationId: toolExecute
+      tags: [Tools]
+      summary: Execute gate skeleton (blocked-only)
+      description: >
+        Evaluates a tool execution request through the gate stack.
+        This route is blocked-by-default in Phase 1G-04-11. No tool handler
+        is called, no dispatch occurs, no provider schema is sent, and no
+        provider API is called. All responses have executionAllowed=false,
+        dispatchAllowed=false, providerSchemaAllowed=false,
+        toolHandlerCalled=false, providerApiCalled=false,
+        executionStarted=false. This route is classified as a Tool execution
+        route, not a Tool write route. Tool write routes remain 0.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolExecuteRequest"
+      responses:
+        "200":
+          description: Execute gate evaluation (blocked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolExecuteResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolExecuteResponse"
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolExecuteResponse"
+
 components:
   schemas:
     # ── Common ──
@@ -3975,3 +4015,256 @@ components:
         redactedCount:
           type: integer
           description: Tools that would require argument redaction.
+
+    # ── Tool Execute (Phase 1G-04-11) ──
+
+    ToolExecuteRequest:
+      type: object
+      required: [canonicalName]
+      properties:
+        canonicalName:
+          type: string
+          maxLength: 256
+          description: The canonical tool name to evaluate for execution.
+        argumentsPreview:
+          type: object
+          nullable: true
+          description: Optional preview of arguments (redacted by server).
+        dryRunRequestId:
+          type: string
+          maxLength: 256
+          nullable: true
+          description: Request ID from a prior dry-run evaluation.
+        dryRunDecisionDigest:
+          type: string
+          maxLength: 256
+          nullable: true
+          description: SHA-256 digest binding to the prior dry-run decision.
+        confirmationToken:
+          type: string
+          maxLength: 512
+          nullable: true
+          description: Single-use confirmation token (future phase).
+        requestId:
+          type: string
+          maxLength: 128
+          nullable: true
+          description: Client-provided request ID for tracing.
+        sourceContext:
+          type: string
+          maxLength: 256
+          nullable: true
+          description: Origin context (e.g. panel name).
+        uiOrigin:
+          type: string
+          maxLength: 256
+          nullable: true
+          description: UI component that initiated the request.
+        clientCreatedAt:
+          type: string
+          maxLength: 64
+          nullable: true
+          description: Client-side timestamp (ISO 8601).
+
+    ToolExecuteDecision:
+      type: string
+      enum:
+        - blocked
+        - blocked_requires_dry_run
+        - blocked_requires_audit
+        - blocked_requires_confirmation
+        - blocked_by_kill_switch
+        - blocked_by_allowlist
+        - blocked_by_denylist
+        - blocked_by_risk_tier
+        - blocked_by_digest_mismatch
+      description: >
+        Execute gate decision. All values represent blocked states in Phase 1G-04-11.
+        would_execute, executed, and execution_failed are reserved for future phases
+        and are not returned by the current implementation.
+
+    ToolExecuteErrorCode:
+      type: string
+      enum:
+        - kill_switch_disabled
+        - agent_tools_disabled
+        - allowlist_missing
+        - tool_unknown
+        - tool_denylisted
+        - risk_tier_blocked
+        - dry_run_missing
+        - dry_run_digest_missing
+        - confirmation_missing
+        - confirmation_invalid
+        - digest_mismatch
+        - validation_failed
+        - execution_not_implemented
+        - internal_error
+      description: Machine-readable error code for the blocked decision.
+
+    ToolExecuteGateStatusItem:
+      type: object
+      required: [gate, passed]
+      properties:
+        gate:
+          type: string
+          description: Gate name (e.g. kill_switch, static_allowlist, known_tool).
+        passed:
+          type: boolean
+          description: Whether this gate passed.
+        errorCode:
+          type: string
+          nullable: true
+          description: Error code if gate failed, null if passed.
+
+    ToolExecuteAuditStatus:
+      type: object
+      required: [auditAttempted, auditWritten]
+      properties:
+        auditAttempted:
+          type: boolean
+          enum: [false]
+          description: Always false in skeleton phase. No audit is attempted.
+        auditWritten:
+          type: boolean
+          enum: [false]
+          description: Always false in skeleton phase.
+        auditError:
+          type: string
+          nullable: true
+          description: Always null in skeleton phase.
+
+    ToolExecuteResultPreview:
+      type: object
+      required: [available, previewSizeBytes, truncated]
+      properties:
+        available:
+          type: boolean
+          enum: [false]
+          description: Always false in skeleton phase.
+        previewType:
+          type: string
+          nullable: true
+          description: Always null in skeleton phase.
+        previewSizeBytes:
+          type: integer
+          enum: [0]
+          description: Always 0 in skeleton phase.
+        truncated:
+          type: boolean
+          enum: [false]
+          description: Always false in skeleton phase.
+
+    ToolExecuteData:
+      type: object
+      required:
+        - canonicalName
+        - exists
+        - riskTier
+        - decision
+        - gateStatus
+        - auditStatus
+        - resultPreview
+        - executionAttempted
+        - executionStarted
+        - executionCompleted
+        - executionAllowed
+        - dispatchAllowed
+        - providerSchemaAllowed
+        - toolHandlerCalled
+        - providerApiCalled
+        - errorCode
+        - policyNotes
+        - reasonCodes
+      properties:
+        canonicalName:
+          type: string
+          description: The requested tool canonical name.
+        exists:
+          type: boolean
+          description: Whether the tool exists in the policy inventory.
+        riskTier:
+          type: string
+          nullable: true
+          description: Risk tier string (e.g. "R0") or null if unknown.
+        decision:
+          $ref: "#/components/schemas/ToolExecuteDecision"
+        gateStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolExecuteGateStatusItem"
+          description: Ordered list of gate evaluations.
+        auditStatus:
+          $ref: "#/components/schemas/ToolExecuteAuditStatus"
+        resultPreview:
+          $ref: "#/components/schemas/ToolExecuteResultPreview"
+        executionAttempted:
+          type: boolean
+          enum: [false]
+          description: Always false. No execution is attempted in this phase.
+        executionStarted:
+          type: boolean
+          enum: [false]
+          description: Always false. No execution is started in this phase.
+        executionCompleted:
+          type: boolean
+          enum: [false]
+          description: Always false. No execution completes in this phase.
+        executionAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Execution requires separate phase approval.
+        dispatchAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. No dispatch occurs in this phase.
+        providerSchemaAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider schema sending requires separate phase.
+        toolHandlerCalled:
+          type: boolean
+          enum: [false]
+          description: Always false. No tool handler is called in this phase.
+        providerApiCalled:
+          type: boolean
+          enum: [false]
+          description: Always false. No provider API is called in this phase.
+        errorCode:
+          type: string
+          nullable: true
+          description: Machine-readable error code or null if no specific error.
+        policyNotes:
+          type: array
+          items:
+            type: string
+          description: Human-readable policy notes explaining the decision.
+        reasonCodes:
+          type: array
+          items:
+            type: string
+          description: Machine-readable reason codes for the decision.
+
+    ToolExecuteResponse:
+      type: object
+      required: [ok, data, error, meta]
+      properties:
+        ok:
+          type: boolean
+          description: True for success, false for error.
+        data:
+          $ref: "#/components/schemas/ToolExecuteData"
+          nullable: true
+        error:
+          type: object
+          nullable: true
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Error code.
+            message:
+              type: string
+              description: Human-readable error description.
+        meta:
+          $ref: "#/components/schemas/Meta"

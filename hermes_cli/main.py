@@ -7109,6 +7109,7 @@ def _webui_check_openapi(
         "/tools/schemas": {"get"},
         "/tools/schemas/{canonicalName}": {"get"},
         "/tools/dry-run": {"post"},
+        "/tools/execute": {"post"},
     }
 
     # Forbidden route path substrings
@@ -7143,12 +7144,14 @@ def _webui_check_openapi(
     # Forbidden methods on Tool routes (only GET is allowed)
     _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog", "/tools/schemas", "/tools/schemas/{canonicalName}"}
     _TOOL_DRY_RUN_ROUTES = {"/tools/dry-run"}
+    _TOOL_EXECUTION_ROUTES = {"/tools/execute"}
     _TOOL_DRY_RUN_ALLOWED_METHODS = {"post"}
+    _TOOL_EXECUTION_ALLOWED_METHODS = {"post"}
     _TOOL_ALLOWED_METHODS = {"get"}
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 32 else "FAIL",
+        "PASS" if path_count == 33 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7183,13 +7186,20 @@ def _webui_check_openapi(
                 forbidden_found.append(route_path)
                 break
         # Check for forbidden tool write / execute / dispatch routes
-        if route_path.startswith("/tools") and route_path not in _TOOL_GET_ROUTES and route_path not in _TOOL_DRY_RUN_ROUTES:
+        if route_path.startswith("/tools") and route_path not in _TOOL_GET_ROUTES and route_path not in _TOOL_DRY_RUN_ROUTES and route_path not in _TOOL_EXECUTION_ROUTES:
             forbidden_found.append(route_path)
             continue
         # Check for non-POST methods on Tool dry-run routes
         if route_path in _TOOL_DRY_RUN_ROUTES:
             actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
             extra_methods = actual_methods - _TOOL_DRY_RUN_ALLOWED_METHODS
+            if extra_methods:
+                forbidden_found.append(f"{route_path} ({', '.join(sorted(extra_methods))})")
+            continue
+        # Check for non-POST methods on Tool execution routes
+        if route_path in _TOOL_EXECUTION_ROUTES:
+            actual_methods = set(paths[route_path].keys()) & {"get", "post", "put", "patch", "delete"}
+            extra_methods = actual_methods - _TOOL_EXECUTION_ALLOWED_METHODS
             if extra_methods:
                 forbidden_found.append(f"{route_path} ({', '.join(sorted(extra_methods))})")
             continue
@@ -7277,6 +7287,10 @@ def _webui_check_openapi(
     tool_dry_run_routes_all = {
         "/tools/dry-run",
     }
+    # Phase 1G-04-11: Tool execute is an execution route (blocked-only, not a write route)
+    tool_execution_routes_all = {
+        "/tools/execute",
+    }
     tool_get_present = all(
         route in paths and "get" in paths[route]
         for route in tool_get_routes_all
@@ -7290,7 +7304,7 @@ def _webui_check_openapi(
     # Tool write routes must not exist
     tool_write_routes = [
         p for p in paths
-        if p.startswith("/tools") and p not in tool_get_routes_all and p not in tool_dry_run_routes_all
+        if p.startswith("/tools") and p not in tool_get_routes_all and p not in tool_dry_run_routes_all and p not in tool_execution_routes_all
     ]
     add_fn(
         "PASS" if not tool_write_routes else "FAIL",
@@ -7307,6 +7321,25 @@ def _webui_check_openapi(
         "PASS" if tool_dry_run_present else "FAIL",
         "Tool dry-run routes",
         "1" if tool_dry_run_present else "missing tool dry-run route",
+    )
+
+    # Phase 1G-04-11: Tool execution routes (blocked-only, separate from write routes)
+    tool_execution_present = all(
+        route in paths and "post" in paths[route]
+        for route in tool_execution_routes_all
+    )
+    add_fn(
+        "PASS" if tool_execution_present else "FAIL",
+        "Tool execution routes",
+        "1" if tool_execution_present else "missing tool execution route",
+    )
+
+    # Tool execution kill switch must be disabled by default
+    tool_execution_default_disabled = os.environ.get("HERMES_TOOL_EXECUTION_ENABLED", "").strip() == ""
+    add_fn(
+        "PASS" if tool_execution_default_disabled else "WARN",
+        "Tool execution kill switch",
+        "default disabled" if tool_execution_default_disabled else "enabled (development only)",
     )
 
     # Static allowlist must be empty

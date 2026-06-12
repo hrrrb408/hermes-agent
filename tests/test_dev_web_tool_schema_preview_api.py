@@ -419,11 +419,11 @@ class TestSchemaPreviewBoundarySafety:
 class TestSchemaPreviewOpenAPI:
     """Verify OpenAPI spec has the new paths and schemas."""
 
-    def test_openapi_paths_32(self, client):
+    def test_openapi_paths_33(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_schemas_catalog_path_exists(self, client):
         resp = client.get("/openapi.json")
@@ -467,8 +467,8 @@ class TestSchemaPreviewOpenAPI:
         assert "ToolSchemaPreviewItem" in schemas
         assert "ToolSchemaPreviewField" in schemas
 
-    def test_static_yaml_has_32_paths(self):
-        """Verify the static YAML file has exactly 32 paths."""
+    def test_static_yaml_has_33_paths(self):
+        """Verify the static YAML file has exactly 33 paths."""
         import pathlib
         import yaml
 
@@ -478,7 +478,7 @@ class TestSchemaPreviewOpenAPI:
         text = static_yaml.read_text(encoding="utf-8")
         spec = yaml.safe_load(text)
         paths = spec.get("paths", {})
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_static_yaml_has_new_schemas(self):
         """Verify the static YAML has new schema definitions."""
@@ -503,11 +503,11 @@ class TestSchemaPreviewOpenAPI:
 class TestSchemaPreviewRuntimeRoutes:
     """Verify runtime route counts."""
 
-    def test_runtime_routes_32(self, client):
+    def test_runtime_routes_33(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 32
+        assert len(paths) == 33
 
     def test_tool_get_routes_4(self, client):
         resp = client.get("/openapi.json")
@@ -522,13 +522,13 @@ class TestSchemaPreviewRuntimeRoutes:
         resp = client.get("/openapi.json")
         spec = resp.json()
         write_methods = {"post", "put", "patch", "delete"}
-        # Tool dry-run POST is non-mutating — excluded from write count
-        _TOOL_DRY_RUN_ROUTES = {"/api/dev/v1/tools/dry-run"}
+        # Tool dry-run POST and execute POST are non-mutating — excluded from write count
+        _TOOL_NON_WRITE_ROUTES = {"/api/dev/v1/tools/dry-run", "/api/dev/v1/tools/execute"}
         tool_write_routes = []
         for p, methods in spec["paths"].items():
             if not p.startswith("/api/dev/v1/tools"):
                 continue
-            if p in _TOOL_DRY_RUN_ROUTES:
+            if p in _TOOL_NON_WRITE_ROUTES:
                 continue
             actual = set(methods.keys()) & write_methods
             if actual:
