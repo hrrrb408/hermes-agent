@@ -863,3 +863,26 @@ The following are acceptable P2 risks that do not block this phase:
 ---
 
 *Phase 1G-04-25 Handler Lookup Scope Freeze: handler lookup goal, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with tool registry / catalog, handler descriptor structure, handler lookup ID strategy, lookup timing, failure contract, success contract, future execute gate order, OpenAPI scope, route governance scope, future allowed and forbidden files, future test matrix (47 tests), stale STATIC_ALLOWLIST assertion observation, entry criteria, and exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no handler lookup implementation, no Tool Handler call, no dispatch, no execution, no Provider Schema sending, no Provider API call, no audit read API, no audit viewer, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Implementation Record (Phase 1G-04-26)
+
+**Implemented in Phase 1G-04-26:**
+- Minimal safe handler lookup module (`dev_web_tool_handler_lookup.py`)
+- Safe handler descriptor builder with metadata-only fields
+- Safe handler metadata lookup (minimal static descriptor mapping for `clarify`)
+- `handlerLookupId` generation (prefix `hl_`)
+- Handler descriptor validation
+- Execute route handler lookup gates 46–56
+- Safe handler descriptor response fields
+- OpenAPI schema-only updates
+
+**Still not implemented:**
+- Tool Handler call
+- dispatch
+- execution
+- post-execution audit
+- provider call
+- Provider Schema sending
+- real Controlled Execution

@@ -4138,8 +4138,16 @@ components:
         - blocked_digest_expired
         - blocked_pre_execution_audit_not_implemented
         - blocked_handler_lookup_not_enabled
+        - blocked_handler_lookup_unavailable
+        - blocked_handler_lookup_not_found
+        - blocked_handler_lookup_not_allowlisted
+        - blocked_handler_lookup_registry_unavailable
+        - blocked_handler_lookup_descriptor_invalid
+        - blocked_handler_lookup_side_effect_risk
+        - blocked_handler_lookup_policy_mismatch
+        - blocked_dispatch_not_enabled
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-24.
+        Execute gate decision. All values represent blocked states in Phase 1G-04-26.
         would_execute, executed, and execution_failed are reserved for future phases
         and are not returned by the current implementation.
 
@@ -4202,6 +4210,15 @@ components:
         - pre_execution_audit_serialization_failed
         - pre_execution_audit_written_but_handler_lookup_not_enabled
         - handler_lookup_not_enabled
+        - handler_lookup_unavailable
+        - handler_lookup_not_found
+        - handler_lookup_not_allowlisted
+        - handler_lookup_registry_unavailable
+        - handler_lookup_descriptor_invalid
+        - handler_lookup_side_effect_risk
+        - handler_lookup_policy_mismatch
+        - handler_lookup_written_but_dispatch_not_enabled
+        - dispatch_not_enabled
         - validation_failed
         - execution_not_implemented
         - internal_error
@@ -4368,6 +4385,67 @@ components:
           description: >
             Pre-execution audit write status. "written" when audit was persisted,
             null when audit was not reached or failed.
+        handlerLookupId:
+          type: string
+          nullable: true
+          description: >
+            Handler lookup correlation ID (prefix "hl_"). Only present after
+            a successful handler lookup. Not an authorization credential.
+        handlerLookupStatus:
+          type: string
+          nullable: true
+          enum: [found, null]
+          description: >
+            Handler lookup status. "found" when handler metadata was resolved,
+            null when handler lookup was not reached or failed.
+        handlerDescriptor:
+          $ref: "#/components/schemas/ToolHandlerDescriptor"
+          description: >
+            Safe handler descriptor. Only present after successful handler lookup.
+            Contains metadata only — no callable references, no secrets.
+
+    ToolHandlerDescriptor:
+      type: object
+      description: >
+        Safe handler descriptor containing metadata only. No callable objects,
+        function references, secrets, or authorization credentials.
+      properties:
+        canonicalName:
+          type: string
+          description: Tool canonical name.
+        handlerId:
+          type: string
+          description: Handler identifier (e.g. "handler_clarify").
+        registryKey:
+          type: string
+          description: Tool registry key.
+        moduleName:
+          type: string
+          description: Module name (metadata only, not importable).
+        callableName:
+          type: string
+          description: Callable name (metadata only, not invocable).
+        riskTier:
+          type: string
+          description: Risk tier (e.g. "R0").
+        allowlisted:
+          type: boolean
+          description: Whether the tool is on the STATIC_ALLOWLIST.
+        dispatchAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Dispatch requires separate phase approval.
+        executionAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Execution requires separate phase approval.
+        providerSchemaAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider schema requires separate phase approval.
+        sideEffectFreeLookup:
+          type: boolean
+          description: Whether the lookup was side-effect-free.
 
     ToolExecuteResponse:
       type: object

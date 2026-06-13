@@ -61,6 +61,24 @@ DECISION_BLOCKED_DIGEST_EXPIRED = "blocked_digest_expired"
 DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED = "blocked_pre_execution_audit_not_implemented"
 DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED = "blocked_handler_lookup_not_enabled"
 
+# Phase 1G-04-26: Handler lookup decisions
+DECISION_BLOCKED_HANDLER_LOOKUP_UNAVAILABLE = "blocked_handler_lookup_unavailable"
+DECISION_BLOCKED_HANDLER_LOOKUP_NOT_FOUND = "blocked_handler_lookup_not_found"
+DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ALLOWLISTED = "blocked_handler_lookup_not_allowlisted"
+DECISION_BLOCKED_HANDLER_LOOKUP_REGISTRY_UNAVAILABLE = (
+    "blocked_handler_lookup_registry_unavailable"
+)
+DECISION_BLOCKED_HANDLER_LOOKUP_DESCRIPTOR_INVALID = (
+    "blocked_handler_lookup_descriptor_invalid"
+)
+DECISION_BLOCKED_HANDLER_LOOKUP_SIDE_EFFECT_RISK = (
+    "blocked_handler_lookup_side_effect_risk"
+)
+DECISION_BLOCKED_HANDLER_LOOKUP_POLICY_MISMATCH = (
+    "blocked_handler_lookup_policy_mismatch"
+)
+DECISION_BLOCKED_DISPATCH_NOT_ENABLED = "blocked_dispatch_not_enabled"
+
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
 DECISION_EXECUTED = "executed"
@@ -121,6 +139,18 @@ ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED = (
     "pre_execution_audit_written_but_handler_lookup_not_enabled"
 )
 ERROR_HANDLER_LOOKUP_NOT_ENABLED = "handler_lookup_not_enabled"
+# Phase 1G-04-26: Handler lookup error codes
+ERROR_HANDLER_LOOKUP_UNAVAILABLE = "handler_lookup_unavailable"
+ERROR_HANDLER_LOOKUP_NOT_FOUND = "handler_lookup_not_found"
+ERROR_HANDLER_LOOKUP_NOT_ALLOWLISTED = "handler_lookup_not_allowlisted"
+ERROR_HANDLER_LOOKUP_REGISTRY_UNAVAILABLE = "handler_lookup_registry_unavailable"
+ERROR_HANDLER_LOOKUP_DESCRIPTOR_INVALID = "handler_lookup_descriptor_invalid"
+ERROR_HANDLER_LOOKUP_SIDE_EFFECT_RISK = "handler_lookup_side_effect_risk"
+ERROR_HANDLER_LOOKUP_POLICY_MISMATCH = "handler_lookup_policy_mismatch"
+ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED = (
+    "handler_lookup_written_but_dispatch_not_enabled"
+)
+ERROR_DISPATCH_NOT_ENABLED = "dispatch_not_enabled"
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
 ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
@@ -179,6 +209,10 @@ GATE_PRE_EXECUTION_AUDIT_SERIALIZATION = "pre_execution_audit_serialization"
 GATE_PRE_EXECUTION_AUDIT_WRITE = "pre_execution_audit_write"
 GATE_PRE_EXECUTION_AUDIT_ID = "pre_execution_audit_id"
 GATE_HANDLER_LOOKUP = "handler_lookup"
+GATE_HANDLER_REGISTRY = "handler_registry"
+GATE_HANDLER_DESCRIPTOR_LOOKUP = "handler_descriptor_lookup"
+GATE_HANDLER_DESCRIPTOR_VALIDATION = "handler_descriptor_validation"
+GATE_HANDLER_ALLOWLIST = "handler_allowlist"
 GATE_DISPATCH = "dispatch"
 GATE_EXECUTION = "execution"
 GATE_VALIDATION = "validation"
@@ -288,6 +322,9 @@ class ToolExecuteResult:
     pre_execution_audit_id: str | None = None
     execute_request_id: str | None = None
     pre_execution_audit_status: str | None = None
+    handler_lookup_id: str | None = None
+    handler_lookup_status: str | None = None
+    handler_descriptor: dict[str, Any] | None = None
 
     def to_safe_dict(self) -> dict[str, Any]:
         """Convert to JSON-safe dict with all execution flags false."""
@@ -333,6 +370,12 @@ class ToolExecuteResult:
             result["executeRequestId"] = self.execute_request_id
         if self.pre_execution_audit_status is not None:
             result["preExecutionAuditStatus"] = self.pre_execution_audit_status
+        if self.handler_lookup_id is not None:
+            result["handlerLookupId"] = self.handler_lookup_id
+        if self.handler_lookup_status is not None:
+            result["handlerLookupStatus"] = self.handler_lookup_status
+        if self.handler_descriptor is not None:
+            result["handlerDescriptor"] = self.handler_descriptor
         return result
 
 
@@ -1177,19 +1220,66 @@ def evaluate_tool_execute_request(
         gate=GATE_PRE_EXECUTION_AUDIT, passed=True, error_code=None,
     ))
 
-    # ── Gate 43–45: Handler lookup / dispatch / execution still disabled ──
+    # ── Gate 46–53: Handler lookup (Phase 1G-04-26) ──
+    from hermes_cli.dev_web_tool_handler_lookup import (
+        lookup_handler_descriptor as _lookup_handler,
+        ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
+    )
+
+    lookup_result = _lookup_handler(
+        canonical_name,
+        allowlist=STATIC_ALLOWLIST,
+    )
+
+    if not lookup_result.found:
+        # Handler lookup failed — block
+        lookup_error = lookup_result.error_code or ERROR_HANDLER_LOOKUP_UNAVAILABLE
+        lookup_gate = lookup_result.gate or GATE_HANDLER_LOOKUP
+        lookup_decision = lookup_result.decision or DECISION_BLOCKED_HANDLER_LOOKUP_UNAVAILABLE
+
+        gates.append(ToolExecuteGateStatus(
+            gate=lookup_gate,
+            passed=False,
+            error_code=lookup_error,
+        ))
+        policy_notes.append(
+            f"Handler lookup failed: {lookup_error}. Execution remains blocked."
+        )
+        reason_codes.append(lookup_error)
+        error_code = lookup_error
+        decision = lookup_decision
+
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+            pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+            execute_request_id=pea_write_result.execute_request_id,
+            pre_execution_audit_status="written",
+        )
+
+    # Handler lookup succeeded
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_HANDLER_LOOKUP,
+        gate=GATE_HANDLER_LOOKUP, passed=True, error_code=None,
+    ))
+
+    # ── Gate 54–56: Dispatch / execution still disabled ──
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_DISPATCH,
         passed=False,
-        error_code=_PEA_WRITTEN_BLOCKED,
+        error_code=_HL_DISPATCH_BLOCKED,
     ))
     policy_notes.append(
-        "Pre-execution audit written, but handler lookup is not enabled "
+        "Handler lookup succeeded, but dispatch is not enabled "
         "in this phase. Execution remains blocked."
     )
-    reason_codes.append(_PEA_WRITTEN_BLOCKED)
-    error_code = _PEA_WRITTEN_BLOCKED
-    decision = DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED
+    reason_codes.append(_HL_DISPATCH_BLOCKED)
+    error_code = _HL_DISPATCH_BLOCKED
+    decision = DECISION_BLOCKED_DISPATCH_NOT_ENABLED
 
     return _build_blocked_result(
         canonical_name=canonical_name,
@@ -1202,6 +1292,9 @@ def evaluate_tool_execute_request(
         pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
         execute_request_id=pea_write_result.execute_request_id,
         pre_execution_audit_status="written",
+        handler_lookup_id=lookup_result.handler_lookup_id,
+        handler_lookup_status=lookup_result.handler_lookup_status,
+        handler_descriptor=lookup_result.handler_descriptor,
     )
 
 
@@ -1222,6 +1315,9 @@ def _build_blocked_result(
     pre_execution_audit_id: str | None = None,
     execute_request_id: str | None = None,
     pre_execution_audit_status: str | None = None,
+    handler_lookup_id: str | None = None,
+    handler_lookup_status: str | None = None,
+    handler_descriptor: dict[str, Any] | None = None,
 ) -> ToolExecuteResult:
     """Build a standard blocked ToolExecuteResult."""
     return ToolExecuteResult(
@@ -1255,6 +1351,9 @@ def _build_blocked_result(
         pre_execution_audit_id=pre_execution_audit_id,
         execute_request_id=execute_request_id,
         pre_execution_audit_status=pre_execution_audit_status,
+        handler_lookup_id=handler_lookup_id,
+        handler_lookup_status=handler_lookup_status,
+        handler_descriptor=handler_descriptor,
     )
 
 

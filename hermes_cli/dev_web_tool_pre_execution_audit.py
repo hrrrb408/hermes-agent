@@ -73,6 +73,10 @@ ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED = (
     "pre_execution_audit_written_but_handler_lookup_not_enabled"
 )
 ERROR_HANDLER_LOOKUP_NOT_ENABLED = "handler_lookup_not_enabled"
+ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED = (
+    "handler_lookup_written_but_dispatch_not_enabled"
+)
+ERROR_DISPATCH_NOT_ENABLED = "dispatch_not_enabled"
 
 DECISION_BLOCKED_PRE_EXECUTION_AUDIT_UNAVAILABLE = (
     "blocked_pre_execution_audit_unavailable"

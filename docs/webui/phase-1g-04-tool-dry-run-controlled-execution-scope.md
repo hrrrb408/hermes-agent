@@ -2013,6 +2013,62 @@ Froze the future handler lookup boundary as a docs-only scope document. Defined 
 
 ---
 
+## Phase 1G-04-26: Handler Lookup Minimal Implementation / Still Blocked-Only
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-26 |
+| Title | Handler Lookup Minimal Implementation / Still Blocked-Only |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-25, Phase 1G-04-24 |
+| Base commit | `5a52af17fce6614d01395defa8f83518caa9d63e` |
+
+### Implementation Summary
+
+- Handler lookup module implemented (`dev_web_tool_handler_lookup.py`)
+- Safe handler descriptor builder implemented (metadata only, no callable references)
+- Safe handler metadata lookup implemented (minimal static descriptor mapping for `clarify`)
+- `handlerLookupId` generated and returned (prefix `hl_`)
+- Handler descriptor returned with safe metadata only
+- Execute route handler lookup gates 46–56 implemented
+- Valid token + valid digest + pre-execution audit + handler lookup success → final block at `blocked_dispatch_not_enabled`
+- Handler lookup failure → fail-closed, no dispatch
+- Handler lookup success → still blocked at dispatch boundary
+- 76 new handler lookup tests
+- OpenAPI schema-only updates (no new paths/routes)
+
+### Still Not Implemented
+
+- Tool Handler call
+- Tool Dispatch
+- Tool Execution
+- Post-execution audit
+- Provider Schema sending
+- Provider API call
+- Frontend execute flow
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-26 Handler Lookup Minimal Implementation: safe handler descriptor lookup, handlerLookupId generation, handler descriptor validation, execute route handler lookup gates, safe response fields, and OpenAPI schema-only updates implemented. Execute remains blocked-only at the dispatch boundary. No Tool Handler call, dispatch, execution, post-execution audit, Provider Schema sending, Provider API call, frontend execution flow, audit read API, audit viewer, or real Controlled Execution was introduced.*
+
+---
+
 ## Phase 1G-04-18: Confirmation Token Issuance / Verification Scope Freeze
 
 | Field | Value |

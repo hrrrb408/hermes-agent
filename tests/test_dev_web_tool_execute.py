@@ -40,7 +40,7 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN,
     DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED,
-    DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED,
+    DECISION_BLOCKED_DISPATCH_NOT_ENABLED,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
     DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
@@ -78,6 +78,7 @@ from hermes_cli.dev_web_tool_execute import (
     GATE_RISK_TIER,
     GATE_STATIC_ALLOWLIST,
     GATE_HANDLER_LOOKUP,
+    GATE_DISPATCH,
     ToolExecuteAuditStatus,
     ToolExecuteGateStatus,
     ToolExecutePolicySummary,
@@ -961,10 +962,10 @@ class TestDryRunLookupIntegration:
         # Token verification is now implemented — fake token fails as not found
         assert result.error_code == ERROR_CONFIRMATION_NOT_FOUND
 
-    def test_valid_confirmation_token_still_blocks_at_digest_boundary(
+    def test_valid_confirmation_token_still_blocks_at_dispatch_boundary(
         self, tmp_hermes_home, audit_path,
     ) -> None:
-        """Valid confirmation token + valid digest still blocks at pre-execution audit boundary."""
+        """Valid confirmation token + valid digest + handler lookup still blocks at dispatch."""
         from datetime import datetime, timezone, timedelta
         from hermes_cli.dev_web_tool_execute_confirmation import (
             issue_confirmation_token,
@@ -975,8 +976,8 @@ class TestDryRunLookupIntegration:
         from hermes_cli.dev_web_tool_execute_digest import (
             build_dry_run_decision_digest_package,
         )
-        from hermes_cli.dev_web_tool_pre_execution_audit import (
-            ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED as _PEA_WRITTEN_BLOCKED,
+        from hermes_cli.dev_web_tool_handler_lookup import (
+            ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1036,7 +1037,7 @@ class TestDryRunLookupIntegration:
                 confirmation_token=token_result.raw_token,
                 hermes_home=str(tmp_hermes_home),
             )
-        # Valid token + valid digest passes verification, but still blocks
+        # Valid token + valid digest + handler lookup success, but still blocks
         assert result.execution_allowed is False
         assert result.dispatch_allowed is False
         assert result.provider_schema_allowed is False
@@ -1045,13 +1046,19 @@ class TestDryRunLookupIntegration:
         assert result.execution_started is False
         assert result.execution_attempted is False
         assert result.execution_completed is False
-        # Blocked at handler lookup boundary (pre-execution audit written)
-        assert result.error_code == _PEA_WRITTEN_BLOCKED
-        assert result.decision == DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED
+        # Blocked at dispatch boundary (handler lookup succeeded)
+        assert result.error_code == _HL_DISPATCH_BLOCKED
+        assert result.decision == DECISION_BLOCKED_DISPATCH_NOT_ENABLED
         # Pre-execution audit fields present
         assert result.pre_execution_audit_id is not None
         assert result.execute_request_id is not None
         assert result.pre_execution_audit_status == "written"
+        # Handler lookup fields present
+        assert result.handler_lookup_id is not None
+        assert result.handler_lookup_status == "found"
+        assert result.handler_descriptor is not None
+        assert result.handler_descriptor["canonicalName"] == "clarify"
+        assert result.handler_descriptor["dispatchAllowed"] is False
 
     def test_valid_token_is_consumed_and_reuse_blocks(
         self, tmp_hermes_home, audit_path,
@@ -1067,8 +1074,8 @@ class TestDryRunLookupIntegration:
         from hermes_cli.dev_web_tool_execute_digest import (
             build_dry_run_decision_digest_package,
         )
-        from hermes_cli.dev_web_tool_pre_execution_audit import (
-            ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED as _PEA_WRITTEN_BLOCKED,
+        from hermes_cli.dev_web_tool_handler_lookup import (
+            ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1117,7 +1124,7 @@ class TestDryRunLookupIntegration:
         )
         assert token_result.issued is True
 
-        # First use — token consumed but still blocked at handler lookup boundary
+        # First use — token consumed, handler lookup succeeds, blocks at dispatch
         with self._kill_switches_true():
             r1 = evaluate_tool_execute_request(
                 "clarify",
@@ -1127,7 +1134,8 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert r1.execution_allowed is False
-        assert r1.error_code == _PEA_WRITTEN_BLOCKED
+        assert r1.error_code == _HL_DISPATCH_BLOCKED
+        assert r1.decision == DECISION_BLOCKED_DISPATCH_NOT_ENABLED
 
         # Second use — token already consumed
         with self._kill_switches_true():
