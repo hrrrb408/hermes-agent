@@ -56,7 +56,9 @@ HEALTH_TIMEOUT=40
 HEALTH_INTERVAL=1
 PRODUCTION_HERMES_HOME="/Users/huangruibang/.hermes"
 DEFAULT_DEV_HERMES_HOME="/Users/huangruibang/Code/hermes-home-dev"
-PRODUCTION_GATEWAY_PID=69355
+# Phase 1G-10A refresh: host reboot changed the sealed production gateway PID from 69355 to 1962.
+# Keep this value pinned so the dev-only smoke harness fails closed on future PID drift.
+PRODUCTION_GATEWAY_PID=1962
 SMOKE_SPEC_REL="tests/smoke/phase-1g-04-30-execute-audit-smoke.spec.ts"
 
 # PIDs tracked by this script (only these are ever killed)

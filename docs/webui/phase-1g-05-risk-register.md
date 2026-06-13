@@ -405,6 +405,55 @@ non-technical P2 is recorded.
 
 ---
 
+## 12. Phase 1G-10A Addendum — Smoke Harness PID Baseline Refresh
+
+Phase 1G-10A (Smoke Harness PID Baseline Refresh, Refresh
+`SMOKE-PID-REFRESH-1G-10A-001`) closed the **P2 environment observation** raised
+by Phase 1G-10: the dev-only browser smoke harness
+(`scripts/run-dev-webui-execute-audit-smoke.sh`) had its read-only Production
+Gateway PID preflight pinned to a now-stale sealed value, so it was fail-closing
+on a correct, healthy gateway after the host reboot. The risk picture is
+unchanged at the technical level; the observation is closed for the current
+session.
+
+- **P2 environment observation: smoke harness PID baseline drift.** The sealed
+  baseline PID referenced through Phase 1G-09 (`69355`) no longer exists; the
+  observed healthy Production Gateway PID after the host reboot is `1962`.
+- **Old PID baseline:** `69355`.
+- **New observed PID:** `1962`.
+- **Root cause:** host reboot (`2026-06-14 04:02:09`) + `launchd` respawn of the
+  Production Gateway at `04:04:30` as PID `1962` (PPID = 1). Environmental drift,
+  not a phase action.
+- **Production health:** exactly one Production Gateway process running, with the
+  identical command `hermes_cli.main gateway run --replace`.
+- **Production action by Phase 1G-10A:** **none.** The Production Gateway was not
+  stopped, restarted, replaced, signaled, or reconfigured. PID `1962` was
+  unchanged before and after the phase.
+- **`~/.hermes` access:** **none.**
+- **Production `state.db` access:** **none.**
+- **Script refresh scope:** the pinned PID *value* in the dev-only smoke harness
+  was refreshed from `69355` to `1962`, with a comment recording the Phase 1G-10
+  host-reboot drift origin. This refresh is allowed **only** in Phase 1G-10A. The
+  smoke / preflight / production-count / ports-cleanup logic is **unchanged**;
+  the harness still **fails closed** on any future PID drift.
+- **Fresh smoke rerun required and performed:** smoke A `6 passed / 1 skipped /
+  0 failed`; smoke B `7 passed / 0 failed`; **Overall PASS**.
+- **No new P0. No new P1. No new technical P2.** P2-01 … P2-09 remain accepted,
+  non-blocking, and carry forward. None was aggravated by Phase 1G-10A.
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- **No provider impact.** No Provider Schema sent; no Provider API called.
+- **No release authorization impact.** Release authorization remains pending
+  human approver sign-off. Phase 1G-11 is **not started**.
+
+> **P2 environment observation closed for the current session by Phase 1G-10A.**
+> A future host reboot can cause a new PID drift; the smoke harness is expected
+> to **fail closed again** at that point, at which time a new refresh phase (or
+> an explicit operator decision) is required.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
 non-blocking; P2-09 human approver sign-off pending — release authorization
 dependency, not a technical Pilot failure). The technical P2 items do not block

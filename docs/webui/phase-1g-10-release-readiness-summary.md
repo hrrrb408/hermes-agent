@@ -176,6 +176,15 @@ rollout is approved.
 > exists. This is environmental host-reboot drift, not a release-work action.
 > Exactly one healthy production gateway is running with the identical command.
 
+> **Phase 1G-10A follow-up (Smoke Harness PID Baseline Refresh,
+> `SMOKE-PID-REFRESH-1G-10A-001`).** The dev-only browser smoke harness PID
+> baseline was refreshed from `69355` to `1962` to match the host-reboot drift
+> documented above, and fresh browser smoke was rerun successfully (Profile A 6
+> passed / 1 skipped; Profile B 7 passed; Overall PASS). No production, route,
+> allowlist, or provider change. Release authorization remains **pending human
+> approver sign-off**. See
+> `docs/webui/phase-1g-10a-smoke-harness-pid-baseline-refresh.md`.
+
 ---
 
 ## 11. Documentation Package Summary

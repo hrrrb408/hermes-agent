@@ -364,6 +364,16 @@ stops the closeout:
 > healthy production gateway running, no `~/.hermes` access, no production
 > `state.db` access, dev isolation intact, ports free — holds.
 
+> **Phase 1G-10A follow-up (Smoke Harness PID Baseline Refresh,
+> `SMOKE-PID-REFRESH-1G-10A-001`).** Because the host-reboot drift above left the
+> dev-only browser smoke harness pinned to the now-stale `69355`, Phase 1G-10A
+> refreshed that dev-only PID baseline to `1962` and reran fresh browser smoke
+> successfully (Profile A 6 passed / 1 skipped; Profile B 7 passed; Overall
+> PASS). No production / route / allowlist / provider change; the smoke
+> fail-closed preflight is preserved and will trigger again on future drift.
+> Release authorization remains **pending human approver sign-off**. See
+> `docs/webui/phase-1g-10a-smoke-harness-pid-baseline-refresh.md`.
+
 ---
 
 ## 17. Non-Reopening Declaration
