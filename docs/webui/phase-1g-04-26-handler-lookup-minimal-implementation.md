@@ -363,6 +363,8 @@ Updated `docs/webui/openapi/dev-web-api-v1.yaml`:
 
 ## Next Dependency
 
-Phase 1G-04-27 would be the dispatch scope freeze, but only after explicit user approval.
+Phase 1G-04-27 freezes the dispatch boundary.
 
 Phase 1G-04-27 still does not implement dispatch, Tool Handler call, execution, provider calls, post-execution audit, or real Controlled Execution.
+
+See `docs/webui/phase-1g-04-27-dispatch-scope.md` for the frozen dispatch scope.

@@ -2515,3 +2515,93 @@ Implemented minimal pre-execution audit backend while preserving the still-block
 | Tool dry-run routes | 1 |
 | Tool execution routes | 1 |
 | STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+## Phase 1G-04-27: Dispatch Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-27 |
+| Title | Dispatch Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-26 completed locally |
+| Base commit | `f9ad2b1ef05cae101b09f902767123669ba9d4f4` |
+
+### Summary
+
+Froze the future dispatch boundary as a docs-only scope document. Defined the dispatch goal, why dispatch is still not a Tool Handler call, why dispatch is still not execution, relationship with handler lookup, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with handler descriptor, relationship with the future Tool Handler call, dispatch plan / dispatch envelope structure, dispatch input, dispatch output, dispatch ID strategy (`dsp_`), dispatch timing, failure contract (12 error codes), success contract (still blocks at `blocked_tool_handler_call_not_enabled`), future execute gate order (Gates 57–69), future OpenAPI schema-only strategy, future route governance strategy, future allowed / forbidden files, future test matrix (58 tests), stale STATIC_ALLOWLIST assertion observation, and entry / exit criteria.
+
+### Delta from 1G-04-26
+
+- New doc: `docs/webui/phase-1g-04-27-dispatch-scope.md`
+- Updated: Phase 1G-04 scope doc, implementation plan, Phase 1G-04-26 doc next dependency
+
+### Dispatch Scope Frozen
+
+1. **Dispatch goal**: Create a safe dispatch plan / dispatch envelope for an already verified, audited, allowlisted, handler-resolved `canonicalName`; necessary but not sufficient; passing does not call a Tool Handler or execute
+2. **Not a Tool Handler call**: Dispatch is routing / planning only; must not invoke the handler callable, must not run tool code, must not send Provider Schema, must not call Provider API
+3. **Not execution**: Dispatch success must not imply execution, must not imply Provider Schema sending, must still block at the Tool Handler call boundary
+4. **Handler lookup relationship**: Dispatch may only be considered after handler lookup succeeds; must reference `handlerLookupId`, `handlerDescriptor`, `canonicalName`, `preExecutionAuditId`, `executeRequestId`, `dryRunRequestId`, `dryRunDecisionDigest`, `confirmationTokenId`; must not mutate lookup results or reinterpret descriptor as permission
+5. **Pre-execution audit relationship**: Dispatch may only be considered after a successful audit write and handler lookup; must not mutate audit records, must not be treated as execution proof
+6. **STATIC_ALLOWLIST relationship**: Dispatch allowed only for allowlisted `canonicalName`; must not broaden allowlist policy, must not dynamically allow, must not wildcard; `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`
+7. **Handler descriptor relationship**: Descriptor is input to dispatch planning, never an authorization credential; must not promote `dispatchAllowed` from the descriptor
+8. **Future Tool Handler call relationship**: Dispatch is a routing boundary; Tool Handler call is a later execution-adjacent boundary; dispatch success final block should be `blocked_tool_handler_call_not_enabled`
+9. **Dispatch plan / envelope structure**: `dispatchStatus`, `dispatchId`, `dispatchPlan` (canonicalName, handlerLookupId, handlerId, registryKey, toolsetName, routingMode, dispatchAllowed=false, toolHandlerCallAllowed=false, executionAllowed=false, providerSchemaAllowed=false, sideEffectFreeDispatch=true), `createdAt`; excludes raw arguments, token, tokenHash, credentials, Provider Schema, callable objects, secrets
+10. **Dispatch input**: Already-verified gate context (canonicalName, handlerLookupId + descriptor, preExecutionAuditId + executeRequestId, dryRunRequestId + dryRunDecisionDigest, confirmationTokenId, riskTier, policyVersion); not a new user payload, not raw arguments
+11. **Dispatch output**: Safe dispatch plan / dispatch envelope (metadata only); never a handler call, never an execution result
+12. **Dispatch ID strategy**: `dsp_` prefix, correlation-only, not an authorization credential, must not contain raw token / full tokenHash / raw arguments / handler callable identity beyond safe handlerId / registryKey
+13. **Dispatch timing**: Only after kill switch + allowlist + dry-run lookup + dry-run binding + token verification + token consumed + digest verification + pre-execution audit + handler lookup + explicit dispatch enable gate; before Tool Handler call / execution / post-execution audit / Provider Schema / Provider API
+14. **Failure contract**: 12 error codes (dispatch_not_enabled, dispatch_unavailable, dispatch_plan_unavailable, dispatch_plan_invalid, dispatch_handler_descriptor_missing, dispatch_handler_descriptor_mismatch, dispatch_not_allowlisted, dispatch_policy_mismatch, dispatch_side_effect_risk, dispatch_registry_mismatch, dispatch_written_but_tool_handler_call_not_enabled, tool_handler_call_not_enabled); all block before a Tool Handler call; all keep side-effect flags false
+15. **Success contract**: Returns dispatchId + dispatchStatus + safe dispatchPlan + correlation IDs; still blocks at `blocked_tool_handler_call_not_enabled`; dispatchAllowed=false, toolHandlerCallAllowed=false, executionAllowed=false, toolHandlerCalled=false, providerApiCalled=false, executionStarted=false
+16. **Future execute gate order**: Gates 57–69 (dispatch enable gate, handler lookup result available, dispatch plan source available, dispatch plan created, canonicalName validated, handler descriptor consistency validated, allowlist / policy metadata validated, side-effect-free metadata only, dispatchId generated, safe response fields available, block because Tool Handler call not enabled, Tool Handler still not called, execution still disabled)
+17. **OpenAPI strategy**: No path change; schema-only refinements (ToolExecuteData.dispatchId / dispatchStatus / dispatchPlan, dispatch_* error codes, blocked_tool_handler_call_not_enabled decision, dispatch gate names); 33 paths maintained
+18. **Route governance**: No route change; 33/33/4/0/1/1 maintained
+19. **Future allowed files**: 1 new module (`dev_web_tool_dispatch.py`) + 8 existing backend + 1 OpenAPI + 10 test files + 3 doc files
+20. **Future forbidden files**: frontend, agent, tools, toolsets, runtime, memory, review, .env, .claude, ~/.hermes, production state.db, provider config, gateway state, runtime audit JSONL
+21. **Future test matrix**: 58 tests (17 dispatch plan, 14 dispatch gates, 11 execute integration, 10 security invariants, 5 route governance, 1 optional cleanup)
+22. **Stale STATIC_ALLOWLIST assertion observation**: Two non-gate test files have stale `len(STATIC_ALLOWLIST) == 0` assertions; not fixed in this phase; recommended separate cleanup
+23. **Entry criteria**: 15 conditions
+24. **Exit criteria**: 16 conditions
+
+### Not Implemented
+
+- Dispatch
+- Dispatch adapter
+- Dispatch envelope runtime module
+- Tool Handler call
+- Tool Dispatch
+- Tool Execution
+- Post-execution audit
+- Provider Schema sending
+- Provider API call
+- Execute route behavior change
+- Token behavior change
+- Digest behavior change
+- Pre-execution audit behavior change
+- Handler lookup behavior change
+- OpenAPI change
+- New route
+- Route governance change
+- STATIC_ALLOWLIST modification
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-26)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-27 Dispatch Scope Freeze: dispatch goal, relationship with handler lookup, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with handler descriptor, relationship with future Tool Handler call, dispatch plan / envelope structure, dispatch input, dispatch output, dispatch ID strategy, dispatch timing, failure contract, success contract, future execute gate order, OpenAPI scope, route governance scope, future allowed and forbidden files, future test matrix (58 tests), stale STATIC_ALLOWLIST assertion observation, entry criteria, and exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dispatch implementation, no Tool Handler call, no dispatch, no execution, no Provider Schema sending, no Provider API call, no allowlist change, no Controlled Execution started.*
