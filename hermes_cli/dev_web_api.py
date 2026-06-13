@@ -3075,6 +3075,38 @@ def _register_tool_dry_run_routes(
         # Step 7: Compute duration
         duration_ms = int((time.monotonic() - start_time) * 1000)
 
+        # Step 7a: Compute dryRunDecisionDigest (Phase 1G-04-22)
+        dry_run_decision_digest = None
+        digest_algorithm = None
+        digest_package_version = None
+        canonicalization_version = None
+        try:
+            from hermes_cli.dev_web_tool_execute_digest import (
+                build_dry_run_decision_digest_package,
+                DIGEST_ALGORITHM as _DIGEST_ALGO,
+                DIGEST_PACKAGE_VERSION as _DIGEST_PKG_VER,
+                CANONICALIZATION_VERSION as _CANON_VER,
+            )
+            from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+            digest_pkg_result = build_dry_run_decision_digest_package(
+                dry_run_request_id=request_id_field or rid,
+                canonical_name=result.canonical_name,
+                risk_tier=result.risk_tier,
+                policy_decision=result.decision,
+                allowlisted=result.canonical_name in STATIC_ALLOWLIST,
+                audit_written=True,  # Will be true after audit write
+                audit_event_id=None,  # Not yet known
+                arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
+            )
+            if digest_pkg_result.success:
+                dry_run_decision_digest = digest_pkg_result.digest
+                digest_algorithm = _DIGEST_ALGO
+                digest_package_version = _DIGEST_PKG_VER
+                canonicalization_version = _CANON_VER
+        except Exception:
+            # Digest computation failure does not affect dry-run response
+            pass
+
         # Step 8: Build and write audit event (best-effort)
         audit_written = False
         audit_error_reason = None
@@ -3086,6 +3118,10 @@ def _register_tool_dry_run_routes(
                 request_id=request_id_field or rid,
                 duration_ms=duration_ms,
                 result_status="ok",
+                dry_run_decision_digest=dry_run_decision_digest,
+                digest_algorithm=digest_algorithm,
+                digest_package_version=digest_package_version,
+                canonicalization_version=canonicalization_version,
             )
             audit_result = _write_dry_run_audit_event(
                 event,
@@ -3105,6 +3141,12 @@ def _register_tool_dry_run_routes(
         # Step 9: Build response with audit status
         response_data = result.to_safe_dict()
         response_data["auditWritten"] = audit_written
+
+        # Step 9b: Include digest fields in response (Phase 1G-04-22)
+        response_data["dryRunDecisionDigest"] = dry_run_decision_digest
+        response_data["digestAlgorithm"] = digest_algorithm
+        response_data["digestPackageVersion"] = digest_package_version
+        response_data["canonicalizationVersion"] = canonicalization_version
 
         # If audit write failed, add a safe policy note
         if not audit_written and audit_error_reason:
@@ -3157,7 +3199,7 @@ def _register_tool_dry_run_routes(
                     risk_tier=result.risk_tier,
                     policy_version=None,
                     dry_run_request_id=request_id_field or rid,
-                    dry_run_decision_digest=None,
+                    dry_run_decision_digest=dry_run_decision_digest,
                     audit_event_id=audit_result.event_id if audit_result.written else None,
                     arguments_digest=None,
                     redaction_version=None,

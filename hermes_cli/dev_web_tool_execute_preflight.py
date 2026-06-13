@@ -93,7 +93,8 @@ class DryRunHistoricalLookupResult:
         it was written. This is documented as "presence = written".
       - policyVersion: Not stored in current audit events. Field is None.
       - argumentsDigest: Not stored in current audit events. Field is None.
-      - dryRunDecisionDigest: Not stored in current audit events. Field is None.
+      - dryRunDecisionDigest: Stored in audit events since Phase 1G-04-22.
+        Older events may not have this field, in which case it is None.
     """
 
     found: bool
@@ -312,7 +313,7 @@ def _build_found_result(
         risk_tier=record.get("riskTier"),
         policy_version=None,  # Not stored in current audit events
         arguments_digest=None,  # Not stored in current audit events
-        dry_run_decision_digest=None,  # Not stored in current audit events
+        dry_run_decision_digest=record.get("dryRunDecisionDigest"),  # Phase 1G-04-22
         audit_written=True,  # Presence in JSONL = written (mapping note)
         audit_event_id=record.get("eventId"),
         created_at=created_at,

@@ -407,6 +407,8 @@ class TestResponseEnvelope:
             "forbiddenFields", "missingRequiredFields",
             "executionAllowed", "dispatchAllowed",
             "providerSchemaAllowed", "auditWritten",
+            "dryRunDecisionDigest", "digestAlgorithm",
+            "digestPackageVersion", "canonicalizationVersion",
         }
         assert set(data.keys()) == expected_keys
 

@@ -846,4 +846,29 @@ The following are acceptable P2 risks that do not block this phase:
 
 ---
 
+## 23. Implementation Status (Phase 1G-04-22)
+
+The following items from this scope document were implemented in Phase 1G-04-22:
+
+- Minimal digest package builder implemented
+- Canonicalization (`json-sort-v1`) implemented
+- SHA-256 hex digest computation implemented
+- `dryRunDecisionDigest` generated during dry-run and persisted in audit events
+- `dryRunDecisionDigest` returned in dry-run response
+- `digestAlgorithm`, `digestPackageVersion`, `canonicalizationVersion` returned and persisted
+- Confirmation token issuance binds non-null `dryRunDecisionDigest`
+- Legacy null-digest tokens fail closed
+- Execute digest verification gates (28–37) implemented
+- Valid token + valid digest blocks at `blocked_pre_execution_audit_not_implemented`
+- OpenAPI schema-only updates applied
+
+Still not implemented:
+- Pre-execution audit
+- Post-execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider call
+- Real Controlled Execution
+
 *Phase 1G-04-21 Digest Verification Scope Freeze: digest verification goal, digest input package, canonicalization strategy, digest algorithm, source-of-truth strategy, current dryRunDecisionDigest gap, confirmation token relationship, future dry-run behavior delta, future execute digest gate order, failure contract, OpenAPI strategy, route governance, future allowed/forbidden files, future test matrix, entry/exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no digest verification implementation, no dry-run digest persistence implementation, no pre-execution audit, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*

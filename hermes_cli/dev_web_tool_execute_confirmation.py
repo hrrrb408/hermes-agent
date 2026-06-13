@@ -727,9 +727,20 @@ def verify_confirmation_token(
             safe_summary=_safe_token_summary(token_state),
         )
 
-    # Step 10: Verify dryRunDecisionDigest binding (when available)
+    # Step 10: Verify dryRunDecisionDigest binding
+    # Phase 1G-04-22: Token must have non-null dryRunDecisionDigest binding.
+    # Legacy tokens with null digest fail closed.
     stored_digest = token_state.get("dryRunDecisionDigest")
-    if stored_digest is not None and dry_run_decision_digest is not None:
+    if stored_digest is None:
+        # Legacy token with null digest binding → fail closed
+        return ConfirmationTokenVerificationResult(
+            verified=False,
+            consumed=False,
+            error_code=ERROR_CONFIRMATION_DIGEST_MISMATCH,
+            token_id=token_id,
+            safe_summary=_safe_token_summary(token_state),
+        )
+    if dry_run_decision_digest is not None:
         if stored_digest != dry_run_decision_digest:
             return ConfirmationTokenVerificationResult(
                 verified=False,

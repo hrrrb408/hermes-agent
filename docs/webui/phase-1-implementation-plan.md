@@ -1522,3 +1522,17 @@ Phase 1G-03-04 is completed.
 - Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes
 - Local docs-only commit created, not pushed
 - Next = future digest verification minimal implementation only after user approval; real Controlled Execution not started
+
+**Phase 1G-04-22 is completed locally.** Digest Verification Minimal Implementation / Still Blocked-Only.
+- `docs/webui/phase-1g-04-22-digest-verification-minimal-implementation.md` — Digest verification minimal implementation
+- `hermes_cli/dev_web_tool_execute_digest.py` — New digest module: canonical digest package builder, canonicalization, SHA-256 hex computation, multi-source verification
+- Digest package builder implemented; canonicalization implemented (`json-sort-v1`); digest algorithm `sha256:hex` implemented
+- `dryRunDecisionDigest` generated during dry-run; persisted in dry-run audit events; returned in dry-run response
+- Confirmation token issuance requires non-null `dryRunDecisionDigest`; legacy null-digest tokens fail closed
+- Execute route digest verification gates (28–37) implemented; valid token + valid digest blocks at `blocked_pre_execution_audit_not_implemented`
+- OpenAPI schema-only updates (new digest fields, error codes, decisions); OpenAPI paths remain 33
+- NOT implemented: pre-execution audit, post-execution audit, handler lookup, dispatch, execution, Provider Schema/API, frontend, audit read API, audit viewer, real Controlled Execution
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; Execute route remains blocked-only
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- Local commit created, not pushed
+- Next = pre-execution audit scope freeze only after user approval; real Controlled Execution not started

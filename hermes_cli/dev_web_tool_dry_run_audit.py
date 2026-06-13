@@ -221,6 +221,10 @@ def build_dry_run_audit_event(
     result_status: str = "ok",
     error_code: str | None = None,
     error_class: str | None = None,
+    dry_run_decision_digest: str | None = None,
+    digest_algorithm: str | None = None,
+    digest_package_version: str | None = None,
+    canonicalization_version: str | None = None,
 ) -> dict[str, Any]:
     """Build a safe audit event from a ToolDryRunResult.
 
@@ -320,6 +324,11 @@ def build_dry_run_audit_event(
         "resultStatus": result_status,
         "errorCode": error_code,
         "errorClass": error_class,
+        # Phase 1G-04-22: Digest verification fields
+        "dryRunDecisionDigest": dry_run_decision_digest,
+        "digestAlgorithm": digest_algorithm,
+        "digestPackageVersion": digest_package_version,
+        "canonicalizationVersion": canonicalization_version,
     }
 
     # Defensive: enforce hard invariants

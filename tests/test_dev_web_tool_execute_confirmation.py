@@ -106,6 +106,7 @@ def _make_dry_run_record(
     risk_tier="R0",
     expires_at=None,
     audit_event_id="evt-001",
+    dry_run_decision_digest="sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234",
 ):
     """Helper to create a DryRunHistoricalLookupResult for testing."""
     from datetime import timedelta
@@ -119,7 +120,7 @@ def _make_dry_run_record(
         risk_tier=risk_tier,
         policy_version=None,
         arguments_digest=None,
-        dry_run_decision_digest=None,
+        dry_run_decision_digest=dry_run_decision_digest,
         audit_written=audit_written,
         audit_event_id=audit_event_id,
         created_at=ts.isoformat(),
@@ -388,6 +389,9 @@ class TestTokenIssuance:
 class TestTokenVerification:
     """Tests for verify_confirmation_token()."""
 
+    # Stable test digest value for Phase 1G-04-22 digest binding
+    _TEST_DIGEST = "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234"
+
     def _issue_and_get_raw_token(self, tmp_hermes_home, now, **kwargs):
         """Helper to issue a token and return the raw token + result."""
         record = _make_dry_run_record(**kwargs)
@@ -397,6 +401,7 @@ class TestTokenVerification:
             canonical_name=kwargs.get("canonical_name", "clarify"),
             risk_tier=kwargs.get("risk_tier", "R0"),
             dry_run_request_id=kwargs.get("dry_run_request_id", "dr-req-001"),
+            dry_run_decision_digest=self._TEST_DIGEST,
             now=now,
         )
         assert result.issued is True
@@ -614,6 +619,7 @@ class TestTokenVerification:
             risk_tier="R0",
             policy_version="v1",
             dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=self._TEST_DIGEST,
             now=now,
         )
         assert issue_result.issued is True
@@ -639,6 +645,7 @@ class TestTokenVerification:
             risk_tier="R0",
             dry_run_request_id="dr-req-001",
             audit_event_id="evt-001",
+            dry_run_decision_digest=self._TEST_DIGEST,
             now=now,
         )
         assert issue_result.issued is True
@@ -664,6 +671,7 @@ class TestTokenVerification:
             risk_tier="R0",
             dry_run_request_id="dr-req-001",
             arguments_digest="sha256:abc123",
+            dry_run_decision_digest=self._TEST_DIGEST,
             now=now,
         )
         assert issue_result.issued is True
@@ -885,3 +893,169 @@ class TestTokenHashAndId:
         """Each raw token is unique."""
         tokens = {_generate_raw_token() for _ in range(100)}
         assert len(tokens) == 100
+
+
+# ===================================================================
+# 5. Phase 1G-04-22: Digest Binding Tests
+# ===================================================================
+
+
+_TEST_DIGEST = "sha256:abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234"
+
+
+class TestDigestBinding:
+    """Tests for Phase 1G-04-22 digest binding in token issuance and verification."""
+
+    def test_issuance_binds_non_null_digest(self, tmp_hermes_home, now):
+        """Token issuance binds non-null dryRunDecisionDigest."""
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        assert result.issued is True
+        # Verify the digest was stored in the token record
+        import json
+        token_dir = tmp_hermes_home / _TOKEN_DIR_RELATIVE
+        token_file = token_dir / _TOKEN_FILENAME
+        with open(token_file) as f:
+            for line in f:
+                rec = json.loads(line.strip())
+                if rec.get("eventType") == "issued" and rec.get("tokenId") == result.token_id:
+                    assert rec.get("dryRunDecisionDigest") == _TEST_DIGEST
+                    break
+
+    def test_verification_fails_when_token_digest_missing(self, tmp_hermes_home, now):
+        """Legacy token with null digest binding fails closed."""
+        # Issue a token WITHOUT digest binding (legacy)
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=None,  # Legacy: no digest
+            now=now,
+        )
+        assert result.issued is True
+        # Verify: should fail because stored_digest is None
+        v = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            now=now,
+        )
+        assert v.verified is False
+        assert v.error_code == ERROR_CONFIRMATION_DIGEST_MISMATCH
+
+    def test_verification_fails_when_digest_mismatch(self, tmp_hermes_home, now):
+        """Token digest mismatch blocks."""
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        assert result.issued is True
+        v = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            dry_run_decision_digest="sha256:different0000000000000000000000000000000000000000000000000000",
+            now=now,
+        )
+        assert v.verified is False
+        assert v.error_code == ERROR_CONFIRMATION_DIGEST_MISMATCH
+
+    def test_verification_succeeds_when_digest_matches(self, tmp_hermes_home, now):
+        """Token verification succeeds when digest matches."""
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        assert result.issued is True
+        v = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        assert v.verified is True
+
+    def test_token_reuse_still_blocks_after_digest_binding(self, tmp_hermes_home, now):
+        """Token reuse still blocks with digest binding."""
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        assert result.issued is True
+        # First use
+        v1 = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            now=now,
+            consume=True,
+        )
+        assert v1.verified is True
+        # Reuse
+        v2 = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            now=now,
+            consume=True,
+        )
+        assert v2.verified is False
+        assert v2.error_code == ERROR_CONFIRMATION_REUSED
+
+    def test_token_consumption_works_after_digest_binding(self, tmp_hermes_home, now):
+        """Token consumption works correctly with digest binding."""
+        record = _make_dry_run_record()
+        result = issue_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            dry_run_record=record,
+            canonical_name="clarify",
+            risk_tier="R0",
+            dry_run_request_id="dr-req-001",
+            dry_run_decision_digest=_TEST_DIGEST,
+            now=now,
+        )
+        v = verify_confirmation_token(
+            hermes_home=tmp_hermes_home,
+            raw_token=result.raw_token,
+            dry_run_request_id="dr-req-001",
+            canonical_name="clarify",
+            now=now,
+            consume=True,
+        )
+        assert v.verified is True
+        assert v.consumed is True

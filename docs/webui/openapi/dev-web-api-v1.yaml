@@ -4002,6 +4002,27 @@ components:
           description: >
             ISO 8601 timestamp when the confirmation token expires. Only present when
             a confirmation token was issued. Token TTL is at most 5 minutes.
+        dryRunDecisionDigest:
+          type: string
+          nullable: true
+          description: >
+            SHA-256 digest binding the dry-run decision package. Present when
+            digest computation succeeds. Uses sha256:<hex> format.
+        digestAlgorithm:
+          type: string
+          nullable: true
+          description: >
+            Algorithm used for dryRunDecisionDigest computation (e.g. "sha256").
+        digestPackageVersion:
+          type: string
+          nullable: true
+          description: >
+            Version of the digest package schema used for dryRunDecisionDigest.
+        canonicalizationVersion:
+          type: string
+          nullable: true
+          description: >
+            Version of the canonicalization algorithm used for dryRunDecisionDigest.
 
     ToolDryRunResponse:
       type: object
@@ -4110,8 +4131,14 @@ components:
         - blocked_by_digest_mismatch
         - blocked_requires_confirmation_token
         - blocked_digest_verification_not_implemented
+        - blocked_digest_missing
+        - blocked_digest_unavailable
+        - blocked_digest_canonicalization_failed
+        - blocked_digest_stale
+        - blocked_digest_expired
+        - blocked_pre_execution_audit_not_implemented
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-20.
+        Execute gate decision. All values represent blocked states in Phase 1G-04-22.
         would_execute, executed, and execution_failed are reserved for future phases
         and are not returned by the current implementation.
 
@@ -4156,6 +4183,16 @@ components:
         - confirmation_audit_not_written
         - digest_verification_not_implemented
         - digest_mismatch
+        - digest_missing
+        - digest_unavailable
+        - digest_historical_missing
+        - digest_token_binding_missing
+        - digest_request_mismatch
+        - digest_token_mismatch
+        - digest_execute_mismatch
+        - digest_stale
+        - digest_expired
+        - digest_verified_but_pre_execution_audit_not_implemented
         - validation_failed
         - execution_not_implemented
         - internal_error

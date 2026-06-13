@@ -39,6 +39,7 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_REQUIRES_CONFIRMATION,
     DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN,
     DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
+    DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
     DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
@@ -961,26 +962,53 @@ class TestDryRunLookupIntegration:
     def test_valid_confirmation_token_still_blocks_at_digest_boundary(
         self, tmp_hermes_home, audit_path,
     ) -> None:
-        """Valid confirmation token still blocks at digest verification boundary."""
-        from datetime import datetime, timezone
+        """Valid confirmation token + valid digest still blocks at pre-execution audit boundary."""
+        from datetime import datetime, timezone, timedelta
         from hermes_cli.dev_web_tool_execute_confirmation import (
             issue_confirmation_token,
         )
         from hermes_cli.dev_web_tool_execute_preflight import (
             DryRunHistoricalLookupResult,
         )
+        from hermes_cli.dev_web_tool_execute_digest import (
+            build_dry_run_decision_digest_package,
+            ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED as _DIGEST_BLOCKED,
+        )
+
+        # Build a real digest with a fixed timestamp
+        fixed_ts = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+        # Compute expires_at to match what preflight lookup will compute
+        fixed_dt = datetime.fromisoformat(fixed_ts)
+        if fixed_dt.tzinfo is None:
+            fixed_dt = fixed_dt.replace(tzinfo=timezone.utc)
+        computed_expires = (fixed_dt + timedelta(seconds=300)).isoformat()
+        digest_pkg = build_dry_run_decision_digest_package(
+            dry_run_request_id="dr-token-valid",
+            canonical_name="clarify",
+            risk_tier="R0",
+            policy_decision="would_allow",
+            allowlisted=True,
+            audit_written=True,
+            audit_event_id="evt-test-001",
+            arguments=None,
+            created_at=fixed_ts,
+            expires_at=computed_expires,
+        )
+        assert digest_pkg.success
+        test_digest = digest_pkg.digest
 
         self._write_events(audit_path, [
-            _make_audit_event(request_id="dr-token-valid"),
+            {**_make_audit_event(request_id="dr-token-valid", timestamp=fixed_ts),
+             "dryRunDecisionDigest": test_digest},
         ])
-        # Issue a real token
+        # Issue a real token WITH digest binding
         now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
         dr_record = DryRunHistoricalLookupResult(
             found=True, error_code=None,
             dry_run_request_id="dr-token-valid",
             canonical_name="clarify", decision="would_allow",
             risk_tier="R0", policy_version=None, arguments_digest=None,
-            dry_run_decision_digest=None, audit_written=True,
+            dry_run_decision_digest=test_digest, audit_written=True,
             audit_event_id=None, created_at=now.isoformat(),
             expires_at=None, lookup_source="test", redaction_status="none",
         )
@@ -990,6 +1018,7 @@ class TestDryRunLookupIntegration:
             canonical_name="clarify",
             risk_tier="R0",
             dry_run_request_id="dr-token-valid",
+            dry_run_decision_digest=test_digest,
             now=now,
         )
         assert token_result.issued is True
@@ -998,10 +1027,11 @@ class TestDryRunLookupIntegration:
             result = evaluate_tool_execute_request(
                 "clarify",
                 dry_run_request_id="dr-token-valid",
+                dry_run_decision_digest=test_digest,
                 confirmation_token=token_result.raw_token,
                 hermes_home=str(tmp_hermes_home),
             )
-        # Valid token passes verification, but still blocks
+        # Valid token + valid digest passes verification, but still blocks
         assert result.execution_allowed is False
         assert result.dispatch_allowed is False
         assert result.provider_schema_allowed is False
@@ -1010,24 +1040,50 @@ class TestDryRunLookupIntegration:
         assert result.execution_started is False
         assert result.execution_attempted is False
         assert result.execution_completed is False
-        # Blocked at digest verification boundary
-        assert result.error_code == ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
-        assert result.decision == DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+        # Blocked at pre-execution audit boundary
+        assert result.error_code == _DIGEST_BLOCKED
+        assert result.decision == DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
 
     def test_valid_token_is_consumed_and_reuse_blocks(
         self, tmp_hermes_home, audit_path,
     ) -> None:
         """Valid token consumed on verification, reuse blocks."""
-        from datetime import datetime, timezone
+        from datetime import datetime, timezone, timedelta
         from hermes_cli.dev_web_tool_execute_confirmation import (
             issue_confirmation_token,
         )
         from hermes_cli.dev_web_tool_execute_preflight import (
             DryRunHistoricalLookupResult,
         )
+        from hermes_cli.dev_web_tool_execute_digest import (
+            build_dry_run_decision_digest_package,
+            ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED as _DIGEST_BLOCKED,
+        )
+
+        # Build a real digest with a fixed timestamp
+        fixed_ts = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+        fixed_dt = datetime.fromisoformat(fixed_ts)
+        if fixed_dt.tzinfo is None:
+            fixed_dt = fixed_dt.replace(tzinfo=timezone.utc)
+        computed_expires = (fixed_dt + timedelta(seconds=300)).isoformat()
+        digest_pkg = build_dry_run_decision_digest_package(
+            dry_run_request_id="dr-reuse-test",
+            canonical_name="clarify",
+            risk_tier="R0",
+            policy_decision="would_allow",
+            allowlisted=True,
+            audit_written=True,
+            audit_event_id="evt-test-001",
+            arguments=None,
+            created_at=fixed_ts,
+            expires_at=computed_expires,
+        )
+        assert digest_pkg.success
+        test_digest = digest_pkg.digest
 
         self._write_events(audit_path, [
-            _make_audit_event(request_id="dr-reuse-test"),
+            {**_make_audit_event(request_id="dr-reuse-test", timestamp=fixed_ts),
+             "dryRunDecisionDigest": test_digest},
         ])
         now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
         dr_record = DryRunHistoricalLookupResult(
@@ -1035,7 +1091,7 @@ class TestDryRunLookupIntegration:
             dry_run_request_id="dr-reuse-test",
             canonical_name="clarify", decision="would_allow",
             risk_tier="R0", policy_version=None, arguments_digest=None,
-            dry_run_decision_digest=None, audit_written=True,
+            dry_run_decision_digest=test_digest, audit_written=True,
             audit_event_id=None, created_at=now.isoformat(),
             expires_at=None, lookup_source="test", redaction_status="none",
         )
@@ -1045,26 +1101,29 @@ class TestDryRunLookupIntegration:
             canonical_name="clarify",
             risk_tier="R0",
             dry_run_request_id="dr-reuse-test",
+            dry_run_decision_digest=test_digest,
             now=now,
         )
         assert token_result.issued is True
 
-        # First use — token consumed but still blocked at digest boundary
+        # First use — token consumed but still blocked at pre-execution audit boundary
         with self._kill_switches_true():
             r1 = evaluate_tool_execute_request(
                 "clarify",
                 dry_run_request_id="dr-reuse-test",
+                dry_run_decision_digest=test_digest,
                 confirmation_token=token_result.raw_token,
                 hermes_home=str(tmp_hermes_home),
             )
         assert r1.execution_allowed is False
-        assert r1.error_code == ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+        assert r1.error_code == _DIGEST_BLOCKED
 
         # Second use — token already consumed
         with self._kill_switches_true():
             r2 = evaluate_tool_execute_request(
                 "clarify",
                 dry_run_request_id="dr-reuse-test",
+                dry_run_decision_digest=test_digest,
                 confirmation_token=token_result.raw_token,
                 hermes_home=str(tmp_hermes_home),
             )

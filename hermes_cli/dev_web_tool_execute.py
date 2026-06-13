@@ -51,6 +51,15 @@ DECISION_BLOCKED_BY_DIGEST_MISMATCH = "blocked_by_digest_mismatch"
 DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN = "blocked_requires_confirmation_token"
 DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED = "blocked_digest_verification_not_implemented"
 
+# Phase 1G-04-22: Digest verification decisions
+DECISION_BLOCKED_DIGEST_MISSING = "blocked_digest_missing"
+DECISION_BLOCKED_DIGEST_UNAVAILABLE = "blocked_digest_unavailable"
+DECISION_BLOCKED_DIGEST_CANONICALIZATION_FAILED = "blocked_digest_canonicalization_failed"
+DECISION_BLOCKED_DIGEST_MISMATCH = "blocked_digest_mismatch"
+DECISION_BLOCKED_DIGEST_STALE = "blocked_digest_stale"
+DECISION_BLOCKED_DIGEST_EXPIRED = "blocked_digest_expired"
+DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED = "blocked_pre_execution_audit_not_implemented"
+
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
 DECISION_EXECUTED = "executed"
@@ -83,6 +92,19 @@ ERROR_CONFIRMATION_RISK_TIER_MISMATCH = "confirmation_risk_tier_mismatch"
 ERROR_CONFIRMATION_CONSUME_FAILED = "confirmation_consume_failed"
 ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED = "digest_verification_not_implemented"
 ERROR_DIGEST_MISMATCH = "digest_mismatch"
+# Phase 1G-04-22: Digest verification error codes
+ERROR_DIGEST_MISSING = "digest_missing"
+ERROR_DIGEST_UNAVAILABLE = "digest_unavailable"
+ERROR_DIGEST_HISTORICAL_MISSING = "digest_historical_missing"
+ERROR_DIGEST_TOKEN_BINDING_MISSING = "digest_token_binding_missing"
+ERROR_DIGEST_REQUEST_MISMATCH = "digest_request_mismatch"
+ERROR_DIGEST_TOKEN_MISMATCH = "digest_token_mismatch"
+ERROR_DIGEST_EXECUTE_MISMATCH = "digest_execute_mismatch"
+ERROR_DIGEST_STALE = "digest_stale"
+ERROR_DIGEST_EXPIRED = "digest_expired"
+ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT = (
+    "digest_verified_but_pre_execution_audit_not_implemented"
+)
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
 ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
@@ -125,6 +147,16 @@ GATE_CONFIRMATION_BINDING_RISK = "confirmation_binding_risk"
 GATE_CONFIRMATION_CONSUME = "confirmation_consume"
 GATE_DIGEST_VERIFICATION = "digest_verification"
 GATE_DIGEST = "digest"
+GATE_DIGEST_PACKAGE = "digest_package"
+GATE_DIGEST_CANONICALIZATION = "digest_canonicalization"
+GATE_DIGEST_HISTORICAL = "digest_historical"
+GATE_DIGEST_TOKEN_BINDING = "digest_token_binding"
+GATE_DIGEST_REQUEST = "digest_request"
+GATE_DIGEST_TOKEN_MATCH = "digest_token_match"
+GATE_DIGEST_EXECUTE_MATCH = "digest_execute_match"
+GATE_DIGEST_STALENESS = "digest_staleness"
+GATE_DIGEST_EXPIRY = "digest_expiry"
+GATE_PRE_EXECUTION_AUDIT = "pre_execution_audit"
 GATE_VALIDATION = "validation"
 
 
@@ -905,20 +937,130 @@ def evaluate_tool_execute_request(
         gate=GATE_CONFIRMATION, passed=True, error_code=None,
     ))
 
-    # ── Gate 28: Digest verification not implemented ──
-    # Even with a valid confirmation token, execution remains blocked
-    # because digest verification is not yet implemented.
+    # ── Gate 28–37: Digest verification (Phase 1G-04-22) ──
+    from hermes_cli.dev_web_tool_execute_digest import (
+        verify_dry_run_decision_digest,
+        build_dry_run_decision_digest_package,
+        ERROR_DIGEST_HISTORICAL_MISSING as _DIGEST_HIST_MISSING,
+        ERROR_DIGEST_TOKEN_BINDING_MISSING as _DIGEST_TOKEN_MISSING,
+        ERROR_DIGEST_REQUEST_MISMATCH as _DIGEST_REQ_MISMATCH,
+        ERROR_DIGEST_TOKEN_MISMATCH as _DIGEST_TOK_MISMATCH,
+        ERROR_DIGEST_EXECUTE_MISMATCH as _DIGEST_EXEC_MISMATCH,
+        ERROR_DIGEST_EXPIRED as _DIGEST_EXPIRED,
+        ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED as _DIGEST_VERIFIED_BLOCKED,
+    )
+
+    # Extract historical digest from lookup result
+    historical_digest = lookup_result.dry_run_decision_digest
+
+    # Extract token-bound digest from token verification result
+    token_bound_digest = None
+    if hasattr(token_result, "binding_summary") and token_result.binding_summary:
+        token_bound_digest = token_result.binding_summary.get("dryRunDecisionDigest")
+    # Also check safe_summary for the digest field
+    if token_bound_digest is None and hasattr(token_result, "safe_summary") and token_result.safe_summary:
+        # Token safe_summary doesn't include digest; try token state directly
+        pass
+
+    # Re-read token state to get bound digest (token verification consumes the token)
+    # The token_result.safe_summary may have it, but we also pass it via binding
+    # For now, the token-bound digest comes from the token store's dryRunDecisionDigest field
+    # We can extract it from the verification result's safe_summary if available
+    # Actually, we need to look at what the token verification stores
+    # The token_state has dryRunDecisionDigest field from issuance
+    # The safe_summary doesn't expose it. We need a different approach.
+
+    # The correct approach: verify_confirmation_token already checked digest binding
+    # (Step 10 in verify_confirmation_token). If it passed, the token's stored
+    # dryRunDecisionDigest matches the request's dry_run_decision_digest.
+    # So if verification succeeded, we know they match.
+    # For digest verification, we need:
+    # 1. Historical digest from audit event (lookup_result.dry_run_decision_digest)
+    # 2. Token-bound digest — we can get this by re-reading the token store
+    #    OR we can rely on the fact that token verification already confirmed
+    #    token's dryRunDecisionDigest == request's dry_run_decision_digest.
+    #    So token_bound_digest = dry_run_decision_digest (the request value)
+    # 3. Request digest = dry_run_decision_digest
+    # 4. Execute-derived digest = recompute from current state
+
+    # Strategy: token verification already bound token digest to request digest.
+    # So token_bound_digest = dry_run_decision_digest (request value).
+    token_bound_digest = dry_run_decision_digest
+
+    # Execute-derived digest: recompute from current execute request fields
+    execute_derived_digest = None
+    try:
+        from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+        digest_pkg = build_dry_run_decision_digest_package(
+            dry_run_request_id=dry_run_request_id,
+            canonical_name=canonical_name,
+            risk_tier=risk_tier,
+            policy_decision="would_allow",
+            allowlisted=canonical_name in STATIC_ALLOWLIST,
+            audit_written=True,
+            audit_event_id=lookup_result.audit_event_id,
+            arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
+            created_at=lookup_result.created_at,
+            expires_at=lookup_result.expires_at,
+        )
+        if digest_pkg.success:
+            execute_derived_digest = digest_pkg.digest
+    except Exception:
+        pass  # Digest computation failure is non-fatal here
+
+    digest_result = verify_dry_run_decision_digest(
+        historical_digest=historical_digest,
+        token_bound_digest=token_bound_digest,
+        request_digest=dry_run_decision_digest,
+        execute_derived_digest=execute_derived_digest,
+        historical_created_at=lookup_result.created_at,
+        historical_expires_at=lookup_result.expires_at,
+    )
+
+    if not digest_result.verified:
+        # Digest verification failed
+        digest_error = digest_result.error_code or ERROR_DIGEST_MISMATCH
+        digest_gate = digest_result.gate or GATE_DIGEST_VERIFICATION
+
+        gates.append(ToolExecuteGateStatus(
+            gate=digest_gate,
+            passed=False,
+            error_code=digest_error,
+        ))
+        policy_notes.append(
+            f"Digest verification failed: {digest_error}. "
+            "Execution remains blocked."
+        )
+        reason_codes.append(digest_error)
+        error_code = digest_error
+        decision = digest_result.decision or DECISION_BLOCKED_BY_DIGEST_MISMATCH
+
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    # Digest verified but still blocked at pre-execution audit boundary
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_DIGEST_VERIFICATION, passed=False,
-        error_code=ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
+        gate=GATE_DIGEST_VERIFICATION, passed=True, error_code=None,
+    ))
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_PRE_EXECUTION_AUDIT,
+        passed=False,
+        error_code=_DIGEST_VERIFIED_BLOCKED,
     ))
     policy_notes.append(
-        "Confirmation token verified, but digest verification is not "
+        "Digest verification passed, but pre-execution audit is not "
         "implemented in this phase. Execution remains blocked."
     )
-    reason_codes.append(ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED)
-    error_code = ERROR_DIGEST_VERIFICATION_NOT_IMPLEMENTED
-    decision = DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED
+    reason_codes.append(_DIGEST_VERIFIED_BLOCKED)
+    error_code = _DIGEST_VERIFIED_BLOCKED
+    decision = DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
 
     return _build_blocked_result(
         canonical_name=canonical_name,

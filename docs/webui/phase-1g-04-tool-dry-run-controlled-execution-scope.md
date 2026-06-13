@@ -2218,3 +2218,43 @@ Froze the future digest verification boundary as a docs-only scope document. Def
 ---
 
 *Phase 1G-04-21 Digest Verification Scope Freeze: digest verification goal, digest input package, canonicalization strategy, digest algorithm, source-of-truth strategy, current dryRunDecisionDigest gap, confirmation token relationship, future dry-run behavior delta, future execute digest gate order, failure contract, OpenAPI strategy, route governance, future allowed/forbidden files, future test matrix, entry/exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no digest verification implementation, no dry-run digest persistence implementation, no pre-execution audit, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Phase 1G-04-22: Digest Verification Minimal Implementation / Still Blocked-Only
+
+**Status:** Completed locally / Not pushed
+
+### Summary
+
+Implemented minimal digest verification backend while preserving the still-blocked-only execution boundary.
+
+### What Changed
+
+| Item | Status |
+|------|--------|
+| Digest module (`dev_web_tool_execute_digest.py`) | New — canonical digest package, SHA-256 hex computation, multi-source verification |
+| Dry-run digest generation | `dryRunDecisionDigest` computed during dry-run |
+| Dry-run audit persistence | Digest fields persisted in audit JSONL events |
+| Dry-run response | Returns `dryRunDecisionDigest`, `digestAlgorithm`, `digestPackageVersion`, `canonicalizationVersion` |
+| Confirmation token digest binding | Issuance requires non-null `dryRunDecisionDigest`; verification enforces binding |
+| Legacy null-digest tokens | Fail closed |
+| Execute digest verification gates | Gates 28–37 implemented |
+| Valid token + valid digest final block | `blocked_pre_execution_audit_not_implemented` |
+| OpenAPI schema-only updates | New fields, error codes, decisions |
+| Route governance | Unchanged: 33/33/4/0/1/1 |
+| STATIC_ALLOWLIST | Unchanged: `frozenset({"clarify"})` |
+
+### What Did NOT Change
+
+| Item | Status |
+|------|--------|
+| Pre-execution audit | Not implemented |
+| Post-execution audit | Not implemented |
+| Handler lookup | Not enabled |
+| Tool Dispatch | Not enabled |
+| Tool Execution | Disabled |
+| Provider Schema | Not sent |
+| Provider API | Not called |
+| Frontend | Not modified |
+| Real Controlled Execution | Not started |
