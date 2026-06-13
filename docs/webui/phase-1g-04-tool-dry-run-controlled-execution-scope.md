@@ -2690,3 +2690,22 @@ Phase 1G-04-30 closed the WebUI surface around this controlled-execution scope:
 - Digest-binding fix in the dry-run route so the real dry-run → execute chain works end-to-end (previously `blocked_digest_mismatch`).
 - Browser smoke passes both scenarios; production Gateway PID 69355 unaffected; dev servers isolated + torn down.
 - See `docs/webui/phase-1g-04-30-accelerated-webui-closeout.md` for full detail.
+
+---
+
+## Phase 1G-04-31 Update — Final Sealing (sealed and pushed)
+
+Phase 1G-04-31 is the **final sealing** of the Phase 1G-04 WebUI mainline.
+
+- `docs/webui/phase-1g-04-31-final-webui-sealing.md` — final sealing report.
+- `docs/webui/phase-1g-04-final-acceptance-report.md` — consolidated acceptance for Phase 1G-04-20 → 1G-04-31.
+
+**Phase 1G-04 WebUI mainline = SEALED.**
+
+- Final route governance = OpenAPI=34, Runtime=34, Tool GET=5, Tool write=0, Tool dry-run=1, Tool execution=1.
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`.
+- Production Gateway PID baseline = `69355` (unaffected).
+- No P0, No P1.
+- Remaining P2: stale `auditWritten=false` assumption in the dormant `phase-1g-04-dry-run-api-safety-smoke.spec.ts` (historical, not in any active runner); offset-based audit pagination; multi-file JSONL rotation / race handling future work; non-clarify tools disabled by design; Provider integration permanent non-goal; frontend visual polish optional.
+- No new route, no allowlist change, no Provider, no non-clarify execution, no Tool write route, no production access, no audit JSONL commit, no `.claude/` commit.
+- Next = post-sealing polish only, not required for Phase 1G-04 acceptance.

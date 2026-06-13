@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed)
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -1629,3 +1629,22 @@ Phase 1G-03-04 is completed.
 - No Provider Schema sent, no Provider API called, no non-clarify execution, no production access.
 - Local commit created, not pushed.
 - Next = Phase 1G-04-31 (final sealing / push) only after user approval; not started.
+
+---
+
+## Phase 1G-04-31 — Final WebUI Sealing (sealed and pushed)
+
+**Phase 1G-04-31 is sealed.** Phase 1G-04 WebUI mainline is sealed.
+
+- `docs/webui/phase-1g-04-31-final-webui-sealing.md` — final sealing report: phase definition, baseline HEAD, completed backend chain (dry-run lookup → confirmation token → digest verification → pre-execution audit → handler lookup → dispatch planning → clarify-only handler call → post-execution audit → read-only audit events API), completed frontend chain (Execute UI + Audit Viewer + in-memory raw-token handling), route governance final state, security boundary, browser smoke summary, backend regression summary, frontend quality summary, production isolation summary, P0/P1/P2 risk list, acceptance checklist, final push criteria.
+- `docs/webui/phase-1g-04-final-acceptance-report.md` — consolidated acceptance for Phase 1G-04-20 → 1G-04-31, with the full capability table, final security boundaries, final verification results, and P2/known-limitation list.
+- **Phase 1G-04 WebUI mainline = SEALED.**
+- Final route governance = OpenAPI=34, Runtime=34, Tool GET=5, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged from 1G-04-30).
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`.
+- Production Gateway PID baseline = `69355` (unaffected).
+- No P0, No P1.
+- Remaining P2: stale `auditWritten=false` assumption in the dormant `phase-1g-04-dry-run-api-safety-smoke.spec.ts` (historical, not in any active runner); offset-based audit pagination; multi-file JSONL rotation / race handling future work; non-clarify tools disabled by design; Provider integration permanent non-goal; frontend visual polish optional.
+- Final verification: backend regression 1471 passed / 2 skipped / 5 deselected / 0 failed; frontend type-check + lint + vitest 674 passed + build pass; browser smoke blocked scenario 6 passed + 1 skipped / completed scenario 7 passed; memory-check PASS; dev-check WARN (only `.claude/` dirty); compileall + toolsets + ruff pass; production Gateway PID 69355 unchanged; 5180/5181 free.
+- No new route, no allowlist change, no Provider, no non-clarify execution, no Tool write route, no production access, no audit JSONL commit, no `.claude/` commit.
+- Docs-only sealing commit created and pushed.
+- Next = post-sealing polish only, not required for Phase 1G-04 acceptance.
