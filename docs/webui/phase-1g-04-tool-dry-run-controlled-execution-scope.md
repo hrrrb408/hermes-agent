@@ -2675,3 +2675,18 @@ OpenAPI changes were schema-only (ToolExecuteData.dispatchId/dispatchStatus/disp
 ---
 
 *Phase 1G-04-28 Dispatch Minimal Implementation / Still Blocked-Only: dispatch module, safe dispatch plan / envelope builder, dispatchId generation, dispatch plan validation, execute route dispatch gates 57–69, safe dispatch response fields, and OpenAPI schema-only updates implemented. A valid token + valid digest + pre-execution audit + handler lookup + dispatch success still blocks at the Tool Handler call boundary (`blocked_tool_handler_call_not_enabled`). No Tool Handler call, dispatch runtime invocation, execution, post-execution audit, Provider Schema sending, Provider API call, frontend execution flow, audit read API, audit viewer, or real Controlled Execution was introduced. Route governance unchanged (33/33/4/0/1/1). STATIC_ALLOWLIST remains `frozenset({"clarify"})`. Not pushed. Real Controlled Execution not started.*
+
+---
+
+## Phase 1G-04-30 Update — Audit Read API + Execute UI + Audit Viewer (completed locally / not pushed)
+
+Phase 1G-04-30 closed the WebUI surface around this controlled-execution scope:
+
+- Added exactly one read-only GET route: `GET /api/dev/v1/tools/audit-events` (dry_run / pre_execution / post_execution). No write route, no second execution route, no Provider route.
+- Route governance transitioned 33/33/4/0/1/1 → **34/34/5/0/1/1**.
+- `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- New `hermes_cli/dev_web_tool_audit_read.py` (read-only, stdlib only, production `~/.hermes` blocked, whitelist normalization — no raw token / full tokenHash / raw arguments / secrets / callable / provider payload).
+- Frontend Execute UI (clarify-only) + Audit Viewer wired as Tools sub-tabs. Default gate unset → `blocked_tool_handler_call_not_enabled`; explicit dev/test gate → `clarify_execution_completed`.
+- Digest-binding fix in the dry-run route so the real dry-run → execute chain works end-to-end (previously `blocked_digest_mismatch`).
+- Browser smoke passes both scenarios; production Gateway PID 69355 unaffected; dev servers isolated + torn down.
+- See `docs/webui/phase-1g-04-30-accelerated-webui-closeout.md` for full detail.

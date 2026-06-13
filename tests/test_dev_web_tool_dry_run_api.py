@@ -429,12 +429,12 @@ class TestResponseEnvelope:
 class TestRouteGovernance:
     """Verify route governance counts updated correctly."""
 
-    def test_business_paths_count_is_33(self, client) -> None:
-        """Runtime OpenAPI must report 33 business paths."""
+    def test_business_paths_count_is_34(self, client) -> None:
+        """Runtime OpenAPI must report 34 business paths."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_tool_dry_run_route_exists(self, client) -> None:
         """POST /tools/dry-run must exist in OpenAPI."""
@@ -793,7 +793,7 @@ class TestAuditFailureSafety:
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_no_audit_failure_500(self, client) -> None:
         """Audit failure must not cause 500."""

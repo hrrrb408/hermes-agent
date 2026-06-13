@@ -185,6 +185,11 @@ from hermes_cli.dev_web_tool_execute import (
     evaluate_tool_execute_request as _evaluate_tool_execute_request,
     compute_execute_policy_summary as _compute_execute_policy_summary,
 )
+from hermes_cli.dev_web_tool_audit_read import (
+    read_audit_events as _read_audit_events,
+    audit_read_result_to_safe_dict as _audit_read_result_to_safe_dict,
+    VALID_AUDIT_KINDS as _VALID_AUDIT_KINDS,
+)
 
 
 # ── Query parameter enums ──
@@ -314,6 +319,9 @@ def create_dev_web_api_app(
     # ── Routes ──
     _register_routes(app, config, session_service, memory_service, agent_service, review_service, writer_service, preview_service, tool_policy_service)
     _register_tool_execute_routes(app, config)
+
+    # ── Phase 1G-04-30: Tool Audit Events Read-Only (one GET route) ──
+    _register_tool_audit_read_routes(app, config)
 
     return app
 
@@ -3075,39 +3083,22 @@ def _register_tool_dry_run_routes(
         # Step 7: Compute duration
         duration_ms = int((time.monotonic() - start_time) * 1000)
 
-        # Step 7a: Compute dryRunDecisionDigest (Phase 1G-04-22)
+        # Step 7a + 8: Build audit event, then compute dryRunDecisionDigest
+        # bound to the REAL audit eventId / timestamp / expiry.
+        #
+        # Phase 1G-04-30: the digest must be computed with the same
+        # audit_event_id / created_at / expires_at that the execute gate
+        # recomputes from the historical audit lookup (eventId, timestamp,
+        # timestamp+TTL). Computing it with audit_event_id=None here made the
+        # dry-run response/token digest diverge from the execute-derived
+        # digest, blocking the controlled execution chain with
+        # blocked_digest_mismatch. Build the event first, extract its real
+        # eventId/timestamp, compute the digest consistently, patch the
+        # event, then write.
         dry_run_decision_digest = None
         digest_algorithm = None
         digest_package_version = None
         canonicalization_version = None
-        try:
-            from hermes_cli.dev_web_tool_execute_digest import (
-                build_dry_run_decision_digest_package,
-                DIGEST_ALGORITHM as _DIGEST_ALGO,
-                DIGEST_PACKAGE_VERSION as _DIGEST_PKG_VER,
-                CANONICALIZATION_VERSION as _CANON_VER,
-            )
-            from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
-            digest_pkg_result = build_dry_run_decision_digest_package(
-                dry_run_request_id=request_id_field or rid,
-                canonical_name=result.canonical_name,
-                risk_tier=result.risk_tier,
-                policy_decision=result.decision,
-                allowlisted=result.canonical_name in STATIC_ALLOWLIST,
-                audit_written=True,  # Will be true after audit write
-                audit_event_id=None,  # Not yet known
-                arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
-            )
-            if digest_pkg_result.success:
-                dry_run_decision_digest = digest_pkg_result.digest
-                digest_algorithm = _DIGEST_ALGO
-                digest_package_version = _DIGEST_PKG_VER
-                canonicalization_version = _CANON_VER
-        except Exception:
-            # Digest computation failure does not affect dry-run response
-            pass
-
-        # Step 8: Build and write audit event (best-effort)
         audit_written = False
         audit_error_reason = None
         try:
@@ -3118,11 +3109,63 @@ def _register_tool_dry_run_routes(
                 request_id=request_id_field or rid,
                 duration_ms=duration_ms,
                 result_status="ok",
-                dry_run_decision_digest=dry_run_decision_digest,
-                digest_algorithm=digest_algorithm,
-                digest_package_version=digest_package_version,
-                canonicalization_version=canonicalization_version,
+                dry_run_decision_digest=None,  # patched below
+                digest_algorithm=None,
+                digest_package_version=None,
+                canonicalization_version=None,
             )
+            try:
+                from hermes_cli.dev_web_tool_execute_digest import (
+                    build_dry_run_decision_digest_package,
+                    DIGEST_ALGORITHM as _DIGEST_ALGO,
+                    DIGEST_PACKAGE_VERSION as _DIGEST_PKG_VER,
+                    CANONICALIZATION_VERSION as _CANON_VER,
+                )
+                from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+                from hermes_cli.dev_web_tool_execute_preflight import (
+                    _DRY_RUN_TTL_SECONDS as _DRY_RUN_TTL,
+                )
+                from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+
+                real_event_id = event.get("eventId")
+                created_at = event.get("timestamp")
+                expires_at = None
+                if isinstance(created_at, str) and created_at:
+                    try:
+                        expires_at = (
+                            _dt.fromisoformat(created_at)
+                            + _td(seconds=_DRY_RUN_TTL)
+                        ).isoformat()
+                    except ValueError:
+                        expires_at = None
+
+                digest_pkg_result = build_dry_run_decision_digest_package(
+                    dry_run_request_id=request_id_field or rid,
+                    canonical_name=result.canonical_name,
+                    risk_tier=result.risk_tier,
+                    policy_decision=result.decision,
+                    allowlisted=result.canonical_name in STATIC_ALLOWLIST,
+                    audit_written=True,  # Will be true after audit write
+                    audit_event_id=real_event_id,
+                    arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
+                    created_at=created_at,
+                    expires_at=expires_at,
+                )
+                if digest_pkg_result.success:
+                    dry_run_decision_digest = digest_pkg_result.digest
+                    digest_algorithm = _DIGEST_ALGO
+                    digest_package_version = _DIGEST_PKG_VER
+                    canonicalization_version = _CANON_VER
+            except Exception:
+                # Digest computation failure does not affect dry-run response
+                pass
+
+            # Patch the event with the consistently-computed digest fields
+            event["dryRunDecisionDigest"] = dry_run_decision_digest
+            event["digestAlgorithm"] = digest_algorithm
+            event["digestPackageVersion"] = digest_package_version
+            event["canonicalizationVersion"] = canonicalization_version
+
             audit_result = _write_dry_run_audit_event(
                 event,
                 hermes_home=(
@@ -3468,5 +3511,151 @@ def _register_tool_execute_routes(
         # Step 5: Return safe response envelope
         return {
             "data": result.to_safe_dict(),
+            "meta": {"requestId": rid, "timestamp": ts},
+        }
+
+
+# ── Phase 1G-04-30: Tool Audit Events Read-Only Route ──
+
+
+def _register_tool_audit_read_routes(
+    app: FastAPI,
+    config: DevWebApiConfig,
+) -> None:
+    """Register the Phase 1G-04-30 read-only audit events route.
+
+    One GET-only route that exposes safe, redacted audit events from the
+    dev-only JSONL stores. No POST/PUT/PATCH/DELETE, no tool write, no
+    execution, no provider schema sending, no handler invocation.
+
+    Guarantees:
+      - Read-only (GET only)
+      - Dev HERMES_HOME only; production ``~/.hermes`` blocked
+      - Missing file returns empty items (not 500)
+      - Malformed JSONL lines skipped safely (never leaked)
+      - Path traversal / production path rejected
+      - No raw token, full tokenHash, raw arguments, or secrets exposed
+    """
+    prefix = config.api_prefix
+
+    _AUDIT_EVENTS_INVALID_KIND = "TOOL_AUDIT_EVENTS_INVALID_KIND"
+    _AUDIT_EVENTS_INVALID_LIMIT = "TOOL_AUDIT_EVENTS_INVALID_LIMIT"
+    _AUDIT_EVENTS_INVALID_CURSOR = "TOOL_AUDIT_EVENTS_INVALID_CURSOR"
+    _AUDIT_EVENTS_INVALID_CANONICAL_NAME = "TOOL_AUDIT_EVENTS_INVALID_CANONICAL_NAME"
+    _AUDIT_EVENTS_PATH_FORBIDDEN = "TOOL_AUDIT_EVENTS_PATH_FORBIDDEN"
+    _AUDIT_EVENTS_UNAVAILABLE = "TOOL_AUDIT_EVENTS_UNAVAILABLE"
+
+    @app.get(
+        f"{prefix}/tools/audit-events",
+        tags=["Tools"],
+        summary="Read-only tool audit events (dry-run / pre-execution / post-execution)",
+        description="Returns safe, redacted audit events from the dev-only "
+        "JSONL audit stores. Only GET is allowed. No raw confirmation token, "
+        "full token hash, raw arguments, secrets, callable objects, function "
+        "reprs, or provider payloads are ever exposed. A missing audit file "
+        "returns an empty item list.",
+    )
+    def list_tool_audit_events(
+        request: Request,
+        auditKind: str = Query(
+            ...,
+            description="Audit kind: dry_run | pre_execution | post_execution.",
+        ),
+        limit: int = Query(
+            default=50,
+            ge=1,
+            le=100,
+            description="Maximum items to return (1..100).",
+        ),
+        cursor: str | None = Query(
+            default=None,
+            max_length=64,
+            description="Opaque offset cursor from a previous nextCursor.",
+        ),
+        canonicalName: str | None = Query(
+            default=None,
+            max_length=256,
+            description="Optional exact canonicalName filter.",
+        ),
+    ) -> dict:
+        rid = getattr(request.state, "request_id", "")
+        ts = _utc_now_iso()
+
+        # Validate auditKind
+        if auditKind not in _VALID_AUDIT_KINDS:
+            return _make_error_json(
+                status_code=400,
+                code=_AUDIT_EVENTS_INVALID_KIND,
+                message=(
+                    "auditKind must be one of: dry_run, pre_execution, "
+                    "post_execution."
+                ),
+                request_id=rid,
+            )
+
+        # Guard: dev HERMES_HOME must be configured
+        if config.hermes_home is None:
+            return _make_error_json(
+                status_code=503,
+                code=_AUDIT_EVENTS_UNAVAILABLE,
+                message="Audit events are unavailable (no HERMES_HOME).",
+                request_id=rid,
+            )
+
+        result = _read_audit_events(
+            audit_kind=auditKind,
+            limit=limit,
+            cursor=cursor,
+            canonical_name=canonicalName,
+            hermes_home=str(config.hermes_home),
+        )
+
+        # Map reader error codes to safe HTTP error envelopes
+        if not result.success:
+            if result.error_code == "audit_read_hermes_home_missing":
+                return _make_error_json(
+                    status_code=503,
+                    code=_AUDIT_EVENTS_UNAVAILABLE,
+                    message="Audit events are unavailable (no HERMES_HOME).",
+                    request_id=rid,
+                )
+            if result.error_code == "audit_read_path_forbidden":
+                return _make_error_json(
+                    status_code=403,
+                    code=_AUDIT_EVENTS_PATH_FORBIDDEN,
+                    message="Audit path is outside the dev environment.",
+                    request_id=rid,
+                )
+            if result.error_code == "audit_read_kind_invalid":
+                return _make_error_json(
+                    status_code=400,
+                    code=_AUDIT_EVENTS_INVALID_KIND,
+                    message="Invalid auditKind.",
+                    request_id=rid,
+                )
+            if result.error_code == "audit_read_limit_invalid":
+                return _make_error_json(
+                    status_code=400,
+                    code=_AUDIT_EVENTS_INVALID_LIMIT,
+                    message="limit must be a positive integer.",
+                    request_id=rid,
+                )
+            if result.error_code == "audit_read_cursor_invalid":
+                return _make_error_json(
+                    status_code=400,
+                    code=_AUDIT_EVENTS_INVALID_CURSOR,
+                    message="cursor must encode a non-negative integer offset.",
+                    request_id=rid,
+                )
+            # canonicalName validation fell through to kind_invalid bucket
+            return _make_error_json(
+                status_code=400,
+                code=_AUDIT_EVENTS_INVALID_CANONICAL_NAME,
+                message="canonicalName must be a string within length limits.",
+                request_id=rid,
+            )
+
+        return {
+            "data": _audit_read_result_to_safe_dict(result),
             "meta": {"requestId": rid, "timestamp": ts},
         }

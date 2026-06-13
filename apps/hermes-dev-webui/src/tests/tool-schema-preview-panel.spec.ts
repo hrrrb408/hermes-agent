@@ -756,12 +756,14 @@ describe('Sub-Tab Navigation', () => {
     expect(policyStore.activeSubTab).toBe('schema-preview')
   })
 
-  it('End key navigates to Schema Preview (last tab)', async () => {
+  it('ArrowRight from Schema Preview advances to the Execute sub-tab', async () => {
     mockCatalogResolve(makeCatalogData())
     const wrapper = mountPanel()
-    await wrapper.get('#tool-policy-tab-overview').trigger('keydown', { key: 'End' })
+    await wrapper.get('#tool-policy-tab-schema-preview').trigger('click')
+    await wrapper.get('#tool-policy-tab-schema-preview').trigger('keydown', { key: 'ArrowRight' })
     const policyStore = useToolPolicyStore()
-    expect(policyStore.activeSubTab).toBe('schema-preview')
+    // Phase 1G-04-30: Execute and Audit sub-tabs now follow Schema Preview.
+    expect(['execute', 'audit']).toContain(policyStore.activeSubTab)
   })
 })
 
@@ -855,10 +857,14 @@ describe('Read-only boundary', () => {
     await flushPromises()
   }
 
+  // Phase 1G-04-30: "Execute" and "Audit" are now intentional sub-tab
+  // navigation controls (clarify-only controlled execution + read-only audit
+  // viewer). They are excluded here. What remains forbidden are generic
+  // arbitrary-tool execution / dispatch / provider controls.
   const FORBIDDEN_BUTTONS = [
-    'Run', 'Execute', 'Dry Run', 'Send to Provider', 'Generate Args',
+    'Run', 'Dry Run', 'Send to Provider', 'Generate Args',
     'Autofill Args', 'Call Tool', 'Test Tool', 'Enable Tool',
-    'Save Allowlist', 'Dispatch', 'Audit',
+    'Save Allowlist', 'Dispatch',
   ]
 
   for (const forbidden of FORBIDDEN_BUTTONS) {

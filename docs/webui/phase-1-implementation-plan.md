@@ -1612,3 +1612,20 @@ Phase 1G-03-04 is completed.
 - No new route, no route count change, no OpenAPI path change, no frontend change, no agent/tools change
 - Local commit created, not pushed
 - Next = Tool Handler Call Scope Freeze only after user approval; real Controlled Execution not started
+---
+
+## Phase 1G-04-30 — Accelerated WebUI Closeout (completed locally / not pushed)
+
+**Phase 1G-04-30 is completed locally.** Accelerated WebUI Closeout.
+
+- `docs/webui/phase-1g-04-30-accelerated-webui-closeout.md` — read-only audit events API (`GET /api/dev/v1/tools/audit-events`) + safe audit JSONL reader with redaction/path-containment + frontend Execute UI (clarify-only controlled execution workbench) + Audit Viewer + frontend API client + browser smoke/E2E (both default-block and completed scenarios) + OpenAPI update + route governance transition.
+- Route governance: OpenAPI=34, Runtime=34, Tool GET=5, Tool write=0, Tool dry-run=1, Tool execution=1. Exactly one new read-only GET route added.
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`. No Tool write route, no second execution route, no Provider route.
+- Audit read API is read-only; dev HERMES_HOME only; production `~/.hermes` and `state.db` blocked; missing file → empty items; malformed lines skipped safely; raw token / full tokenHash / raw arguments / secrets / callable / function repr / provider payload never exposed.
+- Frontend Execute UI: clarify-only; default gate unset → `blocked_tool_handler_call_not_enabled`; explicit dev/test gate → `clarify_execution_completed` with `postExecutionAuditId` and false Provider side-effect flags. Raw confirmation token held in-memory only (never persisted / logged / rendered).
+- Digest-binding fix in the dry-run route (`hermes_cli/dev_web_api.py`): the real dry-run endpoint now computes `dryRunDecisionDigest` bound to the real audit `eventId` / timestamp / expiry, matching the execute gate's recomputation — the end-to-end dry-run → execute chain now works (previously returned `blocked_digest_mismatch`; backend unit tests used synthetic events so did not catch it).
+- Browser smoke: completed scenario 7 passed; blocked scenario 6 passed + 1 skipped. Servers isolated to 127.0.0.1, torn down after; production Gateway PID 69355 unaffected; 5180/5181 free.
+- Backend regression 1471 passed; frontend vitest 670 passed; frontend build / type-check / lint pass; memory-check PASS; dev-check PASS (only dirty-worktree WARN).
+- No Provider Schema sent, no Provider API called, no non-clarify execution, no production access.
+- Local commit created, not pushed.
+- Next = Phase 1G-04-31 (final sealing / push) only after user approval; not started.

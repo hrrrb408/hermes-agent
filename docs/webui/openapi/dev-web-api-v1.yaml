@@ -1725,6 +1725,74 @@ paths:
               schema:
                 $ref: "#/components/schemas/ToolExecuteResponse"
 
+  /tools/audit-events:
+    get:
+      operationId: listToolAuditEvents
+      tags: [Tools]
+      summary: Read-only tool audit events
+      description: >
+        Returns safe, redacted audit events from the dev-only JSONL audit
+        stores (dry-run, pre-execution, post-execution). Only GET is allowed.
+        No raw confirmation token, full token hash, raw arguments, secrets,
+        callable objects, function reprs, or provider payloads are ever
+        exposed. A missing audit file returns an empty item list (not an
+        error). This route is classified as a Tool GET route.
+      parameters:
+        - name: auditKind
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/AuditKind"
+          description: Audit kind to read.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum items to return.
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 64
+          description: Opaque offset cursor from a previous nextCursor.
+        - name: canonicalName
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 256
+          description: Optional exact canonicalName filter.
+      responses:
+        "200":
+          description: Safe audit events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolAuditEventsResponse"
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "403":
+          description: Audit path outside dev environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: Audit unavailable (no HERMES_HOME)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
 components:
   schemas:
     # ── Common ──
@@ -4812,5 +4880,154 @@ components:
             message:
               type: string
               description: Human-readable error description.
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    # ── Phase 1G-04-30: Tool Audit Events (read-only) ──
+
+    AuditKind:
+      type: string
+      enum: [dry_run, pre_execution, post_execution]
+      description: >
+        The audit kind to read. dry_run = dry-run policy decisions,
+        pre_execution = execute gate pre-flight audits,
+        post_execution = clarify controlled execution result audits.
+
+    ToolAuditEventItem:
+      type: object
+      description: >
+        A single safe, redacted audit event. Common fields are always
+        present; kind-specific correlation IDs and a safeSummary are
+        included. Raw confirmation tokens, full token hashes, raw
+        arguments, secrets, callable objects, function reprs, and provider
+        payloads are never present.
+      required: [auditKind, auditId, timestamp, canonicalName]
+      properties:
+        auditKind:
+          $ref: "#/components/schemas/AuditKind"
+        auditId:
+          type: string
+          nullable: true
+          description: Safe correlation ID for this event.
+        timestamp:
+          type: string
+          nullable: true
+          format: date-time
+          description: Event timestamp (ISO 8601 UTC).
+        canonicalName:
+          type: string
+          nullable: true
+          description: Tool canonical name.
+        decision:
+          type: string
+          nullable: true
+          description: Decision or event type label.
+        riskTier:
+          type: string
+          nullable: true
+          description: Risk tier (R0..R5), where applicable.
+        toolExists:
+          type: boolean
+          nullable: true
+          description: Whether the tool exists (dry-run kind only).
+        dryRunDecisionDigest:
+          type: string
+          nullable: true
+          description: Short-form digest prefix (correlation only).
+        executeRequestId:
+          type: string
+          nullable: true
+          description: Execute request correlation ID.
+        dryRunRequestId:
+          type: string
+          nullable: true
+          description: Dry-run request correlation ID.
+        preExecutionAuditId:
+          type: string
+          nullable: true
+          description: Pre-execution audit correlation ID.
+        handlerLookupId:
+          type: string
+          nullable: true
+          description: Handler lookup correlation ID.
+        dispatchId:
+          type: string
+          nullable: true
+          description: Dispatch correlation ID.
+        handlerCallId:
+          type: string
+          nullable: true
+          description: Handler call correlation ID.
+        executionStatus:
+          type: string
+          nullable: true
+          description: Execution status (post-execution kind only).
+        handlerCallStatus:
+          type: string
+          nullable: true
+          description: Handler call status (post-execution kind only).
+        sideEffects:
+          $ref: "#/components/schemas/ToolAuditSideEffects"
+        safeSummary:
+          type: object
+          nullable: true
+          description: Kind-specific safe structural summary (counts/types only).
+
+    ToolAuditSideEffects:
+      type: object
+      description: >
+        Side-effect flags surfaced from a post-execution audit event.
+        All flags are always false for the clarify controlled path.
+      properties:
+        providerSchemaSent:
+          type: boolean
+        providerApiCalled:
+          type: boolean
+        externalSideEffects:
+          type: boolean
+
+    ToolAuditEventsData:
+      type: object
+      required: [auditKind, items, limit, hasMore]
+      properties:
+        auditKind:
+          $ref: "#/components/schemas/AuditKind"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ToolAuditEventItem"
+          description: Safe audit events, newest first.
+        nextCursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page, or null.
+        limit:
+          type: integer
+          description: Effective limit applied.
+        hasMore:
+          type: boolean
+          description: Whether more events are available.
+        skippedMalformed:
+          type: integer
+          description: Number of malformed lines safely skipped.
+
+    ToolAuditEventsResponse:
+      type: object
+      required: [ok, data, error, meta]
+      properties:
+        ok:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/ToolAuditEventsData"
+          nullable: true
+        error:
+          type: object
+          nullable: true
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
         meta:
           $ref: "#/components/schemas/Meta"

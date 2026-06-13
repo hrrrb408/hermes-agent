@@ -402,11 +402,11 @@ class TestOpenAPIContract:
     """Verify static and runtime OpenAPI consistency."""
 
     def test_business_paths_count(self, client):
-        """Phase 1G-04-11: 33 implemented business paths (11 base + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 4 agent run + 2 tool policy + 2 schema preview + 1 tool dry-run + 1 tool execute)."""
+        """Phase 1G-04-30: 34 implemented business paths (11 base + 3 review + 2 dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 4 agent run + 2 tool policy + 2 schema preview + 1 tool dry-run + 1 tool execute + 1 tool audit-events)."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_post_routes(self, client):
         """Phase 1G-04-11: 14 POST routes (context/preview + 2 review dry-run + 2 execute + 3 writer dry-run + 2 agent preview + 2 agent run + 1 tool dry-run + 1 tool execute)."""

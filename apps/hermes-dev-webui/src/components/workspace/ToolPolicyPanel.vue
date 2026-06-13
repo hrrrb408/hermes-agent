@@ -4,6 +4,8 @@ import { useToolPolicyStore, type ToolPolicySubTab } from '@/stores/toolPolicy'
 import ToolPolicyOverview from './ToolPolicyOverview.vue'
 import ToolCatalog from './ToolCatalog.vue'
 import ToolSchemaPreviewPanel from './ToolSchemaPreviewPanel.vue'
+import ToolExecutePanel from './ToolExecutePanel.vue'
+import AuditViewerPanel from './AuditViewerPanel.vue'
 
 const store = useToolPolicyStore()
 
@@ -25,7 +27,7 @@ function setSubTab(tab: ToolPolicySubTab): void {
 }
 
 function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void {
-  const tabs: ToolPolicySubTab[] = ['overview', 'catalog', 'schema-preview']
+  const tabs: ToolPolicySubTab[] = ['overview', 'catalog', 'schema-preview', 'execute', 'audit']
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
 
@@ -94,6 +96,34 @@ function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void 
       >
         Schema Preview
       </button>
+      <button
+        id="tool-policy-tab-execute"
+        type="button"
+        role="tab"
+        class="tool-policy-tab"
+        :class="{ 'tool-policy-tab--active': store.activeSubTab === 'execute' }"
+        :aria-selected="store.activeSubTab === 'execute'"
+        aria-controls="tool-policy-tabpanel-execute"
+        :tabindex="store.activeSubTab === 'execute' ? 0 : -1"
+        @click="setSubTab('execute')"
+        @keydown="handleSubTabKeyDown($event, 'execute')"
+      >
+        Execute
+      </button>
+      <button
+        id="tool-policy-tab-audit"
+        type="button"
+        role="tab"
+        class="tool-policy-tab"
+        :class="{ 'tool-policy-tab--active': store.activeSubTab === 'audit' }"
+        :aria-selected="store.activeSubTab === 'audit'"
+        aria-controls="tool-policy-tabpanel-audit"
+        :tabindex="store.activeSubTab === 'audit' ? 0 : -1"
+        @click="setSubTab('audit')"
+        @keydown="handleSubTabKeyDown($event, 'audit')"
+      >
+        Audit
+      </button>
     </div>
 
     <!-- Overview sub-panel -->
@@ -127,6 +157,28 @@ function handleSubTabKeyDown(event: KeyboardEvent, tab: ToolPolicySubTab): void 
       tabindex="0"
     >
       <ToolSchemaPreviewPanel />
+    </div>
+
+    <!-- Execute sub-panel (Phase 1G-04-30) -->
+    <div
+      v-if="store.activeSubTab === 'execute'"
+      id="tool-policy-tabpanel-execute"
+      role="tabpanel"
+      aria-labelledby="tool-policy-tab-execute"
+      tabindex="0"
+    >
+      <ToolExecutePanel />
+    </div>
+
+    <!-- Audit viewer sub-panel (Phase 1G-04-30) -->
+    <div
+      v-if="store.activeSubTab === 'audit'"
+      id="tool-policy-tabpanel-audit"
+      role="tabpanel"
+      aria-labelledby="tool-policy-tab-audit"
+      tabindex="0"
+    >
+      <AuditViewerPanel />
     </div>
   </section>
 </template>

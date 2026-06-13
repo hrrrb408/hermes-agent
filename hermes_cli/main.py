@@ -7110,6 +7110,7 @@ def _webui_check_openapi(
         "/tools/schemas/{canonicalName}": {"get"},
         "/tools/dry-run": {"post"},
         "/tools/execute": {"post"},
+        "/tools/audit-events": {"get"},
     }
 
     # Forbidden route path substrings
@@ -7142,7 +7143,7 @@ def _webui_check_openapi(
     _REVIEW_WRITE_METHODS = {"post", "patch", "delete"}
 
     # Forbidden methods on Tool routes (only GET is allowed)
-    _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog", "/tools/schemas", "/tools/schemas/{canonicalName}"}
+    _TOOL_GET_ROUTES = {"/tools/policy", "/tools/catalog", "/tools/schemas", "/tools/schemas/{canonicalName}", "/tools/audit-events"}
     _TOOL_DRY_RUN_ROUTES = {"/tools/dry-run"}
     _TOOL_EXECUTION_ROUTES = {"/tools/execute"}
     _TOOL_DRY_RUN_ALLOWED_METHODS = {"post"}
@@ -7151,7 +7152,7 @@ def _webui_check_openapi(
 
     # Check path count
     add_fn(
-        "PASS" if path_count == 33 else "FAIL",
+        "PASS" if path_count == 34 else "FAIL",
         "OpenAPI paths",
         f"{path_count}",
     )
@@ -7282,6 +7283,7 @@ def _webui_check_openapi(
         "/tools/catalog",
         "/tools/schemas",
         "/tools/schemas/{canonicalName}",
+        "/tools/audit-events",
     }
     # Phase 1G-04: Tool dry-run is a non-mutating POST — not a write route
     tool_dry_run_routes_all = {
@@ -7298,7 +7300,7 @@ def _webui_check_openapi(
     add_fn(
         "PASS" if tool_get_present else "FAIL",
         "Tool policy routes",
-        "4" if tool_get_present else "missing tool GET routes",
+        "5" if tool_get_present else "missing tool GET routes",
     )
 
     # Tool write routes must not exist

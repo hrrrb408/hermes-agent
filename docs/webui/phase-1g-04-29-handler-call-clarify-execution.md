@@ -489,3 +489,16 @@ viewer, route expansion, Tool write route, production home access, or production
 state.db access was introduced. OpenAPI paths remain 33, runtime routes remain
 33, Tool GET/write/dry-run/execution remain 4/0/1/1, and STATIC_ALLOWLIST
 remains `frozenset({"clarify"})`. Not pushed. Phase 1G-04-30 not started.*
+
+---
+
+## Phase 1G-04-30 Update — WebUI Closeout + Digest-Binding Fix (completed locally / not pushed)
+
+Phase 1G-04-30 built the WebUI surface around this clarify handler-call path and fixed an end-to-end gap:
+
+- **Digest-binding fix:** the real dry-run API endpoint (this phase's `hermes_cli/dev_web_api.py` change) now computes `dryRunDecisionDigest` bound to the real audit `eventId` / `createdAt` / `expiresAt`, matching what the execute gate recomputes from the historical lookup. Previously the dry-run response/token digest was computed with `audit_event_id=None`, so the real dry-run → execute chain returned `blocked_digest_mismatch`. The synthetic-event unit tests in this file (and `test_dev_web_tool_execute_api.py`) did not catch it; they now also use a relative issuance `now` (the old hardcoded `now=2026-06-13 12:00` pre-expired the 300s-TTL tokens later in the day).
+- **Audit read API:** new read-only `GET /api/dev/v1/tools/audit-events` surfaces dry-run / pre-execution / post-execution audit events safely (no raw token / tokenHash / arguments / secrets).
+- **Frontend Execute UI + Audit Viewer:** clarify-only controlled execution workbench; default gate unset shows `blocked_tool_handler_call_not_enabled`; explicit dev/test gate shows `clarify_execution_completed` with `postExecutionAuditId` and false Provider side-effect flags. Raw confirmation token is in-memory only.
+- **Route governance:** 33/33/4/0/1/1 → 34/34/5/0/1/1. `STATIC_ALLOWLIST` unchanged.
+- Browser smoke passes both default-block and completed scenarios.
+- See `docs/webui/phase-1g-04-30-accelerated-webui-closeout.md`.

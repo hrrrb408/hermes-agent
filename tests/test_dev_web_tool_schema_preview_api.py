@@ -419,11 +419,11 @@ class TestSchemaPreviewBoundarySafety:
 class TestSchemaPreviewOpenAPI:
     """Verify OpenAPI spec has the new paths and schemas."""
 
-    def test_openapi_paths_33(self, client):
+    def test_openapi_paths_34(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_schemas_catalog_path_exists(self, client):
         resp = client.get("/openapi.json")
@@ -467,8 +467,8 @@ class TestSchemaPreviewOpenAPI:
         assert "ToolSchemaPreviewItem" in schemas
         assert "ToolSchemaPreviewField" in schemas
 
-    def test_static_yaml_has_33_paths(self):
-        """Verify the static YAML file has exactly 33 paths."""
+    def test_static_yaml_has_34_paths(self):
+        """Verify the static YAML file has exactly 34 paths."""
         import pathlib
         import yaml
 
@@ -478,7 +478,7 @@ class TestSchemaPreviewOpenAPI:
         text = static_yaml.read_text(encoding="utf-8")
         spec = yaml.safe_load(text)
         paths = spec.get("paths", {})
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_static_yaml_has_new_schemas(self):
         """Verify the static YAML has new schema definitions."""
@@ -503,20 +503,20 @@ class TestSchemaPreviewOpenAPI:
 class TestSchemaPreviewRuntimeRoutes:
     """Verify runtime route counts."""
 
-    def test_runtime_routes_33(self, client):
+    def test_runtime_routes_34(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
-    def test_tool_get_routes_4(self, client):
+    def test_tool_get_routes_5(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         tool_get_routes = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/tools") and "get" in spec["paths"][p]
         ]
-        assert len(tool_get_routes) == 4
+        assert len(tool_get_routes) == 5
 
     def test_tool_write_routes_0(self, client):
         resp = client.get("/openapi.json")

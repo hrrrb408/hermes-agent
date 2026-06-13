@@ -1012,7 +1012,7 @@ class TestDryRunLookupIntegration:
              "eventId": "evt-test-001"},
         ])
         # Issue a real token WITH digest binding
-        now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         dr_record = DryRunHistoricalLookupResult(
             found=True, error_code=None,
             dry_run_request_id="dr-token-valid",
@@ -1125,7 +1125,7 @@ class TestDryRunLookupIntegration:
             {**_make_audit_event(request_id="dr-reuse-test", timestamp=fixed_ts),
              "dryRunDecisionDigest": test_digest},
         ])
-        now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         dr_record = DryRunHistoricalLookupResult(
             found=True, error_code=None,
             dry_run_request_id="dr-reuse-test",
@@ -1222,7 +1222,7 @@ def _issue_valid_token_for(tmp_hermes_home, audit_path, request_id="dr-dispatch"
          "dryRunDecisionDigest": digest,
          "eventId": "evt-dispatch-001"},
     ])
-    now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
     dr_record = DryRunHistoricalLookupResult(
         found=True, error_code=None,
         dry_run_request_id=request_id,

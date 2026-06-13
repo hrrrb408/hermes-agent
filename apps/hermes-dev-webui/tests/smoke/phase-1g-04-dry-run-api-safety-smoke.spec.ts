@@ -152,7 +152,10 @@ test.describe('API Smoke', () => {
       p.startsWith('/api/dev/v1/tools'),
     )
 
-    // Check no write routes (PUT, PATCH, DELETE, or non-dry-run POST)
+    // Check no write routes (PUT, PATCH, DELETE). The only allowed tool
+    // POST routes are the non-mutating dry-run and the controlled execute
+    // gate (Phase 1G-04-11+); neither is a tool write route.
+    const allowedToolPosts = ['dry-run', 'execute']
     for (const path of toolPaths) {
       const methods = Object.keys(spec.paths[path])
       for (const method of methods) {
@@ -160,7 +163,7 @@ test.describe('API Smoke', () => {
         if (m === 'put' || m === 'patch' || m === 'delete') {
           expect.fail(`Tool write route found: ${m.toUpperCase()} ${path}`)
         }
-        if (m === 'post' && !path.includes('dry-run')) {
+        if (m === 'post' && !allowedToolPosts.some((p) => path.includes(p))) {
           expect.fail(`Tool write route found: POST ${path}`)
         }
       }
@@ -434,33 +437,34 @@ test.describe('Network Safety', () => {
       p.startsWith('/api/dev/v1/tools'),
     )
 
-    // Exactly 5 tool routes: 4 GET + 1 dry-run POST
-    expect(toolPaths.length, 'Must have exactly 5 tool routes').toBe(5)
+    // Phase 1G-04-30: 7 tool routes = 5 GET (policy, catalog, schemas,
+    // schemas/{name}, audit-events) + 1 dry-run POST + 1 execute POST.
+    expect(toolPaths.length, 'Must have exactly 7 tool routes').toBe(7)
 
     // Verify GET routes
     const getRoutes = toolPaths.filter((p: string) => {
       const methods = spec.paths[p]
       return 'get' in methods
     })
-    expect(getRoutes.length, 'Must have 4 tool GET routes').toBe(4)
+    expect(getRoutes.length, 'Must have 5 tool GET routes').toBe(5)
 
-    // Verify only dry-run POST
+    // Verify dry-run + execute POST (both non-write controlled routes)
     const postRoutes = toolPaths.filter((p: string) => {
       const methods = spec.paths[p]
       return 'post' in methods
     })
-    expect(postRoutes.length, 'Must have exactly 1 tool POST route (dry-run)').toBe(1)
-    expect(postRoutes[0], 'The only tool POST route must be dry-run').toBe(
-      '/api/dev/v1/tools/dry-run',
-    )
+    expect(postRoutes.length, 'Must have exactly 2 tool POST routes').toBe(2)
+    expect(postRoutes).toContain('/api/dev/v1/tools/dry-run')
+    expect(postRoutes).toContain('/api/dev/v1/tools/execute')
 
-    // Verify no execution indicators in any tool path
-    const executionIndicators = ['execute', 'dispatch', 'invoke', 'call']
+    // Phase 1G-04-11+: /tools/execute is an intentional controlled execution
+    // gate. What must NOT appear are generic dispatch / invoke / call routes.
+    const forbiddenIndicators = ['dispatch', 'invoke', 'call']
     for (const path of toolPaths) {
-      for (const indicator of executionIndicators) {
+      for (const indicator of forbiddenIndicators) {
         expect(
           path.toLowerCase(),
-          `Tool path must not contain execution indicator "${indicator}"`,
+          `Tool path must not contain forbidden indicator "${indicator}"`,
         ).not.toContain(indicator)
       }
       // "run" is OK only in dry-run context

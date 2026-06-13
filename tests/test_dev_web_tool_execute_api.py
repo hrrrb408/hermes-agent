@@ -330,12 +330,12 @@ class TestResponseEnvelope:
 class TestRouteGovernance:
     """Verify route governance for execute route."""
 
-    def test_business_paths_count_is_33(self, client) -> None:
-        """Runtime OpenAPI must report 33 business paths."""
+    def test_business_paths_count_is_34(self, client) -> None:
+        """Runtime OpenAPI must report 34 business paths."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [p for p in spec["paths"] if p.startswith("/api/dev/v1/")]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_execute_route_exists_in_openapi(self, client) -> None:
         """POST /tools/execute must exist in OpenAPI."""
@@ -770,7 +770,7 @@ def _issue_valid_token_api(hermes_home, audit_path, request_id, arguments=None):
             ensure_ascii=False,
         ) + "\n")
 
-    now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
     dr_record = DryRunHistoricalLookupResult(
         found=True, error_code=None,
         dry_run_request_id=request_id,

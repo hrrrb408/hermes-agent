@@ -215,14 +215,17 @@ describe('ToolPolicyPanel sub-tabs', () => {
     return mount(ToolPolicyPanel)
   }
 
-  it('renders three sub-tabs: Policy Overview, Catalog, and Schema Preview', () => {
+  it('renders five sub-tabs: Policy Overview, Catalog, Schema Preview, Execute, and Audit', () => {
     mockPolicyResolve(makePolicyData())
     const wrapper = mountPanel()
     const subTabs = wrapper.findAll('[role="tab"]')
-    expect(subTabs).toHaveLength(3)
+    expect(subTabs).toHaveLength(5)
     expect(wrapper.text()).toContain('Policy Overview')
     expect(wrapper.text()).toContain('Catalog')
     expect(wrapper.text()).toContain('Schema Preview')
+    // Phase 1G-04-30: controlled Execute (clarify-only) + read-only Audit
+    expect(wrapper.text()).toContain('Execute')
+    expect(wrapper.text()).toContain('Audit')
   })
 
   it('Policy Overview is default selected', () => {
@@ -273,9 +276,9 @@ describe('ToolPolicyPanel sub-tabs', () => {
     // Home → overview
     await wrapper.get('#tool-policy-tab-catalog').trigger('keydown', { key: 'Home' })
     expect(store.activeSubTab).toBe('overview')
-    // End → schema-preview (last tab)
+    // End → audit (last tab, Phase 1G-04-30 added Execute + Audit sub-tabs)
     await wrapper.get('#tool-policy-tab-overview').trigger('keydown', { key: 'End' })
-    expect(store.activeSubTab).toBe('schema-preview')
+    expect(store.activeSubTab).toBe('audit')
   })
 
   it('loads policy on mount', async () => {
@@ -683,13 +686,22 @@ describe('Read-only boundary', () => {
     }
   })
 
-  it('contains no Execute button', async () => {
+  it('contains no generic Execute/Run-Tool action button (only the clarify-only sub-tab nav)', async () => {
+    // Phase 1G-04-30: an "Execute" sub-tab navigation control is now
+    // intentional (clarify-only, default-disabled). What must NOT exist is
+    // a generic "execute any tool" / "run tool" action button.
     const wrapper = mountAndLoad()
     await flushPromises()
     const buttons = wrapper.findAll('button')
     for (const btn of buttons) {
-      expect(btn.text()).not.toContain('Execute')
-      expect(btn.text()).not.toContain('Run Tool')
+      const text = btn.text()
+      // "Execute" may only appear as the controlled sub-tab navigation.
+      if (text.includes('Execute')) {
+        expect(btn.attributes('role')).toBe('tab')
+      }
+      expect(text).not.toContain('Run Tool')
+      expect(text).not.toContain('Execute Tool')
+      expect(text).not.toContain('Dispatch Tool')
     }
   })
 

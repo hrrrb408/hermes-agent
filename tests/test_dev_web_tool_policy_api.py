@@ -562,15 +562,15 @@ class TestToolPolicyRouteBoundary:
         resp = client.post(f"{API}/tools/calls/call123/cancel")
         assert resp.status_code == 404
 
-    def test_total_tool_get_routes_is_4(self, client):
-        """Verify exactly 4 tool GET routes via OpenAPI spec."""
+    def test_total_tool_get_routes_is_5(self, client):
+        """Verify exactly 5 tool GET routes via OpenAPI spec."""
         resp = client.get("/openapi.json")
         spec = resp.json()
         tool_get_routes = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/tools") and "get" in spec["paths"][p]
         ]
-        assert len(tool_get_routes) == 4
+        assert len(tool_get_routes) == 5
 
     def test_no_tool_write_routes(self, client):
         """Verify no tool POST/PUT/PATCH/DELETE write routes exist (dry-run and execute POST excluded)."""
@@ -688,14 +688,14 @@ class TestToolPolicyServiceDelegation:
 class TestToolPolicyOpenAPIConsistency:
     """Verify runtime routes match the static OpenAPI spec."""
 
-    def test_runtime_has_33_business_paths(self, client):
+    def test_runtime_has_34_business_paths(self, client):
         resp = client.get("/openapi.json")
         spec = resp.json()
         paths = [
             p for p in spec["paths"]
             if p.startswith("/api/dev/v1/")
         ]
-        assert len(paths) == 33
+        assert len(paths) == 34
 
     def test_tools_policy_in_runtime(self, client):
         resp = client.get("/openapi.json")
