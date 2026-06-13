@@ -980,8 +980,8 @@ class TestDryRunLookupIntegration:
         from hermes_cli.dev_web_tool_handler_lookup import (
             ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
         )
-        from hermes_cli.dev_web_tool_dispatch import (
-            ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED as _DISPATCH_FINAL_BLOCK,
+        from hermes_cli.dev_web_tool_handler_call import (
+            ERROR_HANDLER_CALL_NOT_ENABLED as _HC_NOT_ENABLED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1042,7 +1042,8 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         # Valid token + valid digest + pre-execution audit + handler lookup +
-        # dispatch plan success, but still blocks at Tool Handler call boundary
+        # dispatch plan success, but still blocks at the Tool Handler call
+        # boundary because the explicit handler-call dev gate is unset.
         assert result.execution_allowed is False
         assert result.dispatch_allowed is False
         assert result.provider_schema_allowed is False
@@ -1051,8 +1052,10 @@ class TestDryRunLookupIntegration:
         assert result.execution_started is False
         assert result.execution_attempted is False
         assert result.execution_completed is False
-        # Blocked at Tool Handler call boundary (dispatch plan succeeded)
-        assert result.error_code == _DISPATCH_FINAL_BLOCK
+        # Phase 1G-04-29: the default-disabled handler-call gate now owns the
+        # block with the precise tool_handler_call_not_enabled code (not the
+        # dispatch module's "written but blocked" signal).
+        assert result.error_code == _HC_NOT_ENABLED
         assert result.decision == DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED
         # Pre-execution audit fields present
         assert result.pre_execution_audit_id is not None
@@ -1093,8 +1096,8 @@ class TestDryRunLookupIntegration:
         from hermes_cli.dev_web_tool_handler_lookup import (
             ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
         )
-        from hermes_cli.dev_web_tool_dispatch import (
-            ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED as _DISPATCH_FINAL_BLOCK,
+        from hermes_cli.dev_web_tool_handler_call import (
+            ERROR_HANDLER_CALL_NOT_ENABLED as _HC_NOT_ENABLED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1143,8 +1146,8 @@ class TestDryRunLookupIntegration:
         )
         assert token_result.issued is True
 
-        # First use — token consumed, dispatch plan succeeds, blocks at
-        # Tool Handler call boundary
+        # First use — token consumed, dispatch plan succeeds, blocks at the
+        # Tool Handler call boundary (explicit handler-call gate unset).
         with self._kill_switches_true():
             r1 = evaluate_tool_execute_request(
                 "clarify",
@@ -1154,7 +1157,8 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert r1.execution_allowed is False
-        assert r1.error_code == _DISPATCH_FINAL_BLOCK
+        # Phase 1G-04-29: default-disabled handler-call gate owns the block.
+        assert r1.error_code == _HC_NOT_ENABLED
         assert r1.decision == DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED
         # Dispatch plan built on first use
         assert r1.dispatch_id is not None
@@ -1179,10 +1183,12 @@ class TestDryRunLookupIntegration:
 # ===================================================================
 
 
-def _issue_valid_token_for(tmp_hermes_home, audit_path, request_id="dr-dispatch"):
+def _issue_valid_token_for(tmp_hermes_home, audit_path, request_id="dr-dispatch", arguments=None):
     """Issue a real digest-bound confirmation token and write its audit event.
 
-    Returns (raw_token, digest).
+    Returns (raw_token, digest). The digest is computed over ``arguments`` so
+    the execute-side ``execute_derived_digest`` matches when the same arguments
+    are supplied.
     """
     from datetime import datetime, timezone, timedelta
     from hermes_cli.dev_web_tool_execute_confirmation import issue_confirmation_token
@@ -1204,7 +1210,7 @@ def _issue_valid_token_for(tmp_hermes_home, audit_path, request_id="dr-dispatch"
         allowlisted=True,
         audit_written=True,
         audit_event_id="evt-dispatch-001",
-        arguments=None,
+        arguments=arguments,
         created_at=fixed_ts,
         expires_at=computed_expires,
     )
@@ -1379,3 +1385,316 @@ class TestDispatchIntegration:
         assert raw_token not in text
         assert "confirmationToken" not in text
         assert "rawToken" not in text
+
+
+# ===================================================================
+# 14. Handler Call + Post-execution Audit Integration (Phase 1G-04-29)
+# ===================================================================
+
+
+class TestHandlerCallIntegration:
+    """Phase 1G-04-29: clarify-only handler call + post-execution audit.
+
+    Verifies the full success path under the explicit dev gate and the
+    default-disabled / fail-closed behaviors.
+    """
+
+    @pytest.fixture
+    def tmp_hermes_home(self, tmp_path):
+        return tmp_path / "hermes-home-dev"
+
+    @pytest.fixture
+    def audit_dir(self, tmp_hermes_home):
+        d = tmp_hermes_home / "gateway" / "dev" / "audit"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @pytest.fixture
+    def audit_path(self, audit_dir):
+        return audit_dir / "tool-dry-run-audit.jsonl"
+
+    def _all_gates_true(self):
+        """Kill switches + explicit handler-call gate enabled."""
+        return patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+            "HERMES_TOOL_HANDLER_CALL_ENABLED": "true",
+        }, clear=False)
+
+    def _kill_switches_only(self):
+        """Kill switches true, handler-call gate unset."""
+        return patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False)
+
+    def _issue(self, tmp_hermes_home, audit_path, request_id, arguments=None):
+        return _issue_valid_token_for(
+            tmp_hermes_home, audit_path, request_id=request_id, arguments=arguments,
+        )
+
+    def test_default_disabled_blocks_at_handler_call(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Handler-call gate unset → blocked_tool_handler_call_not_enabled."""
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-disabled")
+        with self._kill_switches_only():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-disabled",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.execution_completed is False
+        assert result.tool_handler_called is False
+        assert result.decision == DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED
+        assert result.error_code == "tool_handler_call_not_enabled"
+
+    def test_explicit_gate_clarify_completes(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Explicit gate + clarify → clarify_execution_completed."""
+        args = {"question": "Pick one", "choices": ["a", "b"]}
+        raw_token, digest = self._issue(
+            tmp_hermes_home, audit_path, "dr-hc-success", arguments=args,
+        )
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-success",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+                arguments_preview=args,
+            )
+        # Success booleans
+        assert result.execution_completed is True
+        assert result.execution_started is True
+        assert result.execution_attempted is True
+        assert result.tool_handler_called is True
+        assert result.decision == "clarify_execution_completed"
+        assert result.error_code is None
+        # Policy flags stay false (clarify exception tracked by executionCompleted)
+        assert result.execution_allowed is False
+        assert result.dispatch_allowed is False
+        assert result.provider_schema_allowed is False
+        assert result.provider_api_called is False
+        # Handler call fields
+        assert result.handler_call_id is not None
+        assert result.handler_call_id.startswith("thc_")
+        assert result.handler_call_status == "completed"
+        assert result.execution_status == "completed"
+        # Post-execution audit fields
+        assert result.post_execution_audit_id is not None
+        assert result.post_execution_audit_id.startswith("pexa_")
+        assert result.post_execution_audit_status == "written"
+        # Tool result
+        assert result.tool_result is not None
+        assert result.tool_result["type"] == "clarify"
+        assert result.tool_result["message"] == "Pick one"
+        assert len(result.tool_result["questions"]) == 2
+        # Side effects
+        assert result.side_effects is not None
+        assert result.side_effects["externalSideEffects"] is False
+        assert result.side_effects["providerSchemaSent"] is False
+        assert result.side_effects["providerApiCalled"] is False
+
+    def test_explicit_gate_writes_post_execution_audit_jsonl(
+        self, tmp_hermes_home, audit_path, audit_dir,
+    ) -> None:
+        """Success path writes the post-execution audit JSONL record."""
+        args = {"question": "Q?"}
+        raw_token, digest = self._issue(
+            tmp_hermes_home, audit_path, "dr-hc-audit", arguments=args,
+        )
+        with self._all_gates_true():
+            evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-audit",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+                arguments_preview=args,
+            )
+        post_audit_file = audit_dir / "tool-post-execution-audit.jsonl"
+        assert post_audit_file.exists()
+        rec = json.loads(post_audit_file.read_text(encoding="utf-8").strip())
+        assert rec["canonicalName"] == "clarify"
+        assert rec["handlerCallId"].startswith("thc_")
+        assert rec["postExecutionAuditId"].startswith("pexa_")
+        assert rec["executeRequestId"].startswith("exe_")
+        assert rec["sideEffectFlags"]["providerApiCalled"] is False
+        assert rec["sideEffectFlags"]["providerSchemaSent"] is False
+        # No raw message content / raw arguments in the audit event
+        rec_text = json.dumps(rec)
+        assert "Q?" not in rec_text
+        assert "rawArguments" not in rec_text
+
+    def test_post_audit_write_failure_fails_closed(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Handler call succeeds but post-audit write fails → fail closed."""
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-failclosed")
+        from hermes_cli import dev_web_tool_post_execution_audit as post_mod
+        from hermes_cli.dev_web_tool_post_execution_audit import (
+            PostExecutionAuditWriteResult,
+        )
+
+        def _failing_write(**_kwargs):
+            return PostExecutionAuditWriteResult(
+                written=False,
+                post_execution_audit_id=None,
+                error_code="post_execution_audit_write_failed",
+                decision="blocked_post_execution_audit_write_failed",
+                gate="post_execution_audit_write",
+            )
+
+        with self._all_gates_true(), patch.object(
+            post_mod, "write_post_execution_audit_event", side_effect=_failing_write,
+        ):
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-failclosed",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        # Fail closed — no success response
+        assert result.execution_allowed is False
+        assert result.execution_completed is False
+        assert result.tool_handler_called is False
+        assert result.tool_result is None
+        assert result.side_effects is None
+        assert result.decision == "blocked_post_execution_audit_failed"
+        assert result.post_execution_audit_status == "failed"
+
+    def test_success_response_excludes_raw_token(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Success response never contains the raw confirmation token."""
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-notoken")
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-notoken",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_completed is True
+        text = json.dumps(result.to_safe_dict())
+        assert raw_token not in text
+        assert "confirmationToken" not in text
+        assert "rawToken" not in text
+
+    def test_success_response_excludes_full_token_hash(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-nohash")
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-nohash",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        text = json.dumps(result.to_safe_dict())
+        assert "tokenHash" not in text
+
+    def test_success_response_redacts_secret_arguments(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Secret-looking clarify question text is redacted in the result."""
+        args = {"question": "sk-abcdef1234567890"}
+        raw_token, digest = self._issue(
+            tmp_hermes_home, audit_path, "dr-hc-redact", arguments=args,
+        )
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-redact",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+                arguments_preview=args,
+            )
+        assert result.execution_completed is True
+        text = json.dumps(result.to_safe_dict())
+        assert "sk-abcdef1234567890" not in text
+
+    def test_success_no_callable_or_function_repr(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-nocallable")
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-nocallable",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        d = result.to_safe_dict()
+        text = json.dumps(d)
+        assert "<function" not in text
+        assert "functools" not in text
+        # No actual callable object anywhere in the JSON-safe response.
+        def _has_callable(obj):
+            if callable(obj):
+                return True
+            if isinstance(obj, dict):
+                return any(_has_callable(v) for v in obj.values())
+            if isinstance(obj, list):
+                return any(_has_callable(v) for v in obj)
+            return False
+        assert _has_callable(d) is False
+
+    def test_success_safe_dict_has_new_fields(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-fields")
+        with self._all_gates_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-fields",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        d = result.to_safe_dict()
+        assert d["handlerCallId"].startswith("thc_")
+        assert d["handlerCallStatus"] == "completed"
+        assert d["executionStatus"] == "completed"
+        assert d["postExecutionAuditId"].startswith("pexa_")
+        assert d["postExecutionAuditStatus"] == "written"
+        assert d["toolResult"]["type"] == "clarify"
+        assert d["sideEffects"]["providerApiCalled"] is False
+
+    def test_token_consumed_on_success(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """A successful clarify execution consumes the confirmation token."""
+        raw_token, digest = self._issue(tmp_hermes_home, audit_path, "dr-hc-consume")
+        with self._all_gates_true():
+            r1 = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-consume",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert r1.execution_completed is True
+        # Second use — token already consumed
+        with self._all_gates_true():
+            r2 = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-hc-consume",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert r2.execution_allowed is False
+        assert r2.error_code == ERROR_CONFIRMATION_REUSED

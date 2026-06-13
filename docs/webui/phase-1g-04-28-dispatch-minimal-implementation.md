@@ -319,13 +319,17 @@ Verified by `tests/test_dev_check_webui.py`, `tests/test_dev_web_0c06_closure.py
 
 ## 9. Known Limitations
 
-- Tool Handler call is not yet enabled (by design — future phase).
+- Tool Handler call is not yet enabled (by design — future phase). *(Advanced
+  in Phase 1G-04-29: clarify-only handler call + post-execution audit
+  implemented behind an explicit dev gate; default runtime still blocked.)*
 - Execution is not yet enabled (by design — future phase).
 - Post-execution audit is not yet implemented (by design — future phase).
+  *(Implemented in Phase 1G-04-29.)*
 - Frontend execute UI is not implemented (by design — future phase).
 - Audit read API / audit viewer are not yet implemented (by design — future phase).
 - Dispatch plan is metadata-only and not runtime queueing.
-- Clarify handler-level audit still needs a future phase.
+- Clarify handler-level audit still needs a future phase. *(Post-execution
+  audit added in Phase 1G-04-29.)*
 
 ---
 

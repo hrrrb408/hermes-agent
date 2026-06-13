@@ -249,7 +249,14 @@ def _build_gate_status(
         "confirmationToken": "passed",
         "digestVerification": "passed",
         "preExecutionAudit": pre_execution_audit_status,
-        "handlerLookup": "blocked_not_enabled",
+        # At pre-execution audit write time, handler lookup / dispatch /
+        # handler call are downstream gates not yet evaluated. They are now
+        # enabled (Phases 1G-04-26 .. 1G-04-29); the earlier
+        # "blocked_not_enabled" label was stale metadata only and never
+        # affected the response path.
+        "handlerLookup": "pending",
+        "dispatch": "pending",
+        "toolHandlerCall": "pending",
     }
 
 

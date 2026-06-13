@@ -20,6 +20,7 @@ All tests verify:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -724,5 +725,188 @@ class TestProductionContainmentAPI:
         })
         data = resp.json()["data"]
         assert data["executionAllowed"] is False
+
+
+# ===================================================================
+# 11. Clarify Handler Call + Post-execution Audit API Tests (Phase 1G-04-29)
+# ===================================================================
+
+
+def _issue_valid_token_api(hermes_home, audit_path, request_id, arguments=None):
+    """Issue a real digest-bound confirmation token for API-level success tests."""
+    import json
+    from datetime import datetime, timezone, timedelta
+    from hermes_cli.dev_web_tool_execute_confirmation import issue_confirmation_token
+    from hermes_cli.dev_web_tool_execute_preflight import DryRunHistoricalLookupResult
+    from hermes_cli.dev_web_tool_execute_digest import (
+        build_dry_run_decision_digest_package,
+    )
+
+    fixed_ts = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    fixed_dt = datetime.fromisoformat(fixed_ts)
+    if fixed_dt.tzinfo is None:
+        fixed_dt = fixed_dt.replace(tzinfo=timezone.utc)
+    computed_expires = (fixed_dt + timedelta(seconds=300)).isoformat()
+    digest_pkg = build_dry_run_decision_digest_package(
+        dry_run_request_id=request_id,
+        canonical_name="clarify",
+        risk_tier="R0",
+        policy_decision="would_allow",
+        allowlisted=True,
+        audit_written=True,
+        audit_event_id="evt-api-hc-001",
+        arguments=arguments,
+        created_at=fixed_ts,
+        expires_at=computed_expires,
+    )
+    assert digest_pkg.success
+    digest = digest_pkg.digest
+
+    with open(audit_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(
+            {**_make_audit_event(request_id=request_id, timestamp=fixed_ts),
+             "dryRunDecisionDigest": digest,
+             "eventId": "evt-api-hc-001"},
+            ensure_ascii=False,
+        ) + "\n")
+
+    now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+    dr_record = DryRunHistoricalLookupResult(
+        found=True, error_code=None,
+        dry_run_request_id=request_id,
+        canonical_name="clarify", decision="would_allow",
+        risk_tier="R0", policy_version=None, arguments_digest=None,
+        dry_run_decision_digest=digest, audit_written=True,
+        audit_event_id="evt-api-hc-001", created_at=now.isoformat(),
+        expires_at=None, lookup_source="test", redaction_status="none",
+    )
+    token_result = issue_confirmation_token(
+        hermes_home=str(hermes_home),
+        dry_run_record=dr_record,
+        canonical_name="clarify",
+        risk_tier="R0",
+        dry_run_request_id=request_id,
+        dry_run_decision_digest=digest,
+        now=now,
+    )
+    assert token_result.issued is True
+    return token_result.raw_token, digest
+
+
+@pytest.fixture
+def client_full_chain(tmp_path):
+    """TestClient with a real HERMES_HOME; returns (client, hermes_home, audit_path)."""
+    hermes_home = tmp_path / "hermes-home-dev"
+    audit_dir = hermes_home / "gateway" / "dev" / "audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    config = DevWebApiConfig(hermes_home=hermes_home)
+    app = create_dev_web_api_app(config)
+    return TestClient(app), hermes_home, audit_dir / "tool-dry-run-audit.jsonl"
+
+
+class TestHandlerCallApiSuccess:
+    """Phase 1G-04-29: clarify-only handler call success path through the API."""
+
+    def test_default_disabled_still_blocked_at_handler_call(
+        self, client_full_chain,
+    ) -> None:
+        """Kill switches true but handler-call gate unset → blocked."""
+        from unittest.mock import patch
+        client, hermes_home, audit_path = client_full_chain
+        raw_token, digest = _issue_valid_token_api(
+            hermes_home, audit_path, "dr-api-disabled",
+        )
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False):
+            os.environ.pop("HERMES_TOOL_HANDLER_CALL_ENABLED", None)
+            resp = client.post(EXECUTE_URL, json={
+                "canonicalName": "clarify",
+                "dryRunRequestId": "dr-api-disabled",
+                "dryRunDecisionDigest": digest,
+                "confirmationToken": raw_token,
+            })
+        data = resp.json()["data"]
+        assert data["executionAllowed"] is False
+        assert data["executionCompleted"] is False
+        assert data["toolHandlerCalled"] is False
+        assert data["decision"] == "blocked_tool_handler_call_not_enabled"
+
+    def test_explicit_gate_clarify_success_envelope(
+        self, client_full_chain,
+    ) -> None:
+        """Explicit gate + clarify → clarify_execution_completed envelope."""
+        from unittest.mock import patch
+        client, hermes_home, audit_path = client_full_chain
+        args = {"question": "Pick one", "choices": ["a", "b"]}
+        raw_token, digest = _issue_valid_token_api(
+            hermes_home, audit_path, "dr-api-success", arguments=args,
+        )
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+            "HERMES_TOOL_HANDLER_CALL_ENABLED": "true",
+        }, clear=False):
+            resp = client.post(EXECUTE_URL, json={
+                "canonicalName": "clarify",
+                "dryRunRequestId": "dr-api-success",
+                "dryRunDecisionDigest": digest,
+                "confirmationToken": raw_token,
+                "argumentsPreview": args,
+            })
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["decision"] == "clarify_execution_completed"
+        assert data["executionCompleted"] is True
+        assert data["executionStarted"] is True
+        assert data["toolHandlerCalled"] is True
+        # Policy flags stay false
+        assert data["executionAllowed"] is False
+        assert data["dispatchAllowed"] is False
+        assert data["providerSchemaAllowed"] is False
+        assert data["providerApiCalled"] is False
+        # New success fields
+        assert data["handlerCallId"].startswith("thc_")
+        assert data["handlerCallStatus"] == "completed"
+        assert data["executionStatus"] == "completed"
+        assert data["postExecutionAuditId"].startswith("pexa_")
+        assert data["postExecutionAuditStatus"] == "written"
+        assert data["toolResult"]["type"] == "clarify"
+        assert data["toolResult"]["message"] == "Pick one"
+        assert data["sideEffects"]["providerApiCalled"] is False
+        # Raw token never in the API response
+        body_text = json.dumps(resp.json())
+        assert raw_token not in body_text
+        assert "confirmationToken" not in body_text
+
+    def test_success_writes_post_execution_audit_file(
+        self, client_full_chain,
+    ) -> None:
+        """Success path writes tool-post-execution-audit.jsonl."""
+        from unittest.mock import patch
+        client, hermes_home, audit_path = client_full_chain
+        raw_token, digest = _issue_valid_token_api(
+            hermes_home, audit_path, "dr-api-audit-file",
+        )
+        post_audit_file = hermes_home / "gateway" / "dev" / "audit" / "tool-post-execution-audit.jsonl"
+        with patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+            "HERMES_TOOL_HANDLER_CALL_ENABLED": "true",
+        }, clear=False):
+            client.post(EXECUTE_URL, json={
+                "canonicalName": "clarify",
+                "dryRunRequestId": "dr-api-audit-file",
+                "dryRunDecisionDigest": digest,
+                "confirmationToken": raw_token,
+            })
+        assert post_audit_file.exists()
+        rec = json.loads(post_audit_file.read_text(encoding="utf-8").strip())
+        assert rec["canonicalName"] == "clarify"
+        assert rec["handlerCallId"].startswith("thc_")
+        assert rec["sideEffectFlags"]["providerApiCalled"] is False
+
+
         # Should reach confirmation gate (blocked by confirmation_not_implemented)
         # or earlier gate depending on kill switch state in test client

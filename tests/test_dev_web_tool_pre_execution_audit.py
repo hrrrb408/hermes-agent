@@ -696,7 +696,12 @@ class TestGateAndSideEffects:
         rec = json.loads(content.strip())
         gs = rec["gateStatus"]
         assert gs["preExecutionAudit"] == "written"
-        assert gs["handlerLookup"] == "blocked_not_enabled"
+        # Phase 1G-04-29 P2: handler lookup / dispatch / handler call are now
+        # enabled downstream gates; at pre-execution audit write time they are
+        # "pending" (not yet evaluated), not "blocked_not_enabled".
+        assert gs["handlerLookup"] == "pending"
+        assert gs["dispatch"] == "pending"
+        assert gs["toolHandlerCall"] == "pending"
 
     def test_side_effect_flags_remain_false_in_jsonl(
         self, tmp_hermes_home: Path, audit_file: Path,

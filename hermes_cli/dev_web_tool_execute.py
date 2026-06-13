@@ -97,6 +97,10 @@ DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED = (
     "blocked_tool_handler_call_not_enabled"
 )
 
+# Phase 1G-04-29: Clarify-only handler call + post-execution audit decisions
+DECISION_CLARIFY_EXECUTION_COMPLETED = "clarify_execution_completed"
+DECISION_BLOCKED_POST_EXECUTION_AUDIT_FAILED = "blocked_post_execution_audit_failed"
+
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
 DECISION_EXECUTED = "executed"
@@ -183,6 +187,9 @@ ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED = (
     "dispatch_written_but_tool_handler_call_not_enabled"
 )
 ERROR_TOOL_HANDLER_CALL_NOT_ENABLED = "tool_handler_call_not_enabled"
+# Phase 1G-04-29: Post-execution audit error codes
+ERROR_POST_EXECUTION_AUDIT_FAILED = "post_execution_audit_failed"
+ERROR_POST_EXECUTION_AUDIT_WRITE_FAILED = "post_execution_audit_write_failed"
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
 ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
@@ -249,6 +256,8 @@ GATE_DISPATCH = "dispatch"
 GATE_DISPATCH_PLAN = "dispatch_plan"
 GATE_DISPATCH_PLAN_VALIDATION = "dispatch_plan_validation"
 GATE_TOOL_HANDLER_CALL = "tool_handler_call"
+GATE_POST_EXECUTION_AUDIT = "post_execution_audit"
+GATE_POST_EXECUTION_AUDIT_WRITE = "post_execution_audit_write"
 GATE_EXECUTION = "execution"
 GATE_VALIDATION = "validation"
 
@@ -363,6 +372,13 @@ class ToolExecuteResult:
     dispatch_id: str | None = None
     dispatch_status: str | None = None
     dispatch_plan: dict[str, Any] | None = None
+    handler_call_id: str | None = None
+    handler_call_status: str | None = None
+    execution_status: str | None = None
+    post_execution_audit_id: str | None = None
+    post_execution_audit_status: str | None = None
+    tool_result: dict[str, Any] | None = None
+    side_effects: dict[str, Any] | None = None
 
     def to_safe_dict(self) -> dict[str, Any]:
         """Convert to JSON-safe dict with all execution flags false."""
@@ -420,6 +436,20 @@ class ToolExecuteResult:
             result["dispatchStatus"] = self.dispatch_status
         if self.dispatch_plan is not None:
             result["dispatchPlan"] = self.dispatch_plan
+        if self.handler_call_id is not None:
+            result["handlerCallId"] = self.handler_call_id
+        if self.handler_call_status is not None:
+            result["handlerCallStatus"] = self.handler_call_status
+        if self.execution_status is not None:
+            result["executionStatus"] = self.execution_status
+        if self.post_execution_audit_id is not None:
+            result["postExecutionAuditId"] = self.post_execution_audit_id
+        if self.post_execution_audit_status is not None:
+            result["postExecutionAuditStatus"] = self.post_execution_audit_status
+        if self.tool_result is not None:
+            result["toolResult"] = self.tool_result
+        if self.side_effects is not None:
+            result["sideEffects"] = self.side_effects
         return result
 
 
@@ -1360,44 +1390,191 @@ def evaluate_tool_execute_request(
             handler_descriptor=lookup_result.handler_descriptor,
         )
 
-    # Dispatch planning succeeded — record pass, then block at the Tool
-    # Handler call boundary (Tool Handler call is still not enabled).
+    # Dispatch planning succeeded — record pass.
     gates.append(ToolExecuteGateStatus(
         gate=GATE_DISPATCH, passed=True, error_code=None,
     ))
 
-    # Gate 67–69: Tool Handler call still not enabled, Tool Handler still not
-    # called, execution still disabled.
+    # ── Gate 70–83: Tool Handler call + Post-execution audit (Phase 1G-04-29) ──
+    # DEFAULT-DISABLED: only an explicit dev gate
+    # (HERMES_TOOL_HANDLER_CALL_ENABLED == "true") allows the clarify-only
+    # handler call. Dispatch plan existence is NOT handler-call permission.
+    from hermes_cli.dev_web_tool_handler_call import (
+        attempt_clarify_handler_call as _attempt_handler_call,
+    )
+    from hermes_cli.dev_web_tool_post_execution_audit import (
+        build_post_execution_audit_package as _build_post_pkg,
+        write_post_execution_audit_event as _write_post_event,
+    )
+
+    handler_call_result = _attempt_handler_call(
+        canonical_name=canonical_name,
+        handler_descriptor=lookup_result.handler_descriptor,
+        dispatch_plan=dispatch_result.dispatch_plan,
+        handler_lookup_id=lookup_result.handler_lookup_id,
+        dispatch_id=dispatch_result.dispatch_id,
+        execute_request_id=pea_write_result.execute_request_id,
+        pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+        arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
+    )
+
+    if not handler_call_result.called:
+        # Handler call blocked (default-disabled or a consistency gate failed).
+        # No handler invoked, no execution, no provider call.
+        hc_error = handler_call_result.error_code or ERROR_TOOL_HANDLER_CALL_NOT_ENABLED
+        gates.append(ToolExecuteGateStatus(
+            gate=handler_call_result.gate or GATE_TOOL_HANDLER_CALL,
+            passed=False,
+            error_code=hc_error,
+        ))
+        policy_notes.append(
+            f"Tool Handler call blocked: {hc_error}. Execution remains blocked."
+        )
+        reason_codes.append(hc_error)
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=hc_error,
+            decision=handler_call_result.decision
+            or DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED,
+            risk_tier=risk_tier,
+            pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+            execute_request_id=pea_write_result.execute_request_id,
+            pre_execution_audit_status="written",
+            handler_lookup_id=lookup_result.handler_lookup_id,
+            handler_lookup_status=lookup_result.handler_lookup_status,
+            handler_descriptor=lookup_result.handler_descriptor,
+            dispatch_id=dispatch_result.dispatch_id,
+            dispatch_status=dispatch_result.dispatch_status,
+            dispatch_plan=dispatch_result.dispatch_plan,
+        )
+
+    # Handler called successfully — record gate pass.
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_TOOL_HANDLER_CALL,
-        passed=False,
-        error_code=dispatch_result.error_code,
+        gate=GATE_TOOL_HANDLER_CALL, passed=True, error_code=None,
+    ))
+
+    # ── Gate 80–82: Post-execution audit (REQUIRED, fail-closed) ──
+    # No successful controlled execution response without post-execution audit.
+    post_pkg_result = _build_post_pkg(
+        execute_request_id=pea_write_result.execute_request_id,
+        pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+        handler_lookup_id=lookup_result.handler_lookup_id,
+        dispatch_id=dispatch_result.dispatch_id,
+        handler_call_id=handler_call_result.handler_call_id,
+        canonical_name=canonical_name,
+        execution_status=handler_call_result.execution_status,
+        handler_call_status=handler_call_result.handler_call_status,
+        dry_run_decision_digest=historical_digest,
+        confirmation_token_id=token_result.token_id,
+        tool_result=handler_call_result.tool_result,
+    )
+
+    if not post_pkg_result.success:
+        post_error = post_pkg_result.error_code or ERROR_POST_EXECUTION_AUDIT_WRITE_FAILED
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_POST_EXECUTION_AUDIT,
+            passed=False,
+            error_code=post_error,
+        ))
+        policy_notes.append(
+            f"Post-execution audit package build failed: {post_error}. "
+            "Execution fails closed."
+        )
+        reason_codes.append(post_error)
+        # FAIL CLOSED: do not surface success-indicating handler-call status.
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=post_error,
+            decision=DECISION_BLOCKED_POST_EXECUTION_AUDIT_FAILED,
+            risk_tier=risk_tier,
+            pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+            execute_request_id=pea_write_result.execute_request_id,
+            pre_execution_audit_status="written",
+            handler_lookup_id=lookup_result.handler_lookup_id,
+            handler_lookup_status=lookup_result.handler_lookup_status,
+            handler_descriptor=lookup_result.handler_descriptor,
+            dispatch_id=dispatch_result.dispatch_id,
+            dispatch_status=dispatch_result.dispatch_status,
+            dispatch_plan=dispatch_result.dispatch_plan,
+            post_execution_audit_status="failed",
+        )
+
+    post_write_result = _write_post_event(
+        hermes_home=hermes_home,
+        audit_package=post_pkg_result.audit_package,
+    )
+
+    if not post_write_result.written:
+        # FAIL CLOSED — a successful controlled execution requires a written
+        # post-execution audit. No success response is returned on failure.
+        post_write_error = post_write_result.error_code or ERROR_POST_EXECUTION_AUDIT_WRITE_FAILED
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_POST_EXECUTION_AUDIT_WRITE,
+            passed=False,
+            error_code=post_write_error,
+        ))
+        policy_notes.append(
+            f"Post-execution audit write failed: {post_write_error}. "
+            "Execution fails closed — no success response."
+        )
+        reason_codes.append(post_write_error)
+        # FAIL CLOSED: handler was invoked but execution result is NOT returned
+        # as successful. No success-indicating handler-call status is surfaced.
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=post_write_error,
+            decision=DECISION_BLOCKED_POST_EXECUTION_AUDIT_FAILED,
+            risk_tier=risk_tier,
+            pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+            execute_request_id=pea_write_result.execute_request_id,
+            pre_execution_audit_status="written",
+            handler_lookup_id=lookup_result.handler_lookup_id,
+            handler_lookup_status=lookup_result.handler_lookup_status,
+            handler_descriptor=lookup_result.handler_descriptor,
+            dispatch_id=dispatch_result.dispatch_id,
+            dispatch_status=dispatch_result.dispatch_status,
+            dispatch_plan=dispatch_result.dispatch_plan,
+            post_execution_audit_status="failed",
+        )
+
+    # ── Gate 83: Safe controlled execution response ──
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_POST_EXECUTION_AUDIT, passed=True, error_code=None,
     ))
     policy_notes.append(
-        "Dispatch plan created, but Tool Handler call is not enabled "
-        "in this phase. Execution remains blocked."
+        "Clarify-only controlled execution completed. Tool Handler called, "
+        "result normalized, post-execution audit written. No Provider Schema "
+        "sent, no Provider API called, no external side effects."
     )
-    reason_codes.append(dispatch_result.error_code)
-    error_code = dispatch_result.error_code
-    decision = dispatch_result.decision
-
-    return _build_blocked_result(
+    return _build_success_result(
         canonical_name=canonical_name,
         gates=gates,
         policy_notes=policy_notes,
-        reason_codes=reason_codes,
-        error_code=error_code,
-        decision=decision,
         risk_tier=risk_tier,
         pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
         execute_request_id=pea_write_result.execute_request_id,
-        pre_execution_audit_status="written",
         handler_lookup_id=lookup_result.handler_lookup_id,
         handler_lookup_status=lookup_result.handler_lookup_status,
         handler_descriptor=lookup_result.handler_descriptor,
         dispatch_id=dispatch_result.dispatch_id,
         dispatch_status=dispatch_result.dispatch_status,
         dispatch_plan=dispatch_result.dispatch_plan,
+        handler_call_id=handler_call_result.handler_call_id,
+        handler_call_status=handler_call_result.handler_call_status,
+        execution_status=handler_call_result.execution_status,
+        post_execution_audit_id=post_write_result.post_execution_audit_id,
+        tool_result=handler_call_result.tool_result,
+        side_effects=handler_call_result.side_effects,
+        tool_handler_called=handler_call_result.called,
     )
 
 
@@ -1424,6 +1601,10 @@ def _build_blocked_result(
     dispatch_id: str | None = None,
     dispatch_status: str | None = None,
     dispatch_plan: dict[str, Any] | None = None,
+    handler_call_id: str | None = None,
+    handler_call_status: str | None = None,
+    execution_status: str | None = None,
+    post_execution_audit_status: str | None = None,
 ) -> ToolExecuteResult:
     """Build a standard blocked ToolExecuteResult."""
     return ToolExecuteResult(
@@ -1463,12 +1644,107 @@ def _build_blocked_result(
         dispatch_id=dispatch_id,
         dispatch_status=dispatch_status,
         dispatch_plan=dispatch_plan,
+        handler_call_id=handler_call_id,
+        handler_call_status=handler_call_status,
+        execution_status=execution_status,
+        post_execution_audit_status=post_execution_audit_status,
     )
 
 
-# ---------------------------------------------------------------------------
-# 11. Policy summary
-# ---------------------------------------------------------------------------
+def _build_success_result(
+    *,
+    canonical_name: str,
+    gates: list[ToolExecuteGateStatus],
+    policy_notes: list[str],
+    risk_tier: str | None,
+    pre_execution_audit_id: str | None,
+    execute_request_id: str | None,
+    handler_lookup_id: str | None,
+    handler_lookup_status: str | None,
+    handler_descriptor: dict[str, Any] | None,
+    dispatch_id: str | None,
+    dispatch_status: str | None,
+    dispatch_plan: dict[str, Any] | None,
+    handler_call_id: str | None,
+    handler_call_status: str | None,
+    execution_status: str | None,
+    post_execution_audit_id: str | None,
+    tool_result: dict[str, Any] | None,
+    side_effects: dict[str, Any] | None,
+    tool_handler_called: bool,
+) -> ToolExecuteResult:
+    """Build a successful clarify-only controlled execution result.
+
+    Only reachable when: kill switches enabled + clarify allowlisted + valid
+    dry-run + valid confirmation token + valid digest + pre-execution audit
+    written + handler lookup found + dispatch plan built + explicit handler
+    call gate enabled + clarify handler invoked + result normalized +
+    post-execution audit written. The ``if not handler_call_result.called``
+    guard in ``evaluate_tool_execute_request`` guarantees this builder is never
+    reached when the handler was not actually invoked under the explicit gate,
+    so ``tool_handler_called`` is derived from the verified result rather than
+    assumed.
+
+    Invariants preserved:
+      - executionAllowed = False (policy flag stays false; the clarify
+        exception is tracked by executionCompleted + executionStatus)
+      - dispatchAllowed = False
+      - providerSchemaAllowed = False
+      - providerApiCalled = False
+      - All side_effects external flags = False
+    """
+    preview_size = 0
+    if tool_result is not None:
+        try:
+            preview_size = len(json.dumps(tool_result, ensure_ascii=False))
+        except (TypeError, ValueError):
+            preview_size = 0
+
+    return ToolExecuteResult(
+        canonical_name=canonical_name,
+        exists=_lookup_tool_policy(canonical_name)[0],
+        risk_tier=risk_tier,
+        decision=DECISION_CLARIFY_EXECUTION_COMPLETED,
+        gate_status=tuple(gates),
+        audit_status=ToolExecuteAuditStatus(
+            audit_attempted=True,
+            audit_written=True,
+            audit_error=None,
+        ),
+        result_preview=ToolExecuteResultPreview(
+            available=True,
+            preview_type="clarify",
+            preview_size_bytes=preview_size,
+            truncated=False,
+        ),
+        execution_attempted=True,
+        execution_started=True,
+        execution_completed=True,
+        execution_allowed=False,
+        dispatch_allowed=False,
+        provider_schema_allowed=False,
+        tool_handler_called=tool_handler_called,
+        provider_api_called=False,
+        error_code=None,
+        policy_notes=tuple(policy_notes),
+        reason_codes=(),
+        pre_execution_audit_id=pre_execution_audit_id,
+        execute_request_id=execute_request_id,
+        pre_execution_audit_status="written",
+        handler_lookup_id=handler_lookup_id,
+        handler_lookup_status=handler_lookup_status,
+        handler_descriptor=handler_descriptor,
+        dispatch_id=dispatch_id,
+        dispatch_status=dispatch_status,
+        dispatch_plan=dispatch_plan,
+        handler_call_id=handler_call_id,
+        handler_call_status=handler_call_status,
+        execution_status=execution_status,
+        post_execution_audit_id=post_execution_audit_id,
+        post_execution_audit_status="written",
+        tool_result=tool_result,
+        side_effects=side_effects,
+    )
 
 
 def compute_execute_policy_summary() -> ToolExecutePolicySummary:

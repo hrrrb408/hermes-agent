@@ -4156,10 +4156,31 @@ components:
         - blocked_dispatch_side_effect_risk
         - blocked_dispatch_registry_mismatch
         - blocked_tool_handler_call_not_enabled
+        - blocked_handler_call_unavailable
+        - blocked_handler_call_not_clarify
+        - blocked_handler_call_dispatch_plan_missing
+        - blocked_handler_call_handler_descriptor_missing
+        - blocked_handler_call_plan_invalid
+        - blocked_handler_call_canonical_name_mismatch
+        - blocked_handler_call_handler_lookup_mismatch
+        - blocked_handler_call_registry_mismatch
+        - blocked_handler_call_side_effect_risk
+        - blocked_handler_call_provider_not_disabled
+        - blocked_handler_call_failed
+        - blocked_post_execution_audit_unavailable
+        - blocked_post_execution_audit_path_forbidden
+        - blocked_post_execution_audit_write_failed
+        - blocked_post_execution_audit_invalid_state
+        - blocked_post_execution_audit_missing_required_field
+        - blocked_post_execution_audit_serialization_failed
+        - blocked_post_execution_audit_failed
+        - clarify_execution_completed
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-28.
-        would_execute, executed, and execution_failed are reserved for future phases
-        and are not returned by the current implementation.
+        Execute gate decision. In the default runtime (kill switches / explicit
+        handler-call gate unset) all values represent blocked states.
+        `clarify_execution_completed` is returned ONLY on the explicit dev-gated
+        clarify-only controlled execution success path (Phase 1G-04-29). The
+        default runtime never returns a non-blocked decision.
 
     ToolExecuteErrorCode:
       type: string
@@ -4240,6 +4261,24 @@ components:
         - dispatch_registry_mismatch
         - dispatch_written_but_tool_handler_call_not_enabled
         - tool_handler_call_not_enabled
+        - handler_call_unavailable
+        - handler_call_not_clarify
+        - handler_call_dispatch_plan_missing
+        - handler_call_handler_descriptor_missing
+        - handler_call_plan_invalid
+        - handler_call_canonical_name_mismatch
+        - handler_call_handler_lookup_mismatch
+        - handler_call_registry_mismatch
+        - handler_call_side_effect_risk
+        - handler_call_provider_not_disabled
+        - handler_call_failed
+        - post_execution_audit_unavailable
+        - post_execution_audit_path_forbidden
+        - post_execution_audit_write_failed
+        - post_execution_audit_invalid_state
+        - post_execution_audit_missing_required_field
+        - post_execution_audit_serialization_failed
+        - post_execution_audit_failed
         - validation_failed
         - execution_not_implemented
         - internal_error
@@ -4347,12 +4386,17 @@ components:
           description: Always false. No execution is attempted in this phase.
         executionStarted:
           type: boolean
-          enum: [false]
-          description: Always false. No execution is started in this phase.
+          description: >
+            False in the default runtime and on every blocked path. True ONLY
+            on the explicit dev-gated clarify-only controlled execution success
+            path (Phase 1G-04-29), where the clarify handler is invoked.
         executionCompleted:
           type: boolean
-          enum: [false]
-          description: Always false. No execution completes in this phase.
+          description: >
+            False in the default runtime and on every blocked path. True ONLY
+            on the explicit dev-gated clarify-only controlled execution success
+            path (Phase 1G-04-29), where the clarify handler call completes and
+            the post-execution audit is written.
         executionAllowed:
           type: boolean
           enum: [false]
@@ -4367,8 +4411,10 @@ components:
           description: Always false. Provider schema sending requires separate phase.
         toolHandlerCalled:
           type: boolean
-          enum: [false]
-          description: Always false. No tool handler is called in this phase.
+          description: >
+            False in the default runtime and on every blocked path. True ONLY
+            on the explicit dev-gated clarify-only controlled execution success
+            path (Phase 1G-04-29), where the clarify handler is invoked.
         providerApiCalled:
           type: boolean
           enum: [false]
@@ -4446,6 +4492,58 @@ components:
             dispatch plan build. Contains metadata only — no callable references,
             no raw arguments, no raw token, no secrets, no Provider Schema payload.
             Dispatch plan existence is NOT execution permission.
+        handlerCallId:
+          type: string
+          nullable: true
+          description: >
+            Handler call correlation ID (prefix "thc_"). Only present after a
+            successful clarify-only handler call on the explicit dev-gated path
+            (Phase 1G-04-29). Not an authorization credential — correlation-only.
+        handlerCallStatus:
+          type: string
+          nullable: true
+          enum: [completed, null]
+          description: >
+            Handler call status. "completed" when the clarify handler was invoked
+            and its result normalized under the explicit dev gate; null otherwise.
+        executionStatus:
+          type: string
+          nullable: true
+          enum: [completed, null]
+          description: >
+            Controlled execution status. "completed" only on the explicit
+            dev-gated clarify-only success path; null otherwise.
+        postExecutionAuditId:
+          type: string
+          nullable: true
+          description: >
+            Post-execution audit correlation ID (prefix "pexa_"). Only present
+            after a successful post-execution audit write on the clarify-only
+            success path. Required for a successful controlled execution
+            response. Not an authorization credential — correlation-only.
+        postExecutionAuditStatus:
+          type: string
+          nullable: true
+          enum: [written, null]
+          description: >
+            Post-execution audit write status. "written" when the post-execution
+            audit was persisted; null otherwise. A successful controlled
+            execution response requires "written".
+        toolResult:
+          $ref: "#/components/schemas/ClarifyToolResult"
+          nullable: true
+          description: >
+            Safe clarify tool result. Only present after a successful clarify
+            handler call on the explicit dev-gated path. Contains the
+            clarification question and choices only — no secrets, no callable
+            references, no provider payloads.
+        sideEffects:
+          $ref: "#/components/schemas/ToolExecutionSideEffects"
+          nullable: true
+          description: >
+            Side-effect summary for the controlled execution. Only present on the
+            clarify-only success path. Every external side-effect flag is always
+            false (clarify is side-effect-free).
 
     ToolHandlerDescriptor:
       type: object
@@ -4570,6 +4668,128 @@ components:
           type: integer
           nullable: true
           description: Optional handler descriptor version metadata.
+
+    ClarifyToolResult:
+      type: object
+      description: >
+        Safe clarify tool result. Contains the clarification question and
+        optional choices only — no callable references, no secrets, no raw
+        confirmation token, no full tokenHash, no provider payloads. The
+        question / choice text is defensively redacted for secret patterns.
+      required:
+        - type
+        - message
+        - questions
+      properties:
+        type:
+          type: string
+          enum: [clarify]
+          description: Tool result type. Always "clarify" in this phase.
+        message:
+          type: string
+          description: The clarification question text (secret-redacted).
+        questions:
+          type: array
+          description: >
+            Structured answer choices. Empty for open-ended clarification.
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id:
+                type: integer
+                description: Zero-based choice index.
+              label:
+                type: string
+                description: Choice label text (secret-redacted).
+
+    ToolExecutionSideEffects:
+      type: object
+      description: >
+        Side-effect summary for a clarify-only controlled execution. Clarify is
+        side-effect-free: every external side-effect flag is always false.
+        Provider Schema is never sent; Provider API is never called.
+      required:
+        - externalSideEffects
+        - providerSchemaSent
+        - providerApiCalled
+        - filesystemChanged
+        - networkCalled
+      properties:
+        externalSideEffects:
+          type: boolean
+          enum: [false]
+          description: Always false. Clarify has no external side effects.
+        providerSchemaSent:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider Schema sending is a non-goal.
+        providerApiCalled:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider API is never called.
+        filesystemChanged:
+          type: boolean
+          enum: [false]
+          description: Always false. No filesystem mutation.
+        networkCalled:
+          type: boolean
+          enum: [false]
+          description: Always false. No network calls.
+
+    ToolHandlerCallEnvelope:
+      type: object
+      description: >
+        Safe handler-call envelope. Metadata only — no callable references,
+        no secrets, no raw confirmation token, no full tokenHash, no raw
+        unredacted arguments, no provider credentials. Only produced on the
+        explicit dev-gated clarify-only controlled execution path.
+      required:
+        - handlerCallId
+        - handlerCallStatus
+        - executionStatus
+        - canonicalName
+        - sideEffects
+      properties:
+        handlerCallId:
+          type: string
+          description: Handler call correlation ID (prefix "thc_").
+        handlerCallStatus:
+          type: string
+          enum: [completed]
+          description: Handler call status.
+        executionStatus:
+          type: string
+          enum: [completed]
+          description: Controlled execution status.
+        canonicalName:
+          type: string
+          enum: [clarify]
+          description: Always "clarify" in this phase.
+        toolResult:
+          $ref: "#/components/schemas/ClarifyToolResult"
+          nullable: true
+        sideEffects:
+          $ref: "#/components/schemas/ToolExecutionSideEffects"
+
+    ToolPostExecutionAuditSummary:
+      type: object
+      description: >
+        Safe post-execution audit summary. Correlation IDs and a safe
+        result-summary only — no raw confirmation token, no full tokenHash,
+        no raw arguments, no raw message content, no secrets. Required for a
+        successful controlled execution response (fail-closed on write failure).
+      required:
+        - postExecutionAuditId
+        - postExecutionAuditStatus
+      properties:
+        postExecutionAuditId:
+          type: string
+          description: Post-execution audit correlation ID (prefix "pexa_").
+        postExecutionAuditStatus:
+          type: string
+          enum: [written]
+          description: Post-execution audit write status.
 
     ToolExecuteResponse:
       type: object
