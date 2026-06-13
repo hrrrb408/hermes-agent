@@ -19,12 +19,15 @@
 |----------|-------|---------------------------------------|
 | **P0** | 0 | n/a |
 | **P1** | 0 | n/a |
-| **P2** | 8 | **No** |
+| **P2** | 9 (P2-01 … P2-08 technical; P2-09 release authorization dependency) | **No** (P2-09 gates release authorization only, not technical acceptance) |
 
 > **No P0. No P1.** The remaining P2 items do **not** block the Phase 1G-04
 > sealed acceptance, the Phase 1G-05 post-sealing readiness, or the Pilot
-> acceptance baseline. They are recorded for transparency and future-phase
-> planning.
+> acceptance baseline. P2-01 … P2-08 are technical, non-blocking items recorded
+> for transparency and future-phase planning. P2-09 (added at Phase 1G-10) is a
+> **release authorization dependency** — it gates release only because the
+> human approver sign-off is the approver's authority; it is **not** a technical
+> Pilot failure.
 
 ---
 
@@ -189,13 +192,40 @@ Current impact · Reason not a blocker · Owner / future phase · Suggested acti
 - **Exit criteria:** Indexed read-only audit search available; production paths
   rejected; raw token / args / secrets never indexed.
 
+### P2-09 — Human approver sign-off pending (release authorization dependency)
+
+- **Risk ID:** P2-09
+- **Severity:** P2 (release authorization dependency)
+- **Description:** The Phase 1G-09 Pilot acceptance execution
+  (`PILOT-EXEC-1G-09-001`) passed at the technical level (0 P0, 0 P1, 15 / 15
+  scenarios A–O). A real Pilot-accepted PASS — and any release authorization —
+  requires a designated human approver's sign-off. As of the Phase 1G-10
+  closeout, that human approver sign-off is **pending**.
+- **Current impact:** The technical Pilot PASS stands as a **recommendation
+  only**. Release authorization is **not granted** until the human approver
+  signs off. No push, production rollout, or Phase 1G-11 start is permitted
+  without it.
+- **Reason not a blocker:** This is a **release authorization dependency, not a
+  technical Pilot failure.** It gates release only because it is the human
+  approver's authority; every technical GO prerequisite is met.
+- **Owner / future phase:** the designated human approver (outside the Dev
+  Agent's authority). Completion mechanism:
+  `docs/webui/phase-1g-10-human-approver-signoff-template.md`.
+- **Suggested action:** The human approver reviews the Phase 1G-10 final release
+  decision preparation package and completes the sign-off template with a real
+  GO / NO-GO / PAUSED decision. The Dev Agent does not fabricate or self-grant
+  this sign-off.
+- **Exit criteria:** The human approver sign-off template is completed by the
+  designated approver with a recorded decision; release authorization status is
+  updated accordingly.
+
 ---
 
 ## 5. Risk Acceptance
 
-These eight P2 items are **accepted as known limitations**. They are recorded
-here so they are visible to the Pilot reviewer and to any future phase. None of
-them:
+P2-01 … P2-08 are **accepted as known technical limitations**. They are
+recorded here so they are visible to the Pilot reviewer and to any future phase.
+None of P2-01 … P2-08:
 
 - expands `STATIC_ALLOWLIST` beyond `frozenset({"clarify"})`,
 - sends a Provider Schema or calls a Provider API,
@@ -327,7 +357,58 @@ committed smoke harness. The risk picture is unchanged.
 
 ---
 
-*Phase 1G-05 Risk Register — 0 P0, 0 P1, 8 P2 (accepted, non-blocking). The
-remaining P2 items do not block Phase 1G-04 sealed acceptance, the Pilot
-baseline, the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO), or the Phase 1G-09
-Pilot acceptance execution (`PILOT-EXEC-1G-09-001`, PASS).*
+## 11. Phase 1G-10 Addendum — Post-Pilot Closeout Re-Verification
+
+Phase 1G-10 (Post-Pilot Closeout / Final Release Decision Preparation, Closeout
+`CLOSEOUT-1G-10-001`, preparation `RELEASE-DECISION-PREP-1G-10-001`) consolidated
+the Phase 1G-09 Pilot PASS into a post-Pilot closeout package and prepared the
+final release decision materials against the current `dev-huangruibang` branch
+(HEAD `cd7298416…`, the pushed Phase 1G-09 Pilot acceptance execution PASS
+record). The risk picture is unchanged at the technical level; one new,
+non-technical P2 is recorded.
+
+- **No new P0. No new P1.** Phase 1G-10 produced 0 P0 and 0 P1 findings (it is
+  docs-only; no code was touched).
+- **No new technical P2.** P2-01 … P2-08 remain accepted, non-blocking, and
+  carry forward. None was aggravated by Phase 1G-10.
+- **P2-09 added** (this addendum / §4): the Phase 1G-09 Pilot PASS is a
+  technical recommendation only; release authorization requires the designated
+  human approver's sign-off, which is **pending**. P2-09 is a **release
+  authorization dependency, not a technical Pilot failure.**
+- **Release authorization not granted.** Phase 1G-10 prepared final release
+  decision materials; it did not authorize a release, a push, a production
+  rollout, or Phase 1G-11.
+- **No production impact.** Exactly one Production Gateway is running with the
+  identical command; this phase did not stop / restart / replace / reconfigure
+  it. The sealed-baseline PID `69355` (referenced through Phase 1G-09) no longer
+  exists at Phase 1G-10 closeout — the host rebooted (`2026-06-14 04:02:09`) and
+  `launchd` respawned the gateway as PID `1962` (PPID=1). This is environmental
+  host-reboot drift, not a phase action. No `~/.hermes` access; no production
+  `state.db` access; ports `5180` / `5181` free.
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- **No provider impact.** No Provider Schema sent; no Provider API called.
+- Observed Phase 1G-10 gate results: route governance 124 passed / 0 failed;
+  related backend regression 19 files 1471 passed / 0 failed; compile /
+  `py_compile toolsets.py` / ruff clean; frontend type-check / lint 0-0 / 674
+  unit (31 files) / build pass; smoke A 6 passed / 1 skipped / 0 failed; smoke B
+  7 passed / 0 failed; memory-check PASS; dev-check WARN only for `.claude/`;
+  ports `5180` / `5181` free.
+- Closeout package: `docs/webui/phase-1g-10-post-pilot-closeout.md`,
+  `docs/webui/phase-1g-10-final-release-decision-preparation.md`,
+  `docs/webui/phase-1g-10-human-approver-signoff-template.md`,
+  `docs/webui/phase-1g-10-release-readiness-summary.md`,
+  `docs/webui/phase-1g-10-pilot-closeout-report.md`,
+  `docs/webui/phase-1g-10-final-go-no-go-draft.md`. Recommended draft decision:
+  **GO, pending human approver sign-off**.
+
+---
+
+*Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
+non-blocking; P2-09 human approver sign-off pending — release authorization
+dependency, not a technical Pilot failure). The technical P2 items do not block
+Phase 1G-04 sealed acceptance, the Pilot baseline, the Phase 1G-07 RC dry run
+(`RC-1G-07-001`, GO), or the Phase 1G-09 Pilot acceptance execution
+(`PILOT-EXEC-1G-09-001`, PASS). Release authorization remains pending human
+approver sign-off.*

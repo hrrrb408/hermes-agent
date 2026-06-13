@@ -302,7 +302,36 @@ A local commit was created. Push was not performed. Phase 1G-10 was not started.
 
 ---
 
+## 16. Phase 1G-10 Addendum — Post-Pilot Closeout Completed Locally
+
+Phase 1G-10 (Post-Pilot Closeout / Final Release Decision Preparation) was
+performed after this Pilot PASS was pushed. The Pilot decision is **unchanged**:
+`PILOT-EXEC-1G-09-001` remains **PASS**.
+
+- Closeout ID: `CLOSEOUT-1G-10-001`; Final Decision Preparation ID:
+  `RELEASE-DECISION-PREP-1G-10-001`.
+- Phase 1G-10 consolidated this Pilot PASS into a post-Pilot closeout package and
+  prepared the final release decision materials. It did **not** authorize a
+  release, did **not** push, and did **not** start Phase 1G-11.
+- **Human approver sign-off remains pending.** Release authorization is **not
+  granted** until the designated human approver signs off.
+- Closeout package: `docs/webui/phase-1g-10-post-pilot-closeout.md`,
+  `docs/webui/phase-1g-10-final-release-decision-preparation.md`,
+  `docs/webui/phase-1g-10-human-approver-signoff-template.md`,
+  `docs/webui/phase-1g-10-release-readiness-summary.md`,
+  `docs/webui/phase-1g-10-pilot-closeout-report.md`,
+  `docs/webui/phase-1g-10-final-go-no-go-draft.md`.
+- Production Gateway PID note: the sealed-baseline PID `69355` referenced above
+  was accurate through the Phase 1G-09 push. At Phase 1G-10 closeout the host had
+  rebooted (`2026-06-14 04:02:09`) and `launchd` respawned the Production Gateway
+  as PID `1962` (PPID=1). This is environmental host-reboot drift, not a phase
+  action; exactly one healthy Production Gateway is running with the identical
+  command.
+
+---
+
 *Phase 1G-09 Pilot Final Decision — `PILOT-EXEC-1G-09-001`: **PASS** (technical
 criteria met; human approver sign-off pending). Phase 1G-04 remains sealed;
-Phase 1G-05 / 1G-06 / 1G-07 / 1G-08 baselines remain as pushed. Production
-Gateway PID `69355` is unchanged. Phase 1G-10 is not started.*
+Phase 1G-05 / 1G-06 / 1G-07 / 1G-08 baselines remain as pushed. Phase 1G-10
+post-Pilot closeout was completed locally; release authorization remains pending
+human approver sign-off. Phase 1G-11 is not started.*
