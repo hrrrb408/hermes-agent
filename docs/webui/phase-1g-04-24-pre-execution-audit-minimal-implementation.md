@@ -301,3 +301,11 @@ Updated `docs/webui/openapi/dev-web-api-v1.yaml`:
 ---
 
 *Phase 1G-04-24 Pre-Execution Audit Minimal Implementation: pre-execution audit package building, containment-based path guard, dev-only append-only JSONL audit writing, preExecutionAuditId generation, executeRequestId generation, execute route pre-execution audit gates, safe response fields, and OpenAPI schema-only updates implemented. Execute remains blocked-only at the handler lookup boundary. No post-execution audit, handler lookup, Tool Handler call, dispatch, execution, Provider Schema sending, Provider API call, frontend execution flow, audit read API, audit viewer, or real Controlled Execution was introduced.*
+
+---
+
+## Next Dependency
+
+Phase 1G-04-25 freezes the handler lookup boundary.
+
+Phase 1G-04-25 still does not implement handler lookup, Tool Handler call, dispatch, execution, provider calls, post-execution audit, or real Controlled Execution.

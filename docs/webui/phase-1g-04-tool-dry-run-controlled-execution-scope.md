@@ -1931,6 +1931,88 @@ The execute route remains blocked-only. No behavior expansion. No new routes.
 
 ---
 
+## Phase 1G-04-25: Handler Lookup Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-25 |
+| Title | Handler Lookup Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-24 completed locally |
+
+### Summary
+
+Froze the future handler lookup boundary as a docs-only scope document. Defined the handler lookup goal, why handler lookup is still not execution, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with tool registry / catalog, handler descriptor structure, handler lookup ID strategy, lookup timing, failure contract (10 error codes), success contract (still blocks at dispatch), future execute gate order (Gates 46–56), future OpenAPI schema-only strategy, future route governance strategy, future allowed/forbidden files, future test matrix (47 tests), stale STATIC_ALLOWLIST assertion observation, and entry/exit criteria.
+
+### Delta from 1G-04-24
+
+- New doc: `docs/webui/phase-1g-04-25-handler-lookup-scope.md`
+- Updated: Phase 1G-04 scope doc, implementation plan, Phase 1G-04-24 doc next dependency
+
+### Handler Lookup Scope Frozen
+
+1. **Handler lookup goal**: Resolve a safe handler descriptor for an already approved, audited, allowlisted `canonicalName`; necessary but not sufficient; passing does not execute or dispatch
+2. **Not execution**: Handler lookup is not execution, not dispatch, must not call handler, must not run tool code, must not send Provider Schema, must not call Provider API
+3. **Pre-execution audit relationship**: Lookup may only occur after successful audit write; must reference `preExecutionAuditId`, `executeRequestId`, `dryRunRequestId`, `dryRunDecisionDigest`, `canonicalName`, `confirmationTokenId`; must not mutate audit records
+4. **STATIC_ALLOWLIST relationship**: Lookup allowed only for allowlisted `canonicalName`; must not broaden allowlist policy; `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`
+5. **Tool registry relationship**: May inspect safe metadata (canonicalName, handler existence, handler ID, registry key, risk tier, schema metadata reference) via existing in-process registry; must not import arbitrary modules, eval/exec, load plugins, read credentials, call handlers, dispatch, or execute
+6. **Handler descriptor structure**: 12 safe fields (canonicalName, handlerId, registryKey, moduleName, callableName, riskTier, allowlisted, dispatchAllowed=false, executionAllowed=false, providerSchemaAllowed=false, sideEffectFreeLookup=true); excludes raw arguments, token, tokenHash, credentials, Provider Schema, callable objects, secrets
+7. **Handler lookup ID**: `hl_` prefix, correlation-only, not authorization credential, must not contain raw token or arguments
+8. **Lookup timing**: Only after all 45 prior gates pass + explicit handler lookup enable gate; before dispatch/handler call/execution
+9. **Failure contract**: 10 error codes (handler_lookup_not_enabled, handler_lookup_unavailable, handler_lookup_not_found, handler_lookup_not_allowlisted, handler_lookup_registry_unavailable, handler_lookup_descriptor_invalid, handler_lookup_side_effect_risk, handler_lookup_policy_mismatch, handler_lookup_written_but_dispatch_not_enabled, dispatch_not_enabled); all block before dispatch; all keep side-effect flags false
+10. **Success contract**: Returns handlerLookupId + safe handlerDescriptor; still blocks at `blocked_dispatch_not_enabled`; dispatchAllowed=false, executionAllowed=false, toolHandlerCalled=false, providerApiCalled=false, executionStarted=false
+11. **Future execute gate order**: Gates 46–56 (enable gate, registry available, descriptor lookup, canonicalName validation, policy metadata match, side-effect-free check, handlerLookupId generated, safe response, dispatch block, handler not called, execution disabled)
+12. **OpenAPI strategy**: No path change; schema-only refinements (handlerLookupId, handlerLookupStatus, handlerDescriptor, handler_lookup_* error codes, blocked_dispatch_not_enabled decision); 33 paths maintained
+13. **Route governance**: No route change; 33/33/4/0/1/1 maintained
+14. **Future allowed files**: 1 new module + 8 existing backend + 1 OpenAPI + 9 test files + 3 doc files
+15. **Future forbidden files**: frontend, agent, tools, toolsets, runtime, memory, review, .env, .claude, ~/.hermes, production state.db, provider config, gateway state, runtime audit JSONL
+16. **Future test matrix**: 47 tests (12 handler descriptor, 10 handler lookup gates, 9 execute integration, 10 security invariants, 5 route governance, 1 optional cleanup)
+17. **Stale STATIC_ALLOWLIST assertion observation**: Two non-gate test files have stale `len(STATIC_ALLOWLIST) == 0` assertions; not fixed in this phase; recommended separate cleanup
+18. **Entry criteria**: 14 conditions
+19. **Exit criteria**: 18 conditions
+
+### Not Implemented
+
+- Handler lookup
+- Handler registry adapter
+- Tool Handler call
+- Dispatch
+- Execution
+- Post-execution audit
+- Provider Schema sending
+- Provider API call
+- Execute route behavior change
+- Token behavior change
+- Digest behavior change
+- Pre-execution audit behavior change
+- OpenAPI change
+- New route
+- Route governance change
+- STATIC_ALLOWLIST modification
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-24)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-25 Handler Lookup Scope Freeze: handler lookup goal, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with tool registry / catalog, handler descriptor structure, handler lookup ID strategy, lookup timing, failure contract, success contract, future execute gate order, OpenAPI scope, route governance scope, future allowed and forbidden files, future test matrix (47 tests), stale STATIC_ALLOWLIST assertion observation, entry criteria, and exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no handler lookup implementation, no Tool Handler call, no dispatch, no execution, no Provider Schema sending, no Provider API call, no allowlist change, no Controlled Execution started.*
+
+---
+
 ## Phase 1G-04-18: Confirmation Token Issuance / Verification Scope Freeze
 
 | Field | Value |
