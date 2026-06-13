@@ -4137,8 +4137,9 @@ components:
         - blocked_digest_stale
         - blocked_digest_expired
         - blocked_pre_execution_audit_not_implemented
+        - blocked_handler_lookup_not_enabled
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-22.
+        Execute gate decision. All values represent blocked states in Phase 1G-04-24.
         would_execute, executed, and execution_failed are reserved for future phases
         and are not returned by the current implementation.
 
@@ -4193,6 +4194,14 @@ components:
         - digest_stale
         - digest_expired
         - digest_verified_but_pre_execution_audit_not_implemented
+        - pre_execution_audit_unavailable
+        - pre_execution_audit_path_forbidden
+        - pre_execution_audit_write_failed
+        - pre_execution_audit_invalid_state
+        - pre_execution_audit_missing_required_field
+        - pre_execution_audit_serialization_failed
+        - pre_execution_audit_written_but_handler_lookup_not_enabled
+        - handler_lookup_not_enabled
         - validation_failed
         - execution_not_implemented
         - internal_error
@@ -4340,6 +4349,25 @@ components:
           items:
             type: string
           description: Machine-readable reason codes for the decision.
+        preExecutionAuditId:
+          type: string
+          nullable: true
+          description: >
+            Pre-execution audit correlation ID (prefix "pea_"). Only present
+            after a successful pre-execution audit write. Not an authorization credential.
+        executeRequestId:
+          type: string
+          nullable: true
+          description: >
+            Execute request correlation ID (prefix "exe_"). Only present
+            after a successful pre-execution audit write. Not an authorization credential.
+        preExecutionAuditStatus:
+          type: string
+          nullable: true
+          enum: [written, null]
+          description: >
+            Pre-execution audit write status. "written" when audit was persisted,
+            null when audit was not reached or failed.
 
     ToolExecuteResponse:
       type: object

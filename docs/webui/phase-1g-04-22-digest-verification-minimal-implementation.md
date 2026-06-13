@@ -240,4 +240,6 @@ blocked_pre_execution_audit_not_implemented
 
 Phase 1G-04-23 freezes the pre-execution audit boundary.
 
-Phase 1G-04-23 still does not implement pre-execution audit, post-execution audit, handler lookup, dispatch, execution, provider calls, or real Controlled Execution.
+Phase 1G-04-24 implements the minimal pre-execution audit. See `docs/webui/phase-1g-04-24-pre-execution-audit-minimal-implementation.md` for the implementation details.
+
+Phase 1G-04-24 still does not implement post-execution audit, handler lookup, dispatch, execution, provider calls, or real Controlled Execution.

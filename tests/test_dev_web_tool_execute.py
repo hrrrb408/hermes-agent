@@ -40,6 +40,7 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_REQUIRES_CONFIRMATION_TOKEN,
     DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED,
+    DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
     DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
@@ -76,6 +77,7 @@ from hermes_cli.dev_web_tool_execute import (
     GATE_KNOWN_TOOL,
     GATE_RISK_TIER,
     GATE_STATIC_ALLOWLIST,
+    GATE_HANDLER_LOOKUP,
     ToolExecuteAuditStatus,
     ToolExecuteGateStatus,
     ToolExecutePolicySummary,
@@ -972,7 +974,9 @@ class TestDryRunLookupIntegration:
         )
         from hermes_cli.dev_web_tool_execute_digest import (
             build_dry_run_decision_digest_package,
-            ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED as _DIGEST_BLOCKED,
+        )
+        from hermes_cli.dev_web_tool_pre_execution_audit import (
+            ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED as _PEA_WRITTEN_BLOCKED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -999,7 +1003,8 @@ class TestDryRunLookupIntegration:
 
         self._write_events(audit_path, [
             {**_make_audit_event(request_id="dr-token-valid", timestamp=fixed_ts),
-             "dryRunDecisionDigest": test_digest},
+             "dryRunDecisionDigest": test_digest,
+             "eventId": "evt-test-001"},
         ])
         # Issue a real token WITH digest binding
         now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
@@ -1009,7 +1014,7 @@ class TestDryRunLookupIntegration:
             canonical_name="clarify", decision="would_allow",
             risk_tier="R0", policy_version=None, arguments_digest=None,
             dry_run_decision_digest=test_digest, audit_written=True,
-            audit_event_id=None, created_at=now.isoformat(),
+            audit_event_id="evt-test-001", created_at=now.isoformat(),
             expires_at=None, lookup_source="test", redaction_status="none",
         )
         token_result = issue_confirmation_token(
@@ -1040,9 +1045,13 @@ class TestDryRunLookupIntegration:
         assert result.execution_started is False
         assert result.execution_attempted is False
         assert result.execution_completed is False
-        # Blocked at pre-execution audit boundary
-        assert result.error_code == _DIGEST_BLOCKED
-        assert result.decision == DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
+        # Blocked at handler lookup boundary (pre-execution audit written)
+        assert result.error_code == _PEA_WRITTEN_BLOCKED
+        assert result.decision == DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED
+        # Pre-execution audit fields present
+        assert result.pre_execution_audit_id is not None
+        assert result.execute_request_id is not None
+        assert result.pre_execution_audit_status == "written"
 
     def test_valid_token_is_consumed_and_reuse_blocks(
         self, tmp_hermes_home, audit_path,
@@ -1057,7 +1066,9 @@ class TestDryRunLookupIntegration:
         )
         from hermes_cli.dev_web_tool_execute_digest import (
             build_dry_run_decision_digest_package,
-            ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED as _DIGEST_BLOCKED,
+        )
+        from hermes_cli.dev_web_tool_pre_execution_audit import (
+            ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED as _PEA_WRITTEN_BLOCKED,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1092,7 +1103,7 @@ class TestDryRunLookupIntegration:
             canonical_name="clarify", decision="would_allow",
             risk_tier="R0", policy_version=None, arguments_digest=None,
             dry_run_decision_digest=test_digest, audit_written=True,
-            audit_event_id=None, created_at=now.isoformat(),
+            audit_event_id="evt-test-001", created_at=now.isoformat(),
             expires_at=None, lookup_source="test", redaction_status="none",
         )
         token_result = issue_confirmation_token(
@@ -1106,7 +1117,7 @@ class TestDryRunLookupIntegration:
         )
         assert token_result.issued is True
 
-        # First use — token consumed but still blocked at pre-execution audit boundary
+        # First use — token consumed but still blocked at handler lookup boundary
         with self._kill_switches_true():
             r1 = evaluate_tool_execute_request(
                 "clarify",
@@ -1116,7 +1127,7 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert r1.execution_allowed is False
-        assert r1.error_code == _DIGEST_BLOCKED
+        assert r1.error_code == _PEA_WRITTEN_BLOCKED
 
         # Second use — token already consumed
         with self._kill_switches_true():

@@ -2322,3 +2322,58 @@ Froze the future pre-execution audit boundary design without implementation.
 | Tool dry-run routes | 1 |
 | Tool execution routes | 1 |
 | STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+## Phase 1G-04-24: Pre-Execution Audit Minimal Implementation / Still Blocked-Only
+
+**Status:** Completed locally / Not pushed
+
+### Summary
+
+Implemented minimal pre-execution audit backend while preserving the still-blocked-only execution boundary. The execute route now writes a pre-execution audit event after all gates pass (valid token, valid digest) and then blocks at `blocked_handler_lookup_not_enabled`.
+
+### What Changed
+
+| Item | Status |
+|------|--------|
+| Pre-execution audit module | Implemented |
+| Audit package builder | Implemented |
+| Audit store path | Implemented |
+| Path guard (containment-based) | Implemented |
+| preExecutionAuditId | Implemented |
+| executeRequestId | Implemented |
+| Execute route audit gates (38–45) | Implemented |
+| Valid token + valid digest + audit written | Blocks at `blocked_handler_lookup_not_enabled` |
+| Post-execution audit | Not implemented |
+| Handler lookup | Not enabled |
+| Dispatch / Execution | Not enabled |
+| Provider API | Not called |
+| Route governance | Unchanged 33/33/4/0/1/1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+| Real Controlled Execution | Not started |
+
+### Not Implemented
+
+- Post-execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-23)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |

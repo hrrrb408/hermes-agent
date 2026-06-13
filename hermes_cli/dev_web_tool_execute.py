@@ -59,6 +59,7 @@ DECISION_BLOCKED_DIGEST_MISMATCH = "blocked_digest_mismatch"
 DECISION_BLOCKED_DIGEST_STALE = "blocked_digest_stale"
 DECISION_BLOCKED_DIGEST_EXPIRED = "blocked_digest_expired"
 DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED = "blocked_pre_execution_audit_not_implemented"
+DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED = "blocked_handler_lookup_not_enabled"
 
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
@@ -105,6 +106,21 @@ ERROR_DIGEST_EXPIRED = "digest_expired"
 ERROR_DIGEST_VERIFIED_BUT_PRE_EXECUTION_AUDIT = (
     "digest_verified_but_pre_execution_audit_not_implemented"
 )
+# Phase 1G-04-24: Pre-execution audit error codes
+ERROR_PRE_EXECUTION_AUDIT_UNAVAILABLE = "pre_execution_audit_unavailable"
+ERROR_PRE_EXECUTION_AUDIT_PATH_FORBIDDEN = "pre_execution_audit_path_forbidden"
+ERROR_PRE_EXECUTION_AUDIT_WRITE_FAILED = "pre_execution_audit_write_failed"
+ERROR_PRE_EXECUTION_AUDIT_INVALID_STATE = "pre_execution_audit_invalid_state"
+ERROR_PRE_EXECUTION_AUDIT_MISSING_REQUIRED_FIELD = (
+    "pre_execution_audit_missing_required_field"
+)
+ERROR_PRE_EXECUTION_AUDIT_SERIALIZATION_FAILED = (
+    "pre_execution_audit_serialization_failed"
+)
+ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED = (
+    "pre_execution_audit_written_but_handler_lookup_not_enabled"
+)
+ERROR_HANDLER_LOOKUP_NOT_ENABLED = "handler_lookup_not_enabled"
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
 ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
@@ -157,6 +173,14 @@ GATE_DIGEST_EXECUTE_MATCH = "digest_execute_match"
 GATE_DIGEST_STALENESS = "digest_staleness"
 GATE_DIGEST_EXPIRY = "digest_expiry"
 GATE_PRE_EXECUTION_AUDIT = "pre_execution_audit"
+GATE_PRE_EXECUTION_AUDIT_PACKAGE = "pre_execution_audit_package"
+GATE_PRE_EXECUTION_AUDIT_PATH = "pre_execution_audit_path"
+GATE_PRE_EXECUTION_AUDIT_SERIALIZATION = "pre_execution_audit_serialization"
+GATE_PRE_EXECUTION_AUDIT_WRITE = "pre_execution_audit_write"
+GATE_PRE_EXECUTION_AUDIT_ID = "pre_execution_audit_id"
+GATE_HANDLER_LOOKUP = "handler_lookup"
+GATE_DISPATCH = "dispatch"
+GATE_EXECUTION = "execution"
 GATE_VALIDATION = "validation"
 
 
@@ -261,10 +285,13 @@ class ToolExecuteResult:
     error_code: str | None
     policy_notes: tuple[str, ...]
     reason_codes: tuple[str, ...]
+    pre_execution_audit_id: str | None = None
+    execute_request_id: str | None = None
+    pre_execution_audit_status: str | None = None
 
     def to_safe_dict(self) -> dict[str, Any]:
         """Convert to JSON-safe dict with all execution flags false."""
-        return {
+        result: dict[str, Any] = {
             "canonicalName": self.canonical_name,
             "exists": self.exists,
             "riskTier": self.risk_tier,
@@ -300,6 +327,13 @@ class ToolExecuteResult:
             "policyNotes": list(self.policy_notes),
             "reasonCodes": list(self.reason_codes),
         }
+        if self.pre_execution_audit_id is not None:
+            result["preExecutionAuditId"] = self.pre_execution_audit_id
+        if self.execute_request_id is not None:
+            result["executeRequestId"] = self.execute_request_id
+        if self.pre_execution_audit_status is not None:
+            result["preExecutionAuditStatus"] = self.pre_execution_audit_status
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -1049,18 +1083,113 @@ def evaluate_tool_execute_request(
     gates.append(ToolExecuteGateStatus(
         gate=GATE_DIGEST_VERIFICATION, passed=True, error_code=None,
     ))
+
+    # ── Gate 38–42: Pre-execution audit (Phase 1G-04-24) ──
+    from hermes_cli.dev_web_tool_pre_execution_audit import (
+        build_pre_execution_audit_package as _build_pea_pkg,
+        write_pre_execution_audit_event as _write_pea_event,
+        ERROR_PRE_EXECUTION_AUDIT_WRITTEN_BUT_HANDLER_LOOKUP_NOT_ENABLED as _PEA_WRITTEN_BLOCKED,
+    )
+
+    # Build the pre-execution audit package from the safe execute context
+    pea_pkg_result = _build_pea_pkg(
+        dry_run_request_id=dry_run_request_id,
+        dry_run_decision_digest=historical_digest or "",
+        canonical_name=canonical_name,
+        risk_tier=risk_tier,
+        policy_version=None,
+        arguments_digest=None,
+        redaction_version=None,
+        audit_event_id=lookup_result.audit_event_id,
+        confirmation_token_id=token_result.token_id,
+        confirmation_issued_at=(
+            token_result.safe_summary.get("issuedAt")
+            if token_result.safe_summary
+            else None
+        ),
+        confirmation_consumed_at=None,
+        digest_algorithm="sha256",
+        digest_package_version="1",
+        canonicalization_version="json-sort-v1",
+        historical_digest=historical_digest,
+        token_bound_digest=token_bound_digest,
+        execute_derived_digest=execute_derived_digest,
+    )
+
+    if not pea_pkg_result.success:
+        # Pre-execution audit package build failed
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_PRE_EXECUTION_AUDIT_PACKAGE,
+            passed=False,
+            error_code=pea_pkg_result.error_code,
+        ))
+        policy_notes.append(
+            f"Pre-execution audit package build failed: "
+            f"{pea_pkg_result.error_code}. Execution remains blocked."
+        )
+        reason_codes.append(pea_pkg_result.error_code)
+        error_code = pea_pkg_result.error_code
+        decision = DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
+
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    # Write the pre-execution audit event
+    pea_write_result = _write_pea_event(
+        hermes_home=hermes_home,
+        audit_package=pea_pkg_result.audit_package,
+    )
+
+    if not pea_write_result.written:
+        # Pre-execution audit write failed — block
+        gates.append(ToolExecuteGateStatus(
+            gate=GATE_PRE_EXECUTION_AUDIT_WRITE,
+            passed=False,
+            error_code=pea_write_result.error_code,
+        ))
+        policy_notes.append(
+            f"Pre-execution audit write failed: "
+            f"{pea_write_result.error_code}. Execution remains blocked."
+        )
+        reason_codes.append(pea_write_result.error_code)
+        error_code = pea_write_result.error_code
+        decision = pea_write_result.decision or DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
+
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+        )
+
+    # Pre-execution audit written successfully
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_PRE_EXECUTION_AUDIT,
+        gate=GATE_PRE_EXECUTION_AUDIT, passed=True, error_code=None,
+    ))
+
+    # ── Gate 43–45: Handler lookup / dispatch / execution still disabled ──
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_HANDLER_LOOKUP,
         passed=False,
-        error_code=_DIGEST_VERIFIED_BLOCKED,
+        error_code=_PEA_WRITTEN_BLOCKED,
     ))
     policy_notes.append(
-        "Digest verification passed, but pre-execution audit is not "
-        "implemented in this phase. Execution remains blocked."
+        "Pre-execution audit written, but handler lookup is not enabled "
+        "in this phase. Execution remains blocked."
     )
-    reason_codes.append(_DIGEST_VERIFIED_BLOCKED)
-    error_code = _DIGEST_VERIFIED_BLOCKED
-    decision = DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED
+    reason_codes.append(_PEA_WRITTEN_BLOCKED)
+    error_code = _PEA_WRITTEN_BLOCKED
+    decision = DECISION_BLOCKED_HANDLER_LOOKUP_NOT_ENABLED
 
     return _build_blocked_result(
         canonical_name=canonical_name,
@@ -1070,6 +1199,9 @@ def evaluate_tool_execute_request(
         error_code=error_code,
         decision=decision,
         risk_tier=risk_tier,
+        pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+        execute_request_id=pea_write_result.execute_request_id,
+        pre_execution_audit_status="written",
     )
 
 
@@ -1087,6 +1219,9 @@ def _build_blocked_result(
     error_code: str,
     decision: str,
     risk_tier: str | None = None,
+    pre_execution_audit_id: str | None = None,
+    execute_request_id: str | None = None,
+    pre_execution_audit_status: str | None = None,
 ) -> ToolExecuteResult:
     """Build a standard blocked ToolExecuteResult."""
     return ToolExecuteResult(
@@ -1117,6 +1252,9 @@ def _build_blocked_result(
         error_code=error_code,
         policy_notes=tuple(policy_notes),
         reason_codes=tuple(reason_codes),
+        pre_execution_audit_id=pre_execution_audit_id,
+        execute_request_id=execute_request_id,
+        pre_execution_audit_status=pre_execution_audit_status,
     )
 
 

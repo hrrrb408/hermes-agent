@@ -884,3 +884,30 @@ The following files must not be modified during future pre-execution audit imple
 ---
 
 *Phase 1G-04-23 Pre-Execution Audit Scope Freeze: pre-execution audit goal, dry-run audit difference, confirmation token relationship, digest verification relationship, handler lookup relationship, write timing, event structure, store path, path guard, ID strategy, idempotency strategy, failure contract, success contract, future execute gate order, future OpenAPI strategy, future route governance, future allowed/forbidden files, future test matrix, entry/exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no pre-execution audit implementation, no post-execution audit, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
+
+---
+
+## Implementation Status (Phase 1G-04-24)
+
+The following items from this scope document were implemented in Phase 1G-04-24:
+
+- Minimal pre-execution audit package builder implemented
+- Pre-execution audit containment-based path guard implemented
+- Pre-execution audit append-only JSONL writer implemented
+- Pre-execution audit store implemented (`$HERMES_HOME/gateway/dev/audit/tool-pre-execution-audit.jsonl`)
+- `preExecutionAuditId` generation and return implemented
+- `executeRequestId` generation and return implemented
+- Execute route pre-execution audit gates (Gates 38–45) implemented
+- Valid token + valid digest + pre-execution audit written still blocks at `blocked_handler_lookup_not_enabled`
+- Pre-execution audit write failure fail-closed implemented
+- Safe audit identifiers in response implemented
+- OpenAPI schema-only updates applied
+- Backend tests (49 new tests) implemented
+
+Still not implemented:
+- Post-execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider call
+- Real Controlled Execution
