@@ -362,6 +362,28 @@ checklist's ad-hoc smoke section with a committed rehearsal baseline. It does
 
 ---
 
+---
+
+## 15. Phase 1G-08 Addendum — Pilot Acceptance Preparation
+
+Phase 1G-08 (Pilot Acceptance Preparation, Pilot `PILOT-1G-08-001`) re-verified
+the release gate sequence above against RC `RC-1G-07-001` (GO, pushed at
+`6f9176953`). The checklist items above are unchanged; the Pilot operator guide
+(`docs/webui/phase-1g-08-pilot-operator-guide.md`) wraps this checklist into a
+per-Pilot workflow.
+
+- Re-observed gate results: route governance 124 passed / 0 failed; related
+  backend regression 19 files 1471 passed / 0 failed; compile / ruff clean;
+  frontend type-check / lint 0-0 / unit / build pass; smoke A 6 passed / 1
+  skipped / 0 failed; smoke B 7 passed / 0 failed; memory-check PASS; dev-check
+  WARN only for `.claude/`; Production Gateway PID `69355` unchanged; ports
+  `5180` / `5181` free.
+- **Note on command form:** the wrapper requires `--` before passthrough flags,
+  e.g. `./scripts/run_tests.sh tests/test_dev_check_webui.py tests/test_dev_web_0c06_closure.py -- -q`. The frontend type-check script is
+  `pnpm type-check` (not `pnpm typecheck`).
+
+---
+
 *Phase 1G-05 Release Checklist — 34 pre-release items, copy-pasteable, dev-only.
 Go requires all green, exact route governance, exact allowlist, production
 isolation, and no secret / forbidden-file exposure.*

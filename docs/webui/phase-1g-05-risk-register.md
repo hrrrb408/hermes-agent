@@ -268,6 +268,32 @@ committed rehearsal harness. The risk picture is unchanged.
 
 ---
 
+---
+
+## 9. Phase 1G-08 Addendum — Pilot Acceptance Preparation Re-Verification
+
+Phase 1G-08 (Pilot Acceptance Preparation, Pilot `PILOT-1G-08-001`) re-verified
+the current `dev-huangruibang` branch (HEAD `6f9176953…`, the pushed Phase 1G-07
+GO RC) through the full release gate sequence. The risk picture is unchanged.
+
+- **No new P0. No new P1.** Phase 1G-08 produced 0 P0 and 0 P1 findings.
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** readiness
+  baseline; Phase 1G-06 remains the **pushed** release rehearsal baseline;
+  Phase 1G-07 remains the **pushed** GO RC dry run; no route, allowlist, or
+  product capability changed.
+- The eight P2 items above remain accepted, non-blocking, and carry forward.
+  None was aggravated by Phase 1G-08 (docs-only; no code touched).
+- Observed Phase 1G-08 gate results: route governance 124 passed / 0 failed;
+  related backend regression 19 files 1471 passed / 0 failed; compile /
+  `py_compile toolsets.py` / ruff clean; frontend type-check / lint 0-0 / unit /
+  build pass; smoke A 6 passed / 1 skipped / 0 failed; smoke B 7 passed / 0
+  failed; memory-check PASS; dev-check WARN only for `.claude/`; Production
+  Gateway PID `69355` unchanged; ports `5180` / `5181` free.
+- Any new P2 observed during Pilot execution is appended to this register per
+  the Phase 1G-08 defect / feedback template and the exit criteria.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 8 P2 (accepted, non-blocking). The
 remaining P2 items do not block Phase 1G-04 sealed acceptance, the Pilot
 baseline, or the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO).*

@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 1G-07 |
 | Title | Release Candidate Dry Run |
-| Status | Completed locally (not pushed) |
+| Status | Pushed (RC dry run baseline, `6f9176953`) |
 | Date | 2026-06-14 |
 | Branch | `dev-huangruibang` |
 | RC ID | `RC-1G-07-001` |
@@ -350,6 +350,27 @@ capability, or test strength is changed, weakened, or expanded by Phase 1G-07.
 The only deliverables are the RC dry run docs (this doc, the validation report,
 the Go / No-Go decision), the implementation plan update, the risk register
 addendum, and the final re-verification pass.
+
+---
+
+## 17. Phase 1G-08 Addendum — Pilot Acceptance Preparation
+
+Phase 1G-08 (Pilot Acceptance Preparation, Pilot `PILOT-1G-08-001`) ran *after*
+this RC dry run was pushed at `6f9176953`. It converts the `RC-1G-07-001` GO
+decision into an executable Pilot acceptance pack.
+
+- **No new P0. No new P1.** Phase 1G-08 added no product capability and no route
+  governance change.
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** readiness
+  baseline; Phase 1G-06 remains the **pushed** release rehearsal baseline;
+  Phase 1G-07 remains the **pushed** GO RC dry run. `RC-1G-07-001` remains the GO
+  RC; no supplemental RC was produced.
+- Route governance and `STATIC_ALLOWLIST` remain unchanged (34 / 34 / 5 / 0 / 1
+  / 1; `frozenset({"clarify"})`).
+- The Pilot pack, guides, templates, and exit criteria live under
+  `docs/webui/phase-1g-08-*.md`; the implementation plan records Phase 1G-08.
+- Pilot execution is **separately approved**; Phase 1G-08 only prepares the pack.
+  Phase 1G-09 is explicitly **not started**.
 
 ---
 

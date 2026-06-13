@@ -222,6 +222,22 @@ None of these occurred during `RC-1G-07-001`.
 
 ---
 
+## 16. Phase 1G-08 Addendum — Pilot Acceptance Prepared
+
+Phase 1G-08 (Pilot Acceptance Preparation) prepared Pilot `PILOT-1G-08-001`
+against this GO decision (`RC-1G-07-001`).
+
+- The GO conclusion is **unchanged**. `RC-1G-07-001` remains the GO RC.
+- Phase 1G-08 added no product capability and no route governance change; it
+  produced the Pilot acceptance pack, operator / participant guides, record /
+  defect templates, and PASS / NO-GO / PAUSED exit criteria.
+- Pilot execution is **separately approved**; Phase 1G-09 is explicitly **not
+  started**.
+- See `docs/webui/phase-1g-08-pilot-acceptance-preparation.md` and
+  `docs/webui/phase-1g-08-pilot-exit-criteria.md`.
+
+---
+
 *Phase 1G-07 Go / No-Go Decision — `RC-1G-07-001`: **GO**. Current
 `dev-huangruibang` is eligible to enter Pilot acceptance. Phase 1G-04 remains
 sealed; Phase 1G-05 remains the pushed readiness baseline; Phase 1G-06 remains

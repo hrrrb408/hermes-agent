@@ -272,6 +272,25 @@ register addendum, and consistency updates to the Phase 1G-06 docs' push status.
 
 ---
 
+## 19. Phase 1G-08 Addendum — Pilot Acceptance Preparation
+
+Phase 1G-08 (Pilot Acceptance Preparation, Pilot `PILOT-1G-08-001`) re-verified
+the current `dev-huangruibang` branch (HEAD `6f9176953…`) through the full
+release gate sequence after the RC was pushed. The risk picture is unchanged.
+
+- **No new P0. No new P1.** Phase 1G-08 produced 0 P0 and 0 P1 findings.
+- `RC-1G-07-001` remains the GO RC; no supplemental RC was produced.
+- Observed Phase 1G-08 gate results: route governance 124 passed / 0 failed;
+  related backend regression 19 files 1471 passed / 0 failed; compile /
+  `py_compile toolsets.py` / ruff clean; frontend type-check / lint 0-0 / unit /
+  build pass; smoke A 6 passed / 1 skipped / 0 failed; smoke B 7 passed / 0
+  failed; memory-check PASS; dev-check WARN only for `.claude/`; Production
+  Gateway PID `69355` unchanged; ports `5180` / `5181` free.
+- Pilot pack: `docs/webui/phase-1g-08-pilot-acceptance-pack.md`; Pilot exit
+  criteria: `docs/webui/phase-1g-08-pilot-exit-criteria.md`.
+
+---
+
 *Phase 1G-07 Release Candidate Validation — `RC-1G-07-001`. All required gates
 pass; route governance and `STATIC_ALLOWLIST` unchanged; Production Gateway PID
 `69355` unaffected; RC dry-run outcome GO.*

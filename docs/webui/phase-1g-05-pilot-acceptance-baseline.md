@@ -293,6 +293,27 @@ phase.
 
 ---
 
+---
+
+## 7. Phase 1G-08 Addendum — Pilot Acceptance Pack Prepared
+
+Phase 1G-08 (Pilot Acceptance Preparation, Pilot `PILOT-1G-08-001`) converted
+this baseline into a ready-to-run Pilot acceptance pack against RC
+`RC-1G-07-001` (GO). The scenario list was refined to 15 scenarios (A–O); the
+A–N severities and gate-configurations above are preserved, with **O — final
+ports free** added and the Provider-flag split into **J (`providerSchemaSent=false`)**
+and **K (`providerApiCalled=false`)**.
+
+- Full pack: `docs/webui/phase-1g-08-pilot-acceptance-pack.md`.
+- Operator guide: `docs/webui/phase-1g-08-pilot-operator-guide.md`.
+- Participant guide: `docs/webui/phase-1g-08-pilot-participant-guide.md`.
+- Acceptance record / defect templates and exit criteria: the other
+  `docs/webui/phase-1g-08-*.md` docs.
+- The severity scheme (P0 / P1 / P2) and the Pilot pass criteria in §5 above are
+  unchanged; Phase 1G-08 only packages them for execution.
+
+---
+
 *Phase 1G-05 Pilot Acceptance Baseline — 14 scenarios (A–N), two gate
 configurations, P0/P1/P2 severities. Pilot candidate is the sealed Phase 1G-04
 mainline at `94f22f67b`. No code change required to run the Pilot.*
