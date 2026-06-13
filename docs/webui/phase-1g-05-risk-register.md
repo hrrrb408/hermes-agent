@@ -224,6 +224,25 @@ suggested action, and exit criteria.
 
 ---
 
+## 7. Phase 1G-06 Addendum — Rehearsal Re-Verification
+
+Phase 1G-06 (Pilot Release Rehearsal / Smoke Harness Hardening) re-verified the
+sealed mainline through the full release gate sequence via the committed
+rehearsal harness. The risk picture is unchanged.
+
+- **No new P0. No new P1.** The rehearsal produced 0 P0 and 0 P1 findings.
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** baseline;
+  no route, allowlist, or product capability changed.
+- The eight P2 items above remain accepted, non-blocking, and carry forward.
+  None was aggravated by the rehearsal harness or the gate-profile fix.
+- The `blocked_tool_handler_call_not_enabled` vs `blocked_by_kill_switch`
+  distinction recorded in Phase 1G-06 is a **documentation / smoke-profile
+  correction**, not a code defect — the blocked-default behavior is unchanged
+  and still correct.
+- Rehearsal validation results: `docs/webui/phase-1g-06-release-candidate-validation.md`.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 8 P2 (accepted, non-blocking). The
 remaining P2 items do not block Phase 1G-04 sealed acceptance or the Pilot
 baseline.*

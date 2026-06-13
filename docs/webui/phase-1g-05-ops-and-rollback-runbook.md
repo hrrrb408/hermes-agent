@@ -364,6 +364,34 @@ violation for a separately approved remediation phase.
 
 ---
 
+## 16. Phase 1G-06 Addendum — Committed Smoke Harness & Gate Profiles
+
+Phase 1G-06 hardens this runbook's browser-smoke section (§5) with a committed
+dev-only harness and fixed gate profiles. It changes nothing operational above.
+
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** baseline;
+  route governance and `STATIC_ALLOWLIST` are unchanged.
+- The ad-hoc `/tmp` harness is replaced by the committed runner
+  `scripts/run-dev-webui-execute-audit-smoke.sh`:
+  ```bash
+  ./scripts/run-dev-webui-execute-audit-smoke.sh blocked     # Profile A
+  ./scripts/run-dev-webui-execute-audit-smoke.sh completed   # Profile B
+  ./scripts/run-dev-webui-execute-audit-smoke.sh all         # A then B
+  ```
+  It binds to `127.0.0.1` only, refuses production `HERMES_HOME`, pre-checks
+  ports `5180` / `5181`, kills only the PIDs it started, traps cleanup, and
+  never affects the Production Gateway.
+- **Gate-config note (the key correction):** to observe
+  `blocked_tool_handler_call_not_enabled` you must enable the upstream execution
+  gates (`HERMES_TOOL_EXECUTION_ENABLED=true`, `HERMES_AGENT_TOOLS_ENABLED=true`)
+  and leave `HERMES_TOOL_HANDLER_CALL_ENABLED` **unset**. Unsetting *all* gates
+  instead yields `blocked_by_kill_switch` (the first kill switch) — it does
+  **not** exercise the handler-call blocked decision.
+- Full runbook, troubleshooting, and Profile C (fully-disabled) variant:
+  `docs/webui/phase-1g-06-smoke-harness-runbook.md`.
+
+---
+
 *Phase 1G-05 Ops & Rollback Runbook — dev-only operations, read-only production
 checks, revert-based rollback (never reset / force), and P0 emergency stop
 conditions. Production Gateway PID `69355` must remain unaffected throughout.*

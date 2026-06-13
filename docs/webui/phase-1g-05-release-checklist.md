@@ -332,6 +332,36 @@ git rev-list --left-right --count origin/dev-huangruibang...HEAD
 
 ---
 
+## 14. Phase 1G-06 Addendum — Release Rehearsal & Smoke Harness
+
+Phase 1G-06 (Pilot Release Rehearsal / Smoke Harness Hardening) supersedes this
+checklist's ad-hoc smoke section with a committed rehearsal baseline. It does
+**not** change any item above.
+
+- Phase 1G-04 remains **SEALED**. Phase 1G-05 remains the **pushed** readiness
+  baseline. Phase 1G-06 adds no product capability and no route governance
+  change (still 34 / 34 / 5 / 0 / 1 / 1; `STATIC_ALLOWLIST` still
+  `frozenset({"clarify"})`).
+- The execute/audit smoke is now driven by a committed dev-only harness:
+  `scripts/run-dev-webui-execute-audit-smoke.sh` (item 21 above). It supports
+  `blocked` / `completed` / `all` profiles, binds to `127.0.0.1` only, refuses
+  production `HERMES_HOME`, and is self-cleaning.
+- Gate profiles are now fixed: **Profile A** (upstream execution gates on,
+  handler-call gate unset → `blocked_tool_handler_call_not_enabled`), **Profile
+  B** (all three gates `=true` → `clarify_execution_completed`), optional
+  **Profile C** (all gates unset → `blocked_by_kill_switch`).
+- **Gate-config note:** unsetting *all* gates tests `blocked_by_kill_switch`,
+  **not** `blocked_tool_handler_call_not_enabled`. To test the handler-call
+  blocked decision, enable `HERMES_TOOL_EXECUTION_ENABLED=true` and
+  `HERMES_AGENT_TOOLS_ENABLED=true` and leave `HERMES_TOOL_HANDLER_CALL_ENABLED`
+  unset.
+- Rehearsal docs: `docs/webui/phase-1g-06-pilot-release-rehearsal.md`,
+  `docs/webui/phase-1g-06-smoke-harness-runbook.md`,
+  `docs/webui/phase-1g-06-release-candidate-validation.md`,
+  `docs/webui/phase-1g-06-go-no-go-template.md`.
+
+---
+
 *Phase 1G-05 Release Checklist — 34 pre-release items, copy-pasteable, dev-only.
 Go requires all green, exact route governance, exact allowlist, production
 isolation, and no secret / forbidden-file exposure.*
