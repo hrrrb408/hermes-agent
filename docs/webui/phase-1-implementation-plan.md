@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening completed locally (not pushed) — release rehearsal baseline
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening pushed — release rehearsal baseline; 1G-07 Release Candidate Dry Run completed locally (not pushed) — RC `RC-1G-07-001` GO, eligible to enter Pilot acceptance
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -1651,9 +1651,9 @@ Phase 1G-03-04 is completed.
 
 ---
 
-## Phase 1G-05 — Post-Sealing Readiness (completed locally / not pushed)
+## Phase 1G-05 — Post-Sealing Readiness (pushed)
 
-**Phase 1G-05 is completed locally.** Post-Sealing Readiness & Pilot Acceptance Baseline.
+**Phase 1G-05 is pushed** at `da5c31a8c`. Post-Sealing Readiness & Pilot Acceptance Baseline.
 
 - **Phase 1G-04 remains SEALED.** Phase 1G-05 does **not** reopen Phase 1G-04 and does **not** add functionality. It prepares Pilot / release readiness only.
 - Purpose: establish the post-sealing readiness baseline, Pilot acceptance baseline, release checklist, ops / rollback runbook, and P2 risk register for the sealed Phase 1G-04 WebUI mainline.
@@ -1667,12 +1667,12 @@ Phase 1G-03-04 is completed.
 - No allowlist change. `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
 - No code feature expansion. No new route, no Tool write route, no second execution route, no Provider route, no non-clarify execution, no Provider Schema / API.
 - No production `~/.hermes` access; no production `state.db` access; production Gateway PID `69355` unaffected.
-- Local docs-only commit created, **not pushed**.
-- Next = Pilot execution (optional, pending explicit approval); Phase 1G-06 explicitly **not started**.
+- Local docs-only commit created, then pushed (`da5c31a8c`).
+- Next = Pilot execution (optional, pending explicit approval); Phase 1G-06 explicitly **not started** (at the time of authoring).
 
-## Phase 1G-06 — Pilot Release Rehearsal / Smoke Harness Hardening (completed locally / not pushed)
+## Phase 1G-06 — Pilot Release Rehearsal / Smoke Harness Hardening (pushed)
 
-**Phase 1G-06 is completed locally.** Pilot Release Rehearsal & Smoke Harness Hardening.
+**Phase 1G-06 is pushed** at `311221e0d`. Pilot Release Rehearsal & Smoke Harness Hardening.
 
 - **Phase 1G-04 remains SEALED.** **Phase 1G-05 remains the pushed readiness baseline.** Phase 1G-06 does **not** reopen Phase 1G-04 and does **not** introduce any new product capability. It hardens release rehearsal and smoke execution only.
 - Purpose: convert the Phase 1G-05 readiness into a repeatable release rehearsal baseline — fixate the execute/audit browser smoke as a committed harness, define the gate profiles precisely, and establish a go/no-go template.
@@ -1687,5 +1687,22 @@ Phase 1G-03-04 is completed.
 - No allowlist change. `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
 - No code feature expansion. No new route, no Tool write route, no second execution route, no Provider route, no non-clarify execution, no Provider Schema / API. No backend functional code change (no P0/P1 defect required a fix).
 - No production `~/.hermes` access; no production `state.db` access; production Gateway PID `69355` unaffected; ports `5180` / `5181` free throughout.
-- Local commit created, **not pushed**.
-- Next = Pilot execution (optional, pending explicit approval); Phase 1G-07 explicitly **not started**.
+- Local commit created, then pushed (`311221e0d`).
+- Next = Pilot execution (optional, pending explicit approval); Phase 1G-07 (Release Candidate Dry Run) completed locally — see below.
+
+## Phase 1G-07 — Release Candidate Dry Run (completed locally / not pushed)
+
+**Phase 1G-07 is completed locally.** Release Candidate Dry Run. RC ID: `RC-1G-07-001`.
+
+- **Phase 1G-04 remains SEALED.** **Phase 1G-05 remains the pushed readiness baseline.** **Phase 1G-06 remains the pushed release rehearsal baseline.** Phase 1G-07 does **not** reopen Phase 1G-04 and does **not** introduce any new product capability. It validates release-candidate readiness only.
+- Purpose: execute a formal Release Candidate Dry Run against the current `dev-huangruibang` branch and decide whether it is eligible to enter Pilot acceptance.
+- Deliverables (docs-only):
+  - `docs/webui/phase-1g-07-release-candidate-dry-run.md` — Phase 1G-07 definition, RC ID (`RC-1G-07-001`), Phase 1G-04 sealed + Phase 1G-05 pushed + Phase 1G-06 pushed baselines, route governance, RC dry-run goal, validation scope, non-goals, smoke profiles A/B/C, backend / frontend / production-isolation / security-boundary validation, Go / No-Go criteria, exit criteria, next-phase options, non-reopening declaration.
+  - `docs/webui/phase-1g-07-rc-validation-report.md` — actual observed RC dry-run gate results (git baseline, route governance 34 / 34 / 5 / 0 / 1 / 1, backend route governance 124 passed / 0 failed, related backend regression 19 files 1471 passed / 0 failed, compile / `py_compile toolsets.py` / ruff, frontend type-check / lint 0-0 / 674 unit / 1862-module build, smoke A 6 passed / 1 skipped / 0 failed, smoke B 7 passed / 0 failed, memory-check PASS, dev-check WARN only for `.claude/`, production PID `69355` unchanged, final ports free, GO).
+  - `docs/webui/phase-1g-07-go-no-go-decision.md` — filled go / no-go record for `RC-1G-07-001` (candidate ID, branch, HEAD, route governance, smoke, backend, frontend, production safety, security boundary, P0/P1/P2 = 0 / 0 / 8, **Decision: GO**, approver, rollback note, next action, emergency stop conditions).
+- No route governance change. Route governance remains OpenAPI=34, Runtime=34, Tool GET=5, Tool write=0, Tool dry-run=1, Tool execution=1.
+- No allowlist change. `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- No code feature expansion. No new route, no Tool write route, no second execution route, no Provider route, no non-clarify execution, no Provider Schema / API. No backend functional code change.
+- No production `~/.hermes` access (no `ls` / `stat` / `find` / `cat` / `sqlite3` / `du` / mtime); no production `state.db` access; production Gateway PID `69355` unaffected; ports `5180` / `5181` free throughout and after.
+- Local docs-only commit created, **not pushed**.
+- Next = Pilot execution (optional, pending explicit approval); Phase 1G-08 explicitly **not started**.

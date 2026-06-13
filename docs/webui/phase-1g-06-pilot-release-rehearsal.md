@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 1G-06 |
 | Title | Pilot Release Rehearsal & Smoke Harness Hardening |
-| Status | Completed locally (not pushed) |
+| Status | Pushed (release rehearsal baseline, `311221e0d`) |
 | Date | 2026-06-14 |
 | Branch | `dev-huangruibang` |
 | Base commit | `da5c31a8ccfec7c5d0e61bff5de5b8e704fb7a38` (Phase 1G-05 readiness baseline) |

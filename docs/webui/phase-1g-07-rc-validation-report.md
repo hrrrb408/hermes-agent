@@ -1,16 +1,17 @@
-# Phase 1G-06: Release Candidate Validation
+# Phase 1G-07: Release Candidate Validation Report
 
 ## Document Information
 
 | Field | Value |
 |-------|-------|
-| Phase | 1G-06 |
-| Title | Release Candidate Validation — Dev WebUI Pilot Rehearsal |
-| Status | Validated (rehearsal baseline now pushed at `311221e0d`; not a production release) |
+| Phase | 1G-07 |
+| Title | Release Candidate Validation Report — `RC-1G-07-001` |
+| Status | Validated (dry run, not a production release) |
 | Date | 2026-06-14 |
 | Branch | `dev-huangruibang` |
-| Candidate | Phase 1G-04 sealed mainline (`94f22f67b`) + Phase 1G-05 readiness (`da5c31a8c`) |
-| Scope | Record the actual Phase 1G-06 rehearsal gate results. No code change. |
+| RC ID | `RC-1G-07-001` |
+| Candidate | Phase 1G-04 sealed mainline (`94f22f67b`) + Phase 1G-05 readiness (`da5c31a8c`) + Phase 1G-06 release rehearsal (`311221e0d`) |
+| Scope | Record the actual Phase 1G-07 RC dry-run gate results. No code change. |
 
 ---
 
@@ -19,9 +20,9 @@
 | Item | Observed |
 |------|----------|
 | Branch | `dev-huangruibang` |
-| Local HEAD | `da5c31a8ccfec7c5d0e61bff5de5b8e704fb7a38` |
-| Remote HEAD | `da5c31a8ccfec7c5d0e61bff5de5b8e704fb7a38` |
-| Merge base | `da5c31a8ccfec7c5d0e61bff5de5b8e704fb7a38` |
+| Local HEAD | `311221e0dd7c583dcd6c07f3bcef7f304bd669e0` |
+| Remote HEAD | `311221e0dd7c583dcd6c07f3bcef7f304bd669e0` |
+| Merge base | `311221e0dd7c583dcd6c07f3bcef7f304bd669e0` |
 | ahead / behind | `0 / 0` |
 | Tracked worktree | clean |
 | Untracked | `.claude/` only |
@@ -40,7 +41,9 @@
 | Tool execution routes | 1 | 1 |
 | `STATIC_ALLOWLIST` | `frozenset({"clarify"})` | `frozenset({"clarify"})` |
 
-Verified by `tests/test_dev_check_webui.py` and `tests/test_dev_web_0c06_closure.py`.
+Verified by `tests/test_dev_check_webui.py`, `tests/test_dev_web_0c06_closure.py`,
+and `./scripts/run-dev-hermes.sh dev-check` (`PASS Static allowlist: clarify`,
+`PASS Tool write routes: absent`, `PASS Provider tool schema: not sent`).
 
 ---
 
@@ -48,10 +51,13 @@ Verified by `tests/test_dev_check_webui.py` and `tests/test_dev_web_0c06_closure
 
 | Suite | Observed |
 |-------|----------|
-| Route governance (`test_dev_check_webui.py` + `test_dev_web_0c06_closure.py`) | 124 passed, 5 deselected, 0 failed |
-| Related backend regression (18 files) | 1471 passed, 2 skipped, 5 deselected, 0 failed |
+| Route governance (`test_dev_check_webui.py` + `test_dev_web_0c06_closure.py`) | 124 passed, 0 failed |
+| Related backend regression (19 files) | 1471 passed, 0 failed |
 
-All backend suites: **0 failed**. Matches the Phase 1G-05 reference baseline.
+All backend suites: **0 failed**. Matches the Phase 1G-05 / Phase 1G-06 reference
+baselines. (Deselected / skipped counts are absorbed by the parallel wrapper and
+do not count as failures; the regression contains 2 skipped integration cases,
+unchanged from prior baselines.)
 
 ---
 
@@ -87,7 +93,7 @@ All backend suites: **0 failed**. Matches the Phase 1G-05 reference baseline.
 |-------|----------|
 | `pnpm test` (`vitest run`) | 674 passed (31 files), 0 failed |
 
-Matches the Phase 1G-05 reference baseline (674 passed / 31 files).
+Matches the Phase 1G-05 / Phase 1G-06 reference baseline (674 passed / 31 files).
 
 ---
 
@@ -137,7 +143,7 @@ execution is blocked (no execution → no post-audit).
 
 | Check | Observed |
 |-------|----------|
-| `./scripts/run-dev-hermes.sh memory-check` | PASS |
+| `./scripts/run-dev-hermes.sh memory-check` | PASS (all 12 invariants ok) |
 
 ---
 
@@ -145,13 +151,16 @@ execution is blocked (no execution → no post-audit).
 
 | Check | Observed |
 |-------|----------|
-| `./scripts/run-dev-hermes.sh dev-check` | PASS (only `.claude/` untracked) |
+| `./scripts/run-dev-hermes.sh dev-check` | WARN (only `Git worktree: dirty` from untracked `.claude/`) |
 | OpenAPI paths | 34 |
 | Runtime routes | 34 |
 | Tool GET / write / dry-run / execution | 5 / 0 / 1 / 1 |
 | `STATIC_ALLOWLIST` | `frozenset({"clarify"})` |
 | Provider tool schema | not sent |
 | Production isolation | PASS |
+
+The single WARN is `Git worktree: dirty` caused solely by the untracked
+`.claude/` directory — the accepted, non-blocking state for every prior phase.
 
 ---
 
@@ -160,8 +169,8 @@ execution is blocked (no execution → no post-audit).
 | Check | Observed |
 |-------|----------|
 | Production Gateway expected PID | `69355` |
-| Production Gateway PID before rehearsal | `69355` |
-| Production Gateway PID after rehearsal | `69355` |
+| Production Gateway PID before dry run | `69355` |
+| Production Gateway PID after dry run | `69355` |
 | Production gateway process count | exactly 1 |
 | Production Gateway stopped / restarted / replaced | no |
 
@@ -179,16 +188,40 @@ execution is blocked (no execution → no post-audit).
 
 ---
 
-## 15. Go / No-Go Outcome
+## 15. Forbidden-File / Secret / Boundary Checks
 
-### 15.1 Go / No-Go rule
+| Check | Observed |
+|-------|----------|
+| Forbidden files touched | none |
+| Code files changed | none |
+| OpenAPI files changed | none |
+| Test files changed | none |
+| Frontend files changed | none |
+| Runtime artifacts committed | none |
+| `.claude/` committed | no |
+| Audit JSONL committed | no |
+| Secrets / raw token / full tokenHash / raw arguments / callable exposed | none |
+| Provider Schema sent | no |
+| Provider API called | no |
+| Non-clarify execution | no |
+| Production `~/.hermes` accessed | no (no `ls` / `stat` / `find` / `cat` / `sqlite3` / `du` / mtime) |
+| Production `state.db` accessed | no |
+
+The diff scope is `docs/webui/` only (see the boundary verification in the
+release-commit step).
+
+---
+
+## 16. Go / No-Go Outcome
+
+### 16.1 Go / No-Go rule
 
 | Decision | Condition |
 |----------|-----------|
 | **GO** | No P0, no P1; all required gates pass; production PID unchanged; route governance unchanged; no forbidden file touched. |
-| **NO-GO** | Any P0; any P1; backend regression failed; frontend build failed; smoke failed; route governance changed; production PID changed; provider boundary violated. |
+| **NO-GO** | Any P0; any P1; backend regression failed; frontend build failed; smoke failed; route governance changed; production PID changed; provider boundary violated; production access. |
 
-### 15.2 Observed outcome
+### 16.2 Observed outcome
 
 | Criterion | Result |
 |-----------|--------|
@@ -207,17 +240,19 @@ execution is blocked (no execution → no post-audit).
 | Forbidden files touched | none |
 | Audit JSONL / `.claude/` committed | no |
 
-**Rehearsal outcome: GO (rehearsal pass).**
+**RC dry-run outcome: GO (`RC-1G-07-001`).**
 
-This is a **rehearsal** result, not a production release authorization. It
-confirms the sealed Phase 1G-04 mainline, on the Phase 1G-05 readiness baseline,
-passes the full release gate sequence through the committed rehearsal harness.
-A real Pilot / release go decision is recorded separately on the go/no-go
-template (`docs/webui/phase-1g-06-go-no-go-template.md`).
+This is a **release-candidate dry-run** result, not a production release
+authorization. It confirms the current `dev-huangruibang` branch — the sealed
+Phase 1G-04 mainline on the Phase 1G-05 readiness baseline and the Phase 1G-06
+release rehearsal baseline — passes the full release gate sequence through the
+committed rehearsal harness, and is eligible to enter Pilot acceptance. The
+formal Go / No-Go decision is recorded in
+`docs/webui/phase-1g-07-go-no-go-decision.md`.
 
 ---
 
-## 16. P0 / P1 / P2 Summary
+## 17. P0 / P1 / P2 Summary
 
 | Severity | Count | Notes |
 |----------|-------|-------|
@@ -227,15 +262,16 @@ template (`docs/webui/phase-1g-06-go-no-go-template.md`).
 
 ---
 
-## 17. Non-Reopening Declaration
+## 18. Non-Reopening Declaration
 
-This validation did **not** reopen Phase 1G-04 and did **not** add any product
-capability. No route, allowlist, execute gate, audit behavior, frontend
-capability, or test strength was changed. The only artifacts produced are the
-Phase 1G-06 rehearsal docs and the optional committed dev-only smoke script.
+This validation did **not** reopen Phase 1G-04, Phase 1G-05, or Phase 1G-06, and
+did **not** add any product capability. No route, allowlist, execute gate, audit
+behavior, frontend capability, or test strength was changed. The only artifacts
+produced are the Phase 1G-07 RC docs, the implementation plan update, the risk
+register addendum, and consistency updates to the Phase 1G-06 docs' push status.
 
 ---
 
-*Phase 1G-06 Release Candidate Validation — rehearsal gate results recorded.
-All required gates pass; route governance and `STATIC_ALLOWLIST` unchanged;
-Production Gateway PID `69355` unaffected; rehearsal outcome GO.*
+*Phase 1G-07 Release Candidate Validation — `RC-1G-07-001`. All required gates
+pass; route governance and `STATIC_ALLOWLIST` unchanged; Production Gateway PID
+`69355` unaffected; RC dry-run outcome GO.*

@@ -243,6 +243,31 @@ rehearsal harness. The risk picture is unchanged.
 
 ---
 
+## 8. Phase 1G-07 Addendum — Release Candidate Dry Run Re-Verification
+
+Phase 1G-07 (Release Candidate Dry Run, RC `RC-1G-07-001`) re-verified the
+current `dev-huangruibang` branch through the full release gate sequence via the
+committed rehearsal harness. The risk picture is unchanged.
+
+- **No new P0. No new P1.** The RC dry run produced 0 P0 and 0 P1 findings.
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** readiness
+  baseline; Phase 1G-06 remains the **pushed** release rehearsal baseline; no
+  route, allowlist, or product capability changed.
+- The eight P2 items above remain accepted, non-blocking, and carry forward.
+  None was aggravated by the RC dry run.
+- Observed gate results: backend route governance 124 passed / 0 failed; related
+  backend regression 19 files 1471 passed / 0 failed; compile / `py_compile
+  toolsets.py` / ruff clean; frontend type-check / lint 0-0 / 674 unit /
+  1862-module build pass; smoke A 6 passed / 1 skipped / 0 failed; smoke B 7
+  passed / 0 failed; memory-check PASS; dev-check WARN only for `.claude/`;
+  Production Gateway PID `69355` unchanged; ports `5180` / `5181` free.
+- RC dry-run validation results: `docs/webui/phase-1g-07-rc-validation-report.md`.
+- RC Go / No-Go decision: `docs/webui/phase-1g-07-go-no-go-decision.md`
+  (**Decision: GO**). Current `dev-huangruibang` is eligible to enter Pilot
+  acceptance.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 8 P2 (accepted, non-blocking). The
-remaining P2 items do not block Phase 1G-04 sealed acceptance or the Pilot
-baseline.*
+remaining P2 items do not block Phase 1G-04 sealed acceptance, the Pilot
+baseline, or the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO).*
