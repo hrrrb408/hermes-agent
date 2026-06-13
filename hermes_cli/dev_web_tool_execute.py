@@ -79,6 +79,24 @@ DECISION_BLOCKED_HANDLER_LOOKUP_POLICY_MISMATCH = (
 )
 DECISION_BLOCKED_DISPATCH_NOT_ENABLED = "blocked_dispatch_not_enabled"
 
+# Phase 1G-04-28: Dispatch planning decisions
+DECISION_BLOCKED_DISPATCH_UNAVAILABLE = "blocked_dispatch_unavailable"
+DECISION_BLOCKED_DISPATCH_PLAN_UNAVAILABLE = "blocked_dispatch_plan_unavailable"
+DECISION_BLOCKED_DISPATCH_PLAN_INVALID = "blocked_dispatch_plan_invalid"
+DECISION_BLOCKED_DISPATCH_HANDLER_DESCRIPTOR_MISSING = (
+    "blocked_dispatch_handler_descriptor_missing"
+)
+DECISION_BLOCKED_DISPATCH_HANDLER_DESCRIPTOR_MISMATCH = (
+    "blocked_dispatch_handler_descriptor_mismatch"
+)
+DECISION_BLOCKED_DISPATCH_NOT_ALLOWLISTED = "blocked_dispatch_not_allowlisted"
+DECISION_BLOCKED_DISPATCH_POLICY_MISMATCH = "blocked_dispatch_policy_mismatch"
+DECISION_BLOCKED_DISPATCH_SIDE_EFFECT_RISK = "blocked_dispatch_side_effect_risk"
+DECISION_BLOCKED_DISPATCH_REGISTRY_MISMATCH = "blocked_dispatch_registry_mismatch"
+DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED = (
+    "blocked_tool_handler_call_not_enabled"
+)
+
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
 DECISION_EXECUTED = "executed"
@@ -151,6 +169,20 @@ ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED = (
     "handler_lookup_written_but_dispatch_not_enabled"
 )
 ERROR_DISPATCH_NOT_ENABLED = "dispatch_not_enabled"
+# Phase 1G-04-28: Dispatch planning error codes
+ERROR_DISPATCH_UNAVAILABLE = "dispatch_unavailable"
+ERROR_DISPATCH_PLAN_UNAVAILABLE = "dispatch_plan_unavailable"
+ERROR_DISPATCH_PLAN_INVALID = "dispatch_plan_invalid"
+ERROR_DISPATCH_HANDLER_DESCRIPTOR_MISSING = "dispatch_handler_descriptor_missing"
+ERROR_DISPATCH_HANDLER_DESCRIPTOR_MISMATCH = "dispatch_handler_descriptor_mismatch"
+ERROR_DISPATCH_NOT_ALLOWLISTED = "dispatch_not_allowlisted"
+ERROR_DISPATCH_POLICY_MISMATCH = "dispatch_policy_mismatch"
+ERROR_DISPATCH_SIDE_EFFECT_RISK = "dispatch_side_effect_risk"
+ERROR_DISPATCH_REGISTRY_MISMATCH = "dispatch_registry_mismatch"
+ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED = (
+    "dispatch_written_but_tool_handler_call_not_enabled"
+)
+ERROR_TOOL_HANDLER_CALL_NOT_ENABLED = "tool_handler_call_not_enabled"
 ERROR_DRY_RUN_NOT_FOUND = "dry_run_not_found"
 ERROR_DRY_RUN_EXPIRED = "dry_run_expired"
 ERROR_DRY_RUN_NOT_ALLOWED = "dry_run_not_allowed"
@@ -214,6 +246,9 @@ GATE_HANDLER_DESCRIPTOR_LOOKUP = "handler_descriptor_lookup"
 GATE_HANDLER_DESCRIPTOR_VALIDATION = "handler_descriptor_validation"
 GATE_HANDLER_ALLOWLIST = "handler_allowlist"
 GATE_DISPATCH = "dispatch"
+GATE_DISPATCH_PLAN = "dispatch_plan"
+GATE_DISPATCH_PLAN_VALIDATION = "dispatch_plan_validation"
+GATE_TOOL_HANDLER_CALL = "tool_handler_call"
 GATE_EXECUTION = "execution"
 GATE_VALIDATION = "validation"
 
@@ -325,6 +360,9 @@ class ToolExecuteResult:
     handler_lookup_id: str | None = None
     handler_lookup_status: str | None = None
     handler_descriptor: dict[str, Any] | None = None
+    dispatch_id: str | None = None
+    dispatch_status: str | None = None
+    dispatch_plan: dict[str, Any] | None = None
 
     def to_safe_dict(self) -> dict[str, Any]:
         """Convert to JSON-safe dict with all execution flags false."""
@@ -376,6 +414,12 @@ class ToolExecuteResult:
             result["handlerLookupStatus"] = self.handler_lookup_status
         if self.handler_descriptor is not None:
             result["handlerDescriptor"] = self.handler_descriptor
+        if self.dispatch_id is not None:
+            result["dispatchId"] = self.dispatch_id
+        if self.dispatch_status is not None:
+            result["dispatchStatus"] = self.dispatch_status
+        if self.dispatch_plan is not None:
+            result["dispatchPlan"] = self.dispatch_plan
         return result
 
 
@@ -1220,10 +1264,9 @@ def evaluate_tool_execute_request(
         gate=GATE_PRE_EXECUTION_AUDIT, passed=True, error_code=None,
     ))
 
-    # ── Gate 46–53: Handler lookup (Phase 1G-04-26) ──
+    # ── Gate 46–56: Handler lookup (Phase 1G-04-26) ──
     from hermes_cli.dev_web_tool_handler_lookup import (
         lookup_handler_descriptor as _lookup_handler,
-        ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
     )
 
     lookup_result = _lookup_handler(
@@ -1232,7 +1275,7 @@ def evaluate_tool_execute_request(
     )
 
     if not lookup_result.found:
-        # Handler lookup failed — block
+        # Handler lookup failed — block before dispatch
         lookup_error = lookup_result.error_code or ERROR_HANDLER_LOOKUP_UNAVAILABLE
         lookup_gate = lookup_result.gate or GATE_HANDLER_LOOKUP
         lookup_decision = lookup_result.decision or DECISION_BLOCKED_HANDLER_LOOKUP_UNAVAILABLE
@@ -1267,19 +1310,76 @@ def evaluate_tool_execute_request(
         gate=GATE_HANDLER_LOOKUP, passed=True, error_code=None,
     ))
 
-    # ── Gate 54–56: Dispatch / execution still disabled ──
+    # ── Gate 57–69: Dispatch planning (Phase 1G-04-28) ──
+    # Safe dispatch plan / envelope construction — metadata-only routing.
+    # Dispatch plan success is NOT Tool Handler call permission.
+    from hermes_cli.dev_web_tool_dispatch import (
+        build_dispatch_plan as _build_dispatch_plan,
+    )
+
+    dispatch_result = _build_dispatch_plan(
+        canonical_name=canonical_name,
+        handler_lookup_id=lookup_result.handler_lookup_id,
+        handler_descriptor=lookup_result.handler_descriptor,
+        allowlist=STATIC_ALLOWLIST,
+        risk_tier=risk_tier,
+        toolset_name="builtin",
+    )
+
+    if not dispatch_result.built:
+        # Dispatch planning failed — block before Tool Handler call
+        dispatch_error = dispatch_result.error_code or ERROR_DISPATCH_UNAVAILABLE
+        dispatch_gate = dispatch_result.gate or GATE_DISPATCH_PLAN
+        dispatch_decision = dispatch_result.decision or DECISION_BLOCKED_DISPATCH_UNAVAILABLE
+
+        gates.append(ToolExecuteGateStatus(
+            gate=dispatch_gate,
+            passed=False,
+            error_code=dispatch_error,
+        ))
+        policy_notes.append(
+            f"Dispatch planning failed: {dispatch_error}. Execution remains blocked."
+        )
+        reason_codes.append(dispatch_error)
+        error_code = dispatch_error
+        decision = dispatch_decision
+
+        return _build_blocked_result(
+            canonical_name=canonical_name,
+            gates=gates,
+            policy_notes=policy_notes,
+            reason_codes=reason_codes,
+            error_code=error_code,
+            decision=decision,
+            risk_tier=risk_tier,
+            pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
+            execute_request_id=pea_write_result.execute_request_id,
+            pre_execution_audit_status="written",
+            handler_lookup_id=lookup_result.handler_lookup_id,
+            handler_lookup_status=lookup_result.handler_lookup_status,
+            handler_descriptor=lookup_result.handler_descriptor,
+        )
+
+    # Dispatch planning succeeded — record pass, then block at the Tool
+    # Handler call boundary (Tool Handler call is still not enabled).
     gates.append(ToolExecuteGateStatus(
-        gate=GATE_DISPATCH,
+        gate=GATE_DISPATCH, passed=True, error_code=None,
+    ))
+
+    # Gate 67–69: Tool Handler call still not enabled, Tool Handler still not
+    # called, execution still disabled.
+    gates.append(ToolExecuteGateStatus(
+        gate=GATE_TOOL_HANDLER_CALL,
         passed=False,
-        error_code=_HL_DISPATCH_BLOCKED,
+        error_code=dispatch_result.error_code,
     ))
     policy_notes.append(
-        "Handler lookup succeeded, but dispatch is not enabled "
+        "Dispatch plan created, but Tool Handler call is not enabled "
         "in this phase. Execution remains blocked."
     )
-    reason_codes.append(_HL_DISPATCH_BLOCKED)
-    error_code = _HL_DISPATCH_BLOCKED
-    decision = DECISION_BLOCKED_DISPATCH_NOT_ENABLED
+    reason_codes.append(dispatch_result.error_code)
+    error_code = dispatch_result.error_code
+    decision = dispatch_result.decision
 
     return _build_blocked_result(
         canonical_name=canonical_name,
@@ -1295,6 +1395,9 @@ def evaluate_tool_execute_request(
         handler_lookup_id=lookup_result.handler_lookup_id,
         handler_lookup_status=lookup_result.handler_lookup_status,
         handler_descriptor=lookup_result.handler_descriptor,
+        dispatch_id=dispatch_result.dispatch_id,
+        dispatch_status=dispatch_result.dispatch_status,
+        dispatch_plan=dispatch_result.dispatch_plan,
     )
 
 
@@ -1318,6 +1421,9 @@ def _build_blocked_result(
     handler_lookup_id: str | None = None,
     handler_lookup_status: str | None = None,
     handler_descriptor: dict[str, Any] | None = None,
+    dispatch_id: str | None = None,
+    dispatch_status: str | None = None,
+    dispatch_plan: dict[str, Any] | None = None,
 ) -> ToolExecuteResult:
     """Build a standard blocked ToolExecuteResult."""
     return ToolExecuteResult(
@@ -1354,6 +1460,9 @@ def _build_blocked_result(
         handler_lookup_id=handler_lookup_id,
         handler_lookup_status=handler_lookup_status,
         handler_descriptor=handler_descriptor,
+        dispatch_id=dispatch_id,
+        dispatch_status=dispatch_status,
+        dispatch_plan=dispatch_plan,
     )
 
 

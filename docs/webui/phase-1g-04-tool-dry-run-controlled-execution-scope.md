@@ -2604,4 +2604,74 @@ Froze the future dispatch boundary as a docs-only scope document. Defined the di
 
 ---
 
-*Phase 1G-04-27 Dispatch Scope Freeze: dispatch goal, relationship with handler lookup, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with handler descriptor, relationship with future Tool Handler call, dispatch plan / envelope structure, dispatch input, dispatch output, dispatch ID strategy, dispatch timing, failure contract, success contract, future execute gate order, OpenAPI scope, route governance scope, future allowed and forbidden files, future test matrix (58 tests), stale STATIC_ALLOWLIST assertion observation, entry criteria, and exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dispatch implementation, no Tool Handler call, no dispatch, no execution, no Provider Schema sending, no Provider API call, no allowlist change, no Controlled Execution started.*
+*Phase 1G-04-27 Dispatch Scope Freeze: dispatch goal, relationship with handler lookup, relationship with pre-execution audit, relationship with STATIC_ALLOWLIST, relationship with handler descriptor, relationship with future Tool Handler call, dispatch plan / dispatch envelope structure, dispatch input, dispatch output, dispatch ID strategy, dispatch timing, failure contract, success contract, future execute gate order, OpenAPI scope, route governance scope, future allowed and forbidden files, future test matrix (58 tests), stale STATIC_ALLOWLIST assertion observation, entry criteria, and exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no dispatch implementation, no Tool Handler call, no dispatch, no execution, no Provider Schema sending, no Provider API call, no allowlist change, no Controlled Execution started.*
+
+## Phase 1G-04-28: Dispatch Minimal Implementation / Still Blocked-Only
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-28 |
+| Title | Dispatch Minimal Implementation / Still Blocked-Only |
+| Status | Completed locally / not pushed |
+| Date | 2026-06-13 |
+| Author | Dev Agent (Phase 1G-04-28 dispatch minimal implementation) |
+| Dependencies | Phase 1G-04-27 completed locally |
+| Branch | dev-huangruibang |
+
+### Summary
+
+Phase 1G-04-28 implements the minimal safe dispatch plan / envelope backend capability while preserving the still-blocked-only execution boundary.
+
+- New `hermes_cli/dev_web_tool_dispatch.py` module: `DispatchPlan`, `DispatchResult`, `build_dispatch_plan`, `create_dispatch_plan`, `validate_dispatch_plan`, `generate_dispatch_id`, `safe_dispatch_summary`.
+- Safe metadata-only dispatch plan / envelope builder for an already verified, audited, allowlisted, handler-resolved `canonicalName`.
+- `dsp_` dispatchId generated (correlation-only, not an authorization credential).
+- Dispatch plan validation: canonicalName consistency, handler descriptor consistency, registry consistency, STATIC_ALLOWLIST membership, policy/risk metadata consistency, side-effect-free metadata-only.
+- Execute route dispatch gates 57–69 integrated into `evaluate_tool_execute_request`.
+- Dispatch success contract: still blocks at `blocked_tool_handler_call_not_enabled`.
+- Dispatch failure contract: fail-closed before any Tool Handler call.
+
+### Final Blocked-Only Boundary
+
+A valid token plus a valid digest plus a successful pre-execution audit plus a successful handler lookup plus a successful dispatch plan now pass the confirmation, digest, pre-execution audit, handler lookup, and dispatch planning gates — but execute STILL blocks at the Tool Handler call boundary:
+
+```
+final block = blocked_tool_handler_call_not_enabled
+```
+
+- No Tool Handler call.
+- No tool execution.
+- No post-execution audit.
+- No Provider Schema sending.
+- No Provider API call.
+- All side-effect flags remain false.
+
+### Still Not Implemented
+
+- Tool Handler call
+- Dispatch runtime invocation
+- Tool execution
+- Post-execution audit
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-26 / 1G-04-27)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+OpenAPI changes were schema-only (ToolExecuteData.dispatchId/dispatchStatus/dispatchPlan + ToolDispatchPlan schema + `dispatch_*` / `tool_handler_call_not_enabled` error and decision enum values). No new path, no new method, no new route.
+
+---
+
+*Phase 1G-04-28 Dispatch Minimal Implementation / Still Blocked-Only: dispatch module, safe dispatch plan / envelope builder, dispatchId generation, dispatch plan validation, execute route dispatch gates 57–69, safe dispatch response fields, and OpenAPI schema-only updates implemented. A valid token + valid digest + pre-execution audit + handler lookup + dispatch success still blocks at the Tool Handler call boundary (`blocked_tool_handler_call_not_enabled`). No Tool Handler call, dispatch runtime invocation, execution, post-execution audit, Provider Schema sending, Provider API call, frontend execution flow, audit read API, audit viewer, or real Controlled Execution was introduced. Route governance unchanged (33/33/4/0/1/1). STATIC_ALLOWLIST remains `frozenset({"clarify"})`. Not pushed. Real Controlled Execution not started.*

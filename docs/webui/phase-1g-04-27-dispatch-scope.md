@@ -14,6 +14,34 @@
 | Base commit | `f9ad2b1ef05cae101b09f902767123669ba9d4f4` |
 | Implementation | Documentation only — no business code modified |
 
+### Implementation Status (Phase 1G-04-28)
+
+The dispatch boundary frozen in this document was implemented in **Phase 1G-04-28** (`docs/webui/phase-1g-04-28-dispatch-minimal-implementation.md`).
+
+Implemented in Phase 1G-04-28:
+
+- Minimal safe dispatch plan / envelope (`hermes_cli/dev_web_tool_dispatch.py`)
+- Safe dispatch plan builder (`build_dispatch_plan` / `create_dispatch_plan`)
+- `dispatchId` (`dsp_` prefix, correlation-only)
+- Dispatch plan validation (`validate_dispatch_plan`)
+- Execute route dispatch gates 57–69
+- Safe dispatch plan response (`dispatchId` / `dispatchStatus` / `dispatchPlan`)
+- OpenAPI schema-only updates (`ToolDispatchPlan`, `dispatch_*` / `tool_handler_call_not_enabled` enums)
+
+Still not implemented (by design — the boundary remains blocked-only):
+
+- Tool Handler call
+- Dispatch runtime invocation
+- Tool execution
+- Post-execution audit
+- Provider Schema sending
+- Provider API call
+- Frontend execute flow
+- Audit read API / audit viewer
+- Real Controlled Execution
+
+A valid token + valid digest + pre-execution audit + handler lookup + dispatch success now blocks at `blocked_tool_handler_call_not_enabled` — exactly the boundary this scope document froze.
+
 ### Scope
 
 This document:

@@ -41,6 +41,7 @@ from hermes_cli.dev_web_tool_execute import (
     DECISION_BLOCKED_DIGEST_VERIFICATION_NOT_IMPLEMENTED,
     DECISION_BLOCKED_PRE_EXECUTION_AUDIT_NOT_IMPLEMENTED,
     DECISION_BLOCKED_DISPATCH_NOT_ENABLED,
+    DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED,
     DECISION_BLOCKED_REQUIRES_DRY_RUN,
     DECISION_BLOCKED_REQUIRES_AUDIT,
     ERROR_AGENT_TOOLS_DISABLED,
@@ -979,6 +980,9 @@ class TestDryRunLookupIntegration:
         from hermes_cli.dev_web_tool_handler_lookup import (
             ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
         )
+        from hermes_cli.dev_web_tool_dispatch import (
+            ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED as _DISPATCH_FINAL_BLOCK,
+        )
 
         # Build a real digest with a fixed timestamp
         fixed_ts = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
@@ -1037,7 +1041,8 @@ class TestDryRunLookupIntegration:
                 confirmation_token=token_result.raw_token,
                 hermes_home=str(tmp_hermes_home),
             )
-        # Valid token + valid digest + handler lookup success, but still blocks
+        # Valid token + valid digest + pre-execution audit + handler lookup +
+        # dispatch plan success, but still blocks at Tool Handler call boundary
         assert result.execution_allowed is False
         assert result.dispatch_allowed is False
         assert result.provider_schema_allowed is False
@@ -1046,9 +1051,9 @@ class TestDryRunLookupIntegration:
         assert result.execution_started is False
         assert result.execution_attempted is False
         assert result.execution_completed is False
-        # Blocked at dispatch boundary (handler lookup succeeded)
-        assert result.error_code == _HL_DISPATCH_BLOCKED
-        assert result.decision == DECISION_BLOCKED_DISPATCH_NOT_ENABLED
+        # Blocked at Tool Handler call boundary (dispatch plan succeeded)
+        assert result.error_code == _DISPATCH_FINAL_BLOCK
+        assert result.decision == DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED
         # Pre-execution audit fields present
         assert result.pre_execution_audit_id is not None
         assert result.execute_request_id is not None
@@ -1059,6 +1064,17 @@ class TestDryRunLookupIntegration:
         assert result.handler_descriptor is not None
         assert result.handler_descriptor["canonicalName"] == "clarify"
         assert result.handler_descriptor["dispatchAllowed"] is False
+        # Dispatch plan fields present (Phase 1G-04-28)
+        assert result.dispatch_id is not None
+        assert result.dispatch_id.startswith("dsp_")
+        assert result.dispatch_status == "planned"
+        assert result.dispatch_plan is not None
+        assert result.dispatch_plan["canonicalName"] == "clarify"
+        assert result.dispatch_plan["dispatchAllowed"] is False
+        assert result.dispatch_plan["toolHandlerCallAllowed"] is False
+        assert result.dispatch_plan["executionAllowed"] is False
+        assert result.dispatch_plan["providerSchemaAllowed"] is False
+        assert result.dispatch_plan["sideEffectFreeDispatch"] is True
 
     def test_valid_token_is_consumed_and_reuse_blocks(
         self, tmp_hermes_home, audit_path,
@@ -1076,6 +1092,9 @@ class TestDryRunLookupIntegration:
         )
         from hermes_cli.dev_web_tool_handler_lookup import (
             ERROR_HANDLER_LOOKUP_WRITTEN_BUT_DISPATCH_NOT_ENABLED as _HL_DISPATCH_BLOCKED,
+        )
+        from hermes_cli.dev_web_tool_dispatch import (
+            ERROR_DISPATCH_WRITTEN_BUT_TOOL_HANDLER_CALL_NOT_ENABLED as _DISPATCH_FINAL_BLOCK,
         )
 
         # Build a real digest with a fixed timestamp
@@ -1124,7 +1143,8 @@ class TestDryRunLookupIntegration:
         )
         assert token_result.issued is True
 
-        # First use — token consumed, handler lookup succeeds, blocks at dispatch
+        # First use — token consumed, dispatch plan succeeds, blocks at
+        # Tool Handler call boundary
         with self._kill_switches_true():
             r1 = evaluate_tool_execute_request(
                 "clarify",
@@ -1134,8 +1154,12 @@ class TestDryRunLookupIntegration:
                 hermes_home=str(tmp_hermes_home),
             )
         assert r1.execution_allowed is False
-        assert r1.error_code == _HL_DISPATCH_BLOCKED
-        assert r1.decision == DECISION_BLOCKED_DISPATCH_NOT_ENABLED
+        assert r1.error_code == _DISPATCH_FINAL_BLOCK
+        assert r1.decision == DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED
+        # Dispatch plan built on first use
+        assert r1.dispatch_id is not None
+        assert r1.dispatch_status == "planned"
+        assert r1.dispatch_plan is not None
 
         # Second use — token already consumed
         with self._kill_switches_true():
@@ -1148,3 +1172,210 @@ class TestDryRunLookupIntegration:
             )
         assert r2.execution_allowed is False
         assert r2.error_code == ERROR_CONFIRMATION_REUSED
+
+
+# ===================================================================
+# 13. Dispatch Integration Tests (Phase 1G-04-28)
+# ===================================================================
+
+
+def _issue_valid_token_for(tmp_hermes_home, audit_path, request_id="dr-dispatch"):
+    """Issue a real digest-bound confirmation token and write its audit event.
+
+    Returns (raw_token, digest).
+    """
+    from datetime import datetime, timezone, timedelta
+    from hermes_cli.dev_web_tool_execute_confirmation import issue_confirmation_token
+    from hermes_cli.dev_web_tool_execute_preflight import DryRunHistoricalLookupResult
+    from hermes_cli.dev_web_tool_execute_digest import (
+        build_dry_run_decision_digest_package,
+    )
+
+    fixed_ts = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    fixed_dt = datetime.fromisoformat(fixed_ts)
+    if fixed_dt.tzinfo is None:
+        fixed_dt = fixed_dt.replace(tzinfo=timezone.utc)
+    computed_expires = (fixed_dt + timedelta(seconds=300)).isoformat()
+    digest_pkg = build_dry_run_decision_digest_package(
+        dry_run_request_id=request_id,
+        canonical_name="clarify",
+        risk_tier="R0",
+        policy_decision="would_allow",
+        allowlisted=True,
+        audit_written=True,
+        audit_event_id="evt-dispatch-001",
+        arguments=None,
+        created_at=fixed_ts,
+        expires_at=computed_expires,
+    )
+    assert digest_pkg.success
+    digest = digest_pkg.digest
+
+    _write_dispatch_events(audit_path, [
+        {**_make_audit_event(request_id=request_id, timestamp=fixed_ts),
+         "dryRunDecisionDigest": digest,
+         "eventId": "evt-dispatch-001"},
+    ])
+    now = datetime(2026, 6, 13, 12, 0, 0, tzinfo=timezone.utc)
+    dr_record = DryRunHistoricalLookupResult(
+        found=True, error_code=None,
+        dry_run_request_id=request_id,
+        canonical_name="clarify", decision="would_allow",
+        risk_tier="R0", policy_version=None, arguments_digest=None,
+        dry_run_decision_digest=digest, audit_written=True,
+        audit_event_id="evt-dispatch-001", created_at=now.isoformat(),
+        expires_at=None, lookup_source="test", redaction_status="none",
+    )
+    token_result = issue_confirmation_token(
+        hermes_home=str(tmp_hermes_home),
+        dry_run_record=dr_record,
+        canonical_name="clarify",
+        risk_tier="R0",
+        dry_run_request_id=request_id,
+        dry_run_decision_digest=digest,
+        now=now,
+    )
+    assert token_result.issued is True
+    return token_result.raw_token, digest
+
+
+def _write_dispatch_events(audit_path, events):
+    with open(audit_path, "a", encoding="utf-8") as f:
+        for event in events:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+class TestDispatchIntegration:
+    """Phase 1G-04-28: dispatch planning integration in the execute route."""
+
+    @pytest.fixture
+    def tmp_hermes_home(self, tmp_path):
+        return tmp_path / "hermes-home-dev"
+
+    @pytest.fixture
+    def audit_dir(self, tmp_hermes_home):
+        d = tmp_hermes_home / "gateway" / "dev" / "audit"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @pytest.fixture
+    def audit_path(self, audit_dir):
+        return audit_dir / "tool-dry-run-audit.jsonl"
+
+    def _kill_switches_true(self):
+        return patch.dict(os.environ, {
+            "HERMES_TOOL_EXECUTION_ENABLED": "true",
+            "HERMES_AGENT_TOOLS_ENABLED": "true",
+        }, clear=False)
+
+    def test_dispatch_success_fields_in_safe_dict(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Dispatch success surfaces dispatchId / dispatchStatus / dispatchPlan."""
+        raw_token, digest = _issue_valid_token_for(
+            tmp_hermes_home, audit_path, request_id="dr-safe-dict",
+        )
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-safe-dict",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        d = result.to_safe_dict()
+        assert d["dispatchId"].startswith("dsp_")
+        assert d["dispatchStatus"] == "planned"
+        assert d["dispatchPlan"]["canonicalName"] == "clarify"
+        assert d["dispatchPlan"]["dispatchAllowed"] is False
+
+    def test_dispatch_success_still_blocks_all_side_effects(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Dispatch success keeps every side-effect flag false."""
+        raw_token, digest = _issue_valid_token_for(
+            tmp_hermes_home, audit_path, request_id="dr-side-effects",
+        )
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-side-effects",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.dispatch_allowed is False
+        assert result.provider_schema_allowed is False
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+        assert result.execution_started is False
+
+    def test_dispatch_failure_blocks_at_dispatch_error(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Dispatch failure blocks with a dispatch_* code before Tool Handler call."""
+        raw_token, digest = _issue_valid_token_for(
+            tmp_hermes_home, audit_path, request_id="dr-fail-dispatch",
+        )
+        from hermes_cli import dev_web_tool_dispatch as dispatch_mod
+        from hermes_cli.dev_web_tool_dispatch import (
+            DispatchResult,
+            ERROR_DISPATCH_PLAN_INVALID,
+            DECISION_BLOCKED_DISPATCH_PLAN_INVALID,
+            DISPATCH_STATUS_BLOCKED,
+            FINAL_BLOCK_TOOL_HANDLER_CALL_NOT_ENABLED,
+        )
+
+        def _failing_build(**kwargs):
+            return DispatchResult(
+                built=False,
+                dispatch_status=DISPATCH_STATUS_BLOCKED,
+                dispatch_id=None,
+                dispatch_plan=None,
+                error_code=ERROR_DISPATCH_PLAN_INVALID,
+                decision=DECISION_BLOCKED_DISPATCH_PLAN_INVALID,
+                gate="dispatch_plan",
+                final_block=FINAL_BLOCK_TOOL_HANDLER_CALL_NOT_ENABLED,
+            )
+
+        with self._kill_switches_true(), patch.object(
+            dispatch_mod, "build_dispatch_plan", side_effect=_failing_build,
+        ):
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-fail-dispatch",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        assert result.execution_allowed is False
+        assert result.error_code == ERROR_DISPATCH_PLAN_INVALID
+        assert result.decision == DECISION_BLOCKED_DISPATCH_PLAN_INVALID
+        # No dispatch fields surfaced on failure
+        assert result.dispatch_id is None
+        assert result.dispatch_plan is None
+        # All side-effect flags remain false
+        assert result.tool_handler_called is False
+        assert result.provider_api_called is False
+        assert result.execution_started is False
+
+    def test_dispatch_success_no_raw_token_in_response(
+        self, tmp_hermes_home, audit_path,
+    ) -> None:
+        """Raw confirmation token never appears in the dispatch response."""
+        raw_token, digest = _issue_valid_token_for(
+            tmp_hermes_home, audit_path, request_id="dr-no-raw-token",
+        )
+        with self._kill_switches_true():
+            result = evaluate_tool_execute_request(
+                "clarify",
+                dry_run_request_id="dr-no-raw-token",
+                dry_run_decision_digest=digest,
+                confirmation_token=raw_token,
+                hermes_home=str(tmp_hermes_home),
+            )
+        text = json.dumps(result.to_safe_dict())
+        assert raw_token not in text
+        assert "confirmationToken" not in text
+        assert "rawToken" not in text

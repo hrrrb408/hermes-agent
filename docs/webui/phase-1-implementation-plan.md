@@ -1602,3 +1602,13 @@ Phase 1G-03-04 is completed.
 - Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes
 - Local docs-only commit created, not pushed
 - Next = future dispatch minimal implementation only after user approval; real Controlled Execution not started
+
+**Phase 1G-04-28 is completed locally.** Dispatch Minimal Implementation / Still Blocked-Only.
+- `docs/webui/phase-1g-04-28-dispatch-minimal-implementation.md` — Dispatch minimal implementation: new `hermes_cli/dev_web_tool_dispatch.py` module (DispatchPlan, DispatchResult, build_dispatch_plan, create_dispatch_plan, validate_dispatch_plan, generate_dispatch_id, safe_dispatch_summary), safe metadata-only dispatch plan / envelope builder, `dsp_` dispatchId generation, dispatch plan validation (canonicalName / handler descriptor consistency / registry consistency / allowlist / policy metadata / side-effect-free metadata only), execute route dispatch gates 57–69, dispatch success contract (still blocks at `blocked_tool_handler_call_not_enabled`), dispatch failure contract (fail-closed before Tool Handler call), OpenAPI schema-only updates (ToolExecuteData.dispatchId/dispatchStatus/dispatchPlan + ToolDispatchPlan schema + dispatch_* / tool_handler_call_not_enabled error and decision enums), backend tests (new test_dev_web_tool_dispatch.py + execute integration updates)
+- A valid token plus a valid digest plus a successful pre-execution audit plus a successful handler lookup plus a successful dispatch plan now pass the confirmation, digest, pre-execution audit, handler lookup, and dispatch planning gates, but execute STILL blocks at the Tool Handler call boundary (`blocked_tool_handler_call_not_enabled`)
+- NOT implemented: Tool Handler call, dispatch runtime invocation, tool execution, post-execution audit, Provider Schema sending, Provider API call, frontend execute UI, audit read API, audit viewer, real Controlled Execution
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; Execute route remains blocked-only
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- No new route, no route count change, no OpenAPI path change, no frontend change, no agent/tools change
+- Local commit created, not pushed
+- Next = Tool Handler Call Scope Freeze only after user approval; real Controlled Execution not started

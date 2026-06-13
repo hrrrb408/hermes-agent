@@ -363,8 +363,8 @@ Updated `docs/webui/openapi/dev-web-api-v1.yaml`:
 
 ## Next Dependency
 
-Phase 1G-04-27 freezes the dispatch boundary.
+Phase 1G-04-27 froze the dispatch boundary.
 
-Phase 1G-04-27 still does not implement dispatch, Tool Handler call, execution, provider calls, post-execution audit, or real Controlled Execution.
+Phase 1G-04-28 implemented the dispatch boundary frozen by Phase 1G-04-27: the minimal safe dispatch plan / envelope, `dispatchId`, execute route dispatch gates 57–69, and safe dispatch response fields. A valid token + valid digest + pre-execution audit + handler lookup + dispatch success now blocks at `blocked_tool_handler_call_not_enabled`. Tool Handler call, dispatch runtime invocation, execution, provider calls, post-execution audit, and real Controlled Execution remain not implemented.
 
-See `docs/webui/phase-1g-04-27-dispatch-scope.md` for the frozen dispatch scope.
+See `docs/webui/phase-1g-04-27-dispatch-scope.md` for the frozen dispatch scope and `docs/webui/phase-1g-04-28-dispatch-minimal-implementation.md` for the dispatch minimal implementation.

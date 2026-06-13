@@ -4146,8 +4146,18 @@ components:
         - blocked_handler_lookup_side_effect_risk
         - blocked_handler_lookup_policy_mismatch
         - blocked_dispatch_not_enabled
+        - blocked_dispatch_unavailable
+        - blocked_dispatch_plan_unavailable
+        - blocked_dispatch_plan_invalid
+        - blocked_dispatch_handler_descriptor_missing
+        - blocked_dispatch_handler_descriptor_mismatch
+        - blocked_dispatch_not_allowlisted
+        - blocked_dispatch_policy_mismatch
+        - blocked_dispatch_side_effect_risk
+        - blocked_dispatch_registry_mismatch
+        - blocked_tool_handler_call_not_enabled
       description: >
-        Execute gate decision. All values represent blocked states in Phase 1G-04-26.
+        Execute gate decision. All values represent blocked states in Phase 1G-04-28.
         would_execute, executed, and execution_failed are reserved for future phases
         and are not returned by the current implementation.
 
@@ -4219,6 +4229,17 @@ components:
         - handler_lookup_policy_mismatch
         - handler_lookup_written_but_dispatch_not_enabled
         - dispatch_not_enabled
+        - dispatch_unavailable
+        - dispatch_plan_unavailable
+        - dispatch_plan_invalid
+        - dispatch_handler_descriptor_missing
+        - dispatch_handler_descriptor_mismatch
+        - dispatch_not_allowlisted
+        - dispatch_policy_mismatch
+        - dispatch_side_effect_risk
+        - dispatch_registry_mismatch
+        - dispatch_written_but_tool_handler_call_not_enabled
+        - tool_handler_call_not_enabled
         - validation_failed
         - execution_not_implemented
         - internal_error
@@ -4403,6 +4424,28 @@ components:
           description: >
             Safe handler descriptor. Only present after successful handler lookup.
             Contains metadata only — no callable references, no secrets.
+        dispatchId:
+          type: string
+          nullable: true
+          description: >
+            Dispatch plan correlation ID (prefix "dsp_"). Only present after a
+            successful safe dispatch plan build. Not an authorization credential —
+            correlation-only. Tool Handler call remains disabled.
+        dispatchStatus:
+          type: string
+          nullable: true
+          enum: [planned, null]
+          description: >
+            Dispatch plan status. "planned" when a safe dispatch plan was built,
+            null when dispatch planning was not reached or failed.
+        dispatchPlan:
+          $ref: "#/components/schemas/ToolDispatchPlan"
+          nullable: true
+          description: >
+            Safe dispatch plan / envelope. Only present after a successful safe
+            dispatch plan build. Contains metadata only — no callable references,
+            no raw arguments, no raw token, no secrets, no Provider Schema payload.
+            Dispatch plan existence is NOT execution permission.
 
     ToolHandlerDescriptor:
       type: object
@@ -4446,6 +4489,87 @@ components:
         sideEffectFreeLookup:
           type: boolean
           description: Whether the lookup was side-effect-free.
+
+    ToolDispatchPlan:
+      type: object
+      description: >
+        Safe dispatch plan / envelope containing metadata only. No callable
+        objects, function references, raw arguments, raw token, full tokenHash,
+        provider credentials, or Provider Schema payload. Dispatch plan
+        existence is NOT execution permission — Tool Handler call remains
+        disabled. All side-effect flags are always false.
+      required:
+        - canonicalName
+        - handlerLookupId
+        - handlerId
+        - registryKey
+        - routingMode
+        - dispatchAllowed
+        - toolHandlerCallAllowed
+        - executionAllowed
+        - providerSchemaAllowed
+        - sideEffectFreeDispatch
+        - dispatchPlanVersion
+      properties:
+        canonicalName:
+          type: string
+          description: The allowlisted canonical tool name.
+        handlerLookupId:
+          type: string
+          description: Correlation ID from the successful handler lookup.
+        handlerId:
+          type: string
+          description: Handler identifier (e.g. "handler_clarify").
+        registryKey:
+          type: string
+          description: Tool registry key.
+        routingMode:
+          type: string
+          enum: [metadata_only]
+          description: Routing mode is always metadata-only in this phase.
+        dispatchAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. No dispatch runtime invocation occurs.
+        toolHandlerCallAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Tool Handler call requires separate phase.
+        executionAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Execution requires separate phase approval.
+        providerSchemaAllowed:
+          type: boolean
+          enum: [false]
+          description: Always false. Provider Schema sending requires separate phase.
+        sideEffectFreeDispatch:
+          type: boolean
+          enum: [true]
+          description: Always true. Dispatch planning is side-effect-free metadata only.
+        dispatchPlanVersion:
+          type: integer
+          description: Dispatch plan schema version.
+        toolsetName:
+          type: string
+          nullable: true
+          description: Optional toolset name metadata.
+        category:
+          type: string
+          nullable: true
+          description: Optional category metadata.
+        riskTier:
+          type: string
+          nullable: true
+          description: Risk tier from the handler descriptor (e.g. "R0").
+        policyVersion:
+          type: string
+          nullable: true
+          description: Optional policy version metadata.
+        handlerDescriptorVersion:
+          type: integer
+          nullable: true
+          description: Optional handler descriptor version metadata.
 
     ToolExecuteResponse:
       type: object
