@@ -281,3 +281,11 @@ Even after a valid confirmation token passes all verification gates, the execute
 ---
 
 *Phase 1G-04-20 Confirmation Token Minimal Backend Implementation / Still Blocked-Only: minimal backend token issuance, verification, dev-only token JSONL storage, token hashing/tokenId, TTL, single-use consumption, dry-run integration, execute token verification gate implemented. Execute route remains blocked-only at the digest verification boundary. No handler lookup, no dispatch, no execution, no provider schema, no provider API, no frontend changes, no route count changes, no real Controlled Execution started.*
+
+---
+
+## Next Dependency
+
+Phase 1G-04-21 freezes the digest verification boundary. See `docs/webui/phase-1g-04-21-digest-verification-scope.md` for the frozen digest verification scope.
+
+Phase 1G-04-21 still does not implement digest verification, dry-run digest persistence, pre-execution audit, post-execution audit, handler lookup, dispatch, execution, provider calls, or real Controlled Execution.

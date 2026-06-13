@@ -2146,3 +2146,75 @@ A valid token is necessary but not sufficient. A verified token still does not e
 ---
 
 *Phase 1G-04-20 Confirmation Token Minimal Backend Implementation / Still Blocked-Only: token issuance, verification, dev-only JSONL store, hash/tokenId, TTL, single-use, dry-run integration, execute token verification gate implemented. Execute route remains blocked-only at digest verification boundary. No handler lookup, no dispatch, no execution, no provider schema, no provider API, no frontend changes, no route count changes, STATIC_ALLOWLIST unchanged, no real Controlled Execution started.*
+
+---
+
+## Phase 1G-04-21: Digest Verification Scope Freeze
+
+| Field | Value |
+|-------|-------|
+| Phase | 1G-04-21 |
+| Title | Digest Verification Scope Freeze |
+| Status | Completed locally / Not pushed |
+| Date | 2026-06-13 |
+| Dependencies | Phase 1G-04-20 completed locally |
+
+### Summary
+
+Froze the future digest verification boundary as a docs-only scope document. Defined the digest verification goal, digest input package (14 fields), canonicalization strategy (sorted JSON, UTF-8, no whitespace), digest algorithm (`sha256:` + hex), source-of-truth strategy (dry-run audit JSONL primary, token store secondary), current `dryRunDecisionDigest` gap, confirmation token + digest relationship, future dry-run behavior delta, future execute digest gate order (Gates 28–37), failure contract (14 error codes), OpenAPI schema-only strategy, route governance strategy, future allowed/forbidden files, future test matrix (51 tests), and entry/exit criteria.
+
+### Delta from 1G-04-20
+
+- New doc: `docs/webui/phase-1g-04-21-digest-verification-scope.md`
+- Updated: Phase 1G-04 scope doc, implementation plan, Phase 1G-04-20 doc next dependency
+
+### Digest Verification Scope Frozen
+
+1. **Digest goal**: Verify that execute request matches the exact dry-run decision package; necessary but not sufficient; passing does not execute or enable handler lookup
+2. **Digest input package**: 14-field canonical digest package (schemaVersion, digestType, dryRunRequestId, canonicalName, riskTier, policyVersion, policyDecision, allowlisted, auditWritten, auditEventId, argumentsDigest, redactionVersion, toolPolicyVersion, toolCatalogVersion, createdAt, expiresAt)
+3. **Canonicalization**: `json.dumps(package, sort_keys=True, separators=(",", ":"), ensure_ascii=False)` — deterministic, no secrets, no raw token, no raw arguments
+4. **Digest algorithm**: `sha256:` + hex of SHA-256(canonical JSON) — integrity binding value, not a secret
+5. **Source of truth**: Primary = dry-run audit JSONL; secondary = token store; optional = execute request field; never frontend cache, browser, provider logs, or production
+6. **Current gap**: `dryRunDecisionDigest` not yet stored in audit events; token binding may be `None`; preferred fix = persist digest at dry-run time (Option A)
+7. **Confirmation token relationship**: Token verifies user approval; digest verifies request integrity; both required, neither sufficient
+8. **Future dry-run delta**: May add `dryRunDecisionDigest`, `digestAlgorithm`, `digestPackageVersion` to response and audit event; no new route, no handler call, no execution
+9. **Future execute gates**: Gates 28–37 (digest package available → canonicalization → historical digest → token digest → request digest → cross-match → expiry → pre-execution audit block → handler lookup disabled)
+10. **Failure contract**: 14 error codes; all block before handler lookup; all keep side-effect flags false
+11. **OpenAPI strategy**: No path change; schema-only refinements to existing schemas; 33 paths maintained
+12. **Route governance**: No route change; 33/33/4/0/1/1 maintained
+13. **Future allowed files**: 1 new module + 7 existing backend + 1 OpenAPI + 10 test files + 3 doc files
+14. **Future forbidden files**: frontend, agent, tools, toolsets, runtime, memory, review, .env, .claude, ~/.hermes, production state.db, provider config, gateway state
+15. **Future test matrix**: 51 tests (14 digest package, 8 dry-run digest, 5 token binding, 11 execute gates, 8 safety invariants, 5 route governance)
+16. **Entry criteria**: 13 conditions
+17. **Exit criteria**: 22 conditions
+
+### Not Implemented
+
+- Digest verification
+- Dry-run digest persistence
+- Pre/post execution audit
+- Handler lookup
+- Dispatch
+- Execution
+- Provider Schema sending
+- Provider API call
+- Frontend execute UI
+- Audit read API
+- Audit viewer
+- Real Controlled Execution
+
+### Route Governance (unchanged from 1G-04-20)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |
+
+---
+
+*Phase 1G-04-21 Digest Verification Scope Freeze: digest verification goal, digest input package, canonicalization strategy, digest algorithm, source-of-truth strategy, current dryRunDecisionDigest gap, confirmation token relationship, future dry-run behavior delta, future execute digest gate order, failure contract, OpenAPI strategy, route governance, future allowed/forbidden files, future test matrix, entry/exit criteria frozen. Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes, no digest verification implementation, no dry-run digest persistence implementation, no pre-execution audit, no handler lookup, no dispatch, no execution, no provider schema send, no allowlist change, no Controlled Execution started.*
