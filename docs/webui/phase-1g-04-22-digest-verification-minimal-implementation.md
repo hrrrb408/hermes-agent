@@ -233,3 +233,11 @@ blocked_pre_execution_audit_not_implemented
 ---
 
 *Phase 1G-04-22 Digest Verification Minimal Implementation: digest package building, canonicalization, sha256:hex dryRunDecisionDigest computation, dry-run response digest fields, dry-run audit digest persistence, confirmation token non-null digest binding, legacy null digest fail-closed behavior, and execute digest verification gates implemented. Execute remains blocked-only at the pre-execution audit boundary. No real Controlled Execution started.*
+
+---
+
+## 9. Next Dependency
+
+Phase 1G-04-23 freezes the pre-execution audit boundary.
+
+Phase 1G-04-23 still does not implement pre-execution audit, post-execution audit, handler lookup, dispatch, execution, provider calls, or real Controlled Execution.

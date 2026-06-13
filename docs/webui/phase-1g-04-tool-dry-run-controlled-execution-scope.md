@@ -2258,3 +2258,67 @@ Implemented minimal digest verification backend while preserving the still-block
 | Provider API | Not called |
 | Frontend | Not modified |
 | Real Controlled Execution | Not started |
+
+---
+
+## Phase 1G-04-23: Pre-Execution Audit Scope Freeze
+
+**Status:** Completed locally / Not pushed
+
+### Summary
+
+Froze the future pre-execution audit boundary design without implementation.
+
+### What Was Frozen
+
+| Item | Status |
+|------|--------|
+| Pre-execution audit goal | Frozen — durable record before handler lookup, necessary but not sufficient |
+| Difference from dry-run audit | Frozen — execute attempt record vs. policy simulation |
+| Confirmation token relationship | Frozen — references `confirmationTokenId`, `confirmationIssuedAt`, `confirmationConsumedAt` |
+| Digest verification relationship | Frozen — references `dryRunDecisionDigest`, `historicalDigest`, `tokenBoundDigest`, `executeDerivedDigest` |
+| Handler lookup relationship | Frozen — pre-audit is final record before future handler lookup |
+| Write timing | Frozen — after all gates pass, before handler lookup / dispatch |
+| Event structure | Frozen — 30+ field structure with gate status and side-effect flags |
+| Audit store path | Frozen — `$HERMES_HOME/gateway/dev/audit/tool-pre-execution-audit.jsonl` |
+| Path guard strategy | Frozen — containment-based, not string prefix |
+| ID strategy | Frozen — `pea_` / `exe_` prefixes, safe for correlation |
+| Idempotency strategy | Frozen — append-only, single-use token natural dedup |
+| Failure contract | Frozen — 8 error codes, all block before handler lookup |
+| Success contract | Frozen — audit written but still blocked at `blocked_handler_lookup_not_enabled` |
+| Future execute gate order | Frozen — Gates 38–45 (audit package → path guard → write → block) |
+| Future OpenAPI strategy | Frozen — schema-only, no new paths |
+| Future route governance | Frozen — unchanged 33/33/4/0/1/1 |
+| Future allowed/forbidden files | Frozen |
+| Future test matrix | Frozen — 55 tests |
+| Entry/exit criteria | Frozen |
+
+### What Did NOT Change
+
+| Item | Status |
+|------|--------|
+| Pre-execution audit | Not implemented |
+| Post-execution audit | Not implemented |
+| Handler lookup | Not enabled |
+| Tool Dispatch | Not enabled |
+| Tool Execution | Disabled |
+| Provider Schema | Not sent |
+| Provider API | Not called |
+| Frontend | Not modified |
+| OpenAPI file | Not modified |
+| Tests | Not modified |
+| STATIC_ALLOWLIST | Unchanged: `frozenset({"clarify"})` |
+| Route governance | Unchanged: 33/33/4/0/1/1 |
+| Real Controlled Execution | Not started |
+
+### Route Governance (unchanged from 1G-04-22)
+
+| Metric | Value |
+|--------|-------|
+| OpenAPI paths | 33 |
+| Runtime routes | 33 |
+| Tool GET routes | 4 |
+| Tool write routes | 0 |
+| Tool dry-run routes | 1 |
+| Tool execution routes | 1 |
+| STATIC_ALLOWLIST | `frozenset({"clarify"})` |

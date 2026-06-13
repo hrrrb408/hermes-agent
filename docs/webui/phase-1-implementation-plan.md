@@ -757,7 +757,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 
 ## Phase 1G: Tool Execution Safety Framework — In Progress
 
-**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally, 1G-04-09 Completed locally, 1G-04-10 Completed locally, 1G-04-11 Completed and Pushed, 1G-04-12 Completed locally, 1G-04-13 Completed locally, 1G-04-14 Completed locally, 1G-04-15 Completed locally, 1G-04-16 Completed locally, 1G-04-17 Completed locally, 1G-04-18 Completed locally, 1G-04-19 Completed locally, 1G-04-20 Completed locally)
+**Status:** In Progress (1G-00 ✓, 1G-01 ✓, 1G-02 ✓, 1G-02 Release Test Isolation Fix ✓, 1G-02-Release Not Started, 1G-03 Closed ✓, 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally, 1G-04-09 Completed locally, 1G-04-10 Completed locally, 1G-04-11 Completed and Pushed, 1G-04-12 Completed locally, 1G-04-13 Completed locally, 1G-04-14 Completed locally, 1G-04-15 Completed locally, 1G-04-16 Completed locally, 1G-04-17 Completed locally, 1G-04-18 Completed locally, 1G-04-19 Completed locally, 1G-04-20 Completed locally, 1G-04-21 Completed locally, 1G-04-22 Completed locally, 1G-04-23 Completed locally)
 **Priority:** P1 (High risk, tool execution)
 **Estimated scope:** Large (full tool audit + framework + allowlist + per-tool tests)
 **Dependencies:** Phase 1G-00 completed
@@ -769,7 +769,7 @@ Enable real Agent execution in dev-home with tools disabled and Memory auto-writ
 | 1G-01 | Tool Inventory + Static Policy Module | Inventory, risk classification, static Allowlist/Denylist data — ✅ Completed |
 | 1G-02 | Tool Policy Read-Only API / Panel | GET /policy, GET /catalog, frontend panel — ✅ Completed |
 | 1G-03 | Tool Schema Preview | Build and display minimal Schema, do NOT send to Provider — ✅ Closed (1G-03-01 through 1G-03-07 Completed) |
-| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally (gate design freeze), 1G-04-09 Completed locally (implementation scope freeze), 1G-04-10 Completed locally (execute route contract / OpenAPI scope freeze), 1G-04-11 Completed and Pushed (backend execute gate skeleton, blocked-only), 1G-04-12 Completed locally (confirmation token / digest backend scope freeze), 1G-04-13 Completed locally (first executable tool candidate / allowlist activation scope freeze), 1G-04-14 Completed locally (clarify allowlist activation, still blocked-only), 1G-04-15 Completed locally (dry-run historical lookup / confirmation-digest preflight binding scope freeze), 1G-04-16 Completed locally (dry-run historical lookup read-only implementation), 1G-04-17 Completed locally (preflight production path guard hardening), 1G-04-18 Completed locally (confirmation token scope freeze), 1G-04-19 Completed locally (confirmation token minimal backend implementation scope freeze), 1G-04-20 Completed locally (confirmation token minimal backend implementation, still blocked-only) |
+| 1G-04 | Tool Call Dry-Run | Validate tool name + args without dispatch — 1G-04-00 ✓, 1G-04-01 Completed locally, 1G-04-02 Completed locally, 1G-04-03 Completed locally, 1G-04-04 Completed and Pushed, 1G-04-05 Completed locally, 1G-04-06 Completed locally, 1G-04-07 Completed locally, 1G-04-08 Completed locally (gate design freeze), 1G-04-09 Completed locally (implementation scope freeze), 1G-04-10 Completed locally (execute route contract / OpenAPI scope freeze), 1G-04-11 Completed and Pushed (backend execute gate skeleton, blocked-only), 1G-04-12 Completed locally (confirmation token / digest backend scope freeze), 1G-04-13 Completed locally (first executable tool candidate / allowlist activation scope freeze), 1G-04-14 Completed locally (clarify allowlist activation, still blocked-only), 1G-04-15 Completed locally (dry-run historical lookup / confirmation-digest preflight binding scope freeze), 1G-04-16 Completed locally (dry-run historical lookup read-only implementation), 1G-04-17 Completed locally (preflight production path guard hardening), 1G-04-18 Completed locally (confirmation token scope freeze), 1G-04-19 Completed locally (confirmation token minimal backend implementation scope freeze), 1G-04-20 Completed locally (confirmation token minimal backend implementation, still blocked-only), 1G-04-21 Completed locally (digest verification scope freeze), 1G-04-22 Completed locally (digest verification minimal implementation, still blocked-only), 1G-04-23 Completed locally (pre-execution audit scope freeze) |
 | 1G-05 | Fake Tool Fixture Execute | Temporary HERMES_HOME, fake implementations |
 | 1G-06 | Dev-Only R0/R1 Execute | Final approved R0/R1 tools with full safety chain |
 
@@ -882,7 +882,7 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 | 1F | Agent Run without tools | ✅ Completed | 1E | Yes (dev) |
 | 1G-02-00 | Tool policy read-only scope & contract freeze | ✅ Completed | 1G-01 | No |
 | 1G-02 | Tool Policy Read-Only API / Panel | ✅ Completed | 1G-02-00 | No |
-| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally, 1G-04-06 completed locally, 1G-04-07 completed locally, 1G-04-08 completed locally, 1G-04-09 completed locally, 1G-04-10 completed locally, 1G-04-11 completed and pushed, 1G-04-12 completed locally, 1G-04-13 completed locally, 1G-04-14 completed locally, 1G-04-15 completed locally, 1G-04-16 completed locally, 1G-04-17 completed locally, 1G-04-18 completed locally, 1G-04-19 completed locally, 1G-04-20 completed locally) | 1F | Default No |
+| 1G | Tool execution framework | In Progress (1G-04-04 pushed, 1G-04-05 completed locally, 1G-04-06 completed locally, 1G-04-07 completed locally, 1G-04-08 completed locally, 1G-04-09 completed locally, 1G-04-10 completed locally, 1G-04-11 completed and pushed, 1G-04-12 completed locally, 1G-04-13 completed locally, 1G-04-14 completed locally, 1G-04-15 completed locally, 1G-04-16 completed locally, 1G-04-17 completed locally, 1G-04-18 completed locally, 1G-04-19 completed locally, 1G-04-20 completed locally, 1G-04-21 completed locally, 1G-04-22 completed locally, 1G-04-23 completed locally) | 1F | Default No |
 | 1-Release | Final verification & push | Not Started | All above | No |
 
 ---
@@ -936,6 +936,9 @@ Run full quality gate, verify clean working tree, verify production safety, and 
 │                                                                                                   └── 1G-04-18 (confirmation token scope freeze) ✅ Completed locally
 │                                                                                                       └── 1G-04-19 (confirmation token minimal backend implementation scope freeze) ✅ Completed locally
 │                                                                                                       └── 1G-04-20 (confirmation token minimal backend implementation, still blocked-only) ✅ Completed locally
+│                                                                                                           └── 1G-04-21 (digest verification scope freeze) ✅ Completed locally
+│                                                                                                               └── 1G-04-22 (digest verification minimal implementation, still blocked-only) ✅ Completed locally
+│                                                                                                                   └── 1G-04-23 (pre-execution audit scope freeze) ✅ Completed locally
 │
 └── 1-Release (push all)
 ```
@@ -1536,3 +1539,31 @@ Phase 1G-03-04 is completed.
 - Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
 - Local commit created, not pushed
 - Next = pre-execution audit scope freeze only after user approval; real Controlled Execution not started
+
+**Phase 1G-04-23 is completed locally.** Pre-Execution Audit Scope Freeze.
+- `docs/webui/phase-1g-04-23-pre-execution-audit-scope.md` — Pre-execution audit scope freeze
+- Pre-execution audit goal frozen (durable record before handler lookup, necessary but not sufficient)
+- Difference from dry-run audit frozen (execute attempt record vs. policy simulation)
+- Confirmation token relationship frozen (references confirmationTokenId, timestamps, dryRunRequestId)
+- Digest verification relationship frozen (references dryRunDecisionDigest, historical/token-bound/execute-derived digests)
+- Handler lookup relationship frozen (pre-audit is final record before future handler lookup)
+- Write timing frozen (after all gates pass, before handler lookup / dispatch / execution)
+- Event structure frozen (30+ field structure with gate status and side-effect flags)
+- Audit store path frozen (`$HERMES_HOME/gateway/dev/audit/tool-pre-execution-audit.jsonl`)
+- Path guard strategy frozen (containment-based, not string prefix)
+- ID strategy frozen (`pea_` / `exe_` prefixes, safe for correlation, not authorization credentials)
+- Idempotency strategy frozen (append-only, single-use token natural dedup)
+- Failure contract frozen (8 error codes, all block before handler lookup)
+- Success contract frozen (audit written but still blocked at `blocked_handler_lookup_not_enabled`)
+- Future execute gate order frozen (Gates 38–45)
+- Future OpenAPI strategy frozen (schema-only, no new paths)
+- Future route governance frozen (unchanged 33/33/4/0/1/1)
+- Future allowed/forbidden files frozen
+- Future test matrix frozen (55 tests)
+- Entry/exit criteria frozen
+- NOT implemented: pre-execution audit, post-execution audit, handler lookup, dispatch, execution, Provider Schema/API, frontend, audit read API, audit viewer, real Controlled Execution
+- STATIC_ALLOWLIST remains `frozenset({"clarify"})`; Execute route remains blocked-only
+- Route governance: OpenAPI=33, Runtime=33, Tool GET=4, Tool write=0, Tool dry-run=1, Tool execution=1 (unchanged)
+- Docs-only, no code changes, no OpenAPI file changes, no route changes, no frontend changes, no test changes
+- Local docs-only commit created, not pushed
+- Next = future pre-execution audit minimal implementation only after user approval; real Controlled Execution not started
