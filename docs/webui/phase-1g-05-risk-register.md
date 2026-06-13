@@ -294,6 +294,40 @@ GO RC) through the full release gate sequence. The risk picture is unchanged.
 
 ---
 
+## 10. Phase 1G-09 Addendum — Pilot Acceptance Execution Re-Verification
+
+Phase 1G-09 (Pilot Acceptance Execution, Pilot `PILOT-1G-08-001` / execution
+`PILOT-EXEC-1G-09-001`) executed the prepared Pilot acceptance pack against the
+current `dev-huangruibang` branch (HEAD `9812c069e…`, the pushed Phase 1G-08
+Pilot acceptance preparation) through the full release gate sequence and the
+committed smoke harness. The risk picture is unchanged.
+
+- **No new P0. No new P1. No new P2.** The Pilot execution produced 0 P0, 0 P1,
+  and 0 new P2 findings. All 15 required scenarios (A–O) passed under the two
+  named gate profiles.
+- Phase 1G-04 remains **SEALED**; Phase 1G-05 remains the **pushed** readiness
+  baseline; Phase 1G-06 remains the **pushed** release rehearsal baseline;
+  Phase 1G-07 remains the **pushed** GO RC dry run; Phase 1G-08 remains the
+  **pushed** Pilot acceptance preparation; no route, allowlist, or product
+  capability changed.
+- The eight P2 items above remain accepted, non-blocking, and carry forward.
+  None was aggravated by Phase 1G-09 (docs + gate re-verification only; no code
+  touched).
+- Observed Phase 1G-09 gate results: route governance 124 passed / 0 failed;
+  related backend regression 19 files 1471 passed / 0 failed; compile /
+  `py_compile toolsets.py` / ruff clean; frontend type-check / lint 0-0 / 674
+  unit (31 files) / build 1862 modules pass; smoke A 6 passed / 1 skipped / 0
+  failed; smoke B 7 passed / 0 failed; memory-check PASS; dev-check WARN only
+  for `.claude/`; Production Gateway PID `69355` unchanged; ports `5180` /
+  `5181` free.
+- Pilot final decision: `docs/webui/phase-1g-09-pilot-final-decision.md`
+  (**Decision: PASS**; all technical PASS criteria met; human approver sign-off
+  pending). Current `dev-huangruibang` is eligible for post-Pilot closeout /
+  final release decision preparation.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 8 P2 (accepted, non-blocking). The
 remaining P2 items do not block Phase 1G-04 sealed acceptance, the Pilot
-baseline, or the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO).*
+baseline, the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO), or the Phase 1G-09
+Pilot acceptance execution (`PILOT-EXEC-1G-09-001`, PASS).*
