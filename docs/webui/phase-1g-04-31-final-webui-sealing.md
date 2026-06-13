@@ -312,3 +312,20 @@ OpenAPI 34 / runtime 34 / Tool GET 5 / Tool write 0 / Tool dry-run 1 /
 Tool execution 1. No Provider, no non-clarify execution, no Tool write route,
 no production access. The final sealing commit was pushed to
 origin/dev-huangruibang. Phase 1G-04 WebUI mainline is sealed.*
+
+---
+
+## 14. Post-Sealing Readiness (Phase 1G-05)
+
+Phase 1G-05 built the post-sealing readiness package on top of this sealed
+baseline (docs-only; Phase 1G-04 is not reopened):
+
+- `docs/webui/phase-1g-05-post-sealing-readiness.md`
+- `docs/webui/phase-1g-05-pilot-acceptance-baseline.md`
+- `docs/webui/phase-1g-05-release-checklist.md`
+- `docs/webui/phase-1g-05-ops-and-rollback-runbook.md`
+- `docs/webui/phase-1g-05-risk-register.md`
+
+The sealed baseline recorded here (HEAD `94f22f67b`, route governance
+34/34/5/0/1/1, `STATIC_ALLOWLIST = frozenset({"clarify"})`, production Gateway
+PID `69355`) is the Phase 1G-05 reference state.

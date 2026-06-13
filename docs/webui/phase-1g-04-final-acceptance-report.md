@@ -191,4 +191,20 @@ remote are synchronized with `ahead / behind = 0 / 0`. Production Gateway PID
 
 ---
 
+## 8. Post-Sealing Readiness (Phase 1G-05)
+
+Phase 1G-04 sealed acceptance stands unchanged. The post-sealing readiness
+package was added in **Phase 1G-05** (docs-only, no reopening of this report's
+conclusions) and references this report as its sealed baseline:
+
+- `docs/webui/phase-1g-05-post-sealing-readiness.md`
+- `docs/webui/phase-1g-05-pilot-acceptance-baseline.md`
+- `docs/webui/phase-1g-05-release-checklist.md`
+- `docs/webui/phase-1g-05-ops-and-rollback-runbook.md`
+- `docs/webui/phase-1g-05-risk-register.md`
+
+The §6 P2 list above is the source for the Phase 1G-05 risk register.
+
+---
+
 *Phase 1G-04 Final Acceptance Report — accepted and sealed.*
