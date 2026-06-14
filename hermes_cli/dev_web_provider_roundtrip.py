@@ -93,7 +93,9 @@ _SECRET_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sk-[a-zA-Z0-9_\-]{8,}"),
     re.compile(r"Bearer\s+\S+", re.IGNORECASE),
     re.compile(r"Authorization\s*:\s*\S+", re.IGNORECASE),
-    re.compile(r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----"),
+    # Phase 2B-H1 (HARDENING-2B-H1-001): widened to catch every PEM private-key
+    # variant (the prior ``(RSA\s+)?`` form matched only bare/RSA).
+    re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"),
 )
 
 

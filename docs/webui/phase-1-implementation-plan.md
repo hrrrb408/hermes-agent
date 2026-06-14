@@ -1966,4 +1966,50 @@ Preparation ID: `RELEASE-DECISION-PREP-1G-10-001`; Smoke Refresh ID:
 | Phase 1G-10B | pushed (`HUMAN-DECISION-1G-10B-001` GO) |
 | Phase 1G-11 | **completed and pushed** (`FINAL-SEAL-1G-11-001` / `PHASE-2-UNLOCK-1G-11-001`) |
 | Phase 2 | **unlocked** |
-| Phase 2A | not started (Real Tool Execution MVP — read-only multi-tool execution) |
+| Phase 2A | completed and pushed (read-only multi-tool execution) |
+| Phase 2A-H1 | completed and pushed (`HARDENING-2A-H1-001`) |
+| Phase 2B | completed and pushed (controlled provider round-trip; real blocked) |
+| Phase 2B-H1 | **completed and pushed** (`HARDENING-2B-H1-001`) |
+| Phase 2C | not started (Tool Write Controlled Execution — separately authorized) |
+
+---
+
+## Phase 2B-H1 — Provider Round-trip Hardening (completed and pushed)
+
+**Phase 2B-H1 is completed and pushed.** Provider Round-trip Hardening &
+Transient Flake Closure. Hardening ID: `HARDENING-2B-H1-001`; Provider Boundary
+Audit ID: `PROVIDER-BOUNDARY-AUDIT-2B-H1-001`; Provider Flake Closure ID:
+`PROVIDER-FLAKE-CLOSURE-2B-H1-001`; Input HEAD:
+`a3cd3b762e947ba5b93d676557c47ac9487a0649`.
+
+- **Purpose:** harden the Phase 2B provider round-trip and close the Phase 2B
+  P2 backlog (real-vendor provider not wired; one transient flake under high
+  parallelism; frontend polish optional) with deterministic, agent-independent
+  evidence.
+- **P0: 0. P1: 0.** All 8 lenses PASS (Provider Schema / Request / Fake / Real
+  / Controlled Chain / Audit Redaction / Flake Stability / Frontend Contract).
+- **Transient flake:** closed as non-reproduced under
+  `PROVIDER-FLAKE-CLOSURE-2B-H1-001` (60+ deterministic reruns, 0 failures; no
+  leak path exists in the audit writers).
+- **Audit-secret hardening (the only product-code change):** the provider audit
+  PEM private-key value pattern was widened from bare/RSA-only to every PEM
+  variant (`-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`) across all four provider
+  modules, and `_is_forbidden_field` substring stems were broadened
+  (`apikey`, `privatekey`, `credential`). Strictly improving; never relaxes a
+  boundary.
+- **Phase 2C: not started.** Tool write remains `0`.
+- **Production rollout: not performed.**
+- **No route governance impact** (OpenAPI 34 / runtime 34 / Tool GET 5 / Tool
+  write 0 / dry-run 1 / execution 1; no new route). **No allowlist impact.**
+- **Production safety:** exactly one Production Gateway (PID `1962`), unchanged;
+  no `~/.hermes` access; no production `state.db` access; ports `5180` / `5181`
+  free.
+- **Deliverables:** `tests/test_dev_web_phase_2b_hardening_boundaries.py`
+  (66 tests), `scripts/run-dev-webui-phase2b-hardening-audit.sh`, and four docs
+  (`phase-2b-h1-provider-roundtrip-hardening.md`,
+  `phase-2b-h1-provider-boundary-audit.md`,
+  `phase-2b-h1-provider-flake-closure.md`, `phase-2b-h1-test-report.md`).
+- Commit created, then **pushed**
+  (`chore(webui): harden phase 2b provider roundtrip`).
+- **Next recommended task: Phase 2C Tool Write Controlled Execution**
+  (separately authorized).

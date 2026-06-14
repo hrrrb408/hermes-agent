@@ -65,7 +65,11 @@ _SECRET_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sk-[a-zA-Z0-9_\-]{8,}"),
     re.compile(r"Bearer\s+\S+", re.IGNORECASE),
     re.compile(r"Authorization\s*:\s*\S+", re.IGNORECASE),
-    re.compile(r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----"),
+    # Phase 2B-H1 (HARDENING-2B-H1-001): widened to catch every PEM
+    # private-key variant (bare, RSA, EC, OPENSSH, DSA, ENCRYPTED, ...). The
+    # prior ``(RSA\s+)?`` form matched only bare/RSA. The audit ``_sanitize``
+    # is the authoritative final gate for every provider audit payload.
+    re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"),
 )
 
 _FORBIDDEN_FIELD_STEMS: frozenset[str] = frozenset(
@@ -135,7 +139,17 @@ def _is_forbidden_field(key: str) -> bool:
     normalized = key.strip().lower().replace("_", "").replace("-", "")
     if normalized in _FORBIDDEN_FIELD_STEMS:
         return True
-    return any(stem in normalized for stem in ("token", "secret", "password", "auth"))
+    # Phase 2B-H1 (HARDENING-2B-H1-001): broadened substring stems so suffixed
+    # secret-bearing field names cannot escape — e.g. ``privateKeyPem`` (contains
+    # "privatekey"), ``credentials`` (contains "credential"), ``xApiKey`` /
+    # ``apikeyV2`` (contain "apikey"). The widened PEM value pattern backstops
+    # any value that slips past a field name; this closes the named-field gap.
+    return any(
+        stem in normalized
+        for stem in (
+            "token", "secret", "password", "auth", "apikey", "privatekey", "credential",
+        )
+    )
 
 
 def _sanitize(value: Any, *, depth: int = 0) -> Any:

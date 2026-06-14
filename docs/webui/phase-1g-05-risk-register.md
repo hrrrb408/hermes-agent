@@ -663,6 +663,63 @@ artifact.
 
 ---
 
+## 16. Phase 2B-H1 Addendum — Provider Round-trip Hardening & Transient Flake Closure
+
+Phase 2B-H1 (Hardening — Provider Round-trip Hardening & Transient Flake
+Closure, Hardening `HARDENING-2B-H1-001`, Provider Boundary Audit
+`PROVIDER-BOUNDARY-AUDIT-2B-H1-001`, Provider Flake Closure
+`PROVIDER-FLAKE-CLOSURE-2B-H1-001`) hardened the Phase 2B Provider round-trip
+and closed the Phase 2B P2 backlog against the current `dev-huangruibang`
+branch (input HEAD `a3cd3b762…`, the pushed Phase 2B controlled provider
+round-trip). The technical risk picture is improved (one latent audit-secret
+gap fixed); no new risk is introduced.
+
+- **P2 (transient provider/audit redaction flake observed in Phase 2B): resolved
+  / closed.** The flake (`test_audit_jsonl_no_secret_or_repr[audit_events_read-R1]`,
+  one failure under high parallelism) was **not reproduced** in 60+ deterministic
+  reruns (10× isolated variant, 10× full hardening file, 10× high-parallelism
+  batch, 10× Phase 2B audit/hardening, plus parametrized repeats). No leak path
+  exists in the audit writers. Closure ID: `PROVIDER-FLAKE-CLOSURE-2B-H1-001`.
+  Result: closed as non-reproduced with deterministic, agent-independent evidence.
+- **Latent audit-secret gap (fixed, in scope):** the provider audit sanitizer's
+  PEM private-key value pattern matched only bare/RSA (the schema-module copy
+  matched no standard header at all), and suffixed secret field names
+  (`privateKeyPem`, `credentials`, `xApiKey`) escaped `_is_forbidden_field`.
+  Widened to catch every PEM variant (`-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`)
+  across all four provider modules; `_is_forbidden_field` substring stems
+  broadened (`apikey`, `privatekey`, `credential`). Pinned by new tests.
+- **P2-1 (real-vendor provider adapter not wired in Phase 2B): accepted P2.**
+  The blocked framework exists; real mode is blocked by default and stays
+  blocked even when eligible. The concrete vendor call is deferred to a
+  separately-authorized future phase.
+- **Tool write deferred to Phase 2C.** Tool write remains `0`; no write tool
+  executed.
+- **Production rollout not performed.** Release authorization remains governed
+  by the human approver decision chain; Phase 2B-H1 performed no rollout.
+- **Deterministic artifacts delivered:**
+  `tests/test_dev_web_phase_2b_hardening_boundaries.py` (66 tests, 8-lens
+  boundary + flake-closure scenario + PEM/field-stem pinning) and
+  `scripts/run-dev-webui-phase2b-hardening-audit.sh` (14-check audit with
+  PASS/FAIL verdict and non-zero exit on failure).
+- **No new P0. No new P1. No new technical P2.** Phase 2B-H1's only product-code
+  change is the strictly-improving provider audit secret-pattern widening
+  (never relaxes a boundary; all four modules on the allowed-modify list).
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1. No new route.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains exactly the six read-only
+  tools.
+- **No production impact.** Exactly one Production Gateway is running (PID
+  `1962`); this phase did not stop / restart / replace / signal / reconfigure
+  it. No `~/.hermes` access; no production `state.db` access; ports `5180` /
+  `5181` free.
+- Records: `docs/webui/phase-2b-h1-provider-roundtrip-hardening.md`,
+  `docs/webui/phase-2b-h1-provider-boundary-audit.md`,
+  `docs/webui/phase-2b-h1-provider-flake-closure.md`,
+  `docs/webui/phase-2b-h1-test-report.md`.
+- **Phase 2C is not started.**
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
 non-blocking; P2-09 human approver sign-off **resolved** by
 `HUMAN-DECISION-1G-10B-001` — release authorization dependency cleared, not a
