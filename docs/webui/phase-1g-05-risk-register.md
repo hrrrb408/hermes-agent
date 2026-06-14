@@ -24,6 +24,13 @@
 
 ## 1. Summary
 
+> **Update (2026-06-14, Phase 2B):** the Provider integration deferral
+> tracked here is resolved. Phase 2B delivered a controlled Provider
+> Schema / API round-trip (deterministic fake provider; real provider
+> blocked by default). See
+> [phase-2b-provider-schema-api-integration.md](phase-2b-provider-schema-api-integration.md).
+> The risk register below remains the historical Phase 1G-05 baseline.
+
 | Severity | Count | Blocks Phase 1G-04 sealed acceptance? |
 |----------|-------|---------------------------------------|
 | **P0** | 0 | n/a |

@@ -74,15 +74,16 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|all] [--help]"
       echo ""
-      echo "  blocked    Profile A — blocked_tool_handler_call_not_enabled"
-      echo "  completed  Profile B — clarify_execution_completed"
-      echo "  phase2a    Profile C — Phase 2A read-only multi-tool execution"
-      echo "  all        Run Profile A, then B, then C (default)"
-      echo "  --help     Show this help message"
+      echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
+      echo "  completed                            Profile B — clarify_execution_completed"
+      echo "  phase2a                              Profile C — Phase 2A read-only multi-tool execution"
+      echo "  phase2b_provider_fake_roundtrip      Profile D — Phase 2B provider fake round-trip"
+      echo "  all                                  Run Profile A, B, C, then D (default)"
+      echo "  --help                               Show this help message"
       exit 0
       ;;
     *)
@@ -285,11 +286,14 @@ configure_gates() {
   unset HERMES_AGENT_TOOLS_ENABLED
   unset HERMES_TOOL_HANDLER_CALL_ENABLED
   unset HERMES_POST_EXECUTION_AUDIT_ENABLED
+  unset HERMES_PROVIDER_API_ENABLED
+  unset HERMES_PROVIDER_MODE
   unset EXECUTE_EXPECTED
   # Never carry real provider keys into the smoke run
   unset XAI_API_KEY XAI_BASE_URL GROK_API_KEY GROK_BASE_URL
   unset OPENAI_API_KEY ANTHROPIC_API_KEY ZAI_API_KEY
   unset GEMINI_API_KEY GOOGLE_API_KEY OPENROUTER_API_KEY
+  unset HERMES_PROVIDER_API_KEY
 
   case "$profile" in
     blocked)
@@ -312,6 +316,17 @@ configure_gates() {
       export HERMES_AGENT_TOOLS_ENABLED=true
       export HERMES_TOOL_HANDLER_CALL_ENABLED=true
       export EXECUTE_EXPECTED=phase2a_read_only
+      ;;
+    phase2b_provider_fake_roundtrip)
+      # Phase 2B: provider fake round-trip. All controlled-execution gates on
+      # (so provider-requested tool calls flow through the full chain) plus the
+      # fake provider mode. Real provider stays disabled (HERMES_PROVIDER_API_ENABLED
+      # unset). No real provider key is exported.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export EXECUTE_EXPECTED=phase2b_provider_fake_roundtrip
       ;;
   esac
 }
@@ -412,10 +427,12 @@ run_smoke_for_profile() {
   local profile="$1"
   section "Smoke profile: $profile"
 
-  # Phase 2A uses its own multi-tool spec; blocked/completed use the 1G spec.
+  # Phase 2A / 2B use their own specs; blocked/completed use the 1G spec.
   local spec_rel="$SMOKE_SPEC_REL"
   if [ "$profile" = "phase2a" ]; then
     spec_rel="tests/smoke/phase-2a-read-only-tools-smoke.spec.ts"
+  elif [ "$profile" = "phase2b_provider_fake_roundtrip" ]; then
+    spec_rel="tests/smoke/phase-2b-provider-fake-roundtrip-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -459,13 +476,14 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
     run_smoke_for_profile "blocked"
     run_smoke_for_profile "completed"
     run_smoke_for_profile "phase2a"
+    run_smoke_for_profile "phase2b_provider_fake_roundtrip"
     ;;
 esac
 

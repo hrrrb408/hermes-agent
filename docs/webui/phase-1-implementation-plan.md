@@ -21,7 +21,14 @@
 > unchanged (34/34/5/0/1/1); `STATIC_ALLOWLIST` unchanged (6 read-only tools);
 > Provider still deferred (Phase 2B); Tool write still deferred (Phase 2C);
 > Production Gateway PID 1962 untouched; no `~/.hermes` / `state.db` access.
-> **Phase 2B: not started.** See
+> **Phase 2B: completed and pushed.** Controlled Provider Schema / API
+> round-trip (deterministic fake provider) implemented; real provider blocked
+> by default. No new route (reuses `POST /tools/execute` with
+> `mode=provider_roundtrip`); route governance unchanged (34/34/5/0/1/1);
+> `STATIC_ALLOWLIST` unchanged; Tool write still deferred (Phase 2C); no
+> production rollout, no `~/.hermes` / `state.db` access, no API key exposed.
+> See [phase-2b-provider-schema-api-integration.md](phase-2b-provider-schema-api-integration.md).
+> The original Phase 2A hardening note follows:
 > [phase-2a-hardening-adversarial-review.md](phase-2a-hardening-adversarial-review.md),
 > [phase-2a-hardening-boundary-audit.md](phase-2a-hardening-boundary-audit.md),
 > [phase-2a-hardening-test-report.md](phase-2a-hardening-test-report.md),

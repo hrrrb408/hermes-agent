@@ -3298,19 +3298,158 @@ def _register_tool_execute_routes(
     _MAX_UI_ORIGIN_LENGTH = 256
     _MAX_CLIENT_CREATED_AT_LENGTH = 64
 
+    # ── Phase 2B: Provider round-trip helper (reuses this route, no new path) ──
+
+    _PROVIDER_INVALID_REQUEST = "PROVIDER_INVALID_REQUEST"
+    _PROVIDER_INVALID_MODE = "PROVIDER_INVALID_MODE"
+    _PROVIDER_INVALID_MESSAGE = "PROVIDER_INVALID_MESSAGE"
+    _PROVIDER_INVALID_ALLOWED_TOOLS = "PROVIDER_INVALID_ALLOWED_TOOLS"
+    _PROVIDER_INTERNAL_ERROR = "PROVIDER_INTERNAL_ERROR"
+    _PROVIDER_VALID_MODES = ("disabled", "fake", "real")
+    _MAX_PROVIDER_MESSAGE_LENGTH = 4000
+    _MAX_ALLOWED_TOOLS = 32
+    _MAX_ALLOWED_TOOL_NAME_LENGTH = 128
+
+    def _handle_provider_roundtrip(
+        request: Request,
+        body: dict[str, Any],
+        rid: str,
+        ts: str,
+    ) -> dict:
+        """Handle a Phase 2B provider round-trip request on the execute route.
+
+        Reuses the existing ``POST /tools/execute`` path (no new route). The
+        provider round-trip is fake-by-default; real mode is blocked unless
+        fully enabled. Provider-requested tool calls flow through the existing
+        controlled execution chain.
+        """
+        from hermes_cli.dev_web_provider_roundtrip import run_provider_tool_roundtrip
+
+        # providerMode (default disabled)
+        provider_mode = body.get("providerMode", "disabled")
+        if not isinstance(provider_mode, str):
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MODE,
+                message="providerMode must be a string (disabled, fake, or real).",
+                request_id=rid,
+            )
+        provider_mode = provider_mode.strip().lower()
+        if provider_mode not in _PROVIDER_VALID_MODES:
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MODE,
+                message="providerMode must be one of: disabled, fake, real.",
+                request_id=rid,
+            )
+
+        # message
+        message = body.get("message")
+        if message is None:
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MESSAGE,
+                message="message is required for provider round-trip mode.",
+                request_id=rid,
+            )
+        if not isinstance(message, str):
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MESSAGE,
+                message="message must be a string.",
+                request_id=rid,
+            )
+        message = message.strip()
+        if not message:
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MESSAGE,
+                message="message must not be empty.",
+                request_id=rid,
+            )
+        if len(message) > _MAX_PROVIDER_MESSAGE_LENGTH:
+            return _make_error_json(
+                status_code=400,
+                code=_PROVIDER_INVALID_MESSAGE,
+                message=f"message exceeds maximum length ({_MAX_PROVIDER_MESSAGE_LENGTH}).",
+                request_id=rid,
+            )
+
+        # allowedToolIds (optional list of strings)
+        allowed_tool_ids_raw = body.get("allowedToolIds")
+        selected: frozenset[str] | None = None
+        if allowed_tool_ids_raw is not None:
+            if not isinstance(allowed_tool_ids_raw, list):
+                return _make_error_json(
+                    status_code=400,
+                    code=_PROVIDER_INVALID_ALLOWED_TOOLS,
+                    message="allowedToolIds must be an array of strings or null.",
+                    request_id=rid,
+                )
+            if len(allowed_tool_ids_raw) > _MAX_ALLOWED_TOOLS:
+                return _make_error_json(
+                    status_code=400,
+                    code=_PROVIDER_INVALID_ALLOWED_TOOLS,
+                    message=f"allowedToolIds exceeds maximum length ({_MAX_ALLOWED_TOOLS}).",
+                    request_id=rid,
+                )
+            cleaned: set[str] = set()
+            for item in allowed_tool_ids_raw:
+                if not isinstance(item, str):
+                    return _make_error_json(
+                        status_code=400,
+                        code=_PROVIDER_INVALID_ALLOWED_TOOLS,
+                        message="allowedToolIds entries must be strings.",
+                        request_id=rid,
+                    )
+                item = item.strip()
+                if not item or len(item) > _MAX_ALLOWED_TOOL_NAME_LENGTH:
+                    return _make_error_json(
+                        status_code=400,
+                        code=_PROVIDER_INVALID_ALLOWED_TOOLS,
+                        message="allowedToolIds entries must be non-empty bounded strings.",
+                        request_id=rid,
+                    )
+                cleaned.add(item)
+            selected = frozenset(cleaned) if cleaned else None
+
+        hermes_home_override = (
+            str(config.hermes_home) if config.hermes_home is not None else None
+        )
+
+        try:
+            result = run_provider_tool_roundtrip(
+                user_message=message,
+                provider_mode=provider_mode,
+                selected_tool_ids=selected,
+                context={"uiOrigin": "dev-webui"},
+                hermes_home=hermes_home_override,
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500,
+                code=_PROVIDER_INTERNAL_ERROR,
+                message="An unexpected error occurred during provider round-trip.",
+                request_id=rid,
+            )
+
+        data = result.to_safe_dict()
+        data["requestId"] = rid
+        return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
     # ── POST /tools/execute ──
 
     @app.post(
         f"{prefix}/tools/execute",
         tags=["Tools"],
-        summary="Execute gate skeleton (blocked-only)",
-        description="Evaluates a tool execution request through the gate stack. "
-        "This route is blocked-by-default in Phase 1G-04-11. No tool handler is called, "
-        "no dispatch occurs, no provider schema is sent, and no provider API is called. "
-        "All responses have executionAllowed=false, dispatchAllowed=false, "
-        "providerSchemaAllowed=false, toolHandlerCalled=false, providerApiCalled=false, "
-        "executionStarted=false. This route is classified as a Tool execution route, "
-        "not a Tool write route.",
+        summary="Execute gate + provider round-trip",
+        description="Evaluates a tool execution request through the gate stack, or — "
+        "when body.mode='provider_roundtrip' — runs the Phase 2B controlled Provider "
+        "Schema/API round-trip on the same path (no new route). For the default "
+        "canonical-name path: blocked-by-default unless the full controlled chain "
+        "admits the tool. For provider_roundtrip: fake mode is deterministic and "
+        "offline; real mode is blocked unless explicitly enabled. "
+        "This route is classified as a Tool execution route, not a Tool write route.",
     )
     def tool_execute(
         request: Request,
@@ -3318,6 +3457,11 @@ def _register_tool_execute_routes(
     ) -> dict:
         rid = getattr(request.state, "request_id", "")
         ts = _utc_now_iso()
+
+        # Phase 2B: provider round-trip branch (same path, no new route).
+        mode = body.get("mode")
+        if mode == "provider_roundtrip":
+            return _handle_provider_roundtrip(request, body, rid, ts)
 
         # Step 1: Validate canonicalName
         canonical_name = body.get("canonicalName")

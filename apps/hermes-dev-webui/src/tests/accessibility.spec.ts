@@ -229,7 +229,7 @@ describe('Accessibility — WorkspacePanel', () => {
     expect(tablist.attributes('aria-orientation')).toBe('vertical')
 
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs).toHaveLength(6)
+    expect(tabs).toHaveLength(7)
 
     const tabpanel = wrapper.find('[role="tabpanel"]')
     expect(tabpanel.exists()).toBe(true)
@@ -270,7 +270,7 @@ describe('Accessibility — WorkspacePanel', () => {
       }
     }
     expect(activeCount).toBe(1)
-    expect(inactiveCount).toBe(5)
+    expect(inactiveCount).toBe(6)
   })
 
   it('collapse toggle has aria-expanded and aria-controls', () => {
@@ -304,7 +304,7 @@ describe('Accessibility — WorkspacePanel', () => {
     const contextTab = wrapper.get('#workspace-tab-context')
     await contextTab.trigger('keydown', { key: 'End' })
     const store = useUiStore()
-    expect(store.workspaceTab).toBe('tools')
+    expect(store.workspaceTab).toBe('provider') // tabs order ends with provider
   })
 })
 

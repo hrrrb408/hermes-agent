@@ -10,9 +10,9 @@ describe('WorkspacePanel', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders all six tabs with Context selected by default', () => {
+  it('renders all seven tabs with Context selected by default', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(6)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(7)
     expect(wrapper.get('#workspace-tab-context').attributes('aria-selected')).toBe('true')
   })
 
@@ -76,8 +76,8 @@ describe('WorkspacePanel', () => {
 
   it('never renders raw local paths in any tab', async () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: false } })
-    // Check all six tabs for local path leakage
-    const tabs = ['memory', 'context', 'agent', 'files', 'reviews', 'tools'] as const
+    // Check all seven tabs for local path leakage
+    const tabs = ['memory', 'context', 'agent', 'files', 'reviews', 'tools', 'provider'] as const
     for (const tab of tabs) {
       await wrapper.get(`#workspace-tab-${tab}`).trigger('click')
       const html = wrapper.html()
@@ -89,8 +89,8 @@ describe('WorkspacePanel', () => {
 
   it('retains tab icons when collapsed', () => {
     const wrapper = mount(WorkspacePanel, { props: { collapsed: true } })
-    expect(wrapper.findAll('[role="tab"]')).toHaveLength(6)
-    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(6)
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(7)
+    expect(wrapper.findAll('.workspace-tab svg')).toHaveLength(7)
     expect(wrapper.find('[role="tabpanel"]').exists()).toBe(false)
   })
 

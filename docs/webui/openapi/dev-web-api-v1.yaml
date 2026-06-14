@@ -1689,16 +1689,18 @@ paths:
     post:
       operationId: toolExecute
       tags: [Tools]
-      summary: Execute gate skeleton (blocked-only)
+      summary: Execute gate + provider round-trip
       description: >
-        Evaluates a tool execution request through the gate stack.
-        This route is blocked-by-default in Phase 1G-04-11. No tool handler
-        is called, no dispatch occurs, no provider schema is sent, and no
-        provider API is called. All responses have executionAllowed=false,
-        dispatchAllowed=false, providerSchemaAllowed=false,
-        toolHandlerCalled=false, providerApiCalled=false,
-        executionStarted=false. This route is classified as a Tool execution
-        route, not a Tool write route. Tool write routes remain 0.
+        Evaluates a tool execution request through the gate stack, or — when
+        body.mode='provider_roundtrip' — runs the Phase 2B controlled Provider
+        Schema/API round-trip on this same path (no new route is added). For
+        the default canonical-name path: blocked-by-default unless the full
+        controlled chain admits the tool. For provider_roundtrip: fake mode is
+        deterministic and offline; real mode is blocked unless explicitly
+        enabled. All responses to the canonical-name path have
+        executionAllowed=false, dispatchAllowed=false,
+        providerSchemaAllowed=false. This route is classified as a Tool
+        execution route, not a Tool write route. Tool write routes remain 0.
       requestBody:
         required: true
         content:

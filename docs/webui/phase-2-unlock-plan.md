@@ -14,7 +14,7 @@
 |-------|-------|
 | Phase | 2 (unlocked) |
 | Title | Phase 2 Unlock Plan |
-| Status | Planning (Phase 2 unlocked; no Phase 2 implementation started) |
+| Status | Phase 2A + 2A-H1 + 2B completed and pushed; Phase 2C deferred |
 | Date | 2026-06-14 |
 | Branch | `dev-huangruibang` |
 | Phase 2 Unlock ID | `PHASE-2-UNLOCK-1G-11-001` |
@@ -144,6 +144,15 @@ but are **not** implemented by Phase 1G-11.
 ## 7. Phase 2B Target
 
 **Provider Schema / Provider API controlled integration.**
+
+> **Status (2026-06-14): completed and pushed.** The controlled Provider
+> round-trip is implemented with a deterministic fake provider (offline) and a
+> real-provider adapter that is blocked by default. See
+> [phase-2b-provider-schema-api-integration.md](phase-2b-provider-schema-api-integration.md).
+> `providerSchemaSent` / `providerApiCalled` move to `true` only on the fake
+> (offline) path or a fully-enabled real path; real mode is blocked unless
+> every enablement condition holds, and even then no real network call is
+> made in Phase 2B. Route governance unchanged (34/34/5/0/1/1).
 
 User-facing outcome: the Dev WebUI can exercise a controlled Provider path
 (sending a tool schema to a Provider, calling a Provider API) under explicit

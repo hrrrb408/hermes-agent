@@ -30,7 +30,7 @@ side-effect-free pure function that inspects only dev-local / in-process state.
 | Phase 2 Unlock | PHASE-2-UNLOCK-1G-11-001 |
 | Human Decision | HUMAN-DECISION-1G-10B-001 (GO) |
 | Implemented capability | read-only multi-tool execution |
-| Provider integration | deferred to Phase 2B |
+| Provider integration | delivered in Phase 2B (controlled fake-provider round-trip; real blocked by default) |
 | Tool write | deferred to Phase 2C |
 | Production rollout | NOT performed |
 | Production `~/.hermes` | NOT accessed |

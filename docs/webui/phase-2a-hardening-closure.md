@@ -79,7 +79,7 @@ Audit Redaction **PASS** · Production Isolation **PASS** · Frontend Contract
 | P2-07 | Frontend visual polish optional | Phase 2E (optional) |
 | P2-08 | Large-scale audit search / indexing not implemented | Phase 2D |
 | — | Future Production Gateway PID drift on host reboot | the smoke harness fails closed; a future authorized refresh phase updates the constant |
-| R2A-03 | Provider integration deferred to Phase 2B | Phase 2B |
+| R2A-03 | Provider integration deferred to Phase 2B | **Resolved by Phase 2B** (controlled fake-provider round-trip; real provider blocked by default) |
 | R2A-04 | Tool write deferred to Phase 2C | Phase 2C |
 | R2A-05 | Audit volume scaling | Phase 2D |
 

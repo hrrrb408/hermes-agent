@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Activity, Brain, ChevronLeft, ChevronRight, ClipboardCheck, FolderTree, Layers, Wrench } from '@lucide/vue'
+import { Activity, Brain, ChevronLeft, ChevronRight, ClipboardCheck, FolderTree, Layers, Plug, Wrench } from '@lucide/vue'
 import IconButton from '@/components/common/IconButton.vue'
 import AgentPanel from '@/components/workspace/AgentPanel.vue'
 import ContextPanel from '@/components/workspace/ContextPanel.vue'
 import FilesPlaceholder from '@/components/workspace/FilesPlaceholder.vue'
 import MemoryPanel from '@/components/workspace/MemoryPanel.vue'
+import ProviderRoundtripPanel from '@/components/workspace/ProviderRoundtripPanel.vue'
 import ReviewPanel from '@/components/workspace/ReviewPanel.vue'
 import ToolPolicyPanel from '@/components/workspace/ToolPolicyPanel.vue'
 import { useUiStore, type WorkspaceTab } from '@/stores/ui'
@@ -26,6 +27,7 @@ const tabs = [
   { id: 'reviews', label: 'Reviews', icon: ClipboardCheck },
   { id: 'agent', label: 'Agent', icon: Activity },
   { id: 'tools', label: 'Tools', icon: Wrench },
+  { id: 'provider', label: 'Provider', icon: Plug },
 ] as const
 
 function selectTab(tab: WorkspaceTab): void {
@@ -112,6 +114,7 @@ function moveTab(event: KeyboardEvent, tab: WorkspaceTab): void {
       <ContextPanel v-else-if="uiStore.workspaceTab === 'context'" />
       <ReviewPanel v-else-if="uiStore.workspaceTab === 'reviews'" />
       <ToolPolicyPanel v-else-if="uiStore.workspaceTab === 'tools'" />
+      <ProviderRoundtripPanel v-else-if="uiStore.workspaceTab === 'provider'" />
       <AgentPanel v-else />
     </div>
   </aside>
