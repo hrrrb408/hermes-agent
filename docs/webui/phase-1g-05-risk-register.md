@@ -454,10 +454,44 @@ session.
 
 ---
 
+## 13. Phase 1G-10B Addendum — Human Approver Final Decision
+
+Phase 1G-10B (Human Approver Final Decision, Decision
+`HUMAN-DECISION-1G-10B-001`) recorded the designated human approver's final
+release decision against the current `dev-huangruibang` branch (HEAD
+`56b571fec…`, the pushed Phase 1G-10 + Phase 1G-10A combined state). The risk
+picture is unchanged at the technical level; the release authorization dependency
+is cleared.
+
+- **P2-09 (human approver sign-off pending): resolved** by
+  `HUMAN-DECISION-1G-10B-001`. The designated human approver (黄瑞邦) recorded a
+  real **GO** decision on 2026-06-14.
+- **Release authorization dependency: cleared.** Release authorization is
+  **granted** by the designated human approver.
+- **P2-01 … P2-08 remain carried over** as accepted, non-blocking backlog items.
+  None was aggravated by Phase 1G-10B (docs-only; no code touched).
+- **No new P0. No new P1. No new technical P2.** Phase 1G-10B produced 0 P0, 0 P1,
+  and 0 new P2 findings.
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- **No provider impact.** No Provider Schema sent; no Provider API called.
+- **No production impact.** Exactly one Production Gateway is running (PID `1962`,
+  the Phase 1G-10A refreshed baseline); this phase did not stop / restart / replace
+  / reconfigure it. No `~/.hermes` access; no production `state.db` access; ports
+  `5180` / `5181` free.
+- Decision record: `docs/webui/phase-1g-10b-human-approver-final-decision.md`.
+- This addendum authorizes the release decision only; it does not perform a
+  production rollout, does not modify production, and does not start Phase 1G-11.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
-non-blocking; P2-09 human approver sign-off pending — release authorization
-dependency, not a technical Pilot failure). The technical P2 items do not block
-Phase 1G-04 sealed acceptance, the Pilot baseline, the Phase 1G-07 RC dry run
-(`RC-1G-07-001`, GO), or the Phase 1G-09 Pilot acceptance execution
-(`PILOT-EXEC-1G-09-001`, PASS). Release authorization remains pending human
-approver sign-off.*
+non-blocking; P2-09 human approver sign-off **resolved** by
+`HUMAN-DECISION-1G-10B-001` — release authorization dependency cleared, not a
+technical Pilot failure). The technical P2 items do not block Phase 1G-04 sealed
+acceptance, the Pilot baseline, the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO),
+or the Phase 1G-09 Pilot acceptance execution (`PILOT-EXEC-1G-09-001`, PASS).
+Human approver final decision recorded in Phase 1G-10B: **GO**; release
+authorization granted by the designated human approver. Phase 1G-11 is not
+started.*

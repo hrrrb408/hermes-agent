@@ -413,9 +413,33 @@ capability, or test strength is changed, weakened, or expanded by Phase 1G-10.
 
 ---
 
+## 19. Phase 1G-10B Addendum — Human Approver Final Decision Recorded
+
+| Field | Value |
+|-------|-------|
+| Human approver final decision | **recorded** (Phase 1G-10B) |
+| Human Decision ID | `HUMAN-DECISION-1G-10B-001` |
+| Decision | **GO** |
+| Release authorization | **granted** by the designated human approver (黄瑞邦) |
+| Decision record | `docs/webui/phase-1g-10b-human-approver-final-decision.md` |
+| P2-09 (human approver sign-off dependency) | **resolved** |
+| Reviewed baseline HEAD | `56b571fec1f61b8d6554b1c4a0bf597576266bd1` |
+
+The designated human approver's final decision is recorded in Phase 1G-10B.
+Decision: **GO**; release authorization granted by the designated human approver.
+
+Historical facts are unchanged: Pilot Result remains **PASS**; 15 / 15 scenarios
+remain PASS; Phase 1G-10A fresh smoke remains PASS; Phase 1G-04 remains sealed.
+
+This addendum authorizes the release decision only. It does not itself perform a
+production rollout, does not modify production, and does not start Phase 1G-11.
+
+---
+
 *Phase 1G-10 Post-Pilot Closeout — `CLOSEOUT-1G-10-001`. Pilot Result remains
 **PASS** (`PILOT-EXEC-1G-09-001`). Phase 1G-04 remains sealed; Phase 1G-05 /
 1G-06 / 1G-07 / 1G-08 / 1G-09 baselines remain as pushed. Route governance
 remains 34 / 34 / 5 / 0 / 1 / 1; `STATIC_ALLOWLIST` remains
-`frozenset({"clarify"})`. Release authorization remains pending human approver
-sign-off; no release was authorized in this phase. Phase 1G-11 is not started.*
+`frozenset({"clarify"})`. Human approver final decision recorded in Phase 1G-10B
+(`HUMAN-DECISION-1G-10B-001`): **GO**; release authorization granted by the
+designated human approver. Phase 1G-11 is not started by this document.*

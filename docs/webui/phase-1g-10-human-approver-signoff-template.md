@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 1G-10 |
 | Title | Human Approver Sign-off Template |
-| Status | Blank template (awaiting approver) |
+| Status | Completed by the designated human approver (Phase 1G-10B) |
 | Date | 2026-06-14 |
 | Branch | `dev-huangruibang` |
 | Final Decision Preparation ID | `RELEASE-DECISION-PREP-1G-10-001` |
@@ -60,30 +60,37 @@ defers the decision.
 
 ---
 
-## 3. Sign-off Record (to be completed by the human approver)
+## 3. Sign-off Record (completed by the designated human approver — Phase 1G-10B)
 
-> All fields below are intentionally **blank**. The approver fills them in.
+> Completed by the designated human approver on 2026-06-14 (Phase 1G-10B,
+> `HUMAN-DECISION-1G-10B-001`). The decision below is the approver's real, explicit
+> input; it was not invented, inferred, auto-selected, or fabricated by the Dev
+> Agent. The full formal decision record is
+> `docs/webui/phase-1g-10b-human-approver-final-decision.md`.
 
 ```text
-Approver Name:
-Approver Role:
-Decision Date:
-Reviewed Baseline HEAD:
-Reviewed RC ID:
-Reviewed Pilot Acceptance ID:
-Reviewed Pilot Execution ID:
-Pilot Result:
-P0 Count:
-P1 Count:
-P2 Count:
+Approver Name: 黄瑞邦
+Approver Role: Project Owner / Release Approver
+Decision Date: 2026-06-14
+Reviewed Baseline HEAD: 56b571fec1f61b8d6554b1c4a0bf597576266bd1
+Reviewed RC ID: RC-1G-07-001
+Reviewed Pilot Acceptance ID: PILOT-1G-08-001
+Reviewed Pilot Execution ID: PILOT-EXEC-1G-09-001
+Reviewed Closeout ID: CLOSEOUT-1G-10-001
+Reviewed Final Decision Preparation ID: RELEASE-DECISION-PREP-1G-10-001
+Reviewed Smoke Refresh ID: SMOKE-PID-REFRESH-1G-10A-001
+Pilot Result: PASS
+P0 Count: 0
+P1 Count: 0
+P2 Count: P2-01..P2-08 accepted as non-blocking backlog items; P2-09 resolved by this approval
 Decision:
-  [ ] GO
+  [x] GO
   [ ] NO-GO
   [ ] PAUSED
-Conditions:
-Required follow-up:
-Approval notes:
-Signature:
+Conditions: Maintain existing route governance and clarify-only allowlist. Do not expand Provider, non-clarify execution, Tool write routes, or production scope without a future separately approved phase.
+Required follow-up: Continue tracking P2-01..P2-08 as non-blocking backlog items.
+Approval notes: I reviewed the Phase 1G-10 / Phase 1G-10A release readiness, final release decision preparation, final GO / NO-GO draft, human approver sign-off template, and fresh smoke PID refresh evidence. The technical record supports GO.
+Signature: 黄瑞邦
 ```
 
 ---
@@ -133,6 +140,8 @@ Signature:
 ---
 
 *Phase 1G-10 Human Approver Sign-off Template — `RELEASE-DECISION-PREP-1G-10-001`.
-Status: **blank template, awaiting the designated human approver**. No approval
-has been granted or fabricated. Release authorization remains pending human
-approver sign-off.*
+Status: **completed by the designated human approver (Phase 1G-10B,
+`HUMAN-DECISION-1G-10B-001`)**. The designated human approver recorded a real **GO**
+decision; no approval was fabricated. Release authorization was granted by the
+designated human approver. See
+`docs/webui/phase-1g-10b-human-approver-final-decision.md`.*

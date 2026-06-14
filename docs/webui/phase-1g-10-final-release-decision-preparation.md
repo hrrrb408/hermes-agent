@@ -352,7 +352,29 @@ PASS into a release authorization. Until then, release authorization remains
 
 ---
 
+## 19. Phase 1G-10B Addendum — Human Approver Final Decision
+
+| Field | Value |
+|-------|-------|
+| GO prerequisite 15 (human approver sign-off) | **met** |
+| Human approver sign-off | **completed** (2026-06-14) |
+| Human Decision ID | `HUMAN-DECISION-1G-10B-001` |
+| Release authorization | **granted** by the designated human approver (黄瑞邦) |
+| Decision record | `docs/webui/phase-1g-10b-human-approver-final-decision.md` |
+| Reviewed baseline HEAD | `56b571fec1f61b8d6554b1c4a0bf597576266bd1` |
+
+GO prerequisite 15 is now met. All fifteen GO prerequisites (§5) are satisfied.
+Release authorization is granted by the designated human approver.
+
+> **This does not perform a production rollout.**
+> **This does not modify production.**
+> **This does not start Phase 1G-11.**
+
+---
+
 *Phase 1G-10 Final Release Decision Preparation —
-`RELEASE-DECISION-PREP-1G-10-001`. Technical recommendation: **prepare for
-final release decision**. Release authorization remains **pending human approver
-sign-off**; no release was authorized in this phase.*
+`RELEASE-DECISION-PREP-1G-10-001`. GO prerequisite 15 (human approver sign-off) is
+**met** (`HUMAN-DECISION-1G-10B-001`); release authorization **granted** by the
+designated human approver. This does not perform a production rollout, does not
+modify production, and does not start Phase 1G-11. See
+`docs/webui/phase-1g-10b-human-approver-final-decision.md`.*

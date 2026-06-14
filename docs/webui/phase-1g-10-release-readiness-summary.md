@@ -265,6 +265,32 @@ and `STATIC_ALLOWLIST` unchanged, production unaffected by release work.
 
 ---
 
-*Phase 1G-10 Release Readiness Summary — `CLOSEOUT-1G-10-001`. Release
-recommendation: **prepare for final release decision**. Authorization remains
-**pending human approver sign-off**; no release was authorized.*
+## 17. Phase 1G-10B Addendum — Human Approver Sign-off Completed
+
+| Field | Value |
+|-------|-------|
+| Human approver sign-off | **completed** (2026-06-14) |
+| Human Decision ID | `HUMAN-DECISION-1G-10B-001` |
+| Release authorization | **granted** by the designated human approver (黄瑞邦) |
+| Decision record | `docs/webui/phase-1g-10b-human-approver-final-decision.md` |
+| Remaining blockers | **none** for the final release decision |
+| P2-09 (human approver sign-off dependency) | **resolved** by `HUMAN-DECISION-1G-10B-001` |
+| P2-01 … P2-08 | remain tracked as accepted, non-blocking backlog items |
+| Reviewed baseline HEAD | `56b571fec1f61b8d6554b1c4a0bf597576266bd1` |
+
+The human approver sign-off dependency (P2-09) is resolved. Release authorization is
+granted by the designated human approver.
+
+> **Production rollout has not been performed by this document.**
+> **Phase 1G-11 has not been started by this document.**
+
+This addendum authorizes the release decision only. It does not itself perform a
+production rollout, does not modify production, and does not start Phase 1G-11.
+
+---
+
+*Phase 1G-10 Release Readiness Summary — `CLOSEOUT-1G-10-001`. Human approver
+sign-off **completed** (`HUMAN-DECISION-1G-10B-001`); release authorization
+**granted** by the designated human approver. Production rollout has not been
+performed; Phase 1G-11 has not been started. See
+`docs/webui/phase-1g-10b-human-approver-final-decision.md`.*

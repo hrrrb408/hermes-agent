@@ -162,7 +162,32 @@ draft into a final decision.
 
 ---
 
+## 9. Phase 1G-10B Addendum — Superseded by Human Approver Final Decision
+
+| Field | Value |
+|-------|-------|
+| Status | **superseded** by the human approver final decision |
+| Final decision record | `docs/webui/phase-1g-10b-human-approver-final-decision.md` |
+| Human Decision ID | `HUMAN-DECISION-1G-10B-001` |
+| Decision | **GO** |
+| Authorization | **granted** by the designated human approver (黄瑞邦) |
+| Decision Date | 2026-06-14 |
+| Reviewed baseline HEAD | `56b571fec1f61b8d6554b1c4a0bf597576266bd1` |
+| P2-09 (human approver sign-off dependency) | **resolved** |
+
+The recommended draft above (`recommended = GO`, `authorized = no`) is now
+**superseded** by the designated human approver's completed sign-off
+(`HUMAN-DECISION-1G-10B-001`). The draft's `authorized = no` is no longer current:
+release authorization is **granted** by the designated human approver.
+
+This addendum authorizes the release decision only. It does **not** itself perform
+a production rollout, does **not** modify production, and does **not** start
+Phase 1G-11. The original draft content above (§1–§8) is retained for
+traceability.
+
+---
+
 *Phase 1G-10 Final GO / NO-GO Draft — `RELEASE-DECISION-PREP-1G-10-001`.
-Recommended draft decision: **GO, pending human approver sign-off**. This is a
-draft, not a decision; it is not authorized and does not grant release
-authorization.*
+Recommended draft decision: GO. **Superseded by the human approver final decision
+(`HUMAN-DECISION-1G-10B-001`, GO); release authorization granted by the designated
+human approver.** See `docs/webui/phase-1g-10b-human-approver-final-decision.md`.*
