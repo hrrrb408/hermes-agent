@@ -310,9 +310,38 @@ authorized next phase.
 
 ---
 
+## 18. Phase 1G-11 Addendum — Final Seal & Phase 2 Unlock
+
+| Field | Value |
+|-------|-------|
+| Final Seal ID | `FINAL-SEAL-1G-11-001` |
+| Phase 2 Unlock ID | `PHASE-2-UNLOCK-1G-11-001` |
+| Phase 1G final status | **sealed** (built on this GO decision) |
+| Phase 2 status | **unlocked** |
+| Production rollout performed by Phase 1G-11 | **no** |
+| Phase 2A implementation started by Phase 1G-11 | **no** |
+| Baseline input HEAD | `3c6ae479b37f3cb4e02c18f6dbef97334b1355e1` |
+
+Phase 1G-11 (Final Release Seal & Phase 2 Unlock) recorded the final seal of
+Phase 1G (`FINAL-SEAL-1G-11-001`) and unlocked Phase 2
+(`PHASE-2-UNLOCK-1G-11-001`), built directly on top of this GO decision
+(`HUMAN-DECISION-1G-10B-001`). The release authorization recorded here remains in
+force; Phase 1G is now sealed. Route governance remains unchanged
+(34 / 34 / 5 / 0 / 1 / 1); `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`;
+the Production Gateway PID `1962` was unaffected.
+
+This addendum records the seal and unlock only. It does **not** perform a
+production rollout, does **not** modify production, and does **not** start Phase
+2A implementation. Phase 2A starts only after the user separately authorizes it.
+See `docs/webui/phase-1g-11-final-release-seal-and-phase-2-unlock.md` and
+`docs/webui/phase-1g-final-release-seal.md`.
+
+---
+
 *Phase 1G-10B Human Approver Final Decision — `HUMAN-DECISION-1G-10B-001`.
 Decision: **GO**. Release authorization granted by the designated human approver.
-This authorizes the release decision only; it does not perform a production rollout,
-does not modify production, and does not start Phase 1G-11. The current
-`dev-huangruibang` is eligible to prepare Phase 1G-11 as a separately authorized
-next phase.*
+Phase 1G is **sealed** (`FINAL-SEAL-1G-11-001`); Phase 2 is **unlocked**
+(`PHASE-2-UNLOCK-1G-11-001`). This authorized the release decision only; Phase
+1G-11 recorded the final seal and Phase 2 unlock, did not perform a production
+rollout, did not modify production, and did not start Phase 2A. See
+`docs/webui/phase-1g-11-final-release-seal-and-phase-2-unlock.md`.*

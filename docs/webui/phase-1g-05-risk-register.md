@@ -486,12 +486,122 @@ is cleared.
 
 ---
 
+## 14. Phase 1G-11 Addendum — Final Release Seal & Phase 2 Unlock
+
+Phase 1G-11 (Final Release Seal & Phase 2 Unlock, Seal `FINAL-SEAL-1G-11-001`,
+Unlock `PHASE-2-UNLOCK-1G-11-001`) sealed Phase 1G and unlocked Phase 2 against
+the current `dev-huangruibang` branch (HEAD `3c6ae479b…`, the pushed Phase
+1G-10B human approver final decision GO record). The risk picture is unchanged
+at the technical level; Phase 1G is sealed and Phase 2 is unlocked for
+separately authorized work.
+
+- **P2-09 (human approver sign-off pending): remains resolved** by
+  `HUMAN-DECISION-1G-10B-001`. Phase 1G is sealed by `FINAL-SEAL-1G-11-001`;
+  Phase 2 is unlocked by `PHASE-2-UNLOCK-1G-11-001`.
+- **P2-01 … P2-08 remain carried over** as accepted, non-blocking backlog items.
+  None was aggravated by Phase 1G-11 (docs-only; no code touched).
+- **No new P0. No new P1. No new technical P2.** Phase 1G-11 produced 0 P0, 0
+  P1, and 0 new technical P2 findings.
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`.
+- **No provider impact.** No Provider Schema sent; no Provider API called.
+- **No production impact.** Exactly one Production Gateway is running (PID
+  `1962`, the Phase 1G-10A refreshed baseline); this phase did not stop / restart
+  / replace / signal / reconfigure it. No `~/.hermes` access; no production
+  `state.db` access; ports `5180` / `5181` free.
+- **Operational P2 carried forward:** future host reboot may cause Production
+  Gateway PID drift again; the dev-only smoke harness is expected to **fail
+  closed** at that point and require a new refresh phase (or explicit operator
+  decision). The smoke harness must remain fail-closed on PID drift.
+- **Phase 2 must not inherit uncontrolled write or Provider execution.** Each
+  Phase 2 slice preserves every Phase 1G safety invariant; allowlist expansion
+  is per-tool audited; the controlled execution chain is the template for any new
+  execution surface.
+
+### New Phase 2 Risks (R2A-01 … R2A-05)
+
+The following risks are introduced for Phase 2 planning. They are **not**
+blocking Phase 1G (which is sealed); they govern Phase 2A and beyond. Each has a
+mitigation.
+
+#### R2A-01 — Expanding beyond clarify may introduce unintended tool execution
+
+- **Risk ID:** R2A-01
+- **Severity:** P2 (Phase 2 planning)
+- **Description:** Phase 2A admits tools beyond `clarify`. Each new tool is a
+  new execution surface; a misclassified tool could execute when it should not.
+- **Current impact:** None yet (Phase 2A not started).
+- **Mitigation:** every Phase 2A candidate is **per-tool audited** (registered
+  name, input / output schema, side-effect classification) and **individually
+  authorized** before addition to the execution surface. Read-only proof is
+  required. Ambiguity is resolved toward exclusion.
+- **Exit criteria:** each Phase 2A tool carries a recorded audit trail; no tool
+  executes without an individual authorization.
+
+#### R2A-02 — Read-only tool boundaries may be ambiguous
+
+- **Risk ID:** R2A-02
+- **Severity:** P2 (Phase 2 design)
+- **Description:** A candidate tool's read-only status may be unclear (e.g. a
+  tool that reads but also logs, caches, or touches shared state).
+- **Current impact:** None yet (Phase 2A not started).
+- **Mitigation:** the read-only-first principle requires provable
+  side-effect-freedom; any ambiguity excludes the tool from Phase 2A and pushes
+  it to Phase 2C (write) or out of scope.
+- **Exit criteria:** a documented read-only proof per Phase 2A tool; ambiguous
+  tools are not admitted.
+
+#### R2A-03 — Provider integration must remain out of Phase 2A
+
+- **Risk ID:** R2A-03
+- **Severity:** P2 (Phase 2 sequencing)
+- **Description:** Provider Schema / Provider API integration is Phase 2B, not
+  2A. Accidentally enabling a Provider path in Phase 2A would move
+  `providerSchemaSent` / `providerApiCalled` to `true` prematurely.
+- **Current impact:** None yet (Phase 2A not started).
+- **Mitigation:** Phase 2A is read-only and Provider-free by scope; the
+  `providerSchemaSent=false` / `providerApiCalled=false` invariants remain
+  asserted until Phase 2B is separately authorized.
+- **Exit criteria:** Phase 2A ships with both Provider flags `false`; Provider
+  work is deferred to Phase 2B.
+
+#### R2A-04 — Tool write must remain out of Phase 2A
+
+- **Risk ID:** R2A-04
+- **Severity:** P2 (Phase 2 sequencing)
+- **Description:** Tool write execution is Phase 2C, not 2A. A write-capable
+  tool admitted to Phase 2A would break the read-only contract.
+- **Current impact:** None yet (Phase 2A not started).
+- **Mitigation:** Phase 2A explicitly excludes writes, shell, DB mutation, and
+  any non-read-only side effect. Write candidates are Phase 2C only.
+- **Exit criteria:** Phase 2A ships with no write tool; Tool write routes remain
+  `0` until Phase 2C.
+
+#### R2A-05 — Audit volume may grow with more tools
+
+- **Risk ID:** R2A-05
+- **Severity:** P2 (Phase 2 scale)
+- **Description:** Adding more executable tools increases audit JSONL volume,
+  which interacts with the carried-over P2-02 / P2-03 / P2-04 / P2-08 audit
+  limitations.
+- **Current impact:** None yet (Phase 2A not started).
+- **Mitigation:** the per-request parse cap (1000 lines) and malformed-line skip
+  keep reads bounded and safe; Phase 2D will deliver cursor pagination,
+  rotation, race handling, and search when audit volume warrants it.
+- **Exit criteria:** audit reads remain bounded and safe as Phase 2 tool count
+  grows; Phase 2D closes the audit-scale limitations.
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
 non-blocking; P2-09 human approver sign-off **resolved** by
 `HUMAN-DECISION-1G-10B-001` — release authorization dependency cleared, not a
-technical Pilot failure). The technical P2 items do not block Phase 1G-04 sealed
-acceptance, the Pilot baseline, the Phase 1G-07 RC dry run (`RC-1G-07-001`, GO),
-or the Phase 1G-09 Pilot acceptance execution (`PILOT-EXEC-1G-09-001`, PASS).
-Human approver final decision recorded in Phase 1G-10B: **GO**; release
-authorization granted by the designated human approver. Phase 1G-11 is not
-started.*
+technical Pilot failure) + 5 new Phase 2 planning risks (R2A-01 … R2A-05, each
+with a mitigation). Phase 1G is **sealed** by `FINAL-SEAL-1G-11-001`; Phase 2 is
+**unlocked** by `PHASE-2-UNLOCK-1G-11-001`. The technical P2 items do not block
+Phase 1G-04 sealed acceptance, the Pilot baseline, the Phase 1G-07 RC dry run
+(`RC-1G-07-001`, GO), or the Phase 1G-09 Pilot acceptance execution
+(`PILOT-EXEC-1G-09-001`, PASS). Human approver final decision recorded in Phase
+1G-10B: **GO**; release authorization granted by the designated human approver.
+Phase 1G is sealed; Phase 2A is not started.*

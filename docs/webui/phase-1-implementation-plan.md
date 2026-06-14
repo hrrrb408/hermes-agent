@@ -1,7 +1,7 @@
 # Phase 1 Implementation Plan
 
 **Date:** 2026-06-08
-**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening pushed — release rehearsal baseline; 1G-07 Release Candidate Dry Run pushed — RC `RC-1G-07-001` GO, eligible to enter Pilot acceptance; 1G-08 Pilot Acceptance Preparation completed locally (not pushed) — Pilot `PILOT-1G-08-001` prepared against RC `RC-1G-07-001`; 1G-08 Pilot Acceptance Pack **pushed** at `9812c069e`; 1G-09 Pilot Acceptance Execution **pushed** at `cd7298416` — Pilot `PILOT-1G-08-001` / execution `PILOT-EXEC-1G-09-001` executed against RC `RC-1G-07-001`, **Pilot Result: PASS**; 1G-10 Post-Pilot Closeout / Final Release Decision Preparation completed locally (not pushed) — Pilot Result remains PASS, release authorization pending human approver sign-off; 1G-10A Smoke Harness PID Baseline Refresh completed locally (not pushed) — dev-only smoke harness PID baseline refreshed `69355` → `1962` after the Phase 1G-10 host-reboot drift, fresh browser smoke PASS, no production / route / allowlist change, no release authorization; 1G-10B Human Approver Final Decision completed locally (not pushed) — designated human approver (黄瑞邦) recorded GO (`HUMAN-DECISION-1G-10B-001`), release authorization granted, P2-09 resolved, no production / route / allowlist change, Phase 1G-11 not started
+**Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening pushed — release rehearsal baseline; 1G-07 Release Candidate Dry Run pushed — RC `RC-1G-07-001` GO, eligible to enter Pilot acceptance; 1G-08 Pilot Acceptance Preparation completed locally (not pushed) — Pilot `PILOT-1G-08-001` prepared against RC `RC-1G-07-001`; 1G-08 Pilot Acceptance Pack **pushed** at `9812c069e`; 1G-09 Pilot Acceptance Execution **pushed** at `cd7298416` — Pilot `PILOT-1G-08-001` / execution `PILOT-EXEC-1G-09-001` executed against RC `RC-1G-07-001`, **Pilot Result: PASS**; 1G-10 Post-Pilot Closeout / Final Release Decision Preparation completed locally (not pushed) — Pilot Result remains PASS, release authorization pending human approver sign-off; 1G-10A Smoke Harness PID Baseline Refresh completed locally (not pushed) — dev-only smoke harness PID baseline refreshed `69355` → `1962` after the Phase 1G-10 host-reboot drift, fresh browser smoke PASS, no production / route / allowlist change, no release authorization; 1G-10B Human Approver Final Decision **pushed** at `3c6ae479b` — designated human approver (黄瑞邦) recorded GO (`HUMAN-DECISION-1G-10B-001`), release authorization granted, P2-09 resolved, no production / route / allowlist change; 1G-11 Final Release Seal & Phase 2 Unlock **completed and pushed** — Final Seal ID `FINAL-SEAL-1G-11-001`, Phase 2 Unlock ID `PHASE-2-UNLOCK-1G-11-001`, Phase 1G **SEALED**, Phase 2 **UNLOCKED**, Phase 2A not started, no production rollout / code / OpenAPI / test / frontend route changes
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)
 **Governance scope:** `docs/webui/phase-1-00-planning-and-scope.md`
 
@@ -1826,3 +1826,110 @@ Phase 1G-03-04 is completed.
 - **Decision: GO.** 0 P0, 0 P1, 8 carried-over P2 (P2-01 … P2-08, non-blocking) + P2-09 (resolved). Release authorization granted by the designated human approver.
 - Local docs-only commit created, **not pushed**.
 - Phase 1G-11 eligibility: **eligible to prepare as a separately authorized next phase**. Phase 1G-11 is **not started** by this phase.
+
+---
+
+## Phase 1G-11 — Final Release Seal & Phase 2 Unlock (completed and pushed)
+
+**Phase 1G-11 is completed and pushed.** Final Release Seal & Phase 2 Unlock.
+Final Seal ID: `FINAL-SEAL-1G-11-001`; Phase 2 Unlock ID:
+`PHASE-2-UNLOCK-1G-11-001`; Baseline input HEAD: `3c6ae479b37f3cb4e02c18f6dbef97334b1355e1`;
+Related Human Decision ID: `HUMAN-DECISION-1G-10B-001`; Related RC:
+`RC-1G-07-001`; Pilot Acceptance ID: `PILOT-1G-08-001`; Pilot Execution ID:
+`PILOT-EXEC-1G-09-001`; Closeout ID: `CLOSEOUT-1G-10-001`; Final Decision
+Preparation ID: `RELEASE-DECISION-PREP-1G-10-001`; Smoke Refresh ID:
+`SMOKE-PID-REFRESH-1G-10A-001`.
+
+- **Phase 1G is SEALED.** All prior baselines (1G-04 sealed, 1G-05 readiness,
+  1G-06 rehearsal, 1G-07 GO RC, 1G-08 Pilot preparation, 1G-09 Pilot execution
+  PASS, 1G-10 closeout, 1G-10A smoke PID refresh, 1G-10B human approver GO)
+  remain as pushed. Phase 1G-11 does **not** reopen Phase 1G-04 and does **not**
+  introduce any new product capability. It records the final seal and the Phase 2
+  unlock only.
+- **Decision: Phase 1G sealed.** Release authorization already granted by
+  `HUMAN-DECISION-1G-10B-001` (GO; approver 黄瑞邦; 2026-06-14).
+- **Phase 2: unlocked** (`PHASE-2-UNLOCK-1G-11-001`). Phase 2A (Real Tool
+  Execution MVP — read-only multi-tool execution) is the recommended next phase,
+  eligible to start as a **separately authorized** phase. Phase 2A implementation
+  is **not started** by Phase 1G-11.
+- **New delivery model from here:** do **not** continue Phase 1G micro-phases;
+  use vertical feature slices in Phase 2, where each slice delivers a usable
+  capability (not only documentation). See
+  `docs/webui/phase-2-unlock-plan.md`.
+- Deliverables (docs-only):
+  - `docs/webui/phase-1g-11-final-release-seal-and-phase-2-unlock.md` — Phase
+    1G-11 definition, Final Seal ID, Phase 2 Unlock ID, reviewed baseline HEAD,
+    related Human Decision / RC / Pilot / Closeout / Decision Prep / Smoke
+    Refresh IDs, Phase 1G final release status, capability / security boundary /
+    route governance / production safety baselines, final gates summary,
+    P0/P1/P2 status, Phase 2 unlock decision, Phase 2 roadmap, Phase 2A next
+    target, non-goals, what-this-phase-does-not-authorize, final conclusion.
+  - `docs/webui/phase-1g-final-release-seal.md` — Phase 1G timeline, final
+    commit chain, accepted scope, delivered capabilities (18), security
+    guarantees, route governance baseline, audit capabilities, frontend
+    capabilities, Pilot result, human approval, known P2, permanent non-goals,
+    not-implemented capabilities, production safety, final seal statement,
+    Phase 2 handoff.
+  - `docs/webui/phase-2-unlock-plan.md` — Phase 2 unlock rationale, why Phase 1G
+    stops here, new delivery model, Phase 2 roadmap (2A → 2E), boundaries,
+    carried-forward safety invariants, explicit non-goals, entry / exit
+    conditions, suggested sequencing.
+  - `docs/webui/phase-2a-real-tool-execution-mvp-plan.md` — Phase 2A purpose,
+    user-facing outcome, MVP scope, out-of-scope, tool category strategy,
+    read-only first principle, candidate tools (planning only, not implemented),
+    backend / frontend / audit work items, safety gates, test plan, acceptance
+    criteria, rollback plan, risks (R2A-01 … R2A-05), expected commit strategy,
+    Phase 1G-11 boundary restated.
+  - `docs/webui/phase-1-implementation-plan.md` — this update.
+  - `docs/webui/phase-1g-05-risk-register.md` — Phase 1G-11 addendum (Phase 1G
+    sealed; Phase 2 unlocked; P2-09 resolved; P2-01 … P2-08 carried over; new
+    Phase 2 risks R2A-01 … R2A-05 with mitigations).
+  - `docs/webui/phase-1g-10-release-readiness-summary.md` — Phase 1G-11 addendum
+    (final seal recorded; Phase 2 unlocked; production rollout not performed;
+    Phase 2A not started).
+  - `docs/webui/phase-1g-10-final-release-decision-preparation.md` — Phase 1G-11
+    addendum (final seal recorded; Phase 2 unlocked; Phase 2A not started).
+  - `docs/webui/phase-1g-10b-human-approver-final-decision.md` — Phase 1G-11
+    addendum (final seal built on the recorded GO; Phase 2 unlocked).
+- No route governance change. Route governance remains OpenAPI=34, Runtime=34,
+  Tool GET=5, Tool write=0, Tool dry-run=1, Tool execution=1. **No new backend
+  route.**
+- No allowlist change. `STATIC_ALLOWLIST` remains `frozenset({"clarify"})`. **No
+  allowlist expansion.**
+- No code / OpenAPI / test / frontend route changes. No backend functional code
+  change. No Provider Schema sent; no Provider API called; no non-clarify
+  execution; no Tool write route.
+- No production `~/.hermes` access (no `ls` / `stat` / `find` / `cat` /
+  `sqlite3` / `du` / mtime); no production `state.db` access; exactly one
+  Production Gateway running (PID `1962`, the Phase 1G-10A refreshed baseline)
+  with the identical command; this phase did not stop / restart / replace /
+  signal / reconfigure the Production Gateway; ports `5180` / `5181` free.
+- **Production rollout: not performed.** **Phase 2A implementation: not
+  started.**
+- Final re-verification: route governance 124 passed / 0 failed; related
+  backend regression 19 files passed / 0 failed; compile / `py_compile
+  toolsets.py` / ruff clean; frontend type-check / lint 0-0 / unit / build pass;
+  smoke A 6 passed / 1 skipped / 0 failed; smoke B 7 passed / 0 failed; memory-
+  check PASS; dev-check PASS / WARN only for `.claude/`; Production Gateway PID
+  `1962` unchanged; ports `5180` / `5181` free.
+- Local docs-only commit created, then **pushed**
+  (`docs(webui): seal phase 1g and unlock phase 2`).
+- **Next recommended task: Phase 2A Real Tool Execution MVP** (separately
+  authorized). Phase 1G is sealed; no further 1G-`xx` micro-phases.
+
+### Phase Status Summary
+
+| Phase | Status |
+|-------|--------|
+| Phase 1G-04 | SEALED |
+| Phase 1G-05 | pushed |
+| Phase 1G-06 | pushed |
+| Phase 1G-07 | pushed (RC `RC-1G-07-001` GO) |
+| Phase 1G-08 | pushed |
+| Phase 1G-09 | pushed (Pilot `PILOT-EXEC-1G-09-001` PASS) |
+| Phase 1G-10 | pushed |
+| Phase 1G-10A | pushed (smoke PID `69355` → `1962`) |
+| Phase 1G-10B | pushed (`HUMAN-DECISION-1G-10B-001` GO) |
+| Phase 1G-11 | **completed and pushed** (`FINAL-SEAL-1G-11-001` / `PHASE-2-UNLOCK-1G-11-001`) |
+| Phase 2 | **unlocked** |
+| Phase 2A | not started (Real Tool Execution MVP — read-only multi-tool execution) |
