@@ -1,5 +1,14 @@
 # Phase 1G-05: Risk Register
 
+> **Phase 2A Update:** The five Phase 2A planning risks (R2A-01..R2A-05) are
+> mitigated by the Phase 2A implementation. R2A-01/R2A-02: every added tool was
+> per-tool audited + individually authorized + read-only proven (bounded
+> Dev-WebUI-local handlers, ambiguity → exclusion). R2A-03:
+> `providerSchemaSent` / `providerApiCalled` remain False (Provider is Phase 2B).
+> R2A-04: Tool write routes remain 0 (write is Phase 2C). R2A-05: the per-request
+> audit parse cap is retained as a backstop (Phase 2D delivers scale hardening).
+> See [phase-2a-security-boundary.md](phase-2a-security-boundary.md).
+
 ## Document Information
 
 | Field | Value |

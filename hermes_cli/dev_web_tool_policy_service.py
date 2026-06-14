@@ -479,7 +479,7 @@ def _build_catalog_item_dto(entry: ToolPolicyEntry) -> ToolCatalogItemDTO:
         permanently_denied=entry.permanently_denied,
         candidate_allowlisted=entry.candidate_allowlisted,
         statically_allowed=entry.statically_allowed,
-        allowed=False,  # Always false — STATIC_ALLOWLIST is empty
+        allowed=False,  # Catalog never vouches executability; STATIC_ALLOWLIST gates the execute route.
         policy_status=_derive_policy_status(entry).value,
         reason_code=reason_code,
         source_module=entry.source,

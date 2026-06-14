@@ -1,12 +1,17 @@
 /**
- * Tool Execute store — clarify-only controlled execution workbench state.
+ * Tool Execute store — read-only controlled execution workbench state.
  *
- * Manages the dry-run → confirm → execute flow for the single allowlisted
- * tool (clarify). The raw confirmation token returned by the dry-run
- * endpoint is held in an in-memory, non-reactive closure variable that is
- * never returned from the store, never persisted to storage, and never
- * logged. Only the safe correlation IDs (confirmationTokenId, audit IDs)
- * are exposed.
+ * Manages the dry-run → confirm → execute flow for the allowlisted read-only
+ * tools (clarify + the five Phase 2A inspection tools). The raw confirmation
+ * token returned by the dry-run endpoint is held in an in-memory, non-reactive
+ * closure variable that is never returned from the store, never persisted to
+ * storage, and never logged. Only the safe correlation IDs
+ * (confirmationTokenId, audit IDs) are exposed.
+ *
+ * Phase 2A: generalized from clarify-only to multi-tool dispatch-by-name. The
+ * "completed" signal is now the executionCompleted boolean (not the decision
+ * string), so every read-only tool's `<toolId>_execution_completed` decision
+ * is recognized. Clarify keeps its Phase 1G behavior.
  */
 
 import { defineStore } from 'pinia'
@@ -19,9 +24,16 @@ import type {
   DryRunResultData,
   ExecuteResultData,
 } from '@/types/api/toolExecute'
+import {
+  DEFAULT_TOOL,
+  EXECUTABLE_TOOL,
+  SELECTABLE_TOOLS,
+  SELECTABLE_TOOL_IDS,
+  getToolMeta,
+} from '@/constants/readOnlyTools'
 
-/** Only clarify is allowlisted for controlled execution. */
-export const EXECUTABLE_TOOL = 'clarify'
+// Re-export for callers that imported EXECUTABLE_TOOL from this module.
+export { EXECUTABLE_TOOL, SELECTABLE_TOOLS, SELECTABLE_TOOL_IDS }
 
 /** Execute workbench status. */
 export type ExecuteStatus =
@@ -53,9 +65,14 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
   const status = ref<ExecuteStatus>('idle')
   const error = ref('')
 
-  const canonicalName = ref<string>(EXECUTABLE_TOOL)
+  const canonicalName = ref<string>(DEFAULT_TOOL)
   const question = ref('')
-  const choicesText = ref('') // newline- or comma-separated choices
+  const choicesText = ref('') // newline- or comma-separated choices (clarify only)
+
+  // Phase 2A: generic per-tool argument values for the read-only tools.
+  // Bounded by each tool's argument spec in constants/readOnlyTools.ts — the
+  // UI never accepts free shell/path/provider input, only the declared keys.
+  const argumentValues = ref<Record<string, unknown>>({})
 
   const dryRunResult = ref<DryRunResultData | null>(null)
   const executeResult = ref<ExecuteResultData | null>(null)
@@ -76,6 +93,9 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
 
   // ── Derived state ──
 
+  /** Metadata for the currently selected tool (display name, arg spec, badges). */
+  const selectedToolMeta = computed(() => getToolMeta(canonicalName.value))
+
   const isDryRunLoading = computed(() => status.value === 'dry_run_loading')
   const isExecuteLoading = computed(() => status.value === 'execute_loading')
   const isBlocked = computed(() => status.value === 'blocked')
@@ -95,20 +115,80 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
 
   // ── Actions ──
 
+  /** Build the arguments payload for the currently selected tool. */
   function _buildArguments(): Record<string, unknown> {
-    const args: Record<string, unknown> = {}
-    const q = question.value.trim()
-    if (q) {
-      args.question = q
+    // Clarify keeps its dedicated question/choices builder.
+    if (canonicalName.value === 'clarify') {
+      const args: Record<string, unknown> = {}
+      const q = question.value.trim()
+      if (q) {
+        args.question = q
+      }
+      const rawChoices = choicesText.value
+        .split(/[\n,]/)
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0)
+      if (rawChoices.length > 0) {
+        args.choices = rawChoices
+      }
+      return args
     }
-    const rawChoices = choicesText.value
-      .split(/[\n,]/)
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0)
-    if (rawChoices.length > 0) {
-      args.choices = rawChoices
+
+    // Read-only tools: emit only the declared keys with non-empty values.
+    const meta = selectedToolMeta.value
+    const args: Record<string, unknown> = {}
+    if (!meta) {
+      return args
+    }
+    for (const spec of meta.arguments) {
+      if (!(spec.key in argumentValues.value)) {
+        continue
+      }
+      const value = argumentValues.value[spec.key]
+      if (value === undefined || value === null || value === '') {
+        continue
+      }
+      // Bound strings to their declared maxLength defensively.
+      if (spec.kind === 'string' && typeof value === 'string') {
+        const max = spec.maxLength ?? 4000
+        args[spec.key] = value.slice(0, max)
+      } else if (spec.kind === 'integer') {
+        // Coerce strings (form inputs) or numbers, bound to [min, max].
+        const min = spec.min ?? 1
+        const max = spec.max ?? 100
+        const parsed =
+          typeof value === 'number'
+            ? value
+            : typeof value === 'string' && value !== ''
+              ? Number.parseInt(value, 10)
+              : NaN
+        if (Number.isFinite(parsed)) {
+          args[spec.key] = Math.min(Math.max(Math.trunc(parsed), min), max)
+        }
+      } else if (spec.kind === 'boolean' && typeof value === 'boolean') {
+        args[spec.key] = value
+      }
     }
     return args
+  }
+
+  function setCanonicalName(value: string): void {
+    if (!SELECTABLE_TOOL_IDS.includes(value)) {
+      return
+    }
+    if (value === canonicalName.value) {
+      return
+    }
+    canonicalName.value = value
+    // Reset per-tool argument state when switching tools.
+    argumentValues.value = {}
+    question.value = ''
+    choicesText.value = ''
+  }
+
+  /** Set one argument value for the current read-only tool. */
+  function setArgumentValue(key: string, value: unknown): void {
+    argumentValues.value = { ...argumentValues.value, [key]: value }
   }
 
   function setQuestion(value: string): void {
@@ -195,12 +275,16 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
       )
       executeResult.value = response.data
 
-      if (response.data.decision === 'clarify_execution_completed') {
+      // Phase 2A: the authoritative "completed" signal is the executionCompleted
+      // boolean (set True by the backend _build_success_result for every tool).
+      // Clarify returns decision 'clarify_execution_completed'; each read-only
+      // tool returns '<toolId>_execution_completed' — both are recognized here.
+      if (response.data.executionCompleted === true) {
         status.value = 'completed'
         // The one-time confirmation token has been consumed.
         _confirmationToken = null
       } else {
-        // Any non-completed decision is a controlled block.
+        // Any non-completed result is a controlled block.
         status.value = 'blocked'
         _confirmationToken = null
       }
@@ -238,6 +322,7 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
     canonicalName,
     question,
     choicesText,
+    argumentValues,
     dryRunResult,
     executeResult,
     dryRunRequestId,
@@ -245,6 +330,7 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
     confirmationTokenId,
     confirmationTokenExpiresAt,
     // derived
+    selectedToolMeta,
     isDryRunLoading,
     isExecuteLoading,
     isBlocked,
@@ -253,6 +339,8 @@ export const useToolExecuteStore = defineStore('tool-execute', () => {
     isHandlerCallBlocked,
     sideEffects,
     // actions
+    setCanonicalName,
+    setArgumentValue,
     setQuestion,
     setChoicesText,
     runDryRun,

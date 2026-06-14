@@ -559,11 +559,14 @@ def dry_run_tool_policy(
             audit_written=False,
         )
 
-    # Step 5: Check STATIC_ALLOWLIST (must remain empty)
+    # Step 5: STATIC_ALLOWLIST presence note.
+    # Phase 2A: STATIC_ALLOWLIST now holds 6 read-only tools (clarify + 5
+    # inspection tools). Dry-run is risk-tier driven, NOT allowlist driven —
+    # the allowlist only gates the execute route. This step is intentionally a
+    # no-op pass (kept for defense-in-depth); the R0/R1 risk branch below is
+    # what yields would_allow for allowlisted read-only tools.
     if STATIC_ALLOWLIST:
-        # If allowlist were populated, tools on it could be would_allow
-        # But in this phase, STATIC_ALLOWLIST is always empty
-        pass  # Defensive: allowlist check exists but does nothing
+        pass  # Defensive: dry-run ignores allowlist membership by design.
 
     # Step 6: Risk-tier based decisions
     if risk_rank >= 5:

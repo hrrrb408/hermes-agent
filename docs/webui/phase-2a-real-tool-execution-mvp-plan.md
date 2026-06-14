@@ -1,5 +1,18 @@
 # Phase 2A: Real Tool Execution MVP Plan — (planning only, not started)
 
+> **Phase 2A Status Update (implementation complete):** Phase 2A has been
+> implemented and verified. See
+> [phase-2a-real-tool-execution-mvp.md](phase-2a-real-tool-execution-mvp.md)
+> for the implementation record,
+> [phase-2a-read-only-tool-registry.md](phase-2a-read-only-tool-registry.md)
+> for the registry, [phase-2a-security-boundary.md](phase-2a-security-boundary.md)
+> for the security boundary, and [phase-2a-test-report.md](phase-2a-test-report.md)
+> for the test report. The five read-only tools (tool_policy_read,
+> route_governance_read, audit_events_read, dev_environment_read,
+> release_status_read) execute end-to-end through the preserved Phase 1G chain.
+> Provider remains deferred to Phase 2B; Tool write remains deferred to Phase 2C.
+> This planning document is retained for historical context.
+
 ## Document Information
 
 | Field | Value |

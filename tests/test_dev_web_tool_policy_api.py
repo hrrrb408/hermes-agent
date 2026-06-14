@@ -119,14 +119,14 @@ class TestToolPolicyStatus:
     def test_inventory_count_71(self, client):
         resp = client.get(f"{API}/tools/policy")
         data = resp.json()["data"]
-        assert data["inventoryCount"] == 71
+        assert data["inventoryCount"] == 76
 
     def test_risk_counts(self, client):
         resp = client.get(f"{API}/tools/policy")
         data = resp.json()["data"]
         rc = data["riskCounts"]
-        assert rc["R0"] == 1
-        assert rc["R1"] == 5
+        assert rc["R0"] == 3
+        assert rc["R1"] == 8
         assert rc["R2"] == 19
         assert rc["R3"] == 26
         assert rc["R4"] == 17
@@ -137,15 +137,15 @@ class TestToolPolicyStatus:
         data = resp.json()["data"]
         assert data["permanentDenylistCount"] == 26
 
-    def test_candidate_allowlist_count_6(self, client):
+    def test_candidate_allowlist_count_11(self, client):
         resp = client.get(f"{API}/tools/policy")
         data = resp.json()["data"]
-        assert data["candidateAllowlistCount"] == 6
+        assert data["candidateAllowlistCount"] == 11
 
-    def test_enabled_allowlist_count_1_clarify(self, client):
+    def test_enabled_allowlist_count_6(self, client):
         resp = client.get(f"{API}/tools/policy")
         data = resp.json()["data"]
-        assert data["enabledAllowlistCount"] == 1
+        assert data["enabledAllowlistCount"] == 6
 
     def test_execution_flags_all_false(self, client):
         resp = client.get(f"{API}/tools/policy")
@@ -205,7 +205,7 @@ class TestToolCatalogBasic:
     def test_total_71(self, client):
         resp = client.get(f"{API}/tools/catalog")
         data = resp.json()["data"]
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_default_page_1(self, client):
         resp = client.get(f"{API}/tools/catalog")
@@ -225,16 +225,16 @@ class TestToolCatalogBasic:
     def test_total_pages(self, client):
         resp = client.get(f"{API}/tools/catalog")
         data = resp.json()["data"]
-        assert data["totalPages"] == 3  # ceil(71/25) = 3
+        assert data["totalPages"] == 4  # ceil(76/25) = 4
 
     def test_summary(self, client):
         resp = client.get(f"{API}/tools/catalog")
         data = resp.json()["data"]
         summary = data["summary"]
-        assert summary["inventoryCount"] == 71
+        assert summary["inventoryCount"] == 76
         assert summary["permanentDenylistCount"] == 26
-        assert summary["candidateAllowlistCount"] == 6
-        assert summary["enabledAllowlistCount"] == 1
+        assert summary["candidateAllowlistCount"] == 11
+        assert summary["enabledAllowlistCount"] == 6
 
     def test_safety(self, client):
         resp = client.get(f"{API}/tools/catalog")
@@ -345,12 +345,12 @@ class TestToolCatalogQuery:
     def test_sort_risk_asc(self, client):
         resp = client.get(f"{API}/tools/catalog", params={"sort": "riskAsc"})
         data = resp.json()["data"]
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_sort_risk_desc(self, client):
         resp = client.get(f"{API}/tools/catalog", params={"sort": "riskDesc"})
         data = resp.json()["data"]
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_page_2(self, client):
         resp = client.get(f"{API}/tools/catalog", params={"page": 2})
@@ -364,19 +364,19 @@ class TestToolCatalogQuery:
         )
         data = resp.json()["data"]
         assert len(data["items"]) == 10
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_page_beyond_total_returns_empty_items(self, client):
         resp = client.get(f"{API}/tools/catalog", params={"page": 999})
         data = resp.json()["data"]
         assert len(data["items"]) == 0
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_empty_search_returns_results(self, client):
         """Empty string search should return all results."""
         resp = client.get(f"{API}/tools/catalog", params={"q": ""})
         data = resp.json()["data"]
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_filters_reflect_active_params(self, client):
         resp = client.get(

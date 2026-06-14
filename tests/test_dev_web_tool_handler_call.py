@@ -717,4 +717,4 @@ class TestStaticAllowlistUnchanged:
             _pop_gate()
             _attempt()
         assert STATIC_ALLOWLIST == before
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})

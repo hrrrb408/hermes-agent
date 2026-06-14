@@ -74,13 +74,14 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|all] [--help]"
       echo ""
       echo "  blocked    Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed  Profile B — clarify_execution_completed"
-      echo "  all        Run Profile A then Profile B (default)"
+      echo "  phase2a    Profile C — Phase 2A read-only multi-tool execution"
+      echo "  all        Run Profile A, then B, then C (default)"
       echo "  --help     Show this help message"
       exit 0
       ;;
@@ -303,6 +304,15 @@ configure_gates() {
       export HERMES_TOOL_HANDLER_CALL_ENABLED=true
       export EXECUTE_EXPECTED=clarify_execution_completed
       ;;
+    phase2a)
+      # Phase 2A: read-only multi-tool execution. All gates on; the handler-
+      # call gate enables the bounded read-only dispatcher. EXECUTE_EXPECTED
+      # is a profile marker (the per-tool decision varies as <toolId>_execution_completed).
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export EXECUTE_EXPECTED=phase2a_read_only
+      ;;
   esac
 }
 
@@ -402,6 +412,18 @@ run_smoke_for_profile() {
   local profile="$1"
   section "Smoke profile: $profile"
 
+  # Phase 2A uses its own multi-tool spec; blocked/completed use the 1G spec.
+  local spec_rel="$SMOKE_SPEC_REL"
+  if [ "$profile" = "phase2a" ]; then
+    spec_rel="tests/smoke/phase-2a-read-only-tools-smoke.spec.ts"
+  fi
+  local spec_path="$WEBUI_DIR/$spec_rel"
+  if [ ! -f "$spec_path" ]; then
+    error "Smoke spec not found for profile=$profile: $spec_path"
+    GLOBAL_RESULT=1
+    return 1
+  fi
+
   configure_gates "$profile"
   if ! start_services "$profile"; then
     stop_services "$profile"
@@ -410,13 +432,13 @@ run_smoke_for_profile() {
   fi
 
   info "Running Playwright smoke spec ($EXECUTE_EXPECTED)..."
-  info "  $SMOKE_SPEC"
+  info "  $spec_path"
   local smoke_rc=0
   (
     cd "$WEBUI_DIR"
     npx playwright test \
       --config "$WEBUI_DIR/playwright.config.ts" \
-      "$SMOKE_SPEC"
+      "$spec_path"
   ) || smoke_rc=$?
 
   section "Profile result: $profile"
@@ -437,12 +459,13 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed)
+  blocked|completed|phase2a)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
     run_smoke_for_profile "blocked"
     run_smoke_for_profile "completed"
+    run_smoke_for_profile "phase2a"
     ;;
 esac
 

@@ -274,7 +274,13 @@ class TestR1DryRunAllowed:
 
     @pytest.mark.parametrize(
         "name",
-        [n for n in CANDIDATE_ALLOWLIST if n != "clarify"],
+        # Phase 2A: exclude R0 candidates (clarify, tool_policy_read,
+        # route_governance_read); only R1 candidates are R1.
+        [
+            n
+            for n in CANDIDATE_ALLOWLIST
+            if n not in {"clarify", "tool_policy_read", "route_governance_read"}
+        ],
     )
     def test_r1_candidate_would_allow(self, name: str) -> None:
         result = dry_run_tool_policy(name)
@@ -429,7 +435,7 @@ class TestStaticAllowlist:
     """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
 
     def test_static_allowlist_is_clarify_only(self) -> None:
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_allowlist_does_not_allow_dry_run_execution(self) -> None:
         for name in ALL_CANONICAL_TOOLS:
@@ -678,9 +684,9 @@ class TestNoSideEffects:
         assert os.environ == env_before
 
     def test_does_not_alter_static_allowlist(self) -> None:
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         dry_run_tool_policy("clarify")
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_does_not_write_audit(self) -> None:
         """Module source contains no audit storage logic."""
@@ -757,7 +763,7 @@ class TestCatalog:
 
     def test_catalog_has_71_results(self) -> None:
         results = list_tool_dry_run_policies()
-        assert len(results) == 71
+        assert len(results) == 76
 
     def test_catalog_sorted_by_name(self) -> None:
         results = list_tool_dry_run_policies()
@@ -795,7 +801,7 @@ class TestSummary:
 
     def test_summary_total_is_71(self) -> None:
         summary = compute_dry_run_policy_summary()
-        assert summary.total_count == 71
+        assert summary.total_count == 76
 
     def test_summary_all_categories_sum_to_total(self) -> None:
         summary = compute_dry_run_policy_summary()

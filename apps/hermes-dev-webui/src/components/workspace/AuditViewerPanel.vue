@@ -5,6 +5,7 @@ import {
   AUDIT_KINDS,
   AUDIT_KIND_LABELS,
 } from '@/stores/toolAudit'
+import { SELECTABLE_TOOLS } from '@/constants/readOnlyTools'
 import type { AuditEventItem, AuditKind } from '@/types/api/toolAudit'
 
 const store = useToolAuditStore()
@@ -112,14 +113,18 @@ function switchKind(kind: AuditKind): void {
         </select>
       </label>
       <label class="audit-viewer__control">
-        <span>Canonical name</span>
-        <input
-          class="audit-viewer__input"
-          type="text"
-          placeholder="filter, e.g. clarify"
+        <span>Tool (toolId)</span>
+        <select
+          id="audit-viewer-tool-filter"
+          class="audit-viewer__select"
           :value="store.canonicalNameFilter"
-          @input="store.setCanonicalNameFilter(($event.target as HTMLInputElement).value)"
-        />
+          @change="store.setCanonicalNameFilter(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">All tools</option>
+          <option v-for="tool in SELECTABLE_TOOLS" :key="tool.id" :value="tool.id">
+            {{ tool.displayName }} ({{ tool.id }})
+          </option>
+        </select>
       </label>
       <button
         id="audit-viewer-refresh"

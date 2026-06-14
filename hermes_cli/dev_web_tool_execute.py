@@ -101,6 +101,33 @@ DECISION_BLOCKED_TOOL_HANDLER_CALL_NOT_ENABLED = (
 DECISION_CLARIFY_EXECUTION_COMPLETED = "clarify_execution_completed"
 DECISION_BLOCKED_POST_EXECUTION_AUDIT_FAILED = "blocked_post_execution_audit_failed"
 
+# Phase 2A: read-only multi-tool controlled execution completion decision.
+# Clarify keeps its Phase 1G decision string (backward compatibility); each
+# Phase 2A read-only tool reports a per-tool completed decision. The
+# authoritative "completed" signal for callers is the executionCompleted flag
+# (set True by _build_success_result), not the decision string.
+DECISION_CONTROLLED_EXECUTION_COMPLETED = "controlled_execution_completed"
+
+
+def _completed_decision_for(canonical_name: str) -> str:
+    """Return the completed-execution decision string for *canonical_name*.
+
+    Clarify keeps the Phase 1G ``clarify_execution_completed`` string; each
+    Phase 2A read-only tool reports ``<toolId>_execution_completed``.
+    """
+    if canonical_name == "clarify":
+        return DECISION_CLARIFY_EXECUTION_COMPLETED
+    return f"{canonical_name}_execution_completed"
+
+
+def _completed_preview_type(canonical_name: str, tool_result: dict[str, Any] | None) -> str:
+    """Return the result-preview type for a completed execution."""
+    if isinstance(tool_result, dict):
+        result_type = tool_result.get("type")
+        if isinstance(result_type, str) and result_type.strip():
+            return result_type.strip()
+    return canonical_name
+
 # Future decisions — not returned in this phase
 DECISION_WOULD_EXECUTE = "would_execute"
 DECISION_EXECUTED = "executed"
@@ -1416,6 +1443,7 @@ def evaluate_tool_execute_request(
         execute_request_id=pea_write_result.execute_request_id,
         pre_execution_audit_id=pea_write_result.pre_execution_audit_id,
         arguments=arguments_preview if isinstance(arguments_preview, dict) else None,
+        hermes_home=hermes_home,
     )
 
     if not handler_call_result.called:
@@ -1551,7 +1579,7 @@ def evaluate_tool_execute_request(
         gate=GATE_POST_EXECUTION_AUDIT, passed=True, error_code=None,
     ))
     policy_notes.append(
-        "Clarify-only controlled execution completed. Tool Handler called, "
+        "Controlled read-only execution completed. Tool Handler called, "
         "result normalized, post-execution audit written. No Provider Schema "
         "sent, no Provider API called, no external side effects."
     )
@@ -1704,7 +1732,7 @@ def _build_success_result(
         canonical_name=canonical_name,
         exists=_lookup_tool_policy(canonical_name)[0],
         risk_tier=risk_tier,
-        decision=DECISION_CLARIFY_EXECUTION_COMPLETED,
+        decision=_completed_decision_for(canonical_name),
         gate_status=tuple(gates),
         audit_status=ToolExecuteAuditStatus(
             audit_attempted=True,
@@ -1713,7 +1741,7 @@ def _build_success_result(
         ),
         result_preview=ToolExecuteResultPreview(
             available=True,
-            preview_type="clarify",
+            preview_type=_completed_preview_type(canonical_name, tool_result),
             preview_size_bytes=preview_size,
             truncated=False,
         ),

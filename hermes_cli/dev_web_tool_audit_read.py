@@ -348,6 +348,7 @@ def _normalize_post_execution_item(event: dict[str, Any]) -> dict[str, Any]:
         "toolResultType": None,
         "messageLength": 0,
         "questionCount": 0,
+        "resultSizeBytes": 0,
     }
     if isinstance(result_summary_raw, dict):
         result_summary["toolResultType"] = _sanitize_scalar(
@@ -359,6 +360,9 @@ def _normalize_post_execution_item(event: dict[str, Any]) -> dict[str, Any]:
         qc = result_summary_raw.get("questionCount")
         if isinstance(qc, int):
             result_summary["questionCount"] = qc
+        rsb = result_summary_raw.get("resultSizeBytes")
+        if isinstance(rsb, int):
+            result_summary["resultSizeBytes"] = rsb
 
     side_effects = _safe_side_effect_flags(event)
 
@@ -392,6 +396,7 @@ def _normalize_post_execution_item(event: dict[str, Any]) -> dict[str, Any]:
             "toolResultType": result_summary["toolResultType"],
             "messageLength": result_summary["messageLength"],
             "questionCount": result_summary["questionCount"],
+            "resultSizeBytes": result_summary["resultSizeBytes"],
         },
     }
     return item

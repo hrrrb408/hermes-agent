@@ -282,9 +282,9 @@ class TestSecurityGuarantees:
 
     def test_static_allowlist_remains_clarify_only(self, client) -> None:
         """STATIC_ALLOWLIST must be exactly {"clarify"} before and after request."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         client.post(EXECUTE_URL, json={"canonicalName": "clarify"})
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
 
 # ===================================================================

@@ -384,7 +384,7 @@ class TestAuditEventsApiRouteGovernance:
     def test_static_allowlist_remains_clarify_only(self) -> None:
         from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
 
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_no_provider_routes(self, client_with_home) -> None:
         client, _ = client_with_home

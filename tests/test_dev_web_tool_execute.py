@@ -295,8 +295,8 @@ class TestAllowlistGate:
 
     def test_static_allowlist_is_clarify_only(self) -> None:
         """STATIC_ALLOWLIST must be exactly frozenset({"clarify"})."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
-        assert len(STATIC_ALLOWLIST) == 1
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
+        assert len(STATIC_ALLOWLIST) == 6
 
     def test_static_allowlist_is_frozenset(self) -> None:
         """STATIC_ALLOWLIST must be a frozenset."""
@@ -582,9 +582,9 @@ class TestNoSideEffects:
         assert "model_tools" not in source
 
     def test_does_not_mutate_static_allowlist(self) -> None:
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         evaluate_tool_execute_request("clarify")
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_does_not_import_subprocess_or_socket(self) -> None:
         import hermes_cli.dev_web_tool_execute as execute_mod
@@ -613,10 +613,17 @@ class TestPolicySummary:
         summary = compute_execute_policy_summary()
         assert summary.agent_tools_enabled is False
 
-    def test_summary_allowlist_has_clarify(self) -> None:
+    def test_summary_allowlist_has_phase_2a_tools(self) -> None:
         summary = compute_execute_policy_summary()
-        assert summary.static_allowlist_size == 1
-        assert summary.static_allowlist_tools == ("clarify",)
+        assert summary.static_allowlist_size == 6
+        assert summary.static_allowlist_tools == (
+            "audit_events_read",
+            "clarify",
+            "dev_environment_read",
+            "release_status_read",
+            "route_governance_read",
+            "tool_policy_read",
+        )
 
     def test_summary_execution_disabled(self) -> None:
         summary = compute_execute_policy_summary()

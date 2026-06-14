@@ -377,10 +377,10 @@ class TestSecurityGuarantees:
 
     def test_static_allowlist_remains_clarify_only(self, client) -> None:
         """STATIC_ALLOWLIST must be exactly {"clarify"} before and after request."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         tool = next(t for t in ALL_CANONICAL_TOOLS if t not in STATIC_DENYLIST)
         client.post(DRY_RUN_URL, json={"canonicalName": tool})
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
 
 # ===================================================================
@@ -781,10 +781,10 @@ class TestAuditFailureSafety:
         self, client
     ) -> None:
         """STATIC_ALLOWLIST remains frozenset({"clarify"}) even when audit fails."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         tool = next(t for t in ALL_CANONICAL_TOOLS if t not in STATIC_DENYLIST)
         client.post(DRY_RUN_URL, json={"canonicalName": tool})
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_route_governance_unchanged_with_audit(
         self, client

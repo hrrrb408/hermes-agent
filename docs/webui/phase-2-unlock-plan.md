@@ -1,5 +1,13 @@
 # Phase 2 Unlock Plan — `PHASE-2-UNLOCK-1G-11-001`
 
+> **Phase 2A Implementation Update:** Phase 2A (the first Phase 2 vertical
+> slice — read-only multi-tool execution MVP) has been implemented and verified.
+> Entry condition 8 ("Phase 2A separately authorized by the user") was satisfied
+> by the explicit Phase 2A task authorization. STATIC_ALLOWLIST expanded from
+> `frozenset({"clarify"})` to 6 read-only tools; route governance remains
+> 34/34/5/0/1/1 (no new routes). Provider (2B) and Tool write (2C) remain
+> deferred. See [phase-2a-real-tool-execution-mvp.md](phase-2a-real-tool-execution-mvp.md).
+
 ## Document Information
 
 | Field | Value |

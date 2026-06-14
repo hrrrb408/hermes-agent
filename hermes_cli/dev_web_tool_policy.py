@@ -165,7 +165,12 @@ MAX_WEB_PREVIEW_OUTPUT_BYTES: int = 8 * 1024  # 8 KiB
 # The inventory is defined in risk-level groups for readability.
 # It is merged into a single immutable mapping at the bottom of this block.
 
-# --- R0 (1 tool) ---
+# --- R0 (3 tools) ---
+# Phase 2A: tool_policy_read and route_governance_read are pure-compute
+# inspection tools — they read in-process constants / introspect the in-process
+# app object. No I/O, no network, no state mutation. They are Dev-WebUI-local
+# bounded read-only handlers (NOT registered Hermes agent tools), implemented
+# in hermes_cli/dev_web_read_only_tool_handlers.py.
 _R0_ENTRIES: tuple[ToolPolicyEntry, ...] = (
     ToolPolicyEntry(
         canonical_name="clarify",
@@ -177,9 +182,46 @@ _R0_ENTRIES: tuple[ToolPolicyEntry, ...] = (
         source="tools/clarify_tool.py",
         rationale="Purely interactive — asks user a question. No I/O, no network, no state mutation.",
     ),
+    ToolPolicyEntry(
+        canonical_name="tool_policy_read",
+        primary_risk=ToolRiskLevel.R0,
+        capabilities=frozenset({ToolCapability.PURE_COMPUTE}),
+        permanently_denied=False,
+        candidate_allowlisted=True,
+        statically_allowed=True,
+        source="hermes_cli/dev_web_read_only_tool_handlers.py",
+        rationale=(
+            "Phase 2A read-only inspection tool. Returns the static tool-execution "
+            "policy (allowlist, candidate tools, disabled categories, route counts) "
+            "by reading in-process constants. Pure compute — no I/O, no network, "
+            "no Provider, no production access. Per-tool audited and individually "
+            "authorized for Phase 2A (R2A-01/R2A-02)."
+        ),
+    ),
+    ToolPolicyEntry(
+        canonical_name="route_governance_read",
+        primary_risk=ToolRiskLevel.R0,
+        capabilities=frozenset({ToolCapability.PURE_COMPUTE}),
+        permanently_denied=False,
+        candidate_allowlisted=True,
+        statically_allowed=True,
+        source="hermes_cli/dev_web_read_only_tool_handlers.py",
+        rationale=(
+            "Phase 2A read-only inspection tool. Returns the route-governance "
+            "summary (OpenAPI/runtime/tool route counts) by introspecting the "
+            "in-process app object. Pure compute — no I/O, no network, no "
+            "Provider, no production access. Per-tool audited and individually "
+            "authorized for Phase 2A (R2A-01/R2A-02)."
+        ),
+    ),
 )
 
-# --- R1 (5 tools) ---
+# --- R1 (8 tools) ---
+# Phase 2A: audit_events_read, dev_environment_read, and release_status_read
+# are read-only inspection tools that read dev-local state only. They are
+# Dev-WebUI-local bounded handlers (NOT registered Hermes agent tools) in
+# hermes_cli/dev_web_read_only_tool_handlers.py. All containment-guarded:
+# never ~/.hermes, never production state.db.
 _R1_ENTRIES: tuple[ToolPolicyEntry, ...] = (
     ToolPolicyEntry(
         canonical_name="read_file",
@@ -190,6 +232,55 @@ _R1_ENTRIES: tuple[ToolPolicyEntry, ...] = (
         statically_allowed=False,
         source="tools/file_tools.py",
         rationale="Read-only file access. Candidate pending strict root-allowlist enforcement.",
+    ),
+    ToolPolicyEntry(
+        canonical_name="audit_events_read",
+        primary_risk=ToolRiskLevel.R1,
+        capabilities=frozenset({ToolCapability.LOCAL_FILE_READ}),
+        permanently_denied=False,
+        candidate_allowlisted=True,
+        statically_allowed=True,
+        source="hermes_cli/dev_web_read_only_tool_handlers.py",
+        rationale=(
+            "Phase 2A read-only inspection tool. Queries the dev JSONL audit "
+            "stores via the containment-guarded reader (rejects ~/.hermes and "
+            "production state.db). No Provider, no network write, no mutation. "
+            "Per-tool audited and individually authorized for Phase 2A "
+            "(R2A-01/R2A-02)."
+        ),
+    ),
+    ToolPolicyEntry(
+        canonical_name="dev_environment_read",
+        primary_risk=ToolRiskLevel.R1,
+        capabilities=frozenset({ToolCapability.LOCAL_FILE_READ}),
+        permanently_denied=False,
+        candidate_allowlisted=True,
+        statically_allowed=True,
+        source="hermes_cli/dev_web_read_only_tool_handlers.py",
+        rationale=(
+            "Phase 2A read-only inspection tool. Returns dev HERMES_HOME "
+            "identity, port status, and a READ-ONLY production gateway PID/count "
+            "observation via bounded hardcoded ps/pgrep/lsof (shutil.which "
+            "guarded, errors swallowed). Never accesses ~/.hermes or production "
+            "state.db; never stops/restarts/replaces/signals the gateway. "
+            "Per-tool audited and individually authorized for Phase 2A "
+            "(R2A-01/R2A-02)."
+        ),
+    ),
+    ToolPolicyEntry(
+        canonical_name="release_status_read",
+        primary_risk=ToolRiskLevel.R1,
+        capabilities=frozenset({ToolCapability.LOCAL_FILE_READ}),
+        permanently_denied=False,
+        candidate_allowlisted=True,
+        statically_allowed=True,
+        source="hermes_cli/dev_web_read_only_tool_handlers.py",
+        rationale=(
+            "Phase 2A read-only inspection tool. Returns the docs/webui "
+            "release-status summary by reading repo-local markdown basenames "
+            "only. Never reads arbitrary user paths or ~/.hermes. Per-tool "
+            "audited and individually authorized for Phase 2A (R2A-01/R2A-02)."
+        ),
     ),
     ToolPolicyEntry(
         canonical_name="search_files",
@@ -1016,7 +1107,23 @@ CANDIDATE_ALLOWLIST: frozenset[str] = frozenset(
     name for name, entry in TOOL_POLICY_INVENTORY.items() if entry.candidate_allowlisted
 )
 
-STATIC_ALLOWLIST: frozenset[str] = frozenset({"clarify"})
+# Phase 2A: STATIC_ALLOWLIST expanded from {clarify} to include the five
+# per-tool-audited, individually-authorized read-only inspection tools. This
+# is the SINGLE source of truth for allowlist membership (the read-only tool
+# registry re-exports this constant; it does NOT define a second allowlist).
+# All six members are readOnly, providerRequired=False, writeRequired=False,
+# externalSideEffects=False (verified by the read-only registry consistency
+# check and by the security-boundary tests).
+STATIC_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "clarify",
+        "tool_policy_read",
+        "route_governance_read",
+        "audit_events_read",
+        "dev_environment_read",
+        "release_status_read",
+    }
+)
 
 _TOOLS_BY_RISK_RAW: dict[ToolRiskLevel, frozenset[str]] = {}
 for _risk in ToolRiskLevel:
@@ -1043,8 +1150,8 @@ def _verify_inventory_integrity() -> None:
 
     # Total count
     total = len(TOOL_POLICY_INVENTORY)
-    if total != 71:
-        errors.append(f"Inventory count: expected 71, got {total}")
+    if total != 76:
+        errors.append(f"Inventory count: expected 76, got {total}")
 
     # Unique names
     names = set(TOOL_POLICY_INVENTORY.keys())
@@ -1057,9 +1164,11 @@ def _verify_inventory_integrity() -> None:
         errors.append(f"Empty or padded canonical names: {empty}")
 
     # Risk counts
+    # Phase 2A: R0 1->3 (tool_policy_read, route_governance_read),
+    # R1 5->8 (audit_events_read, dev_environment_read, release_status_read).
     expected_risk: dict[ToolRiskLevel, int] = {
-        ToolRiskLevel.R0: 1,
-        ToolRiskLevel.R1: 5,
+        ToolRiskLevel.R0: 3,
+        ToolRiskLevel.R1: 8,
         ToolRiskLevel.R2: 19,
         ToolRiskLevel.R3: 26,
         ToolRiskLevel.R4: 17,
@@ -1071,8 +1180,8 @@ def _verify_inventory_integrity() -> None:
             errors.append(f"Risk {risk.value}: expected {expected_count}, got {actual}")
 
     risk_total = sum(len(v) for v in TOOLS_BY_RISK.values())
-    if risk_total != 71:
-        errors.append(f"Risk total: expected 71, got {risk_total}")
+    if risk_total != 76:
+        errors.append(f"Risk total: expected 76, got {risk_total}")
 
     # Multiply classified
     name_risk_count: dict[str, int] = {}
@@ -1090,15 +1199,26 @@ def _verify_inventory_integrity() -> None:
         errors.append(f"Denylist names not in inventory: {deny_unknown}")
 
     # Candidate
-    if len(CANDIDATE_ALLOWLIST) != 6:
-        errors.append(f"CANDIDATE_ALLOWLIST: expected 6, got {len(CANDIDATE_ALLOWLIST)}")
+    if len(CANDIDATE_ALLOWLIST) != 11:
+        errors.append(f"CANDIDATE_ALLOWLIST: expected 11, got {len(CANDIDATE_ALLOWLIST)}")
     cand_unknown = CANDIDATE_ALLOWLIST - ALL_CANONICAL_TOOLS
     if cand_unknown:
         errors.append(f"Candidate names not in inventory: {cand_unknown}")
 
-    # Static allowlist must contain exactly {"clarify"} (Phase 1G-04-14)
-    if len(STATIC_ALLOWLIST) != 1 or STATIC_ALLOWLIST != frozenset({"clarify"}):
-        errors.append(f"STATIC_ALLOWLIST: expected {{'clarify'}}, got {STATIC_ALLOWLIST}")
+    # Static allowlist must contain exactly the Phase 2A read-only set
+    # (Phase 1G-04-14 pinned {clarify}; Phase 2A expanded to 6 read-only tools).
+    expected_static = frozenset(
+        {
+            "clarify",
+            "tool_policy_read",
+            "route_governance_read",
+            "audit_events_read",
+            "dev_environment_read",
+            "release_status_read",
+        }
+    )
+    if len(STATIC_ALLOWLIST) != 6 or STATIC_ALLOWLIST != expected_static:
+        errors.append(f"STATIC_ALLOWLIST: expected {sorted(expected_static)}, got {sorted(STATIC_ALLOWLIST)}")
 
     # Denylist ⊆ inventory (already checked above)
     # Candidate ⊆ inventory (already checked above)
@@ -1200,7 +1320,8 @@ def evaluate_static_tool_policy(requested_name: str) -> ToolPolicyDecision:
     prefix or wildcard matching, no alias resolution.
 
     Returns a ``ToolPolicyDecision`` with ``allowed=True`` for tools on the
-    static allowlist (currently only ``clarify``), ``allowed=False`` otherwise.
+    static allowlist (``clarify`` plus the five Phase 2A read-only inspection
+    tools), ``allowed=False`` otherwise.
     """
     entry = TOOL_POLICY_INVENTORY.get(requested_name)
 
@@ -1509,12 +1630,12 @@ def validate_static_tool_policy() -> ToolPolicyValidationResult:
 
     canonical_count = len(TOOL_POLICY_INVENTORY)
 
-    if canonical_count != 71:
-        errors.append(f"Expected 71 canonical tools, got {canonical_count}")
+    if canonical_count != 76:
+        errors.append(f"Expected 76 canonical tools, got {canonical_count}")
 
     expected: dict[ToolRiskLevel, int] = {
-        ToolRiskLevel.R0: 1,
-        ToolRiskLevel.R1: 5,
+        ToolRiskLevel.R0: 3,
+        ToolRiskLevel.R1: 8,
         ToolRiskLevel.R2: 19,
         ToolRiskLevel.R3: 26,
         ToolRiskLevel.R4: 17,
@@ -1525,17 +1646,27 @@ def validate_static_tool_policy() -> ToolPolicyValidationResult:
             errors.append(f"Risk {risk.value}: expected {exp}, got {risk_counts[risk]}")
 
     total = sum(risk_counts.values())
-    if total != 71:
-        errors.append(f"Risk total: expected 71, got {total}")
+    if total != 76:
+        errors.append(f"Risk total: expected 76, got {total}")
 
     if len(STATIC_DENYLIST) != 26:
         errors.append(f"Denylist: expected 26, got {len(STATIC_DENYLIST)}")
 
-    if len(CANDIDATE_ALLOWLIST) != 6:
-        errors.append(f"Candidate: expected 6, got {len(CANDIDATE_ALLOWLIST)}")
+    if len(CANDIDATE_ALLOWLIST) != 11:
+        errors.append(f"Candidate: expected 11, got {len(CANDIDATE_ALLOWLIST)}")
 
-    if STATIC_ALLOWLIST != frozenset({"clarify"}):
-        errors.append(f"Static Allowlist: expected {{'clarify'}}, got {STATIC_ALLOWLIST}")
+    expected_static = frozenset(
+        {
+            "clarify",
+            "tool_policy_read",
+            "route_governance_read",
+            "audit_events_read",
+            "dev_environment_read",
+            "release_status_read",
+        }
+    )
+    if STATIC_ALLOWLIST != expected_static:
+        errors.append(f"Static Allowlist: expected {sorted(expected_static)}, got {sorted(STATIC_ALLOWLIST)}")
 
     deny_unknown = STATIC_DENYLIST - ALL_CANONICAL_TOOLS
     if deny_unknown:

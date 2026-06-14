@@ -90,19 +90,20 @@ class TestPolicyStatusNumbers:
 
     def test_inventory_count_is_71(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
-        assert status.inventory_count == 71
+        assert status.inventory_count == 76
 
     def test_permanent_denylist_count_is_26(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
         assert status.permanent_denylist_count == 26
 
-    def test_candidate_allowlist_count_is_6(self, service: DevToolPolicyQueryService) -> None:
+    def test_candidate_allowlist_count_is_11(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
-        assert status.candidate_allowlist_count == 6
+        assert status.candidate_allowlist_count == 11
 
-    def test_enabled_allowlist_count_is_0(self, service: DevToolPolicyQueryService) -> None:
+    def test_enabled_allowlist_count_is_6(self, service: DevToolPolicyQueryService) -> None:
+        # Phase 2A: enabled == len(STATIC_ALLOWLIST) == 6 (clarify + 5 read-only).
         status = service.get_policy_status()
-        assert status.enabled_allowlist_count == 0
+        assert status.enabled_allowlist_count == 6
 
 
 # ===================================================================
@@ -115,11 +116,11 @@ class TestRiskCounts:
 
     def test_r0_is_1(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
-        assert status.risk_counts["R0"] == 1
+        assert status.risk_counts["R0"] == 3
 
     def test_r1_is_5(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
-        assert status.risk_counts["R1"] == 5
+        assert status.risk_counts["R1"] == 8
 
     def test_r2_is_19(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
@@ -139,7 +140,7 @@ class TestRiskCounts:
 
     def test_risk_counts_sum_to_71(self, service: DevToolPolicyQueryService) -> None:
         status = service.get_policy_status()
-        assert sum(status.risk_counts.values()) == 71
+        assert sum(status.risk_counts.values()) == 76
 
 
 # ===================================================================
@@ -237,7 +238,7 @@ class TestCatalogDefault:
     def test_default_returns_71_total(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query()
         response = service.list_tool_catalog(query)
-        assert response.total == 71
+        assert response.total == 76
 
     def test_default_page_is_1(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query()
@@ -252,7 +253,7 @@ class TestCatalogDefault:
     def test_default_total_pages(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query()
         response = service.list_tool_catalog(query)
-        assert response.total_pages == math.ceil(71 / 25)
+        assert response.total_pages == math.ceil(76 / 25)
 
     def test_default_items_count_matches_page_size(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query()
@@ -281,26 +282,27 @@ class TestPagination:
         assert response.page == 2
 
     def test_last_page_returns_remainder(self, service: DevToolPolicyQueryService) -> None:
-        query = validate_catalog_query(page=3, page_size=25)
+        # Phase 2A: 76 items -> ceil(76/25)=4 pages; last page has 1 item.
+        query = validate_catalog_query(page=4, page_size=25)
         response = service.list_tool_catalog(query)
-        assert len(response.items) == 71 - 50  # 21 remaining
+        assert len(response.items) == 76 - 75  # 1 remaining
 
     def test_page_beyond_total_returns_empty_items(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page=999, page_size=25)
         response = service.list_tool_catalog(query)
         assert len(response.items) == 0
-        assert response.total == 71  # Total still shows full count
+        assert response.total == 76  # Total still shows full count
 
     def test_page_size_1_returns_single_item(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page_size=1)
         response = service.list_tool_catalog(query)
         assert len(response.items) == 1
-        assert response.total_pages == 71
+        assert response.total_pages == 76
 
     def test_page_size_100_returns_all(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page_size=100)
         response = service.list_tool_catalog(query)
-        assert len(response.items) == 71
+        assert len(response.items) == 76
         assert response.total_pages == 1
 
     def test_total_pages_calculation(self, service: DevToolPolicyQueryService) -> None:
@@ -353,7 +355,7 @@ class TestSearch:
         query = validate_catalog_query(q="")
         response = service.list_tool_catalog(query)
         # Empty string matches everything
-        assert response.total == 71
+        assert response.total == 76
 
 
 # ===================================================================
@@ -367,13 +369,13 @@ class TestRiskFilter:
     def test_filter_r0(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(risk="R0", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 1
+        assert response.total == 3  # clarify + tool_policy_read + route_governance_read
         assert all(item.risk_rank == "R0" for item in response.items)
 
     def test_filter_r1(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(risk="R1", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 5
+        assert response.total == 8  # 5 original R1 + 3 Phase 2A read-only
         assert all(item.risk_rank == "R1" for item in response.items)
 
     def test_filter_r2(self, service: DevToolPolicyQueryService) -> None:
@@ -408,7 +410,7 @@ class TestCapabilityFilter:
     def test_filter_pure_compute(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(capability="PURE_COMPUTE", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 1  # Only clarify
+        assert response.total == 3  # clarify + tool_policy_read + route_governance_read
         assert response.items[0].canonical_name == "clarify"
 
     def test_filter_process_execution(self, service: DevToolPolicyQueryService) -> None:
@@ -443,7 +445,9 @@ class TestPolicyStatusFilter:
     def test_filter_candidate(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(policy_status="CANDIDATE", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 6
+        # Phase 2A: CANDIDATE excludes statically-allowed tools (priority
+        # STATICALLY_ALLOWED > CANDIDATE). 5 candidates remain (read_file etc.).
+        assert response.total == 5
         assert all(item.policy_status == "CANDIDATE" for item in response.items)
 
     def test_filter_unlisted(self, service: DevToolPolicyQueryService) -> None:
@@ -452,10 +456,12 @@ class TestPolicyStatusFilter:
         assert response.total == 39
         assert all(item.policy_status == "UNLISTED" for item in response.items)
 
-    def test_filter_statically_allowed_is_0(self, service: DevToolPolicyQueryService) -> None:
+    def test_filter_statically_allowed_is_6(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(policy_status="STATICALLY_ALLOWED", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 0
+        # Phase 2A: clarify + 5 read-only inspection tools.
+        assert response.total == 6
+        assert all(item.policy_status == "STATICALLY_ALLOWED" for item in response.items)
 
 
 # ===================================================================
@@ -475,10 +481,13 @@ class TestCombinedFilters:
             assert "BROWSER_CONTROL" in item.capabilities
 
     def test_risk_and_policy_status_combined(self, service: DevToolPolicyQueryService) -> None:
-        query = validate_catalog_query(risk="R0", policy_status="CANDIDATE", page_size=100)
+        # Phase 2A: R0 tools are now STATICALLY_ALLOWED (not CANDIDATE).
+        # clarify + tool_policy_read + route_governance_read are R0 + STATICALLY_ALLOWED.
+        query = validate_catalog_query(risk="R0", policy_status="STATICALLY_ALLOWED", page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.total == 1  # clarify is R0 and CANDIDATE
-        assert response.items[0].canonical_name == "clarify"
+        assert response.total == 3
+        names = [i.canonical_name for i in response.items]
+        assert "clarify" in names
 
     def test_search_and_risk_combined(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(q="spotify", risk="R2", page_size=100)
@@ -545,7 +554,7 @@ class TestEmptyResult:
         query = validate_catalog_query(page=999)
         response = service.list_tool_catalog(query)
         assert len(response.items) == 0
-        assert response.total == 71  # Total unchanged
+        assert response.total == 76  # Total unchanged
 
 
 # ===================================================================
@@ -890,10 +899,10 @@ class TestCatalogResponseStructure:
     def test_catalog_has_summary(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page_size=100)
         response = service.list_tool_catalog(query)
-        assert response.summary.inventory_count == 71
+        assert response.summary.inventory_count == 76
         assert response.summary.permanent_denylist_count == 26
-        assert response.summary.candidate_allowlist_count == 6
-        assert response.summary.enabled_allowlist_count == 0
+        assert response.summary.candidate_allowlist_count == 11
+        assert response.summary.enabled_allowlist_count == 6
 
     def test_catalog_has_safety(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query()
@@ -1131,9 +1140,10 @@ class TestNoMutableState:
 class TestDoesNotModifyStaticPolicy:
     """Service reads but never modifies the static policy module."""
 
-    def test_static_allowlist_still_empty(self, service: DevToolPolicyQueryService) -> None:
+    def test_static_allowlist_unchanged(self, service: DevToolPolicyQueryService) -> None:
+        # Phase 2A: STATIC_ALLOWLIST has 6 tools (clarify + 5 read-only).
         service.get_policy_status()
-        assert len(STATIC_ALLOWLIST) == 0
+        assert len(STATIC_ALLOWLIST) == 6
 
     def test_static_denylist_unchanged(self, service: DevToolPolicyQueryService) -> None:
         service.get_policy_status()
@@ -1142,7 +1152,7 @@ class TestDoesNotModifyStaticPolicy:
     def test_inventory_unchanged(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page_size=100)
         service.list_tool_catalog(query)
-        assert len(TOOL_POLICY_INVENTORY) == 71
+        assert len(TOOL_POLICY_INVENTORY) == 76
 
 
 # ===================================================================
@@ -1265,16 +1275,17 @@ class TestPolicyStatusDerivation:
         assert response.items[0].policy_status == "PERMANENTLY_DENIED"
 
     def test_candidate_tools_get_candidate(self, service: DevToolPolicyQueryService) -> None:
+        # Phase 2A: clarify is now STATICALLY_ALLOWED (it is on STATIC_ALLOWLIST).
         query = validate_catalog_query(q="clarify")
         response = service.list_tool_catalog(query)
-        assert response.items[0].policy_status == "CANDIDATE"
+        assert response.items[0].policy_status == "STATICALLY_ALLOWED"
 
     def test_other_tools_get_unlisted(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(q="web_search")
         response = service.list_tool_catalog(query)
         assert response.items[0].policy_status == "UNLISTED"
 
-    def test_status_counts_sum_to_71(self, service: DevToolPolicyQueryService) -> None:
+    def test_status_counts_sum_to_total(self, service: DevToolPolicyQueryService) -> None:
         query = validate_catalog_query(page_size=100)
         response = service.list_tool_catalog(query)
         denied = sum(1 for i in response.items if i.policy_status == "PERMANENTLY_DENIED")
@@ -1282,10 +1293,10 @@ class TestPolicyStatusDerivation:
         unlisted = sum(1 for i in response.items if i.policy_status == "UNLISTED")
         statically = sum(1 for i in response.items if i.policy_status == "STATICALLY_ALLOWED")
         assert denied == 26
-        assert candidate == 6
+        assert candidate == 5
         assert unlisted == 39
-        assert statically == 0
-        assert denied + candidate + unlisted + statically == 71
+        assert statically == 6
+        assert denied + candidate + unlisted + statically == 76
 
 
 # ===================================================================

@@ -4243,11 +4243,21 @@ components:
         - blocked_post_execution_audit_serialization_failed
         - blocked_post_execution_audit_failed
         - clarify_execution_completed
+        - tool_policy_read_execution_completed
+        - route_governance_read_execution_completed
+        - audit_events_read_execution_completed
+        - dev_environment_read_execution_completed
+        - release_status_read_execution_completed
       description: >
         Execute gate decision. In the default runtime (kill switches / explicit
         handler-call gate unset) all values represent blocked states.
         `clarify_execution_completed` is returned ONLY on the explicit dev-gated
-        clarify-only controlled execution success path (Phase 1G-04-29). The
+        clarify-only controlled execution success path (Phase 1G-04-29). Phase 2A
+        adds five read-only inspection tools (tool_policy_read,
+        route_governance_read, audit_events_read, dev_environment_read,
+        release_status_read); each returns `<toolId>_execution_completed` on the
+        explicit dev-gated success path. The authoritative "completed" signal for
+        clients is the `executionCompleted` boolean, not the decision string. The
         default runtime never returns a non-blocked decision.
 
     ToolExecuteErrorCode:

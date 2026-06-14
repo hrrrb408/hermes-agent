@@ -73,6 +73,20 @@ _FORBIDDEN_FIELD_STEMS: frozenset[str] = frozenset(
     )
 )
 
+
+def _live_static_allowlist_size() -> int:
+    """Return the live ``len(STATIC_ALLOWLIST)`` for forensic accuracy.
+
+    Lazy import keeps this writer free of a module-level policy dependency.
+    On any import failure, returns 0 (fail-safe; never raises).
+    """
+    try:
+        from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+
+        return len(STATIC_ALLOWLIST)
+    except Exception:
+        return 0
+
 # Error codes
 ERROR_HERMES_HOME_MISSING = "HERMES_HOME_MISSING"
 ERROR_AUDIT_PATH_OUTSIDE_HERMES_HOME = "AUDIT_PATH_OUTSIDE_HERMES_HOME"
@@ -311,7 +325,9 @@ def build_dry_run_audit_event(
         "providerSchemaAllowed": False,
         # auditWritten for this event: will be updated by write_dry_run_audit_event
         "auditWritten": False,
-        "staticAllowlistSize": 0,
+        # Phase 2A: report the live allowlist size for forensic accuracy.
+        # Lazy import avoids a module-level dependency on the policy module.
+        "staticAllowlistSize": _live_static_allowlist_size(),
         "candidateAllowlistMatched": any(
             "CANDIDATE" in code.upper()
             for code in result_dict.get("reasonCodes", [])

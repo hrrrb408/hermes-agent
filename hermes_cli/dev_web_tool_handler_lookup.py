@@ -49,6 +49,14 @@ _ID_RANDOM_BYTES = 16  # 128 bits of randomness
 
 # Safe metadata source: minimal static descriptor mapping for allowlisted tools
 # Only covers tools in STATIC_ALLOWLIST. Handler existence is NOT permission.
+#
+# Phase 2A: the five read-only inspection tools each get a safe-metadata
+# descriptor. They are Dev-WebUI-local bounded handlers (NOT registered Hermes
+# agent tools) resolved by dispatch_read_only_tool in
+# dev_web_read_only_tool_handlers.py. The registryKey MUST equal the
+# canonicalName (dev_web_tool_dispatch.py enforces this invariant). All
+# permission flags remain False — handler existence is necessary-but-not-
+# sufficient; only STATIC_ALLOWLIST membership grants execution eligibility.
 _SAFE_HANDLER_DESCRIPTORS: dict[str, dict[str, Any]] = {
     "clarify": {
         "canonicalName": "clarify",
@@ -57,6 +65,71 @@ _SAFE_HANDLER_DESCRIPTORS: dict[str, dict[str, Any]] = {
         "moduleName": "builtin.safe_metadata_only",
         "callableName": "clarify",
         "riskTier": "R0",
+        "allowlisted": True,
+        "dispatchAllowed": False,
+        "executionAllowed": False,
+        "providerSchemaAllowed": False,
+        "sideEffectFreeLookup": True,
+    },
+    "tool_policy_read": {
+        "canonicalName": "tool_policy_read",
+        "handlerId": "handler_tool_policy_read",
+        "registryKey": "tool_policy_read",
+        "moduleName": "builtin.safe_metadata_only",
+        "callableName": "tool_policy_read",
+        "riskTier": "R0",
+        "allowlisted": True,
+        "dispatchAllowed": False,
+        "executionAllowed": False,
+        "providerSchemaAllowed": False,
+        "sideEffectFreeLookup": True,
+    },
+    "route_governance_read": {
+        "canonicalName": "route_governance_read",
+        "handlerId": "handler_route_governance_read",
+        "registryKey": "route_governance_read",
+        "moduleName": "builtin.safe_metadata_only",
+        "callableName": "route_governance_read",
+        "riskTier": "R0",
+        "allowlisted": True,
+        "dispatchAllowed": False,
+        "executionAllowed": False,
+        "providerSchemaAllowed": False,
+        "sideEffectFreeLookup": True,
+    },
+    "audit_events_read": {
+        "canonicalName": "audit_events_read",
+        "handlerId": "handler_audit_events_read",
+        "registryKey": "audit_events_read",
+        "moduleName": "builtin.safe_metadata_only",
+        "callableName": "audit_events_read",
+        "riskTier": "R1",
+        "allowlisted": True,
+        "dispatchAllowed": False,
+        "executionAllowed": False,
+        "providerSchemaAllowed": False,
+        "sideEffectFreeLookup": True,
+    },
+    "dev_environment_read": {
+        "canonicalName": "dev_environment_read",
+        "handlerId": "handler_dev_environment_read",
+        "registryKey": "dev_environment_read",
+        "moduleName": "builtin.safe_metadata_only",
+        "callableName": "dev_environment_read",
+        "riskTier": "R1",
+        "allowlisted": True,
+        "dispatchAllowed": False,
+        "executionAllowed": False,
+        "providerSchemaAllowed": False,
+        "sideEffectFreeLookup": True,
+    },
+    "release_status_read": {
+        "canonicalName": "release_status_read",
+        "handlerId": "handler_release_status_read",
+        "registryKey": "release_status_read",
+        "moduleName": "builtin.safe_metadata_only",
+        "callableName": "release_status_read",
+        "riskTier": "R1",
         "allowlisted": True,
         "dispatchAllowed": False,
         "executionAllowed": False,

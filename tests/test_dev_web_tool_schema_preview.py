@@ -820,7 +820,7 @@ class TestRiskBasedAvailability:
 
     def test_static_allowlist_does_not_change(self) -> None:
         """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_preview_not_equal_execution(self) -> None:
         """preview_available != execution_available (conceptual test)."""
@@ -1135,7 +1135,7 @@ class TestStaticAllowlistInvariant:
     """STATIC_ALLOWLIST must remain frozenset({"clarify"})."""
 
     def test_static_allowlist_clarify_only(self) -> None:
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_static_allowlist_is_frozenset(self) -> None:
         assert isinstance(STATIC_ALLOWLIST, frozenset)
@@ -1199,7 +1199,7 @@ class TestCandidateAllowlist:
             assert result.preview_available is True, f"{name} should be available"
 
     def test_candidate_count(self) -> None:
-        assert len(CANDIDATE_ALLOWLIST) == 6
+        assert len(CANDIDATE_ALLOWLIST) == 11
 
     def test_candidate_tools_are_r0_r1_only(self) -> None:
         for name in CANDIDATE_ALLOWLIST:
@@ -1246,16 +1246,16 @@ class TestInventoryCounts:
     """Verify inventory counts remain correct."""
 
     def test_inventory_71(self) -> None:
-        assert len(TOOL_POLICY_INVENTORY) == 71
+        assert len(TOOL_POLICY_INVENTORY) == 76
 
     def test_denylist_26(self) -> None:
         assert len(STATIC_DENYLIST) == 26
 
     def test_candidate_6(self) -> None:
-        assert len(CANDIDATE_ALLOWLIST) == 6
+        assert len(CANDIDATE_ALLOWLIST) == 11
 
     def test_static_allowlist_1_clarify(self) -> None:
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
 
 # ===========================================================================

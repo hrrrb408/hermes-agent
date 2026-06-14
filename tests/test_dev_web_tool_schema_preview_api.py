@@ -100,12 +100,12 @@ class TestSchemaPreviewCatalog:
     def test_total_count_71(self, client):
         resp = client.get(f"{API}/tools/schemas")
         data = resp.json()["data"]
-        assert data["totalCount"] == 71
+        assert data["totalCount"] == 76
 
     def test_items_length_71(self, client):
         resp = client.get(f"{API}/tools/schemas")
         data = resp.json()["data"]
-        assert len(data["items"]) == 71
+        assert len(data["items"]) == 76
 
     def test_available_plus_unavailable_equals_total(self, client):
         resp = client.get(f"{API}/tools/schemas")
@@ -320,13 +320,13 @@ class TestExistingAPIUnchanged:
         resp = client.get(f"{API}/tools/policy")
         assert resp.status_code == 200
         data = resp.json()["data"]
-        assert data["inventoryCount"] == 71
+        assert data["inventoryCount"] == 76
 
     def test_tools_catalog_still_200(self, client):
         resp = client.get(f"{API}/tools/catalog")
         assert resp.status_code == 200
         data = resp.json()["data"]
-        assert data["total"] == 71
+        assert data["total"] == 76
 
     def test_catalog_schema_preview_available_still_false(self, client):
         resp = client.get(f"{API}/tools/catalog")
@@ -394,7 +394,7 @@ class TestSchemaPreviewBoundarySafety:
     def test_static_allowlist_remains_clarify_only(self, client):
         """STATIC_ALLOWLIST must remain frozenset({"clarify"}) after schema preview routes."""
         from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_denylist_unchanged(self, client):
         from hermes_cli.dev_web_tool_policy import STATIC_DENYLIST
@@ -402,7 +402,7 @@ class TestSchemaPreviewBoundarySafety:
 
     def test_candidate_unchanged(self, client):
         from hermes_cli.dev_web_tool_policy import CANDIDATE_ALLOWLIST
-        assert len(CANDIDATE_ALLOWLIST) == 6
+        assert len(CANDIDATE_ALLOWLIST) == 11
 
     def test_no_tool_dispatch(self, client):
         """Schema preview routes must not call any tool dispatch."""

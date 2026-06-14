@@ -232,13 +232,16 @@ def _build_result_summary(tool_result: dict[str, Any] | None) -> dict[str, Any]:
     """Build a SAFE result summary — no raw arguments, no message content.
 
     Only structural metadata is recorded: the tool result type, message length,
-    and question count.  This complies with the "no raw arguments in audit"
-    invariant.
+    question count, and (Phase 2A) the structured-result size in bytes. This
+    complies with the "no raw arguments in audit" invariant and works for both
+    the clarify shape (message + questions) and the Phase 2A read-only shape
+    (message + structured result).
     """
     summary: dict[str, Any] = {
         "toolResultType": None,
         "messageLength": 0,
         "questionCount": 0,
+        "resultSizeBytes": 0,
     }
     if isinstance(tool_result, dict):
         summary["toolResultType"] = tool_result.get("type")
@@ -248,6 +251,17 @@ def _build_result_summary(tool_result: dict[str, Any] | None) -> dict[str, Any]:
         questions = tool_result.get("questions")
         if isinstance(questions, list):
             summary["questionCount"] = len(questions)
+        # Phase 2A: record the serialized size of the structured result. The
+        # structured result itself is NEVER stored (no raw arguments); only
+        # its byte length, for observability.
+        result_body = tool_result.get("result")
+        if result_body is not None:
+            try:
+                summary["resultSizeBytes"] = len(
+                    json.dumps(result_body, ensure_ascii=False)
+                )
+            except (TypeError, ValueError):
+                summary["resultSizeBytes"] = 0
     return summary
 
 

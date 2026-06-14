@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useToolExecuteStore } from '@/stores/toolExecute'
+import { SELECTABLE_TOOLS } from '@/constants/readOnlyTools'
 
 const store = useToolExecuteStore()
 
@@ -18,6 +19,24 @@ const canDryRun = computed(
   () => !store.isDryRunLoading && !store.isExecuteLoading,
 )
 
+const isClarify = computed(() => store.canonicalName === 'clarify')
+
+// Per-tool argument specs for the read-only tools (clarify uses dedicated fields).
+const readOnlyArguments = computed(
+  () => store.selectedToolMeta?.arguments ?? [],
+)
+
+// Structured read-only result for the result panel.
+const structuredResultJson = computed(() => {
+  const result = store.executeResult?.toolResult?.result
+  if (result === undefined || result === null) return null
+  try {
+    return JSON.stringify(result, null, 2)
+  } catch {
+    return null
+  }
+})
+
 const sideEffectFlags = computed(() => {
   const se = store.sideEffects
   return [
@@ -26,6 +45,14 @@ const sideEffectFlags = computed(() => {
     { key: 'externalSideEffects', label: 'External side effects', value: se?.externalSideEffects ?? false },
   ]
 })
+
+// Safety badges — identical for every selectable tool (read-only invariants).
+const safetyBadges = computed(() => [
+  { key: 'read-only', label: 'Read-only', value: true },
+  { key: 'provider', label: 'Provider: off', value: true },
+  { key: 'write', label: 'Write: off', value: true },
+  { key: 'external', label: 'No external side effects', value: true },
+])
 
 function statusLabel(): string {
   switch (store.status) {
@@ -46,55 +73,117 @@ function statusLabel(): string {
   <section class="workspace-panel__section" aria-label="Tool Execute">
     <div class="panel-header">
       <span class="panel-badge">Dev-only</span>
-      <span class="panel-badge panel-badge--muted">Clarify-only</span>
+      <span class="panel-badge panel-badge--muted">Read-only tools</span>
     </div>
 
     <p class="tool-execute__intro">
-      Controlled execution workbench for the single allowlisted tool
-      <code>clarify</code>. Default gates block before any handler call.
-      Provider schema is never sent and no provider API is ever called.
+      Controlled execution workbench for the allowlisted read-only tools.
+      Default gates block before any handler call. Provider schema is never
+      sent and no provider API is ever called.
     </p>
 
-    <!-- Tool -->
+    <!-- Tool selector -->
     <div class="tool-execute__field">
       <label class="tool-execute__label" for="tool-execute-canonical">Tool</label>
-      <input
+      <select
         id="tool-execute-canonical"
-        class="tool-execute__input tool-execute__input--readonly"
-        type="text"
+        class="tool-execute__input"
         :value="store.canonicalName"
-        readonly
-        aria-readonly="true"
-      />
+        :disabled="store.isDryRunLoading || store.isExecuteLoading"
+        @change="store.setCanonicalName(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="tool in SELECTABLE_TOOLS" :key="tool.id" :value="tool.id">
+          {{ tool.displayName }} ({{ tool.id }})
+        </option>
+      </select>
     </div>
 
-    <!-- Question -->
-    <div class="tool-execute__field">
-      <label class="tool-execute__label" for="tool-execute-question">Clarify question</label>
-      <textarea
-        id="tool-execute-question"
-        class="tool-execute__textarea"
-        rows="2"
-        placeholder="Question to present"
-        :value="store.question"
-        :disabled="store.isDryRunLoading || store.isExecuteLoading"
-        @input="store.setQuestion(($event.target as HTMLTextAreaElement).value)"
-      ></textarea>
+    <!-- Selected tool metadata + safety badges -->
+    <div v-if="store.selectedToolMeta" class="tool-execute__meta">
+      <p class="tool-execute__description">{{ store.selectedToolMeta.description }}</p>
+      <ul class="tool-execute__badges">
+        <li>
+          <span class="tool-execute__chip">Risk: {{ store.selectedToolMeta.riskTier }}</span>
+        </li>
+        <li v-for="badge in safetyBadges" :key="badge.key">
+          <span class="tool-execute__chip tool-execute__chip--safe">{{ badge.label }}</span>
+        </li>
+        <li>
+          <span class="tool-execute__chip">Confirmation required</span>
+        </li>
+      </ul>
     </div>
 
-    <!-- Choices -->
-    <div class="tool-execute__field">
-      <label class="tool-execute__label" for="tool-execute-choices">Choices (optional, comma or newline)</label>
-      <textarea
-        id="tool-execute-choices"
-        class="tool-execute__textarea"
-        rows="2"
-        placeholder="Option A, Option B"
-        :value="store.choicesText"
-        :disabled="store.isDryRunLoading || store.isExecuteLoading"
-        @input="store.setChoicesText(($event.target as HTMLTextAreaElement).value)"
-      ></textarea>
-    </div>
+    <!-- Clarify arguments (question + choices) -->
+    <template v-if="isClarify">
+      <div class="tool-execute__field">
+        <label class="tool-execute__label" for="tool-execute-question">Clarify question</label>
+        <textarea
+          id="tool-execute-question"
+          class="tool-execute__textarea"
+          rows="2"
+          placeholder="Question to present"
+          :value="store.question"
+          :disabled="store.isDryRunLoading || store.isExecuteLoading"
+          @input="store.setQuestion(($event.target as HTMLTextAreaElement).value)"
+        ></textarea>
+      </div>
+
+      <div class="tool-execute__field">
+        <label class="tool-execute__label" for="tool-execute-choices">Choices (optional, comma or newline)</label>
+        <textarea
+          id="tool-execute-choices"
+          class="tool-execute__textarea"
+          rows="2"
+          placeholder="Option A, Option B"
+          :value="store.choicesText"
+          :disabled="store.isDryRunLoading || store.isExecuteLoading"
+          @input="store.setChoicesText(($event.target as HTMLTextAreaElement).value)"
+        ></textarea>
+      </div>
+    </template>
+
+    <!-- Read-only tool arguments (generic, bounded by the spec) -->
+    <template v-else>
+      <div v-for="spec in readOnlyArguments" :key="spec.key" class="tool-execute__field">
+        <label class="tool-execute__label" :for="`tool-execute-arg-${spec.key}`">{{ spec.label }}</label>
+        <input
+          v-if="spec.kind === 'boolean'"
+          :id="`tool-execute-arg-${spec.key}`"
+          type="checkbox"
+          class="tool-execute__checkbox"
+          :checked="Boolean(store.argumentValues[spec.key] ?? spec.default)"
+          :disabled="store.isDryRunLoading || store.isExecuteLoading"
+          @change="store.setArgumentValue(spec.key, ($event.target as HTMLInputElement).checked)"
+        />
+        <input
+          v-else-if="spec.kind === 'integer'"
+          :id="`tool-execute-arg-${spec.key}`"
+          type="number"
+          class="tool-execute__input"
+          :min="spec.min"
+          :max="spec.max"
+          :placeholder="String(spec.default ?? '')"
+          :value="(store.argumentValues[spec.key] as number | undefined) ?? ''"
+          :disabled="store.isDryRunLoading || store.isExecuteLoading"
+          @input="store.setArgumentValue(spec.key, ($event.target as HTMLInputElement).value)"
+        />
+        <input
+          v-else
+          :id="`tool-execute-arg-${spec.key}`"
+          type="text"
+          class="tool-execute__input"
+          :maxlength="spec.maxLength"
+          :placeholder="spec.label"
+          :value="(store.argumentValues[spec.key] as string | undefined) ?? ''"
+          :disabled="store.isDryRunLoading || store.isExecuteLoading"
+          @input="store.setArgumentValue(spec.key, ($event.target as HTMLInputElement).value)"
+        />
+      </div>
+      <p v-if="readOnlyArguments.length === 0" class="tool-execute__hint">
+        This tool takes no arguments.
+      </p>
+    </template>
 
     <!-- Actions -->
     <div class="tool-execute__actions">
@@ -173,6 +262,12 @@ function statusLabel(): string {
           >{{ flag.value }}</span>
         </li>
       </ul>
+
+      <!-- Structured read-only result -->
+      <div v-if="structuredResultJson" class="tool-execute__result">
+        <h5 class="tool-execute__subheading">Structured result</h5>
+        <pre id="tool-execute-structured-result" class="tool-execute__pre">{{ structuredResultJson }}</pre>
+      </div>
     </div>
   </section>
 </template>
@@ -216,9 +311,49 @@ function statusLabel(): string {
   resize: vertical;
 }
 
-.tool-execute__input--readonly {
-  opacity: 0.7;
-  cursor: not-allowed;
+.tool-execute__checkbox {
+  width: auto;
+}
+
+.tool-execute__meta {
+  margin-bottom: var(--space-2, 8px);
+}
+
+.tool-execute__description {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #a0a0aa);
+  margin: 0 0 var(--space-1, 4px);
+  line-height: 1.4;
+}
+
+.tool-execute__badges {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tool-execute__chip {
+  display: inline-block;
+  font-size: var(--font-size-xs, 0.6875rem);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
+  color: var(--color-text-secondary, #a0a0aa);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+}
+
+.tool-execute__chip--safe {
+  color: var(--color-success, #5eba7d);
+  border-color: var(--color-success, rgba(94, 186, 125, 0.3));
+}
+
+.tool-execute__hint {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #a0a0aa);
+  margin: 0 0 var(--space-2, 8px);
 }
 
 .tool-execute__actions {
@@ -286,6 +421,12 @@ function statusLabel(): string {
   color: var(--color-text-primary, #e4e4e8);
 }
 
+.tool-execute__subheading {
+  font-size: var(--font-size-xs, 0.75rem);
+  margin: var(--space-2, 8px) 0 2px;
+  color: var(--color-text-secondary, #a0a0aa);
+}
+
 .tool-execute__dl {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -321,5 +462,20 @@ function statusLabel(): string {
 
 .tool-execute__flag-value--false {
   color: var(--color-success, #5eba7d);
+}
+
+.tool-execute__pre {
+  background: var(--color-surface-raised, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm, 4px);
+  padding: var(--space-2, 8px);
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--color-text-primary, #e4e4e8);
+  max-height: 240px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

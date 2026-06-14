@@ -196,8 +196,11 @@ class TestBuildAuditEvent:
     def test_phase_is_correct(self, sample_event) -> None:
         assert sample_event["phase"] == "1G-04-07"
 
-    def test_static_allowlist_size_is_0(self, sample_event) -> None:
-        assert sample_event["staticAllowlistSize"] == 0
+    def test_static_allowlist_size_matches_live_allowlist(self, sample_event) -> None:
+        # Phase 2A: staticAllowlistSize is now len(STATIC_ALLOWLIST) (= 6).
+        from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
+
+        assert sample_event["staticAllowlistSize"] == len(STATIC_ALLOWLIST)
 
     def test_audit_written_is_false_in_built_event(
         self, sample_event
@@ -635,13 +638,13 @@ class TestSecurityBoundary:
 
     def test_static_allowlist_remains_clarify_only(self) -> None:
         """STATIC_ALLOWLIST must be exactly {"clarify"} before and after audit."""
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
         event = build_dry_run_audit_event(
             dry_run_result=dry_run_tool_policy("read_file"),
             result_status="ok",
         )
         # Static allowlist is checked inside build — verify unchanged
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
     def test_no_provider_imports(self) -> None:
         """Audit module must not import provider code."""

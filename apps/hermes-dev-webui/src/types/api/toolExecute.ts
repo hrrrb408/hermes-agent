@@ -50,6 +50,12 @@ export interface ClarifyToolResult {
   readonly type: string | null
   readonly message: string | null
   readonly questions?: readonly unknown[]
+  /**
+   * Phase 2A: structured result payload for read-only inspection tools
+   * (tool_policy_read, route_governance_read, audit_events_read,
+   * dev_environment_read, release_status_read). Absent for clarify.
+   */
+  readonly result?: unknown
 }
 
 /** Side-effect summary (execute success path only — all flags false). */

@@ -7344,13 +7344,25 @@ def _webui_check_openapi(
         "default disabled" if tool_execution_default_disabled else "enabled (development only)",
     )
 
-    # Static allowlist must be exactly {"clarify"} (Phase 1G-04-14)
+    # Static allowlist must be exactly the Phase 2A read-only set
+    # (clarify + five read-only inspection tools). Phase 1G-04-14 pinned
+    # {clarify}; Phase 2A expanded to 6 read-only tools.
     from hermes_cli.dev_web_tool_policy import STATIC_ALLOWLIST
-    allowlist_ok = STATIC_ALLOWLIST == frozenset({"clarify"})
+    _expected_allowlist = frozenset(
+        {
+            "clarify",
+            "tool_policy_read",
+            "route_governance_read",
+            "audit_events_read",
+            "dev_environment_read",
+            "release_status_read",
+        }
+    )
+    allowlist_ok = STATIC_ALLOWLIST == _expected_allowlist
     add_fn(
         "PASS" if allowlist_ok else "FAIL",
         "Static allowlist",
-        ", ".join(sorted(STATIC_ALLOWLIST)) if allowlist_ok else f"expected clarify, got {sorted(STATIC_ALLOWLIST)}",
+        ", ".join(sorted(STATIC_ALLOWLIST)) if allowlist_ok else f"expected {sorted(_expected_allowlist)}, got {sorted(STATIC_ALLOWLIST)}",
     )
 
     # Tool execution must be disabled

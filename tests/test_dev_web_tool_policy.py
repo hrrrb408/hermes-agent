@@ -73,7 +73,7 @@ class TestInventory:
     """Inventory count, uniqueness, and immutability."""
 
     def test_inventory_has_71_tools(self) -> None:
-        assert len(TOOL_POLICY_INVENTORY) == 71
+        assert len(TOOL_POLICY_INVENTORY) == 76
 
     def test_inventory_names_are_unique(self) -> None:
         names = list(TOOL_POLICY_INVENTORY.keys())
@@ -158,16 +158,26 @@ class TestRegistryEquality:
     """Verify policy inventory matches the real registry canonical names."""
 
     def test_inventory_matches_registry(self) -> None:
+        from hermes_cli.dev_web_read_only_tool_registry import (
+            PHASE_2A_READ_ONLY_TOOL_IDS,
+        )
+
         registry_names = _extract_registry_names_via_ast()
         policy_names = ALL_CANONICAL_TOOLS
 
+        # Phase 2A: the five read-only inspection tools are Dev-WebUI-local
+        # bounded handlers (NOT registered Hermes agent tools), so they are
+        # intentionally absent from the real tool registry. Exclude them from
+        # the registry cross-check.
+        policy_registry_names = policy_names - PHASE_2A_READ_ONLY_TOOL_IDS
+
         missing = registry_names - policy_names
-        unknown = policy_names - registry_names
+        unknown = policy_registry_names - registry_names
 
         assert not missing, f"Tools in registry but missing from policy: {missing}"
         assert not unknown, f"Tools in policy but not in registry: {unknown}"
-        assert len(registry_names) == 71
-        assert len(policy_names) == 71
+        assert len(registry_names) == 71  # real registry unchanged by Phase 2A
+        assert len(policy_names) == 76
 
 
 # ===================================================================
@@ -179,8 +189,8 @@ class TestRiskClassification:
     """Risk level distribution and uniqueness."""
 
     def test_risk_counts_are_exact(self) -> None:
-        assert len(TOOLS_BY_RISK[ToolRiskLevel.R0]) == 1
-        assert len(TOOLS_BY_RISK[ToolRiskLevel.R1]) == 5
+        assert len(TOOLS_BY_RISK[ToolRiskLevel.R0]) == 3
+        assert len(TOOLS_BY_RISK[ToolRiskLevel.R1]) == 8
         assert len(TOOLS_BY_RISK[ToolRiskLevel.R2]) == 19
         assert len(TOOLS_BY_RISK[ToolRiskLevel.R3]) == 26
         assert len(TOOLS_BY_RISK[ToolRiskLevel.R4]) == 17
@@ -211,7 +221,7 @@ class TestRiskClassification:
         for risk in ToolRiskLevel:
             classified |= TOOLS_BY_RISK[risk]
         assert classified == ALL_CANONICAL_TOOLS
-        assert len(classified) == 71
+        assert len(classified) == 76
 
     def test_candidate_tools_are_only_r0_or_r1(self) -> None:
         for name in CANDIDATE_ALLOWLIST:
@@ -297,8 +307,10 @@ class TestDenylist:
 
 
 class TestCandidateAllowlist:
-    """Candidate allowlist contents and empty static allowlist."""
+    """Candidate allowlist contents and Phase 2A static allowlist."""
 
+    # Phase 2A: candidate allowlist expanded from 6 to 11 (adds the five
+    # read-only inspection tools, which are also statically allowed).
     EXPECTED_CANDIDATES = frozenset(
         {
             "clarify",
@@ -307,42 +319,41 @@ class TestCandidateAllowlist:
             "read_file",
             "search_files",
             "session_search",
+            "tool_policy_read",
+            "route_governance_read",
+            "audit_events_read",
+            "dev_environment_read",
+            "release_status_read",
         }
     )
 
-    def test_candidate_allowlist_has_6_tools(self) -> None:
-        assert len(CANDIDATE_ALLOWLIST) == 6
+    def test_candidate_allowlist_has_11_tools(self) -> None:
+        assert len(CANDIDATE_ALLOWLIST) == 11
 
     def test_candidate_allowlist_exact_names(self) -> None:
         assert CANDIDATE_ALLOWLIST == self.EXPECTED_CANDIDATES
 
-    def test_static_allowlist_is_clarify_only(self) -> None:
-        assert len(STATIC_ALLOWLIST) == 1
-        assert STATIC_ALLOWLIST == frozenset({"clarify"})
+    def test_static_allowlist_is_phase_2a_read_only_set(self) -> None:
+        assert len(STATIC_ALLOWLIST) == 6
+        assert STATIC_ALLOWLIST == frozenset({"clarify", "tool_policy_read", "route_governance_read", "audit_events_read", "dev_environment_read", "release_status_read"})
 
-    def test_candidate_does_not_mean_enabled_except_clarify(self) -> None:
+    def test_candidate_does_not_mean_enabled_unless_statically_allowed(self) -> None:
+        # Every candidate's statically_allowed flag must agree with STATIC_ALLOWLIST.
         for name in CANDIDATE_ALLOWLIST:
             entry = TOOL_POLICY_INVENTORY[name]
             assert entry.candidate_allowlisted
-            if name == "clarify":
-                assert entry.statically_allowed, (
-                    f"clarify must be statically_allowed after Phase 1G-04-14"
-                )
-            else:
-                assert not entry.statically_allowed, (
-                    f"Candidate {name} is marked statically_allowed but not allowlisted"
-                )
+            assert entry.statically_allowed == (name in STATIC_ALLOWLIST), (
+                f"Candidate {name} statically_allowed={entry.statically_allowed} "
+                f"disagrees with STATIC_ALLOWLIST membership"
+            )
 
-    def test_only_clarify_is_statically_allowed(self) -> None:
+    def test_statically_allowed_matches_static_allowlist(self) -> None:
+        # Phase 2A: six tools are statically allowed (clarify + five read-only).
         for name, entry in TOOL_POLICY_INVENTORY.items():
-            if name == "clarify":
-                assert entry.statically_allowed, (
-                    f"clarify must be statically_allowed after Phase 1G-04-14"
-                )
-            else:
-                assert not entry.statically_allowed, (
-                    f"{name} is statically_allowed but not on STATIC_ALLOWLIST"
-                )
+            assert entry.statically_allowed == (name in STATIC_ALLOWLIST), (
+                f"{name} statically_allowed={entry.statically_allowed} disagrees "
+                f"with STATIC_ALLOWLIST membership"
+            )
 
 
 # ===================================================================
@@ -402,13 +413,14 @@ class TestDecisions:
         assert not d.known
         assert d.reason_code == REASON_TOOL_NOT_FOUND
 
-    def test_only_clarify_allowed_others_not(self) -> None:
+    def test_allowed_matches_static_allowlist(self) -> None:
+        # Phase 2A: allowed iff the tool is on STATIC_ALLOWLIST (clarify plus
+        # the five read-only inspection tools). Every other tool is denied.
         for name in ALL_CANONICAL_TOOLS:
             d = evaluate_static_tool_policy(name)
-            if name == "clarify":
-                assert d.allowed, f"clarify should be allowed"
-            else:
-                assert not d.allowed, f"{name} was allowed"
+            assert d.allowed == (name in STATIC_ALLOWLIST), (
+                f"{name} allowed={d.allowed} disagrees with STATIC_ALLOWLIST"
+            )
 
     def test_decision_is_frozen(self) -> None:
         d = evaluate_static_tool_policy("terminal")
@@ -777,12 +789,12 @@ class TestCompletenessValidation:
         result = validate_static_tool_policy()
         assert result.valid
         assert len(result.errors) == 0
-        assert result.canonical_count == 71
+        assert result.canonical_count == 76
 
     def test_completeness_risk_counts(self) -> None:
         result = validate_static_tool_policy()
-        assert result.risk_counts[ToolRiskLevel.R0] == 1
-        assert result.risk_counts[ToolRiskLevel.R1] == 5
+        assert result.risk_counts[ToolRiskLevel.R0] == 3
+        assert result.risk_counts[ToolRiskLevel.R1] == 8
         assert result.risk_counts[ToolRiskLevel.R2] == 19
         assert result.risk_counts[ToolRiskLevel.R3] == 26
         assert result.risk_counts[ToolRiskLevel.R4] == 17

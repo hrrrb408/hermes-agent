@@ -461,7 +461,7 @@ def determine_schema_preview_availability(
       - R0/R1/R2 → available
       - R3 → available with enhanced redaction
       - Candidate allowlist → available (but execution still disabled)
-      - STATIC_ALLOWLIST → remains empty, no effect on preview
+      - STATIC_ALLOWLIST → no effect on preview availability (Phase 2A: 6 read-only tools)
 
     Pure function: no IO, no side effects.
     """

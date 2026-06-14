@@ -206,6 +206,45 @@ def _redact_clarify_arguments(arguments: dict[str, Any] | None) -> dict[str, Any
     return safe
 
 
+def _redact_read_only_arguments(
+    canonical_name: str,
+    arguments: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Safe-normalize a read-only tool's arguments via the registry whitelist.
+
+    Phase 2A read-only tools route their arguments through the read-only
+    registry's strict-whitelist validator/normalizer, which drops unknown keys,
+    rejects forbidden/secret/path/shell stems, applies defaults, and bounds
+    values. The handler therefore never receives untrusted input.
+    """
+    from hermes_cli.dev_web_read_only_tool_registry import (
+        normalize_read_only_tool_arguments,
+    )
+
+    return normalize_read_only_tool_arguments(canonical_name, arguments)
+
+
+def _is_supported_controlled_tool(canonical_name: str) -> bool:
+    """Return True for ``clarify`` OR a Phase 2A read-only tool.
+
+    Lazy import keeps this module import-clean (the read-only registry imports
+    the policy module, which is stdlib-only — no cycle, but lazy import matches
+    the existing pattern used by ``lookup_handler_descriptor``).
+    """
+    if canonical_name == CLARIFY_TOOL_TYPE:
+        return True
+    try:
+        from hermes_cli.dev_web_read_only_tool_registry import (
+            is_phase_2a_read_only_tool,
+        )
+
+        return is_phase_2a_read_only_tool(canonical_name)
+    except Exception:
+        # If the registry cannot be imported, fail safe: only clarify is
+        # supported. No read-only tool can reach execution.
+        return False
+
+
 # ---------------------------------------------------------------------------
 # 4. Result / plan dataclasses
 # ---------------------------------------------------------------------------
@@ -403,7 +442,10 @@ def validate_handler_call_plan(
     if not isinstance(plan, HandlerCallPlan):
         return ERROR_HANDLER_CALL_PLAN_INVALID
 
-    if plan.canonical_name != CLARIFY_TOOL_TYPE:
+    # Phase 2A: support clarify OR Phase 2A read-only tools. Any other name
+    # (e.g. read_file, a write tool, an unknown tool) is blocked here as a
+    # defense-in-depth backstop. (The allowlist gate already rejected it.)
+    if not _is_supported_controlled_tool(plan.canonical_name):
         return ERROR_HANDLER_CALL_NOT_CLARIFY
     if not isinstance(plan.handler_lookup_id, str) or not plan.handler_lookup_id.strip():
         return ERROR_HANDLER_CALL_PLAN_INVALID
@@ -499,8 +541,9 @@ def build_handler_call_plan(
             GATE_HANDLER_CALL_DESCRIPTOR,
         )
 
-    # canonicalName must be clarify (defense-in-depth; allowlist already gates)
-    if canonical_name != CLARIFY_TOOL_TYPE:
+    # canonicalName must be a supported controlled tool (clarify OR a Phase 2A
+    # read-only tool). Defense-in-depth — the allowlist already gates this.
+    if not _is_supported_controlled_tool(canonical_name):
         return None, (
             ERROR_HANDLER_CALL_NOT_CLARIFY,
             DECISION_BLOCKED_HANDLER_CALL_NOT_CLARIFY,
@@ -585,9 +628,14 @@ def build_handler_call_plan(
             GATE_HANDLER_CALL_PLAN_VALIDATION,
         )
 
-    # Safe-normalize the clarify arguments (drops all non-clarify fields,
-    # redacts secrets, bounds choices).
-    normalized_arguments = _redact_clarify_arguments(arguments)
+    # Safe-normalize the arguments. Clarify uses its own bounded normalizer
+    # (question + choices only). Phase 2A read-only tools use the registry's
+    # strict-whitelist normalizer (drops unknown keys, rejects secret/path/shell
+    # stems, applies defaults, bounds values).
+    if canonical_name == CLARIFY_TOOL_TYPE:
+        normalized_arguments = _redact_clarify_arguments(arguments)
+    else:
+        normalized_arguments = _redact_read_only_arguments(canonical_name, arguments)
 
     plan = HandlerCallPlan(
         canonical_name=canonical_name,
@@ -629,18 +677,55 @@ def build_handler_call_plan(
 # ---------------------------------------------------------------------------
 
 
+def _normalize_read_only_handler_result(
+    canonical_name: str,
+    raw_tool_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Normalize a Phase 2A read-only handler result into a safe envelope.
+
+    The read-only handlers return ``{"type": <toolId>, "message": <summary>,
+    "result": <structured>}``. The structured result is already redacted and
+    size-bounded by ``dispatch_read_only_tool``; here we defensively re-redact
+    the message and ensure a safe shape. Never exposes raw token, full
+    tokenHash, raw arguments, callable/function repr, or secrets.
+    """
+    result = raw_tool_result.get("result")
+    if not isinstance(result, dict):
+        result = {}
+
+    message = raw_tool_result.get("message")
+    if not isinstance(message, str):
+        message = "Read-only inspection completed."
+    message = _redact_value(message)
+    if not isinstance(message, str) or not message:
+        message = "Read-only inspection completed."
+
+    return {
+        "type": canonical_name,
+        "message": message,
+        "result": _redact_value(result),
+    }
+
+
 def normalize_handler_result(
     *,
     handler_call_id: str,
     canonical_name: str,
     raw_tool_result: dict[str, Any],
 ) -> dict[str, Any]:
-    """Normalize a clarify handler result into a safe envelope.
+    """Normalize a handler result into a safe envelope.
+
+    For clarify, the result is normalized to the clarify shape (message +
+    questions). For a Phase 2A read-only tool, the structured result is
+    preserved (already redacted and size-bounded by the dispatcher).
 
     Never exposes raw token, full tokenHash, raw unredacted arguments, callable
     object, function repr, provider credentials, secrets, or authorization
-    headers.  Re-redacts the message / question labels defensively.
+    headers. Re-redacts the message / question labels defensively.
     """
+    if _is_supported_controlled_tool(canonical_name) and canonical_name != CLARIFY_TOOL_TYPE:
+        return _normalize_read_only_handler_result(canonical_name, raw_tool_result)
+
     message = raw_tool_result.get("message")
     if not isinstance(message, str):
         message = "Clarification requested."
@@ -681,26 +766,32 @@ def attempt_clarify_handler_call(
     execute_request_id: str | None = None,
     pre_execution_audit_id: str | None = None,
     arguments: dict[str, Any] | None = None,
+    hermes_home: str | None = None,
 ) -> HandlerCallResult:
-    """Attempt a clarify-only handler call under the explicit dev gate.
+    """Attempt a controlled handler call under the explicit dev gate.
+
+    Phase 2A generalizes this from clarify-only to dispatch-by-name: clarify
+    uses the inline bounded handler; Phase 2A read-only tools use
+    ``dispatch_read_only_tool``. The function name is retained for stability
+    of the call site and tests.
 
     Gate order:
       70. Tool handler call enable gate (HERMES_TOOL_HANDLER_CALL_ENABLED)
-      71. canonicalName == clarify (clarify-only)
+      71. canonicalName is a supported controlled tool (clarify OR read-only)
       72. Dispatch plan available
       73. Handler descriptor / dispatch plan consistency
       74. Handler call plan build
       75. Handler call plan validation
       76. Provider disabled invariant
       77. handlerCallId generated
-      78. Clarify handler invocation
+      78. Handler invocation (clarify inline OR read-only dispatch)
       79. Handler result normalization
 
     Default (gate unset) → blocked (tool_handler_call_not_enabled), no handler
     invoked, no execution, no provider call.
 
-    Explicit gate + clarify + all consistency → completed, safe tool result,
-    all external side-effect flags false.
+    Explicit gate + supported tool + all consistency → completed, safe tool
+    result, all external side-effect flags false.
     """
     # Gate 70: Tool handler call enable gate
     if not is_handler_call_enabled():
@@ -711,8 +802,9 @@ def attempt_clarify_handler_call(
             canonical_name=canonical_name,
         )
 
-    # Gate 71: clarify-only (defense-in-depth)
-    if canonical_name != CLARIFY_TOOL_TYPE:
+    # Gate 71: supported controlled tool (clarify OR Phase 2A read-only).
+    # Defense-in-depth — the allowlist gate already rejected non-members.
+    if not _is_supported_controlled_tool(canonical_name):
         return _fail_closed(
             error_code=ERROR_HANDLER_CALL_NOT_CLARIFY,
             decision=DECISION_BLOCKED_HANDLER_CALL_NOT_CLARIFY,
@@ -748,9 +840,24 @@ def attempt_clarify_handler_call(
     # Gate 77: handlerCallId generated (correlation-only, not a credential)
     handler_call_id = generate_handler_call_id()
 
-    # Gate 78: Clarify handler invocation (bounded, deterministic, safe)
+    # Gate 78: Handler invocation (bounded, deterministic, safe).
+    # Clarify uses the inline bounded handler; Phase 2A read-only tools use
+    # the bounded read-only dispatcher. Both are side-effect-free re-
+    # implementations — neither imports tools/ (no production registry side
+    # effects), neither calls a Provider, neither writes.
     try:
-        raw_tool_result = _run_clarify_handler(plan)
+        if canonical_name == CLARIFY_TOOL_TYPE:
+            raw_tool_result = _run_clarify_handler(plan)
+        else:
+            from hermes_cli.dev_web_read_only_tool_handlers import (
+                dispatch_read_only_tool,
+            )
+
+            raw_tool_result = dispatch_read_only_tool(
+                canonical_name,
+                plan.normalized_arguments,
+                hermes_home=hermes_home,
+            )
     except Exception:
         # Any unexpected handler failure fails closed.
         return _fail_closed(

@@ -4,7 +4,7 @@ Phase: 1G-03-02 — Schema Preview Read-Only Service
 
 Covers:
   - Import safety (no side effects, no file IO, no network, no handler calls)
-  - Catalog count (total = 71)
+  - Catalog count (total = 76)
   - Catalog canonicalName set equals Tool Policy inventory
   - Stable sorting by canonicalName
   - Single lookup — existing tool found
@@ -166,19 +166,19 @@ class TestCatalogCount:
 
     def test_total_count_71_default_source(self):
         catalog = list_schema_previews()
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
 
     def test_total_count_71_fake_source(self):
         catalog = list_schema_previews(schema_source=_fake_source_all)
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
 
     def test_items_length_71_default_source(self):
         catalog = list_schema_previews()
-        assert len(catalog.items) == 71
+        assert len(catalog.items) == 76
 
     def test_items_length_71_fake_source(self):
         catalog = list_schema_previews(schema_source=_fake_source_all)
-        assert len(catalog.items) == 71
+        assert len(catalog.items) == 76
 
     def test_canonical_name_set_equals_inventory(self):
         catalog = list_schema_previews()
@@ -365,7 +365,7 @@ class TestEmptySchemaSource:
     def test_no_crash_default_source(self):
         """Default source should never crash."""
         catalog = list_schema_previews()
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
 
     def test_empty_source_helper_returns_none(self):
         """The _empty_schema_source should return None for any input."""
@@ -417,7 +417,7 @@ class TestInvalidSchema:
             return "bad"
 
         catalog = list_schema_previews(schema_source=bad_source)
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
 
 
 # ===========================================================================
@@ -455,7 +455,7 @@ class TestSourceExceptionIsolation:
             raise RuntimeError("Source broken")
 
         catalog = list_schema_previews(schema_source=error_source)
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
         for item in catalog.items:
             assert item.reason_code == REASON_UNAVAILABLE_SCHEMA_SOURCE_ERROR
 
@@ -471,7 +471,7 @@ class TestSourceExceptionIsolation:
             return _FAKE_SCHEMA
 
         catalog = list_schema_previews(schema_source=partial_error_source)
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
         # Should have a mix of available, unavailable, and source-error items
         source_errors = sum(
             1 for item in catalog.items
@@ -575,28 +575,28 @@ class TestRiskDenylistCandidate:
 
     def test_candidate_count(self):
         """Candidate allowlist should have 6 tools."""
-        assert len(CANDIDATE_ALLOWLIST) == 6
+        assert len(CANDIDATE_ALLOWLIST) == 11
 
     def test_static_allowlist_empty(self):
         """STATIC_ALLOWLIST must remain empty."""
-        assert len(STATIC_ALLOWLIST) == 0
+        assert len(STATIC_ALLOWLIST) == 6
 
     def test_catalog_available_unavailable_counts(self):
         """Catalog counts should be consistent with risk distribution."""
         catalog = list_schema_previews(schema_source=_fake_source_all)
         assert catalog.available_count + catalog.unavailable_count == catalog.total_count
-        assert catalog.total_count == 71
+        assert catalog.total_count == 76
         # With full schema source: R0-R3 available, R4-R5 and denylist unavailable
         # R4 tools are all denylisted, R5 tools are all denylisted
-        # So unavailable = denylist (26) = 26
+        # So unavailable = denylist (26) = 26; available = 76 - 26 = 50.
         assert catalog.unavailable_count == 26
-        assert catalog.available_count == 45
+        assert catalog.available_count == 50
 
     def test_catalog_available_unavailable_counts_default_source(self):
         """With default empty source, everything is unavailable."""
         catalog = list_schema_previews()
         assert catalog.available_count == 0
-        assert catalog.unavailable_count == 71
+        assert catalog.unavailable_count == 76
 
     def test_preview_is_not_execution(self):
         """Schema preview available does NOT mean execution available."""
@@ -720,9 +720,9 @@ class TestSummaryCounts:
         catalog1 = list_schema_previews()
         catalog2 = list_schema_previews(schema_source=_fake_source_all)
         catalog3 = list_schema_previews(schema_source=_fake_source_none)
-        assert catalog1.total_count == 71
-        assert catalog2.total_count == 71
-        assert catalog3.total_count == 71
+        assert catalog1.total_count == 76
+        assert catalog2.total_count == 76
+        assert catalog3.total_count == 76
 
 
 # ===========================================================================
@@ -760,9 +760,9 @@ class TestExistingApiUnchanged:
 
         service = DevToolPolicyQueryService()
         status = service.get_policy_status()
-        assert status.inventory_count == 71
+        assert status.inventory_count == 76
         assert status.permanent_denylist_count == 26
-        assert status.candidate_allowlist_count == 6
-        assert status.enabled_allowlist_count == 0
+        assert status.candidate_allowlist_count == 11
+        assert status.enabled_allowlist_count == 6
         assert status.execution.enabled is False
         assert status.execution.provider_schema_sent is False
