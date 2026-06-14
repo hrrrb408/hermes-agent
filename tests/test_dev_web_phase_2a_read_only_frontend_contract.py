@@ -51,7 +51,7 @@ def phase_2a_home(tmp_path):
 
 def _fake_probe():
     return {
-        "productionGatewayPidObserved": 1962,
+        "productionGatewayPidObserved": 28428,
         "productionGatewayProcessCount": 1,
         "productionGatewayCommandSummary": "hermes_cli.main gateway run",
         "port5180": "free",

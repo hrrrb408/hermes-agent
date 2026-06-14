@@ -216,3 +216,16 @@ round-trip has been hardened through `HARDENING-2B-H1-001`; the provider
 boundary audit is recorded under `PROVIDER-BOUNDARY-AUDIT-2B-H1-001`; the
 transient flake is closed under `PROVIDER-FLAKE-CLOSURE-2B-H1-001`. Phase 2C
 was **not** started.
+
+## Phase 2C Update — Controlled Tool Write Execution
+
+Phase 2C is now complete and pushed. It reuses the same "no new route"
+discipline established by Phase 2B: the write preview and write execute paths
+branch on `mode` inside the existing `/tools/dry-run` and `/tools/execute`
+routes. The provider round-trip gains a preview-only write mode
+(`providerWriteMode = "preview_only"` or write tool ids in `allowedToolIds`)
+that generates a write preview but **never auto-executes**
+(`blocked_write_provider_auto_execute_denied`); real provider write execution
+remains blocked. The provider security boundary is unchanged —
+`externalNetworkCalled` stays false for all write paths. See
+[phase-2c-controlled-tool-write-execution](phase-2c-controlled-tool-write-execution.md).

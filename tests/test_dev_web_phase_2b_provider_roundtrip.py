@@ -56,7 +56,7 @@ def _enable_gates(monkeypatch):
         handlers,
         "_probe_system_state",
         lambda: {
-            "productionGatewayPidObserved": 1962,
+            "productionGatewayPidObserved": 28428,
             "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "hermes_cli.main gateway run",
             "port5180": "free",

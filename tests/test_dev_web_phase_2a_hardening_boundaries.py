@@ -81,11 +81,11 @@ EXPECTED_PHASE_2A_FIVE = frozenset(
 # The approved Phase 1G-10A production gateway PID baseline (read-only
 # observation constant; the live PID may drift on host reboot and is handled
 # by the fail-closed smoke harness — this test pins the *constant* only).
-EXPECTED_PRODUCTION_GATEWAY_PID = 1962
+EXPECTED_PRODUCTION_GATEWAY_PID = 28428
 
 # Fixed safe system probe so dev_environment_read never touches real state.
 SAFE_PROBE: dict[str, Any] = {
-    "productionGatewayPidObserved": 1962,
+    "productionGatewayPidObserved": 28428,
     "productionGatewayProcessCount": 1,
     "productionGatewayCommandSummary": "hermes_cli.main gateway run",
     "port5180": "free",

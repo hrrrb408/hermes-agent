@@ -57,8 +57,11 @@ HEALTH_INTERVAL=1
 PRODUCTION_HERMES_HOME="/Users/huangruibang/.hermes"
 DEFAULT_DEV_HERMES_HOME="/Users/huangruibang/Code/hermes-home-dev"
 # Phase 1G-10A refresh: host reboot changed the sealed production gateway PID from 69355 to 1962.
+# Phase 2C authorized refresh: an external gateway restart during the Phase 2C session moved
+# the live PID from 1962 to 28428 (1 process, healthy, not caused by Phase 2C work). Baseline
+# refreshed under user authorization (task sanctions an authorized PID refresh on drift).
 # Keep this value pinned so the dev-only smoke harness fails closed on future PID drift.
-PRODUCTION_GATEWAY_PID=1962
+PRODUCTION_GATEWAY_PID=28428
 SMOKE_SPEC_REL="tests/smoke/phase-1g-04-30-execute-audit-smoke.spec.ts"
 
 # PIDs tracked by this script (only these are ever killed)
@@ -74,15 +77,16 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
       echo "  phase2a                              Profile C — Phase 2A read-only multi-tool execution"
       echo "  phase2b_provider_fake_roundtrip      Profile D — Phase 2B provider fake round-trip"
-      echo "  all                                  Run Profile A, B, C, then D (default)"
+      echo "  phase2c_write_sandbox                Profile E — Phase 2C controlled dev-sandbox write"
+      echo "  all                                  Run Profile A, B, C, D, then E (default)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -288,6 +292,7 @@ configure_gates() {
   unset HERMES_POST_EXECUTION_AUDIT_ENABLED
   unset HERMES_PROVIDER_API_ENABLED
   unset HERMES_PROVIDER_MODE
+  unset HERMES_TOOL_WRITE_EXECUTION_ENABLED
   unset EXECUTE_EXPECTED
   # Never carry real provider keys into the smoke run
   unset XAI_API_KEY XAI_BASE_URL GROK_API_KEY GROK_BASE_URL
@@ -327,6 +332,17 @@ configure_gates() {
       export HERMES_TOOL_HANDLER_CALL_ENABLED=true
       export HERMES_PROVIDER_MODE=fake
       export EXECUTE_EXPECTED=phase2b_provider_fake_roundtrip
+      ;;
+    phase2c_write_sandbox)
+      # Phase 2C: controlled dev-sandbox write. All controlled-execution gates
+      # on plus the Phase 2C write-enablement gate. The smoke enables write
+      # execution ONLY for this dev smoke profile; the script trap / finalize
+      # unsets it on exit. No production rollout, no ~/.hermes access.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
+      export EXECUTE_EXPECTED=phase2c_write_sandbox
       ;;
   esac
 }
@@ -433,6 +449,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-2a-read-only-tools-smoke.spec.ts"
   elif [ "$profile" = "phase2b_provider_fake_roundtrip" ]; then
     spec_rel="tests/smoke/phase-2b-provider-fake-roundtrip-smoke.spec.ts"
+  elif [ "$profile" = "phase2c_write_sandbox" ]; then
+    spec_rel="tests/smoke/phase-2c-write-sandbox-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -476,7 +494,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -484,6 +502,7 @@ case "$PROFILE" in
     run_smoke_for_profile "completed"
     run_smoke_for_profile "phase2a"
     run_smoke_for_profile "phase2b_provider_fake_roundtrip"
+    run_smoke_for_profile "phase2c_write_sandbox"
     ;;
 esac
 

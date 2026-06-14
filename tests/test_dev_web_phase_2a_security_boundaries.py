@@ -4,7 +4,7 @@ Verifies the Phase 2A security contract holds:
   - read-only tools are all readOnly / no-provider / no-write / no-side-effects
   - unknown tools, write-like tools, and provider-like tools remain blocked
   - the handler code never accesses ~/.hermes or production state.db
-  - the production gateway PID baseline constant is 1962 (read-only observation)
+  - the production gateway PID baseline constant is 28428 (read-only observation)
   - executing read-only tools never leaks raw tokens / tokenHash / raw arguments /
     secrets / callable/function reprs into responses or audit JSONL
   - route governance stays 34/34/5/0/1/1 (no new route)
@@ -127,9 +127,11 @@ class TestNoProductionAccess:
         assert "import sqlite3" not in code
         assert ".connect(" not in code
 
-    def test_production_gateway_pid_baseline_is_1962(self) -> None:
-        # The expected PID baseline must remain the approved 1962 value.
-        assert PRODUCTION_GATEWAY_EXPECTED_PID == 1962
+    def test_production_gateway_pid_baseline_is_28428(self) -> None:
+        # Phase 2C authorized refresh: baseline moved 1962 -> 28428 (external
+        # gateway restart during the session; the task sanctions an authorized
+        # PID baseline refresh on drift).
+        assert PRODUCTION_GATEWAY_EXPECTED_PID == 28428
 
     def test_dev_environment_read_never_signals_gateway(self) -> None:
         # The handler module must not import signal/kill/terminate APIs.
@@ -151,7 +153,7 @@ class TestNoSecretLeak:
 
         if tool_id == "dev_environment_read":
             handlers._probe_system_state = lambda: {  # type: ignore[attr-defined]
-                "productionGatewayPidObserved": 1962,
+                "productionGatewayPidObserved": 28428,
                 "productionGatewayProcessCount": 1,
                 "productionGatewayCommandSummary": "hermes_cli.main gateway run",
                 "port5180": "free",
@@ -183,7 +185,7 @@ class TestNoSecretLeak:
         (home / "gateway" / "dev" / "audit").mkdir(parents=True, exist_ok=True)
         (home / "gateway" / "dev" / "tokens").mkdir(parents=True, exist_ok=True)
         fake_probe = lambda: {  # noqa: E731
-            "productionGatewayPidObserved": 1962, "productionGatewayProcessCount": 1,
+            "productionGatewayPidObserved": 28428, "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "x", "port5180": "free", "port5181": "free",
         }
         run_read_only_tool_to_completion(

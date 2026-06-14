@@ -96,11 +96,11 @@ EXPECTED_STATIC_ALLOWLIST = frozenset(
     }
 )
 
-EXPECTED_PRODUCTION_GATEWAY_PID = 1962
+EXPECTED_PRODUCTION_GATEWAY_PID = 28428
 
 # Fixed safe system probe so dev_environment_read never touches real state.
 SAFE_PROBE: dict[str, Any] = {
-    "productionGatewayPidObserved": 1962,
+    "productionGatewayPidObserved": 28428,
     "productionGatewayProcessCount": 1,
     "productionGatewayCommandSummary": "hermes_cli.main gateway run",
     "port5180": "free",

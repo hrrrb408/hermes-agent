@@ -42,6 +42,8 @@ from typing import Any
 _DRY_RUN_AUDIT_FILENAME = "tool-dry-run-audit.jsonl"
 _PRE_EXECUTION_AUDIT_FILENAME = "tool-pre-execution-audit.jsonl"
 _POST_EXECUTION_AUDIT_FILENAME = "tool-post-execution-audit.jsonl"
+# Phase 2C: controlled write audit (tool-write-audit.jsonl).
+_WRITE_AUDIT_FILENAME = "tool-write-audit.jsonl"
 
 _AUDIT_DIR_RELATIVE = "gateway/dev/audit"
 
@@ -59,8 +61,14 @@ _DIGEST_SHORT_LENGTH = 24  # short-form prefix for digest fields
 AUDIT_KIND_DRY_RUN = "dry_run"
 AUDIT_KIND_PRE_EXECUTION = "pre_execution"
 AUDIT_KIND_POST_EXECUTION = "post_execution"
+AUDIT_KIND_WRITE = "write"
 VALID_AUDIT_KINDS: frozenset[str] = frozenset(
-    {AUDIT_KIND_DRY_RUN, AUDIT_KIND_PRE_EXECUTION, AUDIT_KIND_POST_EXECUTION}
+    {
+        AUDIT_KIND_DRY_RUN,
+        AUDIT_KIND_PRE_EXECUTION,
+        AUDIT_KIND_POST_EXECUTION,
+        AUDIT_KIND_WRITE,
+    }
 )
 
 # Map audit kind → JSONL filename
@@ -68,6 +76,7 @@ _KIND_FILENAME: dict[str, str] = {
     AUDIT_KIND_DRY_RUN: _DRY_RUN_AUDIT_FILENAME,
     AUDIT_KIND_PRE_EXECUTION: _PRE_EXECUTION_AUDIT_FILENAME,
     AUDIT_KIND_POST_EXECUTION: _POST_EXECUTION_AUDIT_FILENAME,
+    AUDIT_KIND_WRITE: _WRITE_AUDIT_FILENAME,
 }
 
 # Error codes
@@ -402,10 +411,45 @@ def _normalize_post_execution_item(event: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
+def _normalize_write_item(event: dict[str, Any]) -> dict[str, Any]:
+    """Normalize one Phase 2C controlled-write audit event.
+
+    Surfaces only safe, bounded fields: ids, operation, hashes, status, and the
+    write side-effect flags. Never echoes raw arguments, full content, secrets,
+    or the canonical sandbox path.
+    """
+    side_effects = {
+        "readOnly": False,
+        "writeRequired": True,
+        "localSideEffects": True,
+        "externalSideEffects": False,
+        "providerSchemaSent": False,
+        "providerApiCalled": False,
+        "externalNetworkCalled": False,
+    }
+    item: dict[str, Any] = {
+        "auditKind": AUDIT_KIND_WRITE,
+        "auditId": _sanitize_scalar(_safe_get(event, "eventId")),
+        "timestamp": _sanitize_scalar(_safe_get(event, "timestamp")),
+        "eventType": _sanitize_scalar(_safe_get(event, "eventType")),
+        "toolId": _sanitize_scalar(_safe_get(event, "toolId")),
+        "writePlanId": _sanitize_scalar(_safe_get(event, "writePlanId")),
+        "writePreviewId": _sanitize_scalar(_safe_get(event, "writePreviewId")),
+        "rollbackId": _sanitize_scalar(_safe_get(event, "rollbackId")),
+        "operation": _sanitize_scalar(_safe_get(event, "operation")),
+        "targetRelativePath": _sanitize_scalar(_safe_get(event, "targetRelativePath")),
+        "status": _sanitize_scalar(_safe_get(event, "status")),
+        "blockedReason": _sanitize_scalar(_safe_get(event, "blockedReason")),
+        "sideEffects": side_effects,
+    }
+    return item
+
+
 _NORMALIZERS = {
     AUDIT_KIND_DRY_RUN: _normalize_dry_run_item,
     AUDIT_KIND_PRE_EXECUTION: _normalize_pre_execution_item,
     AUDIT_KIND_POST_EXECUTION: _normalize_post_execution_item,
+    AUDIT_KIND_WRITE: _normalize_write_item,
 }
 
 

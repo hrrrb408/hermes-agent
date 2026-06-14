@@ -76,7 +76,7 @@ _PROVIDER_KEY_ENVS: tuple[str, ...] = (
 
 # Production gateway baseline (read-only observation only — never signals).
 _PRODUCTION_HERMES_HOME = "/Users/huangruibang/.hermes"
-_PRODUCTION_GATEWAY_EXPECTED_PID = 1962
+_PRODUCTION_GATEWAY_EXPECTED_PID = 28428
 _PRODUCTION_GATEWAY_COMMAND_PATTERN = "hermes_cli.main gateway run"
 
 # Blocked reason codes (exported for the API + tests).

@@ -73,3 +73,15 @@ deferral, recorded honestly.
 See [phase-2b-provider-audit-model.md](phase-2b-provider-audit-model.md).
 Every lifecycle event is written with `redactionApplied=true`; the audit
 file lives under the dev `HERMES_HOME` and is never committed.
+
+## Phase 2C Update — Controlled Tool Write Execution
+
+Phase 2C adds a **separate** write boundary that reuses this provider
+boundary's disciplines (no new route, `mode` branching, full redaction, dev
+`HERMES_HOME`-only audit files). A provider may *suggest* a Phase 2C write
+tool; the system generates a write **preview only** and blocks auto-execution
+(`blocked_write_provider_auto_execute_denied`), with
+`externalNetworkCalled=false`. The provider security boundary itself is
+unchanged. See
+[phase-2c-write-sandbox-security](phase-2c-write-sandbox-security.md) and
+[phase-2c-write-audit-model](phase-2c-write-audit-model.md).

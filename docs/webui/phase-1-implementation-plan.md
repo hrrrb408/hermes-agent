@@ -2013,3 +2013,18 @@ Audit ID: `PROVIDER-BOUNDARY-AUDIT-2B-H1-001`; Provider Flake Closure ID:
   (`chore(webui): harden phase 2b provider roundtrip`).
 - **Next recommended task: Phase 2C Tool Write Controlled Execution**
   (separately authorized).
+
+## Phase 2C Update — Controlled Tool Write Execution
+
+Phase 2C is complete and pushed (`feat(webui): add controlled sandbox write
+tools`). It adds four controlled dev-sandbox write tools
+(`dev_sandbox_file_write` / `_append` / `_patch` / `_readback`) in a **separate**
+registry + allowlist + execution chain; the Phase 1G/2A `STATIC_ALLOWLIST`
+stays frozen at six read-only tools. Writes are sandbox-only, two-phase
+(plan/preview → confirm/execute), gated by
+`HERMES_TOOL_WRITE_EXECUTION_ENABLED`, and fully audited with rollback
+manifests. **No new HTTP route** — `/tools/dry-run` and `/tools/execute` are
+reused via `mode` branches, so route governance stays 34/34/5/0/1/1. No
+shell/database/external-service write, no production rollout, no `~/.hermes`
+or production `state.db` access. See
+[phase-2c-controlled-tool-write-execution](phase-2c-controlled-tool-write-execution.md).

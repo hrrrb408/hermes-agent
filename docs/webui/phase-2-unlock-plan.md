@@ -310,3 +310,16 @@ Phase 1G is sealed; no further 1G-`xx` micro-phases will be created. Each
 Phase 2 slice preserves every Phase 1G safety invariant and is individually
 authorized before implementation begins. Phase 2A implementation was not started
 by Phase 1G-11.*
+
+## Phase 2C Update — Controlled Tool Write Execution
+
+Phase 2C (the third Phase 2 vertical) is complete and pushed. It adds
+controlled dev-sandbox write tools behind a separate allowlist and a two-phase
+(plan/preview → confirm/execute) chain, gated by
+`HERMES_TOOL_WRITE_EXECUTION_ENABLED`. Every Phase 1G/2A/2B safety invariant is
+preserved: `STATIC_ALLOWLIST` stays frozen at six read-only tools, route
+governance stays 34/34/5/0/1/1, no shell/database/external-service write, no
+production rollout, no `~/.hermes` or production `state.db` access, and no
+secret/token/raw-argument leak. Provider write is preview-only and never
+auto-executes. See
+[phase-2c-controlled-tool-write-execution](phase-2c-controlled-tool-write-execution.md).

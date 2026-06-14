@@ -37,7 +37,7 @@ def _enable_gates(monkeypatch):
     import hermes_cli.dev_web_read_only_tool_handlers as handlers
 
     monkeypatch.setattr(handlers, "_probe_system_state", lambda: {
-        "productionGatewayPidObserved": 1962, "productionGatewayProcessCount": 1,
+        "productionGatewayPidObserved": 28428, "productionGatewayProcessCount": 1,
         "productionGatewayCommandSummary": "x", "port5180": "free", "port5181": "free",
     })
 

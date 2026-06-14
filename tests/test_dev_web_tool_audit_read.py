@@ -551,8 +551,9 @@ class TestRedactionSafety:
 
 class TestConstants:
     def test_valid_kinds(self) -> None:
+        # Phase 2C adds the "write" kind (tool-write-audit.jsonl).
         assert VALID_AUDIT_KINDS == frozenset(
-            {"dry_run", "pre_execution", "post_execution"}
+            {"dry_run", "pre_execution", "post_execution", "write"}
         )
 
     def test_kind_filename_mapping_covers_all(self) -> None:

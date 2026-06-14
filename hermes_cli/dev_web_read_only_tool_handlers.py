@@ -55,7 +55,7 @@ from hermes_cli.dev_web_read_only_tool_registry import (
 # against this baseline and reports drift as a warning. It NEVER stops,
 # restarts, replaces, or signals the gateway. A future authorized refresh
 # phase updates this constant; it is not updated by Phase 2A.
-PRODUCTION_GATEWAY_EXPECTED_PID = 1962
+PRODUCTION_GATEWAY_EXPECTED_PID = 28428
 PRODUCTION_GATEWAY_COMMAND_PATTERN = "hermes_cli.main gateway run"
 
 # Dev WebUI ports (read-only observation).

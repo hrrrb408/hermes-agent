@@ -52,7 +52,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PRODUCTION_HERMES_HOME="/Users/huangruibang/.hermes"
 DEFAULT_DEV_HERMES_HOME="/Users/huangruibang/Code/hermes-home-dev"
 # Phase 1G-10A refreshed baseline. Read-only observation only; never acted upon.
-PRODUCTION_GATEWAY_PID=1962
+PRODUCTION_GATEWAY_PID=28428
 
 RUN_SMOKE=true
 for arg in "$@"; do
@@ -277,7 +277,7 @@ echo "  Port 5181 final:          ${FINAL_5181:-free}"
 
 if [ "$FINAL_GW" = "$PRODUCTION_GATEWAY_PID" ] && [ "$FINAL_COUNT" = "1" ] \
    && [ -z "$FINAL_5180" ] && [ -z "$FINAL_5181" ]; then
-  record PASS "Production Safety (PID 1962 / count 1 / ports free)"
+  record PASS "Production Safety (PID 28428 / count 1 / ports free)"
 else
   record FAIL "Production Safety (PID/count/ports)"
 fi

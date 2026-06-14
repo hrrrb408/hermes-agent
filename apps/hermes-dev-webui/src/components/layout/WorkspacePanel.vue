@@ -8,6 +8,7 @@ import MemoryPanel from '@/components/workspace/MemoryPanel.vue'
 import ProviderRoundtripPanel from '@/components/workspace/ProviderRoundtripPanel.vue'
 import ReviewPanel from '@/components/workspace/ReviewPanel.vue'
 import ToolPolicyPanel from '@/components/workspace/ToolPolicyPanel.vue'
+import ToolWritePanel from '@/components/workspace/ToolWritePanel.vue'
 import { useUiStore, type WorkspaceTab } from '@/stores/ui'
 
 const props = defineProps<{
@@ -27,6 +28,7 @@ const tabs = [
   { id: 'reviews', label: 'Reviews', icon: ClipboardCheck },
   { id: 'agent', label: 'Agent', icon: Activity },
   { id: 'tools', label: 'Tools', icon: Wrench },
+  { id: 'write', label: 'Write', icon: ClipboardCheck },
   { id: 'provider', label: 'Provider', icon: Plug },
 ] as const
 
@@ -114,6 +116,7 @@ function moveTab(event: KeyboardEvent, tab: WorkspaceTab): void {
       <ContextPanel v-else-if="uiStore.workspaceTab === 'context'" />
       <ReviewPanel v-else-if="uiStore.workspaceTab === 'reviews'" />
       <ToolPolicyPanel v-else-if="uiStore.workspaceTab === 'tools'" />
+      <ToolWritePanel v-else-if="uiStore.workspaceTab === 'write'" />
       <ProviderRoundtripPanel v-else-if="uiStore.workspaceTab === 'provider'" />
       <AgentPanel v-else />
     </div>

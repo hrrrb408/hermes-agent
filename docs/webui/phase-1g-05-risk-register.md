@@ -731,3 +731,21 @@ Phase 1G-04 sealed acceptance, the Pilot baseline, the Phase 1G-07 RC dry run
 (`PILOT-EXEC-1G-09-001`, PASS). Human approver final decision recorded in Phase
 1G-10B: **GO**; release authorization granted by the designated human approver.
 Phase 1G is sealed; Phase 2A is not started.*
+
+## Phase 2C Update — Controlled Tool Write Execution
+
+Phase 2C introduces controlled dev-sandbox write tools. New risk register
+entries (all mitigated, P0/P1 = 0):
+
+- **R2C-01 (write-outside-sandbox)** — mitigated by sandbox path validation +
+  symlink-escape check + source-inspection tests. No write escapes the sandbox.
+- **R2C-02 (route-addition)** — mitigated by reusing `/tools/dry-run` +
+  `/tools/execute` via `mode` branches; route governance stays 34/34/5/0/1/1.
+- **R2C-03 (secret/arg leak)** — mitigated by audit re-redaction + result
+  shape (no raw arguments); verified by the no-secret-leak tests.
+- **R2C-04 (provider auto-write)** — mitigated: provider write is preview-only,
+  `blocked_write_provider_auto_execute_denied`; real provider write blocked.
+- **R2C-05 (production gateway PID drift)** — an external restart moved the
+  live PID `1962 → 28428` during the session; under user authorization the
+  baseline constant was refreshed. The task sanctions an authorized PID refresh
+  on drift (P2). The gateway was never stopped/restarted/signaled by Phase 2C.

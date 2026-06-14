@@ -196,7 +196,7 @@ class TestReadOnlyExecuteCompletion:
         # dev_environment_read probes the system; inject a safe fake so the
         # test never depends on real production state.
         fake_probe = lambda: {  # noqa: E731
-            "productionGatewayPidObserved": 1962,
+            "productionGatewayPidObserved": 28428,
             "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "hermes_cli.main gateway run",
             "port5180": "free",
@@ -211,7 +211,7 @@ class TestReadOnlyExecuteCompletion:
     @pytest.mark.parametrize("tool_id,risk_tier", READ_ONLY_TOOLS_WITH_RISK)
     def test_provider_flags_stay_false(self, phase_2a_home, tool_id, risk_tier) -> None:
         fake_probe = lambda: {  # noqa: E731
-            "productionGatewayPidObserved": 1962,
+            "productionGatewayPidObserved": 28428,
             "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "x",
             "port5180": "free",
@@ -237,7 +237,7 @@ class TestReadOnlyExecuteCompletion:
         self, phase_2a_home, tool_id, risk_tier
     ) -> None:
         fake_probe = lambda: {  # noqa: E731
-            "productionGatewayPidObserved": 1962, "productionGatewayProcessCount": 1,
+            "productionGatewayPidObserved": 28428, "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "x", "port5180": "free", "port5181": "free",
         }
         rd = run_read_only_tool_to_completion(
@@ -255,7 +255,7 @@ class TestReadOnlyExecuteCompletion:
         self, phase_2a_home, tool_id, risk_tier
     ) -> None:
         fake_probe = lambda: {  # noqa: E731
-            "productionGatewayPidObserved": 1962, "productionGatewayProcessCount": 1,
+            "productionGatewayPidObserved": 28428, "productionGatewayProcessCount": 1,
             "productionGatewayCommandSummary": "x", "port5180": "free", "port5181": "free",
         }
         rd = run_read_only_tool_to_completion(

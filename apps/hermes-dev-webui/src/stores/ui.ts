@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type WorkspaceTab = 'files' | 'memory' | 'context' | 'agent' | 'reviews' | 'tools' | 'provider'
+export type WorkspaceTab = 'files' | 'memory' | 'context' | 'agent' | 'reviews' | 'tools' | 'write' | 'provider'
 
 export const UI_STORAGE_KEYS = {
   sidebarCollapsed: 'hermes-dev-webui.ui.sidebar-collapsed',
@@ -10,7 +10,7 @@ export const UI_STORAGE_KEYS = {
 } as const
 
 const DEFAULT_WORKSPACE_TAB: WorkspaceTab = 'context'
-const WORKSPACE_TABS: readonly WorkspaceTab[] = ['files', 'memory', 'context', 'reviews', 'agent', 'tools', 'provider']
+const WORKSPACE_TABS: readonly WorkspaceTab[] = ['files', 'memory', 'context', 'reviews', 'agent', 'tools', 'write', 'provider']
 
 function isWorkspaceTab(value: string | null): value is WorkspaceTab {
   return value !== null && WORKSPACE_TABS.includes(value as WorkspaceTab)

@@ -190,6 +190,17 @@ from hermes_cli.dev_web_tool_audit_read import (
     audit_read_result_to_safe_dict as _audit_read_result_to_safe_dict,
     VALID_AUDIT_KINDS as _VALID_AUDIT_KINDS,
 )
+from hermes_cli.dev_web_write_plan import (
+    build_write_preview as _build_write_preview,
+    build_provider_write_preview as _build_provider_write_preview,
+)
+from hermes_cli.dev_web_write_handlers import (
+    dispatch_write_tool as _dispatch_write_tool,
+)
+from hermes_cli.dev_web_write_tool_registry import (
+    is_phase_2c_write_tool as _is_phase_2c_write_tool,
+    PHASE_2C_WRITE_TOOL_IDS as _PHASE_2C_WRITE_TOOL_IDS,
+)
 
 
 # ── Query parameter enums ──
@@ -2927,6 +2938,59 @@ def _register_tool_dry_run_routes(
     _MAX_UI_ORIGIN_LENGTH = 256
     _MAX_REQUEST_ID_LENGTH = 128
 
+    # ── Phase 2C: write preview branch (same /tools/dry-run path, no new route) ──
+
+    _WRITE_INVALID_TOOL = "WRITE_INVALID_TOOL"
+    _WRITE_INVALID_ARGUMENTS = "WRITE_INVALID_ARGUMENTS"
+    _WRITE_INTERNAL_ERROR = "WRITE_INTERNAL_ERROR"
+
+    def _handle_write_preview(
+        body: dict[str, Any],
+        rid: str,
+        ts: str,
+    ) -> dict:
+        """Handle a Phase 2C write-preview (dry-run) on the dry-run path.
+
+        Reuses ``POST /tools/dry-run`` with ``body.mode='write_preview'`` —
+        no new route is added. The preview NEVER writes a file.
+        """
+        tool_id = body.get("toolId")
+        if not isinstance(tool_id, str) or not tool_id.strip():
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="toolId is required for write_preview mode.",
+                request_id=rid,
+            )
+        tool_id = tool_id.strip()
+        if not _is_phase_2c_write_tool(tool_id):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="toolId is not a Phase 2C write tool.",
+                request_id=rid,
+            )
+        arguments = body.get("arguments")
+        if arguments is not None and not isinstance(arguments, dict):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_ARGUMENTS,
+                message="arguments must be a JSON object or null.",
+                request_id=rid,
+            )
+        hermes_home_override = (
+            str(config.hermes_home) if config.hermes_home is not None else None
+        )
+        try:
+            preview = _build_write_preview(
+                tool_id, arguments, hermes_home=hermes_home_override
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500, code=_WRITE_INTERNAL_ERROR,
+                message="An unexpected error occurred during write preview.",
+                request_id=rid,
+            )
+        preview["mode"] = "write_preview"
+        return {"data": preview, "meta": {"requestId": rid, "timestamp": ts}}
+
     # ── POST /tools/dry-run ──
 
     @app.post(
@@ -2944,6 +3008,11 @@ def _register_tool_dry_run_routes(
     ) -> dict:
         rid = getattr(request.state, "request_id", "")
         ts = _utc_now_iso()
+
+        # Phase 2C: write-preview branch (same path, no new route).
+        mode = body.get("mode")
+        if mode == "write_preview":
+            return _handle_write_preview(body, rid, ts)
 
         # Step 1: Record start time for duration measurement
         import time
@@ -3417,6 +3486,70 @@ def _register_tool_execute_routes(
             str(config.hermes_home) if config.hermes_home is not None else None
         )
 
+        # Phase 2C: if the provider request targets Phase 2C write tools or runs
+        # in preview-only write mode, generate a write PREVIEW only — never
+        # auto-execute. Reuses the same /tools/execute path (no new route).
+        provider_write_mode = body.get("providerWriteMode")
+        write_tool_ids = [t for t in (selected or ()) if _is_phase_2c_write_tool(t)]
+        if provider_write_mode == "preview_only" or write_tool_ids:
+            target_write_tool = write_tool_ids[0] if write_tool_ids else "dev_sandbox_file_write"
+            try:
+                wp_preview = _build_provider_write_preview(
+                    message,
+                    target_write_tool,
+                    hermes_home=hermes_home_override,
+                    provider_mode=provider_mode,
+                )
+            except Exception:
+                return _make_error_json(
+                    status_code=500, code=_PROVIDER_INTERNAL_ERROR,
+                    message="An unexpected error occurred during provider write preview.",
+                    request_id=rid,
+                )
+            data: dict[str, Any] = {
+                "status": "blocked",
+                "mode": "provider_roundtrip",
+                "providerMode": provider_mode,
+                "providerRequestId": wp_preview.get("writePlanId"),
+                "providerResponseId": None,
+                "providerSchemaSent": True,
+                "providerApiCalled": provider_mode == "fake",
+                "externalNetworkCalled": False,
+                "readOnlyOnly": False,
+                "toolWriteDisabled": True,
+                "writePreviewGenerated": True,
+                "writeExecuted": False,
+                "requiresUserConfirmation": True,
+                "toolCalls": [
+                    {
+                        "id": "ptc_write_preview",
+                        "name": target_write_tool,
+                        "arguments": {"targetPath": wp_preview.get("targetRelativePath")},
+                        "status": "blocked",
+                        "blockedReason": wp_preview.get("blockedReason"),
+                    }
+                ],
+                "toolResults": [],
+                "finalAnswer": (
+                    "Provider write preview generated. Auto-execution denied; "
+                    "user confirmation required."
+                ),
+                "providerAuditIds": [],
+                "blockedReason": wp_preview.get("blockedReason"),
+                "schemaSummary": {
+                    "schemaVersion": 1,
+                    "bundleVersion": 1,
+                    "toolCount": 1,
+                    "toolIds": [target_write_tool],
+                    "readOnlyOnly": False,
+                    "writeToolCount": 1,
+                    "providerRecursiveToolCount": 0,
+                },
+                "writePreview": wp_preview,
+            }
+            data["requestId"] = rid
+            return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
         try:
             result = run_provider_tool_roundtrip(
                 user_message=message,
@@ -3435,6 +3568,64 @@ def _register_tool_execute_routes(
 
         data = result.to_safe_dict()
         data["requestId"] = rid
+        return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
+    # ── Phase 2C: write execute branch (same /tools/execute path, no new route) ──
+
+    def _handle_write_execute(
+        body: dict[str, Any],
+        rid: str,
+        ts: str,
+    ) -> dict:
+        """Handle a Phase 2C controlled write on the execute path.
+
+        Reuses ``POST /tools/execute`` with ``body.mode='write'`` — no new
+        route is added. This route is classified as a Tool execution route,
+        NOT a Tool write route (it is the existing execution path).
+        """
+        tool_id = body.get("toolId")
+        if not isinstance(tool_id, str) or not tool_id.strip():
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="toolId is required for write mode.",
+                request_id=rid,
+            )
+        tool_id = tool_id.strip()
+        if not _is_phase_2c_write_tool(tool_id):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="toolId is not a Phase 2C write tool.",
+                request_id=rid,
+            )
+        arguments = body.get("arguments")
+        if arguments is not None and not isinstance(arguments, dict):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_ARGUMENTS,
+                message="arguments must be a JSON object or null.",
+                request_id=rid,
+            )
+        context = {
+            "writePlanId": body.get("writePlanId") if isinstance(body.get("writePlanId"), str) else None,
+            "confirmationToken": body.get("confirmationToken") if isinstance(body.get("confirmationToken"), str) else None,
+            "argumentDigest": body.get("argumentDigest") if isinstance(body.get("argumentDigest"), str) else None,
+            "uiOrigin": body.get("uiOrigin") if isinstance(body.get("uiOrigin"), str) else None,
+            "sourceContext": body.get("sourceContext") if isinstance(body.get("sourceContext"), str) else None,
+        }
+        hermes_home_override = (
+            str(config.hermes_home) if config.hermes_home is not None else None
+        )
+        try:
+            result = _dispatch_write_tool(
+                tool_id, arguments, context=context, hermes_home=hermes_home_override
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500, code=_WRITE_INTERNAL_ERROR,
+                message="An unexpected error occurred during write execution.",
+                request_id=rid,
+            )
+        data = result.to_safe_dict()
+        data["mode"] = "write"
         return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
 
     # ── POST /tools/execute ──
@@ -3462,6 +3653,10 @@ def _register_tool_execute_routes(
         mode = body.get("mode")
         if mode == "provider_roundtrip":
             return _handle_provider_roundtrip(request, body, rid, ts)
+
+        # Phase 2C: controlled write branch (same path, no new route).
+        if mode == "write":
+            return _handle_write_execute(body, rid, ts)
 
         # Step 1: Validate canonicalName
         canonical_name = body.get("canonicalName")
@@ -3703,7 +3898,7 @@ def _register_tool_audit_read_routes(
         request: Request,
         auditKind: str = Query(
             ...,
-            description="Audit kind: dry_run | pre_execution | post_execution.",
+            description="Audit kind: dry_run | pre_execution | post_execution | write.",
         ),
         limit: int = Query(
             default=50,
@@ -3732,7 +3927,7 @@ def _register_tool_audit_read_routes(
                 code=_AUDIT_EVENTS_INVALID_KIND,
                 message=(
                     "auditKind must be one of: dry_run, pre_execution, "
-                    "post_execution."
+                    "post_execution, write."
                 ),
                 request_id=rid,
             )
