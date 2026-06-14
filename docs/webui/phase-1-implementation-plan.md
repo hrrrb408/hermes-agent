@@ -7,6 +7,26 @@
 > R0 1→3, R1 5→8. Route governance unchanged (34/34/5/0/1/1). See
 > [phase-2a-real-tool-execution-mvp.md](phase-2a-real-tool-execution-mvp.md).
 
+> **Phase 2A-H1 Update:** Phase 2A Hardening — Adversarial Review Completion &
+> Boundary Stabilization. **Status: completed and pushed.** Hardening ID
+> `HARDENING-2A-H1-001`; Closure ID `ADV-REVIEW-CLOSURE-2A-H1-001`; Boundary
+> Audit ID `BOUNDARY-AUDIT-2A-H1-001`. Input HEAD
+> `0527d6c892b24afde03ff9259a612b2f59ee8018`. Purpose: close the Phase 2A P2
+> (adversarial-review agent died mid-run) by replacing the unstable agent-only
+> evidence path with a deterministic, agent-independent 7-lens hardening audit
+> and a full gate re-run. Result: 7 / 7 lenses PASS, 0 P0, 0 P1. Deliverables:
+> `tests/test_dev_web_phase_2a_hardening_boundaries.py` (45 tests) +
+> `scripts/run-dev-webui-phase2a-hardening-audit.sh` (deterministic audit,
+> Overall PASS) + four hardening docs. No product-code change; route governance
+> unchanged (34/34/5/0/1/1); `STATIC_ALLOWLIST` unchanged (6 read-only tools);
+> Provider still deferred (Phase 2B); Tool write still deferred (Phase 2C);
+> Production Gateway PID 1962 untouched; no `~/.hermes` / `state.db` access.
+> **Phase 2B: not started.** See
+> [phase-2a-hardening-adversarial-review.md](phase-2a-hardening-adversarial-review.md),
+> [phase-2a-hardening-boundary-audit.md](phase-2a-hardening-boundary-audit.md),
+> [phase-2a-hardening-test-report.md](phase-2a-hardening-test-report.md),
+> [phase-2a-hardening-closure.md](phase-2a-hardening-closure.md).
+
 **Date:** 2026-06-08
 **Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening pushed — release rehearsal baseline; 1G-07 Release Candidate Dry Run pushed — RC `RC-1G-07-001` GO, eligible to enter Pilot acceptance; 1G-08 Pilot Acceptance Preparation completed locally (not pushed) — Pilot `PILOT-1G-08-001` prepared against RC `RC-1G-07-001`; 1G-08 Pilot Acceptance Pack **pushed** at `9812c069e`; 1G-09 Pilot Acceptance Execution **pushed** at `cd7298416` — Pilot `PILOT-1G-08-001` / execution `PILOT-EXEC-1G-09-001` executed against RC `RC-1G-07-001`, **Pilot Result: PASS**; 1G-10 Post-Pilot Closeout / Final Release Decision Preparation completed locally (not pushed) — Pilot Result remains PASS, release authorization pending human approver sign-off; 1G-10A Smoke Harness PID Baseline Refresh completed locally (not pushed) — dev-only smoke harness PID baseline refreshed `69355` → `1962` after the Phase 1G-10 host-reboot drift, fresh browser smoke PASS, no production / route / allowlist change, no release authorization; 1G-10B Human Approver Final Decision **pushed** at `3c6ae479b` — designated human approver (黄瑞邦) recorded GO (`HUMAN-DECISION-1G-10B-001`), release authorization granted, P2-09 resolved, no production / route / allowlist change; 1G-11 Final Release Seal & Phase 2 Unlock **completed and pushed** — Final Seal ID `FINAL-SEAL-1G-11-001`, Phase 2 Unlock ID `PHASE-2-UNLOCK-1G-11-001`, Phase 1G **SEALED**, Phase 2 **UNLOCKED**, Phase 2A not started, no production rollout / code / OpenAPI / test / frontend route changes
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)

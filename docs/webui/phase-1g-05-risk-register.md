@@ -603,6 +603,59 @@ mitigation.
 
 ---
 
+## 15. Phase 2A-H1 Addendum — Adversarial Review Completion & Boundary Stabilization
+
+Phase 2A-H1 (Hardening — Adversarial Review Completion & Boundary Stabilization,
+Hardening `HARDENING-2A-H1-001`, Closure `ADV-REVIEW-CLOSURE-2A-H1-001`,
+Boundary Audit `BOUNDARY-AUDIT-2A-H1-001`) closed the Phase 2A P2 —
+**adversarial-review agent died mid-run** — against the current
+`dev-huangruibang` branch (input HEAD `0527d6c89…`, the pushed Phase 2A
+read-only tool execution). The technical risk picture is unchanged; the
+process / tooling P2 is resolved with a deterministic, agent-independent
+artifact.
+
+- **P2 (adversarial-review agent died mid-run): resolved** by
+  `ADV-REVIEW-CLOSURE-2A-H1-001`. Resolution: the unstable agent-only evidence
+  path was replaced with a **deterministic 7-lens hardening audit** and a full
+  gate re-run. Result: **7 / 7 lenses PASS, 0 P0, 0 P1.**
+- **This was a process / tooling P2, not a product defect.** Phase 2A's
+  read-only multi-tool execution and the Phase 1G controlled-execution chain
+  were already independently verified by the full Phase 1G test suite, the live
+  completed smoke profile, the end-to-end clarify check, and the security /
+  routes / allowlist reviewers (all clean). The gap was the absence of a single,
+  reproducible, agent-independent adversarial-review record.
+- **Deterministic artifacts delivered:**
+  `tests/test_dev_web_phase_2a_hardening_boundaries.py` (45 tests, encodes
+  every lens invariant, hermetic / no live-gateway dependency) and
+  `scripts/run-dev-webui-phase2a-hardening-audit.sh` (orchestrates the audit
+  with a PASS / FAIL verdict and non-zero exit on failure).
+- **Carried forward (non-blocking):** P2-01 … P2-08 accepted backlog; future
+  Production Gateway PID drift on host reboot (the smoke harness fails closed);
+  Provider integration deferred to Phase 2B (R2A-03); Tool write deferred to
+  Phase 2C (R2A-04); audit-scale hardening deferred to Phase 2D (R2A-05 /
+  P2-02 / P2-03 / P2-04 / P2-08).
+- **No new P0. No new P1. No new technical P2.** Phase 2A-H1 introduced no
+  product-code change; it added only the deterministic hardening artifacts and
+  docs.
+- **No route governance impact.** Route governance remains OpenAPI 34 / runtime
+  34 / Tool GET 5 / Tool write 0 / dry-run 1 / execution 1.
+- **No allowlist impact.** `STATIC_ALLOWLIST` remains exactly the six read-only
+  tools (clarify + tool_policy_read, route_governance_read, audit_events_read,
+  dev_environment_read, release_status_read).
+- **No provider impact.** `providerSchemaSent` / `providerApiCalled` remain
+  `False` everywhere; no Provider Schema sent; no Provider API called.
+- **No production impact.** Exactly one Production Gateway is running (PID
+  `1962`, the Phase 1G-10A refreshed baseline); this phase did not stop /
+  restart / replace / signal / reconfigure it. No `~/.hermes` access; no
+  production `state.db` access; ports `5180` / `5181` free.
+- Records: `docs/webui/phase-2a-hardening-adversarial-review.md`,
+  `docs/webui/phase-2a-hardening-boundary-audit.md`,
+  `docs/webui/phase-2a-hardening-test-report.md`,
+  `docs/webui/phase-2a-hardening-closure.md`.
+- **Phase 2B is not started.**
+
+---
+
 *Phase 1G-05 Risk Register — 0 P0, 0 P1, 9 P2 (P2-01 … P2-08 accepted,
 non-blocking; P2-09 human approver sign-off **resolved** by
 `HUMAN-DECISION-1G-10B-001` — release authorization dependency cleared, not a
