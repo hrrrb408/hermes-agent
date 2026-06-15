@@ -909,3 +909,17 @@ started**. See [phase-2e-h1-frontend-ux-hardening](phase-2e-h1-frontend-ux-harde
 [phase-2e-h1-accessibility-responsive-review](phase-2e-h1-accessibility-responsive-review.md),
 [phase-2e-h1-ui-security-closure](phase-2e-h1-ui-security-closure.md), and
 [phase-2e-h1-test-report](phase-2e-h1-test-report.md).
+
+---
+
+## Phase 3A Status Update (2026-06-16)
+
+Phase 3A (Dev-only Agent Workflow MVP) is **implemented**. The workflow surface
+adds no new route, no new audit kind, and no new high-risk capability: it only
+orchestrates the existing read-only / fake-provider / write-preview /
+rollback-reference surfaces behind a manual, approval-gated, audit-linked runner.
+All P0 stop conditions remain clear: real provider blocked, autonomous write
+blocked, write/rollback execution from the workflow blocked, shell / db /
+external write blocked, no `~/.hermes` access, no production `state.db` access,
+route governance unchanged (34/34/5/0/1/1), Production Gateway PID `28428`
+untouched. See [phase-3a-security-boundary](phase-3a-security-boundary.md).

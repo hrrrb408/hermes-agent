@@ -10,6 +10,7 @@ import WriteRollbackSection from './WriteRollbackSection.vue'
 import AuditViewerSection from './AuditViewerSection.vue'
 import SafetySection from './SafetySection.vue'
 import DiagnosticsSection from './DiagnosticsSection.vue'
+import WorkflowSection from './WorkflowSection.vue'
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
 import { useDevConsoleNavStore, type DevConsoleSection } from '@/stores/devConsoleNav'
 
@@ -30,6 +31,7 @@ const SECTIONS: Readonly<Record<DevConsoleSection, Component>> = {
   audit: AuditViewerSection,
   safety: SafetySection,
   diagnostics: DiagnosticsSection,
+  workflow: WorkflowSection,
 }
 
 const activeComponent = computed<Component>(() => SECTIONS[nav.activeSection] ?? OverviewSection)

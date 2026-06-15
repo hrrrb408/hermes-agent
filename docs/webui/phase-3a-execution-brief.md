@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3A |
 | Title | Dev-only Agent Workflow MVP (Execution Brief) |
-| Status | Brief prepared — Phase 3A not started |
+| Status | Brief prepared — Phase 3A **implemented** (see [phase-3a-dev-only-agent-workflow-mvp](phase-3a-dev-only-agent-workflow-mvp.md)) |
 | Date | 2026-06-15 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3-PLANNING-001` |

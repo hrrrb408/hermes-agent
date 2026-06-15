@@ -215,6 +215,30 @@ from hermes_cli.dev_web_write_rollback_store import (
     is_valid_rollback_id as _is_valid_rollback_id,
     list_rollback_manifests as _list_rollback_manifests,
 )
+from hermes_cli.dev_web_workflow_planner import (
+    build_workflow_plan as _build_workflow_plan,
+)
+from hermes_cli.dev_web_workflow_step_preview import (
+    build_step_preview as _build_workflow_step_preview,
+)
+from hermes_cli.dev_web_workflow_step_execute import (
+    execute_workflow_step as _execute_workflow_step,
+)
+from hermes_cli.dev_web_workflow_approval import (
+    issue_step_approval as _issue_workflow_step_approval,
+)
+from hermes_cli.dev_web_workflow_store import (
+    load_workflow_execution as _load_workflow_execution,
+    save_workflow_execution as _save_workflow_execution,
+    list_workflow_executions as _list_workflow_executions,
+)
+from hermes_cli.dev_web_workflow_schema import (
+    EXEC_STATUS_RUNNING as _WF_EXEC_STATUS_RUNNING,
+    WORKFLOW_SAFETY_BOUNDARY as _WF_SAFETY_BOUNDARY,
+    WorkflowExecutionState as _WorkflowExecutionState,
+    WorkflowTimelineEvent as _WorkflowTimelineEvent,
+    new_workflow_id as _new_workflow_id,
+)
 
 
 # ── Query parameter enums ──
@@ -3158,6 +3182,14 @@ def _register_tool_dry_run_routes(
         if mode == "rollback_preview":
             return _handle_rollback_preview(body, rid, ts)
 
+        # Phase 3A: workflow branches (same path, no new route).
+        if mode == "workflow_plan_preview":
+            return _handle_workflow_plan_preview(config, body, rid, ts)
+        if mode == "workflow_step_preview":
+            return _handle_workflow_step_preview(config, body, rid, ts)
+        if mode == "workflow_state_read":
+            return _handle_workflow_state_read(config, body, rid, ts)
+
         # Step 1: Record start time for duration measurement
         import time
         start_time = time.monotonic()
@@ -3855,6 +3887,10 @@ def _register_tool_execute_routes(
         if mode == "rollback":
             return _handle_rollback_execute(body, rid, ts)
 
+        # Phase 3A: workflow step execution branch (same path, no new route).
+        if mode == "workflow_step_execute":
+            return _handle_workflow_step_execute(config, body, rid, ts)
+
         # Step 1: Validate canonicalName
         canonical_name = body.get("canonicalName")
         if canonical_name is None:
@@ -4052,6 +4088,279 @@ def _register_tool_execute_routes(
 
 
 # ── Phase 1G-04-30: Tool Audit Events Read-Only Route ──
+
+
+# Workflow error codes (module-level so both the dry-run and execute route
+# registration functions can share them).
+_WF_INVALID_REQUEST = "WORKFLOW_INVALID_REQUEST"
+_WF_UNAVAILABLE = "WORKFLOW_UNAVAILABLE"
+_WF_NOT_FOUND = "WORKFLOW_NOT_FOUND"
+_WF_INTERNAL_ERROR = "WORKFLOW_INTERNAL_ERROR"
+
+
+def _materialize_workflow_execution(
+    config: DevWebApiConfig, plan: Any, ts: str
+) -> Any:
+    """Create + persist a workflow execution from a built plan.
+
+    Returns the :class:`WorkflowExecutionState`, or ``None`` when the plan has
+    no runnable (non-blocked) steps.
+    """
+    if not plan.steps:
+        return None
+    hermes_home_override = (
+        str(config.hermes_home) if config.hermes_home is not None else None
+    )
+    state = _WorkflowExecutionState(
+        workflow_execution_id=_new_workflow_id("wfx_"),
+        workflow_id=plan.workflow_id,
+        workflow_plan_id=plan.workflow_plan_id,
+        schema_version=plan.schema_version,
+        title=plan.title,
+        status=_WF_EXEC_STATUS_RUNNING,
+        steps=plan.steps,
+        cursor_step_id=plan.steps[0].step_id,
+        safety_boundary=_WF_SAFETY_BOUNDARY,
+        created_at=ts,
+        updated_at=ts,
+        completed_step_count=0,
+        total_step_count=len(plan.steps),
+    )
+    _save_workflow_execution(state, hermes_home=hermes_home_override)
+    return state
+
+
+def _handle_workflow_plan_preview(
+    config: DevWebApiConfig, body: dict[str, Any], rid: str, ts: str
+) -> dict:
+    """Phase 3A workflow plan preview + execution materialization (dry-run)."""
+    hermes_home_override = (
+        str(config.hermes_home) if config.hermes_home is not None else None
+    )
+    request = body if isinstance(body, dict) else {}
+    try:
+        plan = _build_workflow_plan(request, hermes_home=hermes_home_override)
+    except Exception:
+        return _make_error_json(
+            status_code=500, code=_WF_INTERNAL_ERROR,
+            message="An unexpected error occurred during workflow plan preview.",
+            request_id=rid,
+        )
+    data = plan.to_safe_dict()
+    execution = None
+    if plan.steps:
+        try:
+            execution = _materialize_workflow_execution(config, plan, ts)
+        except Exception:
+            execution = None
+    if execution is not None:
+        data["workflowExecutionId"] = execution.workflow_execution_id
+        data["executionStatus"] = execution.status
+        data["cursorStepId"] = execution.cursor_step_id
+    else:
+        data["workflowExecutionId"] = None
+        data["executionStatus"] = "blocked" if plan.blocked_steps else "draft"
+        data["cursorStepId"] = None
+    data["mode"] = "workflow_plan_preview"
+    return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
+
+def _handle_workflow_step_preview(
+    config: DevWebApiConfig, body: dict[str, Any], rid: str, ts: str
+) -> dict:
+    """Phase 3A workflow step preview (non-executing, dry-run)."""
+    if config.hermes_home is None:
+        return _make_error_json(
+            status_code=503, code=_WF_UNAVAILABLE,
+            message="Workflow store is unavailable (no HERMES_HOME).",
+            request_id=rid,
+        )
+    execution_id = body.get("workflowExecutionId")
+    step_id = body.get("stepId")
+    if not isinstance(execution_id, str) or not isinstance(step_id, str):
+        return _make_error_json(
+            status_code=400, code=_WF_INVALID_REQUEST,
+            message="workflowExecutionId and stepId are required.",
+            request_id=rid,
+        )
+    hermes_home_override = str(config.hermes_home)
+    state = _load_workflow_execution(execution_id.strip(), hermes_home=hermes_home_override)
+    if state is None:
+        return _make_error_json(
+            status_code=404, code=_WF_NOT_FOUND,
+            message="Workflow execution was not found.",
+            request_id=rid,
+        )
+    try:
+        result = _build_workflow_step_preview(
+            state, step_id.strip(), hermes_home=hermes_home_override
+        )
+    except Exception:
+        return _make_error_json(
+            status_code=500, code=_WF_INTERNAL_ERROR,
+            message="An unexpected error occurred during workflow step preview.",
+            request_id=rid,
+        )
+    if not result.ok:
+        return _make_error_json(
+            status_code=400, code=_WF_INVALID_REQUEST,
+            message=result.blocked_reason or "Workflow step preview failed.",
+            request_id=rid,
+        )
+    if result.updated_step is not None:
+        new_steps = tuple(
+            result.updated_step if s.step_id == result.updated_step.step_id else s
+            for s in state.steps
+        )
+        updated_state = _WorkflowExecutionState(
+            workflow_execution_id=state.workflow_execution_id,
+            workflow_id=state.workflow_id,
+            workflow_plan_id=state.workflow_plan_id,
+            schema_version=state.schema_version,
+            title=state.title,
+            status=state.status,
+            steps=new_steps,
+            cursor_step_id=state.cursor_step_id,
+            safety_boundary=state.safety_boundary,
+            created_at=state.created_at,
+            updated_at=ts,
+            completed_step_count=state.completed_step_count,
+            total_step_count=state.total_step_count,
+        )
+        _save_workflow_execution(updated_state, hermes_home=hermes_home_override)
+    # Issue the single-use approval token bound to THIS step's stored input.
+    # The preview is the act of operator review; issuing the step-bound token
+    # here is the "approve step" gate that workflow_step_execute then consumes.
+    previewed_step = result.updated_step
+    approval_token: str | None = None
+    approval_id: str | None = None
+    approval_expires_at: str | None = None
+    if previewed_step is not None and previewed_step.requires_approval:
+        issue = _issue_workflow_step_approval(
+            workflow_execution_id=state.workflow_execution_id,
+            step_id=previewed_step.step_id,
+            step_type=previewed_step.step_type,
+            step_input=previewed_step.input,
+            hermes_home=hermes_home_override,
+        )
+        if issue.issued and issue.approval is not None:
+            approval_token = issue.raw_token
+            approval_id = issue.approval.approval_id
+            approval_expires_at = issue.approval.expires_at
+    data = {
+        "mode": "workflow_step_preview",
+        "workflowExecutionId": state.workflow_execution_id,
+        "stepId": step_id.strip(),
+        "preview": result.preview,
+        "auditLink": result.audit_link.to_safe_dict() if result.audit_link else None,
+        "stepStatus": previewed_step.status if previewed_step else None,
+        "approvalRequired": bool(previewed_step.requires_approval) if previewed_step else False,
+        "approvalToken": approval_token,
+        "approvalId": approval_id,
+        "approvalExpiresAt": approval_expires_at,
+    }
+    return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
+
+def _handle_workflow_step_execute(
+    config: DevWebApiConfig, body: dict[str, Any], rid: str, ts: str
+) -> dict:
+    """Phase 3A workflow step execution (manual, approval-gated, execute route)."""
+    if config.hermes_home is None:
+        return _make_error_json(
+            status_code=503, code=_WF_UNAVAILABLE,
+            message="Workflow store is unavailable (no HERMES_HOME).",
+            request_id=rid,
+        )
+    execution_id = body.get("workflowExecutionId")
+    step_id = body.get("stepId")
+    approval_token = body.get("approvalToken")
+    if not isinstance(execution_id, str) or not isinstance(step_id, str):
+        return _make_error_json(
+            status_code=400, code=_WF_INVALID_REQUEST,
+            message="workflowExecutionId and stepId are required.",
+            request_id=rid,
+        )
+    hermes_home_override = str(config.hermes_home)
+    state = _load_workflow_execution(execution_id.strip(), hermes_home=hermes_home_override)
+    if state is None:
+        return _make_error_json(
+            status_code=404, code=_WF_NOT_FOUND,
+            message="Workflow execution was not found.",
+            request_id=rid,
+        )
+    try:
+        result = _execute_workflow_step(
+            state,
+            step_id.strip(),
+            approval_token if isinstance(approval_token, str) else None,
+            hermes_home=hermes_home_override,
+        )
+    except Exception:
+        return _make_error_json(
+            status_code=500, code=_WF_INTERNAL_ERROR,
+            message="An unexpected error occurred during workflow step execution.",
+            request_id=rid,
+        )
+    if not result.ok:
+        status_code = 404 if result.blocked_reason == "blocked_workflow_step_not_found" else 400
+        return _make_error_json(
+            status_code=status_code, code=_WF_INVALID_REQUEST,
+            message=result.blocked_reason or "Workflow step execution failed.",
+            request_id=rid,
+        )
+    if result.updated_state is not None:
+        _save_workflow_execution(result.updated_state, hermes_home=hermes_home_override)
+    data: dict[str, Any] = {
+        "mode": "workflow_step_execute",
+        "workflowExecutionId": state.workflow_execution_id,
+        "stepId": step_id.strip(),
+        "status": "completed",
+        "result": result.result,
+        "approvalId": result.approval_id,
+        "auditLinks": [link.to_safe_dict() for link in result.audit_links],
+        "executionStatus": result.updated_state.status if result.updated_state else None,
+        "cursorStepId": result.updated_state.cursor_step_id if result.updated_state else None,
+        "completedStepCount": result.updated_state.completed_step_count if result.updated_state else None,
+        "safetyBoundary": _WF_SAFETY_BOUNDARY.to_safe_dict(),
+    }
+    return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
+
+def _handle_workflow_state_read(
+    config: DevWebApiConfig, body: dict[str, Any], rid: str, ts: str
+) -> dict:
+    """Phase 3A workflow state read (read-only, dry-run)."""
+    if config.hermes_home is None:
+        return _make_error_json(
+            status_code=503, code=_WF_UNAVAILABLE,
+            message="Workflow store is unavailable (no HERMES_HOME).",
+            request_id=rid,
+        )
+    hermes_home_override = str(config.hermes_home)
+    execution_id = body.get("workflowExecutionId")
+    if isinstance(execution_id, str) and execution_id.strip():
+        state = _load_workflow_execution(execution_id.strip(), hermes_home=hermes_home_override)
+        if state is None:
+            return _make_error_json(
+                status_code=404, code=_WF_NOT_FOUND,
+                message="Workflow execution was not found.",
+                request_id=rid,
+            )
+        data = state.to_safe_dict()
+        data["mode"] = "workflow_state_read"
+        return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+    limit = body.get("limit")
+    if not isinstance(limit, int) or limit < 1:
+        limit = 50
+    executions = _list_workflow_executions(limit=limit, hermes_home=hermes_home_override)
+    data = {
+        "mode": "workflow_state_read",
+        "executions": executions,
+        "count": len(executions),
+        "safetyBoundary": _WF_SAFETY_BOUNDARY.to_safe_dict(),
+    }
+    return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
 
 
 def _register_tool_audit_read_routes(

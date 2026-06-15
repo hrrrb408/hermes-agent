@@ -53,13 +53,20 @@ TOKEN_DIR_RELATIVE = "gateway/dev/tool-confirmation-tokens"
 SCOPE_WRITE_EXECUTE = "write_execute"
 SCOPE_ROLLBACK_EXECUTE = "rollback_execute"
 SCOPE_PROVIDER_WRITE_PREVIEW_CONFIRM = "provider_write_preview_confirm"
+SCOPE_WORKFLOW_STEP_APPROVAL = "workflow_step_approval"
 VALID_SCOPES: frozenset[str] = frozenset(
-    {SCOPE_WRITE_EXECUTE, SCOPE_ROLLBACK_EXECUTE, SCOPE_PROVIDER_WRITE_PREVIEW_CONFIRM}
+    {
+        SCOPE_WRITE_EXECUTE,
+        SCOPE_ROLLBACK_EXECUTE,
+        SCOPE_PROVIDER_WRITE_PREVIEW_CONFIRM,
+        SCOPE_WORKFLOW_STEP_APPROVAL,
+    }
 )
 
 DEFAULT_TTL_WRITE_SECONDS = 10 * 60  # 10 minutes
 DEFAULT_TTL_ROLLBACK_SECONDS = 10 * 60  # 10 minutes
 DEFAULT_TTL_PROVIDER_PREVIEW_SECONDS = 5 * 60  # 5 minutes
+DEFAULT_TTL_WORKFLOW_APPROVAL_SECONDS = 5 * 60  # 5 minutes (Phase 3A)
 MAX_TTL_SECONDS = 30 * 60  # 30 minutes hard cap
 
 _TOKEN_ID_RE = re.compile(r"^cft_[0-9a-f]{12,64}$")

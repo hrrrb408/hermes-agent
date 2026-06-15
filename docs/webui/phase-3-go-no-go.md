@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3 Planning |
 | Title | Phase 3 GO / NO-GO — Phase 3A Handoff Decision |
-| Status | Decision recorded |
+| Status | Decision recorded — Phase 3A **implemented** (dev-only, within the frozen scope) |
 | Date | 2026-06-15 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3-PLANNING-001` |

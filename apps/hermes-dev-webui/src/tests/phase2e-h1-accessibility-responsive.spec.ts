@@ -45,7 +45,7 @@ describe('Lens 6 — Accessibility / keyboard / responsive (Phase 2E-H1)', () =>
     expect(tablist.exists()).toBe(true)
     expect(tablist.attributes('aria-orientation')).toBe('vertical')
     expect(wrapper.attributes('aria-label')).toBeTruthy()
-    expect(wrapper.findAll('[role="tab"]').length).toBe(7)
+    expect(wrapper.findAll('[role="tab"]').length).toBe(8)
   })
 
   it('exactly one tab is in the tab order (roving tabindex) and it is aria-selected', () => {

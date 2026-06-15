@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Plug,
   ShieldCheck,
+  Workflow,
   Wrench,
 } from '@lucide/vue'
 import { useDevConsoleNavStore, CONSOLE_SECTIONS, CONSOLE_SECTION_LABELS, type DevConsoleSection } from '@/stores/devConsoleNav'
@@ -28,6 +29,7 @@ const ICONS: Readonly<Record<DevConsoleSection, Component>> = {
   audit: ClipboardList,
   safety: ShieldCheck,
   diagnostics: Activity,
+  workflow: Workflow,
 }
 
 function select(section: DevConsoleSection): void {

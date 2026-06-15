@@ -25,6 +25,7 @@ export type DevConsoleSection =
   | 'audit'
   | 'safety'
   | 'diagnostics'
+  | 'workflow'
 
 export const CONSOLE_SECTIONS: readonly DevConsoleSection[] = [
   'overview',
@@ -33,6 +34,7 @@ export const CONSOLE_SECTIONS: readonly DevConsoleSection[] = [
   'write',
   'audit',
   'safety',
+  'workflow',
   'diagnostics',
 ]
 
@@ -45,6 +47,7 @@ export const CONSOLE_SECTION_LABELS: Readonly<Record<DevConsoleSection, string>>
   audit: 'Audit Viewer',
   safety: 'Safety Boundary',
   diagnostics: 'Diagnostics',
+  workflow: 'Workflow',
 } as const
 
 const STORAGE_KEY = 'hermes-dev-webui.devconsole.section'

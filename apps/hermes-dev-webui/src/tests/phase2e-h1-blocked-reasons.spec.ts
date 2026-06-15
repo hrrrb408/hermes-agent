@@ -100,7 +100,7 @@ describe('Lens 5 — Blocked reason / error state (Phase 2E-H1)', () => {
       expect(info.explanation.length, `${code} explanation`).toBeGreaterThan(0)
       expect(info.safeNextAction.length, `${code} safeNextAction`).toBeGreaterThan(0)
       expect(['info', 'warn', 'danger'], `${code} severity`).toContain(info.severity)
-      expect(['execute', 'write', 'rollback', 'provider', 'confirmation', 'audit', 'unknown'], `${code} surface`).toContain(info.surface)
+      expect(['execute', 'write', 'rollback', 'provider', 'confirmation', 'audit', 'workflow', 'unknown'], `${code} surface`).toContain(info.surface)
     }
   })
 

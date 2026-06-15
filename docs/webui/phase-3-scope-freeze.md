@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3A Scope Freeze |
 | Title | Phase 3A — Dev-only Agent Workflow MVP (Scope Freeze) |
-| Status | Frozen — not started |
+| Status | Frozen — Phase 3A **implemented** within the frozen scope (see [phase-3a-dev-only-agent-workflow-mvp](phase-3a-dev-only-agent-workflow-mvp.md)) |
 | Date | 2026-06-15 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3-PLANNING-001` |

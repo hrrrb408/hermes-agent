@@ -2135,3 +2135,18 @@ script, 5 hardening docs, a new `phase2e_h1_frontend_ux_hardening` smoke profile
 and risk-register / plan addenda. Route governance remains 34/34/5/0/1/1 — no new
 route. No production rollout, no `~/.hermes` access, no production `state.db`
 access. See [phase-2e-h1-frontend-ux-hardening](phase-2e-h1-frontend-ux-hardening.md).
+
+---
+
+## Phase 3A Status Update (2026-06-16)
+
+Phase 3A — **Dev-only Agent Workflow MVP** — is **implemented**. It chains the
+Phase 2 capabilities (read-only tool, fake provider, sandbox write preview,
+rollback reference, durable audit) into a dev-only, manual, approval-gated
+workflow runner with a plan, manual step execution, and approval gates.
+
+Boundaries held: no real provider, no autonomous write, no shell / database /
+external service write, no production rollout, no `~/.hermes` access, no new HTTP
+route (OpenAPI 34 / runtime 34 / Tool GET 5 / write 0 / dry-run 1 / execution 1).
+Write and rollback steps are preview / reference only. See
+[phase-3a-dev-only-agent-workflow-mvp](phase-3a-dev-only-agent-workflow-mvp.md).
