@@ -435,6 +435,25 @@ def mark_confirmation_token_used(
         os.replace(tmp_path, token_file)
     except OSError:
         return False
+
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            {
+                "tokenId": token_id,
+                "eventType": "confirmation_token_used",
+                "status": "used",
+                "used": True,
+                "toolId": data.get("toolId"),
+                "writePlanId": data.get("writePlanId"),
+            },
+            audit_kind="confirmation",
+            hermes_home=hermes_home,
+        )
+    except Exception:
+        pass
     return True
 
 

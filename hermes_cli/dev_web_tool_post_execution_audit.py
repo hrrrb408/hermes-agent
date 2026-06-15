@@ -529,6 +529,17 @@ def write_post_execution_audit_event(
         )
 
     # Gate 83: Post-execution audit ID returned
+
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            audit_package, audit_kind="post_execution", hermes_home=hermes_home
+        )
+    except Exception:
+        pass
+
     return PostExecutionAuditWriteResult(
         written=True,
         post_execution_audit_id=post_execution_audit_id,

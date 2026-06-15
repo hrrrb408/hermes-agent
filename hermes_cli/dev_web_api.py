@@ -190,6 +190,12 @@ from hermes_cli.dev_web_tool_audit_read import (
     audit_read_result_to_safe_dict as _audit_read_result_to_safe_dict,
     VALID_AUDIT_KINDS as _VALID_AUDIT_KINDS,
 )
+from hermes_cli.dev_web_audit_query import (
+    build_audit_query as _build_audit_query,
+    query_audit_events as _query_audit_events,
+    audit_query_result_to_safe_dict as _audit_query_result_to_safe_dict,
+    decode_audit_cursor as _decode_audit_cursor,
+)
 from hermes_cli.dev_web_write_plan import (
     build_write_preview as _build_write_preview,
     build_provider_write_preview as _build_provider_write_preview,
@@ -362,6 +368,84 @@ def _make_error_json(
         request_id=request_id,
     )
     return JSONResponse(content=body, status_code=status)
+
+
+def _is_store_audit_query(
+    *,
+    cursor: str | None,
+    order: str | None,
+    event_type: str | None,
+    tool_id: str | None,
+    status: str | None,
+    source: str | None,
+    provider_mode: str | None,
+    read_only: bool | None,
+    write_required: bool | None,
+    from_created_at: str | None,
+    to_created_at: str | None,
+    search: str | None,
+    include_summary: bool | None,
+) -> bool:
+    """Return True when the request should use the Phase 2D durable store path.
+
+    Store mode is engaged by any new filter param, an opaque (non-integer)
+    cursor, order=asc, or an explicit includeSummary toggle. Legacy requests
+    (auditKind + integer offset cursor + canonicalName only) stay on the
+    legacy reader for backward compatibility.
+    """
+    if cursor is not None and not cursor.isdigit():
+        return True
+    if order == "asc":
+        return True
+    for value in (
+        event_type, tool_id, status, source, provider_mode,
+        from_created_at, to_created_at, search,
+    ):
+        if value is not None:
+            return True
+    if read_only is not None or write_required is not None:
+        return True
+    if include_summary is not None:
+        return True
+    return False
+
+
+# Error codes for the durable-store audit path.
+_AUDIT_STORE_INVALID_CURSOR = "TOOL_AUDIT_EVENTS_INVALID_CURSOR"
+_AUDIT_STORE_INVALID_QUERY = "TOOL_AUDIT_EVENTS_INVALID_QUERY"
+_AUDIT_STORE_LIMIT_TOO_LARGE = "TOOL_AUDIT_EVENTS_INVALID_LIMIT"
+
+
+def _audit_store_error_json(result: Any, request_id: str) -> JSONResponse:
+    """Map a durable-store audit query failure to a safe HTTP error envelope."""
+    code = getattr(result, "error_code", None) or ""
+    message = getattr(result, "error_message", None) or "Audit query failed."
+    if code == "blocked_audit_cursor_invalid":
+        return _make_error_json(
+            status_code=400, code=_AUDIT_STORE_INVALID_CURSOR,
+            message=message, request_id=request_id,
+        )
+    if code == "blocked_audit_cursor_query_mismatch":
+        return _make_error_json(
+            status_code=400, code=_AUDIT_STORE_INVALID_CURSOR,
+            message=message, request_id=request_id,
+        )
+    if code == "blocked_audit_limit_too_large":
+        return _make_error_json(
+            status_code=400, code=_AUDIT_STORE_LIMIT_TOO_LARGE,
+            message=message, request_id=request_id,
+        )
+    if code in (
+        "audit_store_hermes_home_missing", "audit_store_root_forbidden",
+    ):
+        return _make_error_json(
+            status_code=503, code="TOOL_AUDIT_EVENTS_UNAVAILABLE",
+            message="Audit store is unavailable.", request_id=request_id,
+        )
+    return _make_error_json(
+        status_code=400, code=_AUDIT_STORE_INVALID_QUERY,
+        message=message, request_id=request_id,
+    )
 
 
 def _register_routes(
@@ -3996,22 +4080,29 @@ def _register_tool_audit_read_routes(
     _AUDIT_EVENTS_INVALID_CANONICAL_NAME = "TOOL_AUDIT_EVENTS_INVALID_CANONICAL_NAME"
     _AUDIT_EVENTS_PATH_FORBIDDEN = "TOOL_AUDIT_EVENTS_PATH_FORBIDDEN"
     _AUDIT_EVENTS_UNAVAILABLE = "TOOL_AUDIT_EVENTS_UNAVAILABLE"
+    _AUDIT_EVENTS_INVALID_QUERY = "TOOL_AUDIT_EVENTS_INVALID_QUERY"
 
     @app.get(
         f"{prefix}/tools/audit-events",
         tags=["Tools"],
         summary="Read-only tool audit events (dry-run / pre-execution / post-execution)",
         description="Returns safe, redacted audit events from the dev-only "
-        "JSONL audit stores. Only GET is allowed. No raw confirmation token, "
+        "audit stores. Only GET is allowed. No raw confirmation token, "
         "full token hash, raw arguments, secrets, callable objects, function "
         "reprs, or provider payloads are ever exposed. A missing audit file "
-        "returns an empty item list.",
+        "returns an empty item list. Phase 2D adds optional cursor pagination, "
+        "filters (eventType / toolId / status / auditKind / source / "
+        "providerMode / readOnly / writeRequired), time range, safe search, "
+        "and store/index status — all served from the same route. Legacy "
+        "offset pagination remains supported for backward compatibility.",
     )
     def list_tool_audit_events(
         request: Request,
         auditKind: str = Query(
             ...,
-            description="Audit kind: dry_run | pre_execution | post_execution | write.",
+            description="Audit kind: dry_run | pre_execution | post_execution "
+            "| write (legacy), or provider | rollback | confirmation "
+            "(Phase 2D durable store).",
         ),
         limit: int = Query(
             default=50,
@@ -4021,19 +4112,124 @@ def _register_tool_audit_read_routes(
         ),
         cursor: str | None = Query(
             default=None,
-            max_length=64,
-            description="Opaque offset cursor from a previous nextCursor.",
+            max_length=512,
+            description="Opaque cursor from a previous nextCursor. Legacy "
+            "integer-offset cursors are still accepted.",
         ),
         canonicalName: str | None = Query(
             default=None,
             max_length=256,
-            description="Optional exact canonicalName filter.",
+            description="Optional exact canonicalName filter (legacy mode).",
+        ),
+        order: str | None = Query(
+            default=None,
+            description="Phase 2D: result order — 'desc' (default, newest "
+            "first) or 'asc'. Selecting 'asc' engages the durable store path.",
+        ),
+        eventType: str | None = Query(
+            default=None, max_length=128,
+            description="Phase 2D: filter by eventType (durable store path).",
+        ),
+        toolId: str | None = Query(
+            default=None, max_length=128,
+            description="Phase 2D: filter by toolId.",
+        ),
+        status: str | None = Query(
+            default=None, max_length=64,
+            description="Phase 2D: filter by status.",
+        ),
+        source: str | None = Query(
+            default=None, max_length=64,
+            description="Phase 2D: filter by event source.",
+        ),
+        providerMode: str | None = Query(
+            default=None, max_length=32,
+            description="Phase 2D: filter by providerMode.",
+        ),
+        readOnly: bool | None = Query(
+            default=None,
+            description="Phase 2D: filter by readOnly flag.",
+        ),
+        writeRequired: bool | None = Query(
+            default=None,
+            description="Phase 2D: filter by writeRequired flag.",
+        ),
+        fromCreatedAt: str | None = Query(
+            default=None, max_length=40,
+            description="Phase 2D: inclusive lower bound on createdAt (ISO-8601).",
+        ),
+        toCreatedAt: str | None = Query(
+            default=None, max_length=40,
+            description="Phase 2D: inclusive upper bound on createdAt (ISO-8601).",
+        ),
+        search: str | None = Query(
+            default=None, max_length=128,
+            description="Phase 2D: safe substring search over summary/metadata.",
+        ),
+        includeSummary: bool | None = Query(
+            default=None,
+            description="Phase 2D: include sanitized summary/safeMetadata "
+            "(default true).",
         ),
     ) -> dict:
         rid = getattr(request.state, "request_id", "")
         ts = _utc_now_iso()
 
-        # Validate auditKind
+        # Guard: dev HERMES_HOME must be configured
+        if config.hermes_home is None:
+            return _make_error_json(
+                status_code=503,
+                code=_AUDIT_EVENTS_UNAVAILABLE,
+                message="Audit events are unavailable (no HERMES_HOME).",
+                request_id=rid,
+            )
+
+        # Detect Phase 2D durable-store mode: any new filter param, an opaque
+        # (non-integer) cursor, or order=asc selects the store query engine.
+        store_mode = _is_store_audit_query(
+            cursor=cursor,
+            order=order,
+            event_type=eventType,
+            tool_id=toolId,
+            status=status,
+            source=source,
+            provider_mode=providerMode,
+            read_only=readOnly,
+            write_required=writeRequired,
+            from_created_at=fromCreatedAt,
+            to_created_at=toCreatedAt,
+            search=search,
+            include_summary=includeSummary,
+        )
+
+        if store_mode:
+            q = _build_audit_query(
+                limit=limit,
+                cursor=cursor,
+                order=order or "desc",
+                event_type=eventType,
+                tool_id=toolId,
+                status=status,
+                audit_kind=auditKind,
+                source=source,
+                provider_mode=providerMode,
+                read_only=readOnly,
+                write_required=writeRequired,
+                from_created_at=fromCreatedAt,
+                to_created_at=toCreatedAt,
+                search=search,
+                include_summary=True if includeSummary is None else includeSummary,
+            )
+            result = _query_audit_events(q, hermes_home=str(config.hermes_home))
+            if not result.success:
+                return _audit_store_error_json(result, rid)
+            payload = _audit_query_result_to_safe_dict(result)
+            return {
+                "data": payload,
+                "meta": {"requestId": rid, "timestamp": ts},
+            }
+
+        # Legacy mode: validate auditKind against the legacy set.
         if auditKind not in _VALID_AUDIT_KINDS:
             return _make_error_json(
                 status_code=400,
@@ -4042,15 +4238,6 @@ def _register_tool_audit_read_routes(
                     "auditKind must be one of: dry_run, pre_execution, "
                     "post_execution, write."
                 ),
-                request_id=rid,
-            )
-
-        # Guard: dev HERMES_HOME must be configured
-        if config.hermes_home is None:
-            return _make_error_json(
-                status_code=503,
-                code=_AUDIT_EVENTS_UNAVAILABLE,
-                message="Audit events are unavailable (no HERMES_HOME).",
                 request_id=rid,
             )
 

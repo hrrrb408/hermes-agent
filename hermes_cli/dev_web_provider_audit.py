@@ -376,6 +376,16 @@ def write_provider_audit_event(
             error_message=f"write failed: {exc!s}",
         )
 
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            event, audit_kind="provider", hermes_home=hermes_home
+        )
+    except Exception:
+        pass
+
     return ProviderAuditWriteResult(
         written=True,
         event_id=event_id if isinstance(event_id, str) else None,

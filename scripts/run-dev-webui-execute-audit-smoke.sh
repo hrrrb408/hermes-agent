@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -87,7 +87,8 @@ for arg in "$@"; do
       echo "  phase2b_provider_fake_roundtrip      Profile D — Phase 2B provider fake round-trip"
       echo "  phase2c_write_sandbox                Profile E — Phase 2C controlled dev-sandbox write"
       echo "  phase2c_h1_rollback_and_token_ttl    Profile F — Phase 2C-H1 rollback execution + token TTL"
-      echo "  all                                  Run Profile A, B, C, D, E, then F (default)"
+      echo "  phase2d_audit_store_indexing         Profile G — Phase 2D durable audit store + cursor query"
+      echo "  all                                  Run Profile A, B, C, D, E, F, then G (default)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -355,6 +356,20 @@ configure_gates() {
       export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
       export EXECUTE_EXPECTED=phase2c_h1_rollback_and_token_ttl
       ;;
+    phase2d_audit_store_indexing)
+      # Phase 2D: durable audit store indexing. Read-only execution + fake
+      # provider + write enablement so the dual-write bridge flows every
+      # audit kind (dry-run / pre / post / provider / write / rollback /
+      # confirmation) into the durable store, then the smoke queries the
+      # store via filters + cursor pagination. Dev-only; no production
+      # rollout, no ~/.hermes access.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
+      export EXECUTE_EXPECTED=phase2d_audit_store_indexing
+      ;;
   esac
 }
 
@@ -464,6 +479,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-2c-write-sandbox-smoke.spec.ts"
   elif [ "$profile" = "phase2c_h1_rollback_and_token_ttl" ]; then
     spec_rel="tests/smoke/phase-2c-h1-rollback-and-token-ttl-smoke.spec.ts"
+  elif [ "$profile" = "phase2d_audit_store_indexing" ]; then
+    spec_rel="tests/smoke/phase-2d-audit-store-indexing-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -507,7 +524,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -517,6 +534,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase2b_provider_fake_roundtrip"
     run_smoke_for_profile "phase2c_write_sandbox"
     run_smoke_for_profile "phase2c_h1_rollback_and_token_ttl"
+    run_smoke_for_profile "phase2d_audit_store_indexing"
     ;;
 esac
 

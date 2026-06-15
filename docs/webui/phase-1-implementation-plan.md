@@ -2040,3 +2040,15 @@ single-use replay protection). No new HTTP route — rollback reuses
 (`mode=rollback`) via `mode` branches, so route governance stays 34/34/5/0/1/1.
 Provider write remains preview-only. See
 [phase-2c-h1-write-execution-hardening](phase-2c-h1-write-execution-hardening.md).
+
+## Phase 2D update — durable audit store
+
+Phase 2D adds a dev-only durable audit store (canonical `audit_schema_v2`,
+unified sanitizer, append-only storage, indexing, cursor pagination, filters,
+rotation, corruption quarantine) under the dev `HERMES_HOME`. The existing
+`GET /api/dev/v1/tools/audit-events` route is enhanced with optional filter /
+cursor parameters — **no new route**. Route governance remains 34/34/5/0/1/1.
+Legacy offset pagination and the legacy per-kind JSONL read path remain for
+backward compatibility. No production rollout, no `~/.hermes` access, no
+production `state.db` access. See
+[phase-2d-advanced-audit-storage-indexing](phase-2d-advanced-audit-storage-indexing.md).

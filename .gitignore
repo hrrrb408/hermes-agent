@@ -27,6 +27,20 @@ logs/
 gateway-dev.pid
 gateway-dev-state.json
 gateway/dev/
+# Phase 2D durable audit store + legacy audit JSONL artifacts are runtime-only.
+# They live under the dev HERMES_HOME (outside the repo) but are asserted here
+# as defense-in-depth so they can never be committed if HERMES_HOME is ever
+# pointed inside the repo or artifacts are copied in.
+audit-store/
+tool-dry-run-audit.jsonl
+tool-pre-execution-audit.jsonl
+tool-post-execution-audit.jsonl
+tool-write-audit.jsonl
+provider-request-audit.jsonl
+provider-response-audit.jsonl
+confirmation-tokens/
+tool-confirmation-tokens/
+tool-write-rollback-manifests/
 platforms/wechat-dev/
 *.session
 *.cookie

@@ -6,7 +6,11 @@ import {
   AUDIT_KIND_LABELS,
 } from '@/stores/toolAudit'
 import { SELECTABLE_TOOLS } from '@/constants/readOnlyTools'
-import type { AuditEventItem, AuditKind } from '@/types/api/toolAudit'
+import type {
+  AuditEventItem,
+  AuditKind,
+  StoreAuditEventItem,
+} from '@/types/api/toolAudit'
 
 const store = useToolAuditStore()
 
@@ -48,8 +52,26 @@ function sideEffectRows(item: AuditEventItem): { label: string; value: boolean }
   ]
 }
 
+function storeCorrelationRows(item: StoreAuditEventItem): { label: string; value: string | null }[] {
+  return [
+    { label: 'Event ID', value: item.eventId },
+    { label: 'Sequence', value: item.sequence !== null ? String(item.sequence) : null },
+    { label: 'Tool', value: item.toolId ?? null },
+    { label: 'Status', value: item.status ?? null },
+    { label: 'Blocked reason', value: item.blockedReason ?? null },
+    { label: 'Source', value: item.source ?? null },
+    { label: 'Provider mode', value: item.providerMode ?? null },
+    { label: 'Execution ID', value: item.executionId ?? null },
+    { label: 'Pre-exec audit', value: item.preExecutionAuditId ?? null },
+    { label: 'Post-exec audit', value: item.postExecutionAuditId ?? null },
+    { label: 'Write plan', value: item.writePlanId ?? null },
+    { label: 'Rollback', value: item.rollbackId ?? null },
+    { label: 'Confirmation token', value: item.confirmationTokenId ?? null },
+  ].filter((row) => row.value !== null && row.value !== undefined)
+}
+
 onMounted(() => {
-  if (store.state === 'idle') {
+  if (store.state === 'idle' && !store.storeMode) {
     store.loadEvents()
   }
 })
@@ -59,13 +81,36 @@ onUnmounted(() => {
 })
 
 function refresh(): void {
-  store.loadEvents()
+  if (store.storeMode) {
+    store.loadStoreEvents()
+  } else {
+    store.loadEvents()
+  }
 }
 
 function switchKind(kind: AuditKind): void {
   store.setAuditKind(kind)
   expanded.value.clear()
-  store.loadEvents()
+  if (store.storeMode) {
+    store.loadStoreEvents()
+  } else {
+    store.loadEvents()
+  }
+}
+
+function toggleStoreMode(): void {
+  store.setStoreMode(!store.storeMode)
+  expanded.value.clear()
+  if (store.storeMode) {
+    store.loadStoreEvents()
+  } else {
+    store.loadEvents()
+  }
+}
+
+function applyStoreFilters(): void {
+  expanded.value.clear()
+  store.loadStoreEvents()
 }
 </script>
 
@@ -78,6 +123,54 @@ function switchKind(kind: AuditKind): void {
     <p class="audit-viewer__intro">
       Read-only audit events. Raw tokens, full token hashes, raw arguments,
       secrets, and provider payloads are never surfaced.
+    </p>
+
+    <!-- Phase 2D: durable-store mode toggle + status badges -->
+    <div class="audit-viewer__mode-row">
+      <button
+        id="audit-viewer-store-toggle"
+        type="button"
+        class="audit-viewer__btn"
+        :class="{ 'audit-viewer__btn--active': store.storeMode }"
+        :aria-pressed="store.storeMode"
+        @click="toggleStoreMode"
+      >
+        {{ store.storeMode ? 'Store query: ON' : 'Store query: OFF' }}
+      </button>
+      <span
+        v-if="store.storeMode && store.storeStatus"
+        id="audit-viewer-store-status"
+        class="audit-viewer__badge"
+        :class="{ 'audit-viewer__badge--warn': !store.storeStatus.present }"
+      >
+        Store: {{ store.storeStatus.present ? 'present' : 'absent' }} ·
+        {{ store.storeSegmentCount }} segment(s)
+      </span>
+      <span
+        v-if="store.storeMode && store.indexStatus"
+        id="audit-viewer-index-status"
+        class="audit-viewer__badge"
+        :class="{
+          'audit-viewer__badge--warn': store.indexStale,
+          'audit-viewer__badge--ok': !store.indexStale && store.indexStatus.present,
+        }"
+      >
+        Index: {{ store.indexStatus.present ? (store.indexStale ? 'stale' : 'consistent') : 'missing' }}
+      </span>
+      <span
+        v-if="store.storeMode && store.storeSchemaVersion"
+        id="audit-viewer-schema-version"
+        class="audit-viewer__badge"
+      >{{ store.storeSchemaVersion }}</span>
+    </div>
+
+    <p
+      v-if="store.storeMode && store.corruptSkipped > 0"
+      id="audit-viewer-corrupt-warning"
+      class="audit-viewer__warn"
+      role="alert"
+    >
+      ⚠ {{ store.corruptSkipped }} corrupt line(s) detected and safely skipped. Run store repair to quarantine.
     </p>
 
     <!-- Kind tabs -->
@@ -97,8 +190,8 @@ function switchKind(kind: AuditKind): void {
       </button>
     </div>
 
-    <!-- Controls -->
-    <div class="audit-viewer__controls">
+    <!-- Legacy controls (hidden in store mode) -->
+    <div v-if="!store.storeMode" class="audit-viewer__controls">
       <label class="audit-viewer__control">
         <span>Limit</span>
         <select
@@ -137,6 +230,97 @@ function switchKind(kind: AuditKind): void {
       </button>
     </div>
 
+    <!-- Phase 2D store-mode filters -->
+    <div v-if="store.storeMode" id="audit-viewer-store-controls" class="audit-viewer__controls audit-viewer__controls--store">
+      <label class="audit-viewer__control">
+        <span>Limit</span>
+        <select
+          id="audit-viewer-store-limit"
+          class="audit-viewer__select"
+          :value="store.limit"
+          @change="store.setLimit(Number(($event.target as HTMLSelectElement).value))"
+        >
+          <option :value="10">10</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+        </select>
+      </label>
+      <label class="audit-viewer__control">
+        <span id="audit-viewer-eventtype-label">eventType</span>
+        <input
+          id="audit-viewer-eventtype-filter"
+          class="audit-viewer__input"
+          :value="store.eventTypeFilter"
+          placeholder="e.g. clarify_execution_completed"
+          @input="store.setEventTypeFilter(($event.target as HTMLInputElement).value)"
+        />
+      </label>
+      <label class="audit-viewer__control">
+        <span id="audit-viewer-status-label">status</span>
+        <select
+          id="audit-viewer-status-filter"
+          class="audit-viewer__select"
+          :value="store.statusFilter"
+          @change="store.setStatusFilter(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">Any</option>
+          <option value="ok">ok</option>
+          <option value="blocked">blocked</option>
+          <option value="error">error</option>
+          <option value="preview">preview</option>
+          <option value="completed">completed</option>
+        </select>
+      </label>
+      <label class="audit-viewer__control">
+        <span>providerMode</span>
+        <select
+          id="audit-viewer-provider-mode-filter"
+          class="audit-viewer__select"
+          :value="store.providerModeFilter"
+          @change="store.setProviderModeFilter(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">Any</option>
+          <option value="disabled">disabled</option>
+          <option value="fake">fake</option>
+          <option value="real">real</option>
+        </select>
+      </label>
+      <label class="audit-viewer__control">
+        <span id="audit-viewer-write-required-label">writeRequired</span>
+        <select
+          id="audit-viewer-write-required-filter"
+          class="audit-viewer__select"
+          :value="store.writeRequiredFilter"
+          @change="store.setWriteRequiredFilter(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">Any</option>
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      </label>
+      <label class="audit-viewer__control audit-viewer__control--grow">
+        <span id="audit-viewer-search-label">safe search</span>
+        <input
+          id="audit-viewer-search-input"
+          class="audit-viewer__input"
+          :value="store.searchInput"
+          placeholder="search summary / metadata"
+          @keydown.enter="applyStoreFilters"
+          @input="store.setSearchInput(($event.target as HTMLInputElement).value)"
+        />
+      </label>
+      <button
+        id="audit-viewer-store-apply"
+        type="button"
+        class="audit-viewer__btn"
+        :disabled="store.isLoading"
+        @click="applyStoreFilters"
+      >
+        Apply
+      </button>
+    </div>
+
     <p v-if="store.error" class="audit-viewer__error" role="alert">{{ store.error }}</p>
 
     <!-- Empty state -->
@@ -148,12 +332,8 @@ function switchKind(kind: AuditKind): void {
       No {{ AUDIT_KIND_LABELS[store.auditKind] }} audit events recorded yet.
     </p>
 
-    <p v-if="store.skippedMalformed > 0" class="audit-viewer__note">
-      {{ store.skippedMalformed }} malformed line(s) safely skipped.
-    </p>
-
-    <!-- Event list -->
-    <ul v-if="store.items.length > 0" id="audit-viewer-list" class="audit-viewer__list">
+    <!-- Legacy event list -->
+    <ul v-if="!store.storeMode && store.items.length > 0" id="audit-viewer-list" class="audit-viewer__list">
       <li
         v-for="item in store.items"
         :key="item.auditId ?? item.timestamp ?? ''"
@@ -190,9 +370,40 @@ function switchKind(kind: AuditKind): void {
       </li>
     </ul>
 
+    <!-- Phase 2D store event list -->
+    <ul v-if="store.storeMode && store.storeItems.length > 0" id="audit-viewer-store-list" class="audit-viewer__list">
+      <li
+        v-for="item in store.storeItems"
+        :key="item.eventId ?? item.sequence ?? ''"
+        class="audit-viewer__item"
+      >
+        <button
+          type="button"
+          class="audit-viewer__item-head"
+          :aria-expanded="expanded.has(item.eventId ?? '')"
+          @click="toggleExpand(item.eventId)"
+        >
+          <span class="audit-viewer__item-ts">{{ item.createdAt ?? '—' }}</span>
+          <span class="audit-viewer__item-cn">{{ item.eventType ?? '—' }}</span>
+          <span class="audit-viewer__item-dec">{{ item.auditKind ?? '—' }}</span>
+          <span
+            v-if="item.redactionApplied"
+            id="audit-viewer-redaction-badge"
+            class="audit-viewer__badge audit-viewer__badge--ok"
+          >redacted</span>
+        </button>
+        <dl v-if="expanded.has(item.eventId ?? '')" class="audit-viewer__dl">
+          <div v-for="row in storeCorrelationRows(item)" :key="row.label">
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          </div>
+        </dl>
+      </li>
+    </ul>
+
     <!-- Pagination -->
     <button
-      v-if="store.hasMore"
+      v-if="!store.storeMode && store.hasMore"
       id="audit-viewer-load-more"
       type="button"
       class="audit-viewer__btn audit-viewer__btn--ghost"
@@ -200,6 +411,16 @@ function switchKind(kind: AuditKind): void {
       @click="store.loadMore()"
     >
       Load more
+    </button>
+    <button
+      v-if="store.storeMode && store.storeHasMore"
+      id="audit-viewer-store-next"
+      type="button"
+      class="audit-viewer__btn audit-viewer__btn--ghost"
+      :disabled="store.isLoading"
+      @click="store.loadStoreNext()"
+    >
+      Next page (cursor)
     </button>
   </section>
 </template>
@@ -210,6 +431,54 @@ function switchKind(kind: AuditKind): void {
   color: var(--color-text-secondary, #a0a0aa);
   margin: 0 0 var(--space-3, 12px);
   line-height: 1.5;
+}
+
+.audit-viewer__mode-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
+}
+
+.audit-viewer__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-2, 8px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary, #a0a0aa);
+  background: var(--color-surface, transparent);
+}
+
+.audit-viewer__badge--ok {
+  color: var(--color-success, #5eba7d);
+  border-color: var(--color-success, #5eba7d);
+}
+
+.audit-viewer__badge--warn {
+  color: var(--color-warning, #d9a441);
+  border-color: var(--color-warning, #d9a441);
+}
+
+.audit-viewer__btn--active {
+  border-color: var(--color-accent, #7c8adb);
+  color: var(--color-accent, #7c8adb);
+}
+
+.audit-viewer__warn {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-warning, #d9a441);
+  margin: 0 0 var(--space-2, 8px);
+}
+
+.audit-viewer__controls--store {
+  align-items: flex-end;
+}
+
+.audit-viewer__control--grow {
+  flex: 1 1 160px;
 }
 
 .audit-viewer__tabs {

@@ -71,3 +71,11 @@ chain). Those events are surfaced by the existing read-only audit-events
 route (`GET /tools/audit-events`) by `canonicalName`. The provider-specific
 `provider-roundtrip-audit.jsonl` is read by the security-boundary tests and
 the smoke profile.
+
+## Phase 2D update — durable store dual-write
+
+Provider audit events now also dual-write into the Phase 2D durable audit
+store (`auditKind=provider`, with `providerMode`, `providerSchemaSent`,
+`providerApiCalled`, `externalNetworkCalled`). They are queryable in store mode
+by `providerMode` / `eventType` filters and cursor pagination. Legacy JSONL
+remains. See [phase-2d-audit-query-and-indexing](phase-2d-audit-query-and-indexing.md).

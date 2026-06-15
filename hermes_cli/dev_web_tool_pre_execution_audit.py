@@ -561,6 +561,17 @@ def write_pre_execution_audit_event(
     # Gate 43: Block because handler lookup is not enabled
     # Gate 44: Dispatch still disabled
     # Gate 45: Execution still disabled
+
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            audit_package, audit_kind="pre_execution", hermes_home=hermes_home
+        )
+    except Exception:
+        pass
+
     return PreExecutionAuditWriteResult(
         written=True,
         pre_execution_audit_id=pre_execution_audit_id,

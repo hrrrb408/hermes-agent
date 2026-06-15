@@ -923,4 +923,14 @@ def emit_write_audit(
         payload=payload,
     )
     result = write_write_audit_event(event, hermes_home=hermes_home)
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    if result.written:
+        try:
+            from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+            bridge_legacy_audit_to_store(
+                event, audit_kind="write", hermes_home=hermes_home
+            )
+        except Exception:
+            pass
     return result.event_id if result.written else None

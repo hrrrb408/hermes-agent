@@ -764,3 +764,20 @@ Phase 2C-H1 closes two write-execution risks (all mitigated, P0/P1 = 0):
   internally only, never returned by the public safe view or written to audit.
 - **R2C-H1-04 (production gateway PID drift)** — baseline carried from Phase 2C
   at **28428**; unchanged by this work.
+
+## Phase 2D update
+
+Phase 2D (durable audit store) resolves or advances several register items:
+
+- The deferred "advanced audit storage / indexing" item is now implemented
+  (canonical `audit_schema_v2`, append-only store, index, cursor pagination,
+  rotation, corruption quarantine).
+- The Phase 2A `str(object)` sanitizer defense-in-depth gap is **closed** by
+  the unified audit sanitizer (non-JSON-native values collapse to
+  `<non_json_value>` / `<bytes_redacted>`, never a repr).
+- Audit JSONL rotation / race hardening is implemented (file locking +
+  on-disk sequence floor + unique tmp-replace meta writes).
+- Production Gateway PID baseline remains **28428**; Phase 2D performs no
+  production rollout, no `~/.hermes` access, and no production `state.db`
+  access. Audit store files remain runtime-only (never committed). See
+  [phase-2d-audit-security-boundary](phase-2d-audit-security-boundary.md).

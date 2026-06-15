@@ -47,3 +47,13 @@ See [phase-2c-h1-confirmation-token-ttl](phase-2c-h1-confirmation-token-ttl.md),
 [phase-2c-h1-rollback-execution](phase-2c-h1-rollback-execution.md),
 [phase-2c-h1-security-boundary](phase-2c-h1-security-boundary.md),
 [phase-2c-h1-test-report](phase-2c-h1-test-report.md).
+
+## Phase 2D update
+
+Phase 2D supersedes the per-writer audit JSONL model with a unified durable
+audit store. The write + rollback + confirmation audits produced here now
+also flow (best-effort dual-write) into the durable store under the dev
+`HERMES_HOME`, queryable via cursor pagination and filters through the enhanced
+`GET /tools/audit-events` route. Legacy JSONL files remain the backward-
+compatible read path. See
+[phase-2d-advanced-audit-storage-indexing](phase-2d-advanced-audit-storage-indexing.md).

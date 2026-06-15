@@ -71,3 +71,12 @@ These events never include the token secret, the full tokenHash, the rollback
 `beforeContent`, or callable reprs. See
 [phase-2c-h1-confirmation-token-ttl](phase-2c-h1-confirmation-token-ttl.md)
 and [phase-2c-h1-rollback-execution](phase-2c-h1-rollback-execution.md).
+
+## Phase 2D update — durable store dual-write
+
+The write audit now dual-writes into the Phase 2D durable audit store via the
+best-effort bridge in `emit_write_audit`. The canonical store event carries
+`auditKind=write`, `writePlanId`, `writePreviewId`, `rollbackId`,
+`confirmationTokenId`, the side-effect flags, and `redactionApplied`. Legacy
+`tool-write-audit.jsonl` remains the backward-compatible read path. See
+[phase-2d-audit-schema-v2](phase-2d-audit-schema-v2.md).

@@ -262,6 +262,27 @@ def mark_rollback_executed(
         os.replace(tmp_path, manifest_file)
     except OSError:
         return False
+
+    # Phase 2D: best-effort dual-write to the durable audit store.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            {
+                "rollbackId": rollback_id,
+                "executionId": execution_id,
+                "eventType": "rollback_executed",
+                "status": "completed",
+                "toolId": data.get("toolId"),
+                "writePlanId": data.get("writePlanId"),
+                "confirmationTokenId": data.get("confirmationTokenId"),
+                "executedSteps": len(data.get("steps") or []),
+            },
+            audit_kind="rollback",
+            hermes_home=hermes_home,
+        )
+    except Exception:
+        pass
     return True
 
 

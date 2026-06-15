@@ -323,3 +323,13 @@ production rollout, no `~/.hermes` or production `state.db` access, and no
 secret/token/raw-argument leak. Provider write is preview-only and never
 auto-executes. See
 [phase-2c-controlled-tool-write-execution](phase-2c-controlled-tool-write-execution.md).
+
+## Phase 2D update — durable audit store
+
+Phase 2D implements the advanced audit storage / indexing vertical slice:
+canonical `audit_schema_v2`, unified sanitizer, append-only durable store,
+index, cursor pagination, filters, safe search, rotation, and corruption
+quarantine. The store lives under the dev `HERMES_HOME` only; no new HTTP
+route, no Tool write HTTP route, no production rollout, no `~/.hermes` access.
+Phase 2E is **not** started. See
+[phase-2d-advanced-audit-storage-indexing](phase-2d-advanced-audit-storage-indexing.md).

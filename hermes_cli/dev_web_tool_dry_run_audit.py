@@ -605,7 +605,18 @@ def write_dry_run_audit_event(
             retained_files=retained,
         )
 
-    # Step 7: Success
+    # Step 7: Best-effort dual-write to the Phase 2D durable audit store.
+    # This never affects the legacy write result above and never raises.
+    try:
+        from hermes_cli.dev_web_audit_bridge import bridge_legacy_audit_to_store
+
+        bridge_legacy_audit_to_store(
+            event, audit_kind="dry_run", hermes_home=hermes_home
+        )
+    except Exception:
+        pass
+
+    # Step 8: Success
     return DryRunAuditWriteResult(
         written=True,
         path=str(audit_path),

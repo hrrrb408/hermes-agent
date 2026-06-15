@@ -72,3 +72,13 @@ The Phase 1G block reasons all still fire:
   governance freeze.
 - `tests/test_dev_web_phase_2a_read_only_execute.py` asserts the block reasons
   fire for unsupported tools, missing tokens, and digest mismatches.
+
+## Phase 2D update — sanitizer gap closed
+
+The Phase 2A dry-run sanitizer's `str(value)` fallback for unknown types is
+**closed** by the Phase 2D unified audit sanitizer (`dev_web_audit_sanitizer.py`):
+non-JSON-native values (callables, functions, objects, bytes, exceptions)
+collapse to sentinels (`<non_json_value>`, `<bytes_redacted>`,
+`<exception:ClassName>`) rather than a repr. This is now the single redaction
+surface for every audit event entering the durable store. See
+[phase-2d-audit-security-boundary](phase-2d-audit-security-boundary.md).
