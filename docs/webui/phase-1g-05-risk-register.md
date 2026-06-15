@@ -9,6 +9,17 @@
 > audit parse cap is retained as a backstop (Phase 2D delivers scale hardening).
 > See [phase-2a-security-boundary.md](phase-2a-security-boundary.md).
 
+> **Phase 3 Planning Update:** Phase 2 is functionally complete (2A–2E + all
+> -H1 hardening passes, HEAD `bb373d61e`); all carried-forward P2 items here
+> remain non-blocking and map onto future Phase 3 slices (real provider → 3B;
+> audit retention / encryption / advanced indexing → 3E; token encryption at
+> rest / multi-user namespace → future). Phase 3 planning is recorded under
+> `PHASE-3-PLANNING-001` with its own register at
+> [phase-3-risk-register.md](phase-3-risk-register.md) (P0/P1/P2) and the
+> recommended Phase 3A = Dev-only Agent Workflow MVP. Phase 3A is not started;
+> route governance (34/34/5/0/1/1) and Production Gateway PID `28428` are
+> unchanged. This register remains the historical Phase 1G-05 baseline.
+
 ## Document Information
 
 | Field | Value |

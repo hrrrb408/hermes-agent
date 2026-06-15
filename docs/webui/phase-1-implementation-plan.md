@@ -34,6 +34,22 @@
 > [phase-2a-hardening-test-report.md](phase-2a-hardening-test-report.md),
 > [phase-2a-hardening-closure.md](phase-2a-hardening-closure.md).
 
+> **Phase 3 Planning Update:** Phase 2 is **functionally complete** — 2C
+> (controlled sandbox write), 2C-H1 (rollback + file-backed token TTL), 2D
+> (durable audit store / indexing), 2D-H1 (audit storage hardening), 2E
+> (unified developer console `/#/console`), and 2E-H1 (console UX hardening)
+> are all completed and pushed (HEAD `bb373d61e`). Route governance unchanged
+> (34/34/5/0/1/1); `STATIC_ALLOWLIST` unchanged (6 read-only tools); provider
+> stays disabled / fake (real blocked); write stays dev-sandbox + gated; real
+> provider still deferred; Production Gateway PID `28428` untouched; no
+> `~/.hermes` / `state.db` access. **Phase 3 planning** is recorded under
+> `PHASE-3-PLANNING-001` (docs-only): the recommended Phase 3A is **Dev-only
+> Agent Workflow MVP**, sequenced ahead of Real Provider (3B), Plugin Registry
+> (3C), Production Pilot (3D), and Audit Compliance Advanced (3E). Phase 3A is
+> **not started**. See [phase-3-planning.md](phase-3-planning.md),
+> [phase-2-final-capability-map.md](phase-2-final-capability-map.md), and
+> [phase-2-to-phase-3-transition.md](phase-2-to-phase-3-transition.md).
+
 **Date:** 2026-06-08
 **Status:** Phase 1-00, 1A-00, 1A, 1B-00, 1B, 1C-00, 1C, 1C-Post, 1D-00, 1D, 1E-00, 1E, 1F-00, 1F, 1G-00, 1G-01, 1G-02 Completed; 1G-03 Closed (1G-03-01 through 1G-03-07 Completed); 1G-04-00 Completed; 1G-04-01 Completed locally (not pushed); 1G-04-02 Completed locally (not pushed); 1G-04-03 Completed locally (not pushed); 1G-04-04 Completed and Pushed; 1G-04-05 Completed locally (not pushed); 1G-04-06 Completed locally (not pushed); 1G-04-07 Completed locally (not pushed); 1G-04-08 Completed locally (not pushed); 1G-04-09 Completed locally (not pushed); 1G-04-10 Completed locally (not pushed); 1G-04-11 Completed and Pushed; 1G-04-12 Completed locally (not pushed); 1G-04-13 Completed locally (not pushed); 1G-04-14 Completed locally (not pushed); 1G-04-24 Completed locally (not pushed); 1G-04-25 Completed locally (not pushed); 1G-04-26 Completed locally (not pushed); 1G-04-27 Completed locally (not pushed); 1G-04-28 Completed locally (not pushed); 1G-04-29 Completed locally (not pushed); 1G-04-30 Completed and Pushed; 1G-04-31 Sealed and Pushed — **Phase 1G-04 WebUI mainline SEALED**; 1G-05 Post-Sealing Readiness pushed — Pilot / release entry baseline; 1G-06 Pilot Release Rehearsal / Smoke Harness Hardening pushed — release rehearsal baseline; 1G-07 Release Candidate Dry Run pushed — RC `RC-1G-07-001` GO, eligible to enter Pilot acceptance; 1G-08 Pilot Acceptance Preparation completed locally (not pushed) — Pilot `PILOT-1G-08-001` prepared against RC `RC-1G-07-001`; 1G-08 Pilot Acceptance Pack **pushed** at `9812c069e`; 1G-09 Pilot Acceptance Execution **pushed** at `cd7298416` — Pilot `PILOT-1G-08-001` / execution `PILOT-EXEC-1G-09-001` executed against RC `RC-1G-07-001`, **Pilot Result: PASS**; 1G-10 Post-Pilot Closeout / Final Release Decision Preparation completed locally (not pushed) — Pilot Result remains PASS, release authorization pending human approver sign-off; 1G-10A Smoke Harness PID Baseline Refresh completed locally (not pushed) — dev-only smoke harness PID baseline refreshed `69355` → `1962` after the Phase 1G-10 host-reboot drift, fresh browser smoke PASS, no production / route / allowlist change, no release authorization; 1G-10B Human Approver Final Decision **pushed** at `3c6ae479b` — designated human approver (黄瑞邦) recorded GO (`HUMAN-DECISION-1G-10B-001`), release authorization granted, P2-09 resolved, no production / route / allowlist change; 1G-11 Final Release Seal & Phase 2 Unlock **completed and pushed** — Final Seal ID `FINAL-SEAL-1G-11-001`, Phase 2 Unlock ID `PHASE-2-UNLOCK-1G-11-001`, Phase 1G **SEALED**, Phase 2 **UNLOCKED**, Phase 2A not started, no production rollout / code / OpenAPI / test / frontend route changes
 **Depends on:** Phase 0E-Release (commit `cc64aa690`)

@@ -1,0 +1,120 @@
+# Phase 3 GO / NO-GO
+
+## Document Information
+
+| Field | Value |
+|-------|-------|
+| Phase | 3 Planning |
+| Title | Phase 3 GO / NO-GO — Phase 3A Handoff Decision |
+| Status | Decision recorded |
+| Date | 2026-06-15 |
+| Branch | `dev-huangruibang` |
+| Planning ID | `PHASE-3-PLANNING-001` |
+| Decision ID | `PHASE-3-GO-NOGO-001` |
+
+---
+
+## 1. Decision
+
+| Field | Value |
+|-------|-------|
+| Decision | **GO** for Phase 3A prompt preparation |
+| Recommended Phase 3A | Dev-only Agent Workflow MVP |
+| Phase 3A execution | not started |
+| Human approval required before execution | yes |
+| Phase 3A may start | only after the user explicitly asks for the Phase 3A prompt / implementation |
+| Phase 3A may code | only inside `dev-huangruibang`, separately authorized |
+| Phase 3A may use real provider | **no** |
+| Phase 3A may write | preview / sandbox only (reuse Phase 2C gate); **no autonomous write** |
+| Phase 3A may production rollout | **no** |
+| Shell / DB / external-service write allowed in Phase 3A | **no** |
+
+---
+
+## 2. Basis for Decision
+
+- Phase 2 is **functionally complete** for dev-only controlled tool execution
+  and auditability (read-only tools, provider fake round-trip, sandbox write,
+  rollback, durable audit storage, unified console, frontend UX hardening).
+- Phase 2E-H1 closed the console UX hardening pass (9 / 9 lenses PASS, 0 P0,
+  0 P1). Route governance is unchanged at 34 / 34 / 5 / 0 / 1 / 1 and the
+  Production Gateway PID `28428` is untouched.
+- Five Phase 3 candidate directions were evaluated. The recommended path is
+  Dev-only Agent Workflow MVP (3A) → Real Provider (3B) → Plugin Registry
+  (3C) → Production Pilot (3D) → Audit Compliance (3E). See
+  [phase-3-options-evaluation.md](phase-3-options-evaluation.md).
+- Phase 3A is the lowest-risk, highest-readiness, fully dev-only, fully
+  reversible slice. It reuses the entire Phase 2 capability chain and becomes
+  the container for later phases.
+- All P0 risks are stop conditions (none introduced by this planning phase);
+  P1 risks are execution-phase push-gates; P2 risks are deferred sequencing.
+  See [phase-3-risk-register.md](phase-3-risk-register.md).
+
+---
+
+## 3. What GO Authorizes
+
+GO authorizes **preparing** the Phase 3A handoff only:
+
+- Authoring the Phase 3A execution brief ([phase-3a-execution-brief.md](phase-3a-execution-brief.md)).
+- Authoring the Phase 3A prompt draft ([phase-3a-prompt.md](phase-3a-prompt.md)).
+- Committing and pushing this docs-only planning phase
+  (`docs(webui): plan phase 3 scope`).
+
+---
+
+## 4. What GO Does Not Authorize
+
+GO does **not** authorize:
+
+- Starting Phase 3A implementation.
+- Any product / frontend / backend / script change.
+- Enabling a real provider.
+- Provider auto-write / auto-rollback.
+- Autonomous write.
+- Shell command / database mutation / external service write.
+- Production rollout.
+- `~/.hermes` or production `state.db` access.
+- A new HTTP route, Tool write HTTP route, or Provider route.
+- Stopping / restarting / replacing / signaling the Production Gateway.
+
+---
+
+## 5. Phase 3A Entry Gate (restated)
+
+Phase 3A may start only when **all** are true:
+
+1. The user explicitly asks for the Phase 3A execution prompt / implementation.
+2. Phase 3A is separately authorized by the user.
+3. Branch = `dev-huangruibang`; tree clean (only `.claude/` untracked).
+4. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1) or an explicitly
+   approved, separately-authorized change.
+5. Production Gateway PID healthy (`28428`) or consciously refreshed by a
+   separately authorized safety phase.
+6. `~/.hermes` and production `state.db` not accessed.
+7. `PHASE-3-PLANNING-001` committed and pushed.
+8. The Phase 3A prompt draft is the approved starting brief.
+
+---
+
+## 6. NO-GO Conditions
+
+The decision becomes **NO-GO** (stop, do not push, do not proceed) if, during
+a future Phase 3A execution:
+
+- Phase 3A scope is violated (real provider, autonomous write, shell / db /
+  external write, production rollout, route drift, secret exposure).
+- The Production Gateway PID drifts from `28428` or count != `1`.
+- Route governance drifts without an approved change.
+- Any P0 risk materializes.
+- Any P1 push-gate fails.
+
+---
+
+## 7. Cross-References
+
+- [Phase 3 planning](phase-3-planning.md)
+- [Phase 3 scope freeze](phase-3-scope-freeze.md)
+- [Phase 3 risk register](phase-3-risk-register.md)
+- [Phase 3A execution brief](phase-3a-execution-brief.md)
+- [Phase 3A prompt draft](phase-3a-prompt.md)

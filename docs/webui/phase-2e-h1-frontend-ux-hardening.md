@@ -122,3 +122,16 @@ navigation-stable, accessibility-baselined, leak-bounded, and workflow-coherent;
 the `blocked_write_forbidden_path` catalogue drift is corrected and the backend
 vocabulary is now pinned as a contract. Route governance stays 34/34/5/0/1/1 and
 the production gateway PID 28428 is untouched. Phase 3 remains not started.
+
+## Phase 3 Planning (`PHASE-3-PLANNING-001`)
+
+Phase 2E-H1 is the final Phase 2 slice. Phase 2 is **functionally complete**.
+Phase 3 *planning* is recorded under `PHASE-3-PLANNING-001` (docs-only): five
+candidate directions were evaluated and the recommended Phase 3A is **Dev-only
+Agent Workflow MVP**, which reuses this hardened console shell as an additive
+"Workflow" section. Phase 3A *execution* remains not started and may begin only
+when the user explicitly asks for it and separately authorizes it. Route
+governance stays 34/34/5/0/1/1; production PID `28428` untouched. See
+[phase-3-planning.md](phase-3-planning.md),
+[phase-2-final-capability-map.md](phase-2-final-capability-map.md), and
+[phase-2-to-phase-3-transition.md](phase-2-to-phase-3-transition.md).

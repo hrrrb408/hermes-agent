@@ -348,3 +348,47 @@ production rollout, no `~/.hermes` access. Route governance remains
 34/34/5/0/1/1; production PID 28428 untouched. Phase 3 is **not** started. See
 [phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md) and
 [phase-2e-dev-console-ux-map](phase-2e-dev-console-ux-map.md).
+
+## Phase 2E-H1 update — Console UX Hardening
+
+Phase 2E-H1 hardens the unified developer console through a deterministic
+9-lens pass (console routing, overview/safety baseline, workflow continuity,
+audit cross-navigation, blocked-reason catalogue, accessibility, type/state
+consistency, UI no-leak, smoke/production isolation). It corrects the
+`blocked_write_forbidden_target` → `blocked_write_forbidden_path` catalogue
+drift and adds 8 stable backend codes, updates the frozen phase timeline, and
+pins the backend blocked-reason vocabulary as a contract test. It is
+non-functional with respect to safety boundaries — no new HTTP route, no Tool
+write route, no Provider route, no shell/database/external-write capability,
+no production rollout, no `~/.hermes` access. Route governance remains
+34/34/5/0/1/1; production PID `28428` untouched. See
+[phase-2e-h1-frontend-ux-hardening](phase-2e-h1-frontend-ux-hardening.md).
+
+## Phase 2 → Phase 3 — Planning Complete (`PHASE-3-PLANNING-001`)
+
+**Phase 2 is functionally complete.** All five vertical slices (2A read-only
+multi-tool → 2B provider fake round-trip → 2C sandbox write → 2D durable audit
+store → 2E unified console) plus every -H1 hardening pass (2A-H1, 2B-H1,
+2C-H1, 2D-H1, 2E-H1) are completed and pushed (HEAD `bb373d61e`). There is no
+remaining Phase 2 slice to deliver.
+
+Phase 3 planning is recorded under `PHASE-3-PLANNING-001` (docs-only — no
+product / frontend / backend / script change). The recommended Phase 3 path is:
+
+```
+Phase 3A — Dev-only Agent Workflow MVP            (reuses 2A/2B/2C/2C-H1/2D/2E)
+Phase 3B — Real Provider Read-only Controlled Integration
+Phase 3C — Plugin / Capability Registry
+Phase 3D — Production Pilot Readiness
+Phase 3E — Audit Compliance Advanced
+```
+
+Phase 3A is **not started** and may begin only when the user explicitly asks
+for the Phase 3A execution prompt and separately authorizes it. Phase 3A keeps
+the provider disabled / fake (real blocked), keeps write dev-sandbox + gated
+(no autonomous write), adds no shell / db / external write, performs no
+production rollout, and accesses no `~/.hermes` or production `state.db`.
+Route governance stays 34/34/5/0/1/1 and the Production Gateway PID `28428`
+is untouched. See [phase-3-planning.md](phase-3-planning.md),
+[phase-2-final-capability-map.md](phase-2-final-capability-map.md), and
+[phase-2-to-phase-3-transition.md](phase-2-to-phase-3-transition.md).
