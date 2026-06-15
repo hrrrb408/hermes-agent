@@ -2052,3 +2052,28 @@ Legacy offset pagination and the legacy per-kind JSONL read path remain for
 backward compatibility. No production rollout, no `~/.hermes` access, no
 production `state.db` access. See
 [phase-2d-advanced-audit-storage-indexing](phase-2d-advanced-audit-storage-indexing.md).
+
+## Phase 2D-H1 Update — Audit Storage Hardening
+
+Phase 2D-H1 is complete and pushed (`chore(webui): harden audit storage
+indexing`). It is a hardening phase — not Phase 2E — that deterministically
+hardens the Phase 2D durable dev audit store before Phase 2E. A 10-lens review
+(schema, sanitizer, append store, index, query, rotation, recovery, dual-write,
+API+Viewer no-leak, production isolation) all PASS; 0 P0, 0 P1.
+
+- Hardening ID: `HARDENING-2D-H1-001`
+- Audit Consistency ID: `AUDIT-CONSISTENCY-2D-H1-001`
+- Audit Stress ID: `AUDIT-STRESS-2D-H1-001`
+- Audit Security Closure ID: `AUDIT-SECURITY-CLOSURE-2D-H1-001`
+- Input HEAD: `4836aca4ced0a345098de450876178541e227295`
+- Purpose: harden the Phase 2D durable dev audit store before Phase 2E
+- Result: 10-lens hardening complete (134 new tests; 1 latent sanitizer fix)
+- P0: 0
+- P1: 0
+- Phase 2E: not started (eligible as the separately authorized next phase)
+
+Deliverables: 3 new hardening test files, the
+`run-dev-webui-phase2d-hardening-audit.sh` script, 5 hardening docs, and risk-
+register / plan addenda. Route governance remains 34/34/5/0/1/1 — no new route.
+No production rollout, no `~/.hermes` access, no production `state.db` access.
+See [phase-2d-h1-audit-storage-hardening](phase-2d-h1-audit-storage-hardening.md).

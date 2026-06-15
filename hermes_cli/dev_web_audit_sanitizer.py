@@ -373,11 +373,13 @@ def _minimal_safe_event(event_type: str | None = None) -> dict[str, Any]:
     """Return the minimal safe canonical event used when sanitization fails.
 
     This is a degenerate event that still validates against the schema so the
-    store writer can persist a breadcrumb without ever raising.
+    store writer can persist a breadcrumb without ever raising. ``sequence`` is
+    0 (the schema requires a non-negative integer); the store writer stamps the
+    real monotonic sequence on append.
     """
     return {
         "eventId": "00000000-0000-0000-0000-000000000000",
-        "sequence": -1,
+        "sequence": 0,
         "createdAt": "1970-01-01T00:00:00+00:00",
         "eventType": event_type or "audit_sanitization_fallback",
         "auditKind": "internal",

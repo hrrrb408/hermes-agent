@@ -781,3 +781,49 @@ Phase 2D (durable audit store) resolves or advances several register items:
   production rollout, no `~/.hermes` access, and no production `state.db`
   access. Audit store files remain runtime-only (never committed). See
   [phase-2d-audit-security-boundary](phase-2d-audit-security-boundary.md).
+
+## Phase 2D-H1 Update — Audit Storage Hardening
+
+Phase 2D-H1 (audit storage hardening) is complete and pushed
+(`chore(webui): harden audit storage indexing`). It deterministically hardens
+the Phase 2D durable dev audit store with a 10-lens review (schema, sanitizer,
+append store, index, query, rotation, recovery, dual-write, API+Viewer no-leak,
+production isolation). All 10 lenses PASS; 0 P0, 0 P1.
+
+- Hardening ID: `HARDENING-2D-H1-001`
+- Audit Consistency ID: `AUDIT-CONSISTENCY-2D-H1-001`
+- Audit Stress ID: `AUDIT-STRESS-2D-H1-001`
+- Audit Security Closure ID: `AUDIT-SECURITY-CLOSURE-2D-H1-001`
+
+Resolved / closed:
+- durable audit store MVP hardening (concurrency, stale-meta sequence floor,
+  rotation, corruption quarantine, dual-write consistency all validated)
+- index / query / rotation / recovery stress validation (index == scan for all
+  indexed fields; 32-thread append; repeated-run 5/5)
+- dual-write consistency validation (all 7 audit kinds bridge exactly once)
+- audit API / UI no-leak validation (no secret / raw args / callable repr /
+  production path on disk, index, API, Viewer, or cursor tokens)
+- the unified sanitizer `str(object)` defense-in-depth gap remains closed
+
+One latent inconsistency was fixed (security-neutral):
+- `_minimal_safe_event` `sequence: -1` → `0` so the fallback event actually
+  validates against `audit_schema_v2` and can persist a safe breadcrumb as its
+  docstring states (no boundary loosened).
+
+Remaining P2 (deferred, unchanged):
+- production audit rollout deferred
+- audit encryption at rest deferred
+- multi-user audit namespace deferred
+- retention deletion deferred
+- compression deferred
+- advanced full-text indexing deferred
+- cross-device sync deferred
+- real provider vendor integration deferred
+- frontend UX polish deferred
+- future host-reboot PID drift may require an authorized baseline refresh
+  (Production Gateway baseline remains 28428)
+
+Production Gateway PID baseline remains **28428**; Phase 2D-H1 performs no
+production rollout, no `~/.hermes` access, and no production `state.db` access.
+Audit store files remain runtime-only (never committed). See
+[phase-2d-h1-audit-storage-hardening](phase-2d-h1-audit-storage-hardening.md).
