@@ -47,6 +47,14 @@ const CATALOGUE: Readonly<Record<string, BlockedReasonInfo>> = {
     severity: 'info',
     surface: 'execute',
   },
+  blocked_dispatch_not_enabled: {
+    code: 'blocked_dispatch_not_enabled',
+    title: 'Dispatch not enabled',
+    explanation: 'The controlled-execution dispatch layer is disabled, so the tool handler was not reached.',
+    safeNextAction: 'Enable the controlled-execution dispatch gate in the dev environment if you intend to run this tool.',
+    severity: 'info',
+    surface: 'execute',
+  },
 
   // ── Write surface ──
   blocked_write_execution_not_enabled: {
@@ -55,6 +63,22 @@ const CATALOGUE: Readonly<Record<string, BlockedReasonInfo>> = {
     explanation: 'The dev-sandbox write execution gate is off, so the write preview was produced but never applied.',
     safeNextAction: 'Set HERMES_TOOL_WRITE_EXECUTION_ENABLED=1 in the dev environment to execute writes inside the sandbox only.',
     severity: 'info',
+    surface: 'write',
+  },
+  blocked_write_tool_not_allowlisted: {
+    code: 'blocked_write_tool_not_allowlisted',
+    title: 'Write tool not allowlisted',
+    explanation: 'The requested tool is not on the dev-sandbox write allowlist.',
+    safeNextAction: 'Use one of the five allowlisted dev-sandbox write/rollback tools.',
+    severity: 'warn',
+    surface: 'write',
+  },
+  blocked_write_tool_not_supported: {
+    code: 'blocked_write_tool_not_supported',
+    title: 'Write tool not supported',
+    explanation: 'The requested write operation is not supported by the dev-sandbox write plan.',
+    safeNextAction: 'Choose a supported dev-sandbox write operation (create / append / patch / readback).',
+    severity: 'warn',
     surface: 'write',
   },
   blocked_write_absolute_path: {
@@ -81,12 +105,36 @@ const CATALOGUE: Readonly<Record<string, BlockedReasonInfo>> = {
     severity: 'danger',
     surface: 'write',
   },
-  blocked_write_forbidden_target: {
-    code: 'blocked_write_forbidden_target',
+  blocked_write_forbidden_path: {
+    code: 'blocked_write_forbidden_path',
     title: 'Forbidden target',
     explanation: 'The target matches a protected pattern (.env, .claude, .git, *.db, *.jsonl, *.log, test-results, node_modules, dist, state.db, …).',
     safeNextAction: 'Pick a sandbox target that is not a protected file or directory.',
     severity: 'danger',
+    surface: 'write',
+  },
+  blocked_write_file_too_large: {
+    code: 'blocked_write_file_too_large',
+    title: 'File too large',
+    explanation: 'The resulting file would exceed the per-file size limit enforced by the sandbox.',
+    safeNextAction: 'Reduce the content so the resulting file stays within the per-file size limit.',
+    severity: 'warn',
+    surface: 'write',
+  },
+  blocked_write_missing_rollback_plan: {
+    code: 'blocked_write_missing_rollback_plan',
+    title: 'Missing rollback plan',
+    explanation: 'The write plan did not produce a rollback plan, so the write cannot be executed safely.',
+    safeNextAction: 'Re-run the write preview so a rollback plan is generated before execution.',
+    severity: 'warn',
+    surface: 'write',
+  },
+  blocked_write_patch_no_unique_match: {
+    code: 'blocked_write_patch_no_unique_match',
+    title: 'Patch has no unique match',
+    explanation: 'The patch search text does not match exactly one location in the target file.',
+    safeNextAction: 'Make the patch search text unique within the target file and retry the preview.',
+    severity: 'warn',
     surface: 'write',
   },
   blocked_write_empty_path: {
@@ -293,6 +341,22 @@ const CATALOGUE: Readonly<Record<string, BlockedReasonInfo>> = {
     severity: 'info',
     surface: 'provider',
   },
+  provider_schema_boundary_violation: {
+    code: 'provider_schema_boundary_violation',
+    title: 'Provider schema boundary violation',
+    explanation: 'The provider round-trip attempted to cross a schema or capability boundary that is not permitted in this build.',
+    safeNextAction: 'Review the provider request against the allowed schema; the boundary is enforced by design.',
+    severity: 'danger',
+    surface: 'provider',
+  },
+  execution_blocked: {
+    code: 'execution_blocked',
+    title: 'Execution blocked',
+    explanation: 'The provider-requested execution was blocked by a safety boundary and did not run.',
+    safeNextAction: 'Review the safety boundary that blocked the execution; the boundary is enforced by design and must not be worked around.',
+    severity: 'warn',
+    surface: 'provider',
+  },
 
   // ── Confirmation token surface ──
   blocked_confirmation_token_expired: {
@@ -384,7 +448,7 @@ const UNKNOWN_FALLBACK: BlockedReasonInfo = {
   code: 'unknown_blocked_reason',
   title: 'Blocked for safety',
   explanation: 'The operation was blocked by a safety boundary. The specific reason code is not in the console catalogue yet.',
-  safeNextAction: 'Review the operation and the safety boundaries; do not attempt to bypass the block.',
+  safeNextAction: 'Review the operation and the safety boundaries; the block is enforced by design and must not be worked around.',
   severity: 'warn',
   surface: 'unknown',
 }

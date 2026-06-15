@@ -53,9 +53,9 @@ const summaryCards = computed(() => {
     },
     {
       label: 'Phase 2E',
-      value: 'In progress',
-      sub: 'Frontend UX polish',
-      tone: 'info',
+      value: 'Completed',
+      sub: 'Hardened by 2E-H1',
+      tone: 'ok',
     },
     {
       label: 'OpenAPI / runtime routes',

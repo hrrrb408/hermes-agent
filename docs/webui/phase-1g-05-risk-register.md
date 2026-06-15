@@ -840,3 +840,61 @@ audit trail). Production Gateway PID baseline remains **28428**; no `~/.hermes`
 access; no production `state.db` access; runtime artifacts remain uncommitted.
 See [phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md) and
 [phase-2e-accessibility-and-safety-review](phase-2e-accessibility-and-safety-review.md).
+
+## Phase 2E-H1 addendum — Frontend UX Hardening
+
+Phase 2E-H1 (Frontend UX Hardening — Console Stability, Accessibility & Safety
+Closure) is complete and pushed (`chore(webui): harden dev console ux`). It is a
+hardening phase — not Phase 3 — that deterministically hardens the Phase 2E
+unified developer console through a 9-lens review. All 9 lenses PASS; 0 P0, 0 P1.
+
+- Hardening ID: `HARDENING-2E-H1-001`
+- Console Workflow Review ID: `CONSOLE-WORKFLOW-2E-H1-001`
+- Accessibility Review ID: `ACCESSIBILITY-2E-H1-001`
+- UI Security Closure ID: `UI-SECURITY-CLOSURE-2E-H1-001`
+
+Resolved / closed:
+- console routing and navigation-state hardening (additive route, vertical
+  tablist + roving tabindex, persistence + invalid fallback, KeepAlive
+  dynamic-component fallback)
+- overview / safety baseline hardening (stale Phase 2E "in progress" status
+  corrected to "completed"; Phase 2E-H1 added to the frozen timeline)
+- workflow continuity hardening (read-only / provider / write / rollback / audit
+  coherent; cross-nav strips + unified blocked panels per surface)
+- audit cross-navigation hardening (prefill bridge intact; prefill marker made
+  lossy so the full id lives only in the store)
+- blocked-reason fallback hardening (P1 catalogue drift corrected:
+  `blocked_write_forbidden_target` → the real backend `blocked_write_forbidden_path`;
+  8 missing stable backend codes added; unknown fallback + actions reworded to
+  avoid the literal "bypass"; backend vocabulary pinned as a contract)
+- accessibility / responsive baseline hardening (tablist, aria-selected, Arrow /
+  Home / End + focus move, role=status/role=alert/aria-busy, non-color severity
+  text, 820px responsive collapse, focus-visible)
+- UI no-leak closure (no API key / raw token / full hash / raw arg / secret /
+  callable repr / production path; no runtime artifact committed)
+
+Remaining P2 (deferred, unchanged):
+- full WCAG certification deferred
+- advanced visual design system deferred
+- production audit rollout deferred
+- audit encryption at rest deferred
+- multi-user namespace deferred
+- retention deletion deferred
+- compression deferred
+- advanced full-text indexing deferred
+- real provider vendor integration deferred
+- future host-reboot PID drift may require an authorized baseline refresh
+  (Production Gateway baseline remains 28428)
+
+No new backend high-risk capability was introduced. No new HTTP route, Tool write
+HTTP route, Provider route, shell command tool, database mutation, external
+service write, real provider vendor call, production rollout, `~/.hermes` access,
+or production `state.db` access was introduced. Route governance remains OpenAPI
+34 / runtime 34 / Tool GET 5 / Tool write route 0 / dry-run 1 / execution 1.
+Production Gateway PID **28428** untouched; no `~/.hermes` access; no production
+`state.db` access; runtime artifacts remain uncommitted. Phase 3 is **not
+started**. See [phase-2e-h1-frontend-ux-hardening](phase-2e-h1-frontend-ux-hardening.md),
+[phase-2e-h1-console-workflow-review](phase-2e-h1-console-workflow-review.md),
+[phase-2e-h1-accessibility-responsive-review](phase-2e-h1-accessibility-responsive-review.md),
+[phase-2e-h1-ui-security-closure](phase-2e-h1-ui-security-closure.md), and
+[phase-2e-h1-test-report](phase-2e-h1-test-report.md).

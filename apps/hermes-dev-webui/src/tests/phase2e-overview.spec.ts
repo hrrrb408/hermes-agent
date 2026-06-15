@@ -96,7 +96,7 @@ describe('OverviewSection (Phase 2E)', () => {
   it('renders the phase status summary', async () => {
     const wrapper = mountOverview()
     await vi.waitFor(() => expect(wrapper.text()).toContain('SEALED'))
-    expect(wrapper.text()).toContain('In progress')
+    expect(wrapper.text()).toContain('Completed')
   })
 
   it('renders the frozen route-governance baseline (34/34/5/0/1/1)', async () => {

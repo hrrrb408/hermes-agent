@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import AuditViewerPanel from '@/components/workspace/AuditViewerPanel.vue'
 import { useDevConsoleNavStore } from '@/stores/devConsoleNav'
+import { truncateHash } from '@/lib/formatters'
 
 /**
  * Dev Console → Audit Viewer section (Phase 2E).
@@ -12,10 +13,15 @@ import { useDevConsoleNavStore } from '@/stores/devConsoleNav'
  * `prefillAuditSearch`, the shared toolAudit store is switched to store mode,
  * the search filter is set, and the query is fired — so this panel reactively
  * shows the located event.
+ *
+ * The prefill marker is rendered lossy (truncated) — the full id lives only in
+ * the store as the active search filter and is never displayed at length,
+ * mirroring AuditIdLink's lossy-by-design principle.
  */
 const nav = useDevConsoleNavStore()
 
 const prefill = computed(() => nav.pendingAuditPrefill)
+const prefillDisplay = computed(() => truncateHash(prefill.value, 24))
 
 function clearPrefill(): void {
   nav.clearPendingPrefill()
@@ -38,7 +44,7 @@ function clearPrefill(): void {
     <div v-if="prefill" class="devconsole-card" role="status" aria-live="polite">
       <h3>Located via cross-reference</h3>
       <p class="devconsole-note">
-        Filtered to: <code>{{ prefill }}</code>
+        Filtered to: <code data-testid="dev-audit-prefill-marker">{{ prefillDisplay }}</code>
       </p>
       <button type="button" class="panel-retry-btn" data-testid="dev-audit-clear-prefill" @click="clearPrefill">
         Clear filter focus

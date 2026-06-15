@@ -68,8 +68,7 @@ export const FROZEN_PRODUCTION_GATEWAY_PID = 28428
 
 /**
  * Pinned phase timeline. Phase 1G is sealed, Phase 2 is unlocked, and Phases
- * 2A through 2D-H1 are completed and pushed. Phase 2E is in progress (this
- * phase); Phase 3 is not started.
+ * 2A through 2E-H1 are completed and pushed. Phase 3 is not started.
  */
 export interface PhaseTimelineEntry {
   readonly phase: string
@@ -85,7 +84,8 @@ export const FROZEN_PHASE_TIMELINE: readonly PhaseTimelineEntry[] = [
   { phase: 'Phase 2C-H1', status: 'completed' },
   { phase: 'Phase 2D', status: 'completed' },
   { phase: 'Phase 2D-H1', status: 'completed' },
-  { phase: 'Phase 2E', status: 'in_progress' },
+  { phase: 'Phase 2E', status: 'completed' },
+  { phase: 'Phase 2E-H1', status: 'completed' },
   { phase: 'Phase 3', status: 'not_started' },
 ]
 
@@ -93,7 +93,8 @@ export const FROZEN_PHASE_TIMELINE: readonly PhaseTimelineEntry[] = [
 export const FROZEN_RELEASE_IDS = {
   phase1gStatus: 'SEALED',
   phase2Status: 'UNLOCKED',
-  phase2eStatus: 'in_progress',
+  phase2eStatus: 'completed',
+  phase2eH1Status: 'completed',
   phase3Status: 'not_started',
 } as const
 

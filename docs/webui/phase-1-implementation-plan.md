@@ -2089,3 +2089,33 @@ read-only GETs (`/tools/policy`, `/tools/audit-events`) + frozen baselines; they
 execute no tools and add no new HTTP route, no Tool write route, no Provider
 route. Route governance remains 34/34/5/0/1/1; production PID 28428 untouched.
 See [phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md).
+
+### Phase 2E-H1 — Frontend UX Hardening (Console Stability, Accessibility & Safety Closure)
+
+Phase 2E-H1 is complete and pushed (`chore(webui): harden dev console ux`). It is
+a hardening phase — not Phase 3 — that deterministically hardens the Phase 2E
+unified developer console through a 9-lens review (console routing/navigation
+state, overview/safety baseline, workflow continuity, audit cross-navigation,
+blocked reason/error state, accessibility/keyboard/responsive, frontend
+type/state consistency, UI no-leak/safety, smoke/production isolation). All 9
+lenses PASS; 0 P0, 0 P1.
+
+- Hardening ID: `HARDENING-2E-H1-001`
+- Console Workflow Review ID: `CONSOLE-WORKFLOW-2E-H1-001`
+- Accessibility Review ID: `ACCESSIBILITY-2E-H1-001`
+- UI Security Closure ID: `UI-SECURITY-CLOSURE-2E-H1-001`
+- Input HEAD: `0b89f6fc32f1227b9b512c1bb7b215fb0b5ca809`
+- Purpose: harden the Phase 2E unified developer console before Phase 3 planning
+- Result: 9-lens hardening complete (6 new frontend hardening test files, 1 new
+  smoke profile/spec, 1 new backend blocked-reason vocabulary contract test,
+  surgical frontend fixes — blocked-reason catalogue drift corrected, stale
+  phase status corrected, Audit Viewer prefill marker made lossy)
+- P0: 0
+- P1: 0
+- Phase 3: not started
+
+Deliverables: 6 new hardening vitest files, the `run-dev-webui-phase2e-hardening-audit.sh`
+script, 5 hardening docs, a new `phase2e_h1_frontend_ux_hardening` smoke profile,
+and risk-register / plan addenda. Route governance remains 34/34/5/0/1/1 — no new
+route. No production rollout, no `~/.hermes` access, no production `state.db`
+access. See [phase-2e-h1-frontend-ux-hardening](phase-2e-h1-frontend-ux-hardening.md).

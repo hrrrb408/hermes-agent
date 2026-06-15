@@ -126,7 +126,7 @@ describe('blockedReasons', () => {
       'blocked_write_path_traversal',
       'blocked_write_absolute_path',
       'blocked_write_symlink_escape',
-      'blocked_write_forbidden_target',
+      'blocked_write_forbidden_path',
       'blocked_write_provider_auto_execute_denied',
       'blocked_rollback_current_hash_mismatch',
       'blocked_rollback_already_executed',
@@ -193,12 +193,13 @@ describe('frozenBaseline', () => {
     expect(FROZEN_PRODUCTION_GATEWAY_PID).toBe(28428)
   })
 
-  it('records the sealed phase timeline with 2E in progress and 3 not started', () => {
+  it('records the sealed phase timeline with 2E and 2E-H1 completed, 3 not started', () => {
     const byPhase = new Map(FROZEN_PHASE_TIMELINE.map((e) => [e.phase, e.status]))
     expect(byPhase.get('Phase 1G')).toBe('SEALED')
     expect(byPhase.get('Phase 2')).toBe('UNLOCKED')
     expect(byPhase.get('Phase 2D-H1')).toBe('completed')
-    expect(byPhase.get('Phase 2E')).toBe('in_progress')
+    expect(byPhase.get('Phase 2E')).toBe('completed')
+    expect(byPhase.get('Phase 2E-H1')).toBe('completed')
     expect(byPhase.get('Phase 3')).toBe('not_started')
   })
 
