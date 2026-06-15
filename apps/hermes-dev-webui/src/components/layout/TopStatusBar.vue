@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Beaker, Box, Database, Radio, Sparkles } from '@lucide/vue'
+import { Beaker, Box, Database, LayoutDashboard, Radio, Sparkles } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
 </script>
@@ -23,6 +23,10 @@ import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
       <span class="environment-label">Dev</span>
       <span class="home-label">hermes-home-dev</span>
       <ThemeSwitcher class="top-status-bar__theme" />
+      <RouterLink class="dev-console-link" to="/console" aria-label="Open Dev Console">
+        <LayoutDashboard :size="15" aria-hidden="true" />
+        <span>Dev Console</span>
+      </RouterLink>
       <RouterLink class="theme-lab-link" to="/theme-lab" aria-label="Open Theme Lab">
         <Beaker :size="15" aria-hidden="true" />
         <span>Theme Lab</span>

@@ -331,5 +331,20 @@ canonical `audit_schema_v2`, unified sanitizer, append-only durable store,
 index, cursor pagination, filters, safe search, rotation, and corruption
 quarantine. The store lives under the dev `HERMES_HOME` only; no new HTTP
 route, no Tool write HTTP route, no production rollout, no `~/.hermes` access.
-Phase 2E is **not** started. See
+See
 [phase-2d-advanced-audit-storage-indexing](phase-2d-advanced-audit-storage-indexing.md).
+
+## Phase 2E update — Frontend UX Polish (Unified Developer Console)
+
+Phase 2E is the frontend product-workflow and operator-polish slice (section 10
+of this plan). It is **completed**: a unified developer console at `/#/console`
+that presents read-only execution, fake provider round-trip, sandbox write +
+rollback, and the Phase 2D audit store as coherent workflows, with an Overview
+dashboard, a Safety Boundary panel, unified empty/loading/error/blocked states,
+consistent safety badges, and result→audit cross-navigation. It is
+non-functional with respect to safety boundaries — no new HTTP route, no Tool
+write route, no Provider route, no shell/database/external-write capability, no
+production rollout, no `~/.hermes` access. Route governance remains
+34/34/5/0/1/1; production PID 28428 untouched. Phase 3 is **not** started. See
+[phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md) and
+[phase-2e-dev-console-ux-map](phase-2e-dev-console-ux-map.md).

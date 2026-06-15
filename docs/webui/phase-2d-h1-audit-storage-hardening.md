@@ -297,3 +297,15 @@ See companion docs:
 - [Stress report](phase-2d-h1-audit-stress-test-report.md)
 - [Security closure](phase-2d-h1-audit-security-closure.md)
 - [Test report](phase-2d-h1-test-report.md)
+
+## Next phase — Phase 2E (Frontend UX Polish)
+
+Phase 2E follows as the frontend product-workflow / operator-polish slice. It is
+frontend-only: a unified developer console at `/#/console` that surfaces the
+hardened Phase 2D audit store (plus the Phase 2A–2C-H1 capabilities) as coherent
+workflows. It adds **no** backend capability, route, or boundary change — the
+durable audit store and its 10-lens hardening (schema, sanitizer, append-only
+consistency, index, cursor query, rotation/recovery, corruption quarantine,
+legacy dual-write, no-leak API, production isolation) are consumed read-only by
+the new Audit Viewer section and Overview dashboard. See
+[phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md).

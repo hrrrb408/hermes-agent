@@ -34,6 +34,24 @@ describe('Router', () => {
     expect(wrapper.find('.theme-lab').exists()).toBe(true)
   })
 
+  it('loads Dev Console at /console (Phase 2E)', async () => {
+    const { wrapper } = await mountAt('/console')
+    expect(wrapper.find('.devconsole').exists()).toBe(true)
+    // The nav rail + overview section render.
+    expect(wrapper.find('.devconsole-nav').exists()).toBe(true)
+    expect(wrapper.find('[aria-label="Overview"]').exists()).toBe(true)
+  })
+
+  it('links from Workspace to Dev Console', async () => {
+    const { wrapper } = await mountAt('/')
+    expect(wrapper.get('.dev-console-link').attributes('href')).toBe('/console')
+  })
+
+  it('links from Dev Console back to Workspace', async () => {
+    const { wrapper } = await mountAt('/console')
+    expect(wrapper.get('.devconsole__back').attributes('href')).toBe('/')
+  })
+
   it('links from Workspace to Theme Lab', async () => {
     const { wrapper } = await mountAt('/')
     expect(wrapper.get('.theme-lab-link').attributes('href')).toContain('/theme-lab')

@@ -827,3 +827,16 @@ Production Gateway PID baseline remains **28428**; Phase 2D-H1 performs no
 production rollout, no `~/.hermes` access, and no production `state.db` access.
 Audit store files remain runtime-only (never committed). See
 [phase-2d-h1-audit-storage-hardening](phase-2d-h1-audit-storage-hardening.md).
+
+## Phase 2E addendum — Frontend UX Polish
+
+Phase 2E is frontend-only polish (a unified developer console at `/#/console`).
+It introduces **no new backend capability, no new HTTP route, no Tool write
+route, no Provider route**, and no production access. Residual risks are all P2:
+full WCAG certification is deferred; the frozen route-governance / PID baselines
+are verified by the smoke preflight + backend invariant tests rather than probed
+live from the UI (live probing would consume confirmation tokens and pollute the
+audit trail). Production Gateway PID baseline remains **28428**; no `~/.hermes`
+access; no production `state.db` access; runtime artifacts remain uncommitted.
+See [phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md) and
+[phase-2e-accessibility-and-safety-review](phase-2e-accessibility-and-safety-review.md).

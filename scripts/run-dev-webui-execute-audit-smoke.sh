@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -88,7 +88,8 @@ for arg in "$@"; do
       echo "  phase2c_write_sandbox                Profile E — Phase 2C controlled dev-sandbox write"
       echo "  phase2c_h1_rollback_and_token_ttl    Profile F — Phase 2C-H1 rollback execution + token TTL"
       echo "  phase2d_audit_store_indexing         Profile G — Phase 2D durable audit store + cursor query"
-      echo "  all                                  Run Profile A, B, C, D, E, F, then G (default)"
+      echo "  phase2e_frontend_ux_polish           Profile H — Phase 2E unified developer console UX"
+      echo "  all                                  Run Profile A, B, C, D, E, F, G, then H (default)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -370,6 +371,19 @@ configure_gates() {
       export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
       export EXECUTE_EXPECTED=phase2d_audit_store_indexing
       ;;
+    phase2e_frontend_ux_polish)
+      # Phase 2E: unified developer console UX. Frontend-only polish; the gate
+      # set mirrors phase2d (read-only execution + fake provider + write
+      # enablement) so every console section — Tool Execution, Provider
+      # Round-trip, Sandbox Write & Rollback, Audit Viewer — is demonstrable
+      # end-to-end. No production rollout, no ~/.hermes access, no new route.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
+      export EXECUTE_EXPECTED=phase2e_frontend_ux_polish
+      ;;
   esac
 }
 
@@ -481,6 +495,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-2c-h1-rollback-and-token-ttl-smoke.spec.ts"
   elif [ "$profile" = "phase2d_audit_store_indexing" ]; then
     spec_rel="tests/smoke/phase-2d-audit-store-indexing-smoke.spec.ts"
+  elif [ "$profile" = "phase2e_frontend_ux_polish" ]; then
+    spec_rel="tests/smoke/phase-2e-frontend-ux-polish-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -524,7 +540,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -535,6 +551,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase2c_write_sandbox"
     run_smoke_for_profile "phase2c_h1_rollback_and_token_ttl"
     run_smoke_for_profile "phase2d_audit_store_indexing"
+    run_smoke_for_profile "phase2e_frontend_ux_polish"
     ;;
 esac
 

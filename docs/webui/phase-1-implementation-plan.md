@@ -2077,3 +2077,15 @@ Deliverables: 3 new hardening test files, the
 register / plan addenda. Route governance remains 34/34/5/0/1/1 — no new route.
 No production rollout, no `~/.hermes` access, no production `state.db` access.
 See [phase-2d-h1-audit-storage-hardening](phase-2d-h1-audit-storage-hardening.md).
+
+### Phase 2E — Frontend UX Polish (Unified Developer Console)
+
+Frontend-only polish that organizes the Phase 2A–2D-H1 capabilities into a
+unified developer console at `/#/console`: an Overview dashboard, a Safety
+Boundary panel, unified empty/loading/error/blocked states, consistent safety
+badges, and result→audit cross-navigation. Additive `/console` route (the
+`/#/` chat workbench is unchanged). Overview/Safety/Diagnostics source from
+read-only GETs (`/tools/policy`, `/tools/audit-events`) + frozen baselines; they
+execute no tools and add no new HTTP route, no Tool write route, no Provider
+route. Route governance remains 34/34/5/0/1/1; production PID 28428 untouched.
+See [phase-2e-frontend-ux-polish](phase-2e-frontend-ux-polish.md).

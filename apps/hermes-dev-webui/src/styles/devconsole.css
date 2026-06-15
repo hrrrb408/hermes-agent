@@ -1,0 +1,309 @@
+/**
+ * Dev Console stylesheet (Phase 2E).
+ *
+ * Global styles for the unified developer console (#/console): the two-pane
+ * layout, the left nav rail, the section wrappers, the Overview summary cards,
+ * and the Safety Boundary panel. Uses the same semantic CSS variables as the
+ * rest of the workspace so all five themes adapt without theme-specific rules.
+ */
+
+/* ── Layout shell ─────────────────────────────────────────────────────── */
+.devconsole {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--workspace-center-bg);
+  color: var(--color-text-primary);
+}
+
+.devconsole__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+  padding: var(--space-3, 12px) var(--space-5, 20px);
+  border-bottom: var(--border-width, 1px) solid var(--workspace-divider);
+  background: var(--workspace-topbar-bg);
+}
+
+.devconsole__topbar h1 {
+  margin: 0;
+  font-size: var(--font-size-md, 0.875rem);
+}
+
+.devconsole__topbar .devconsole__badge {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  margin-left: var(--space-2, 8px);
+}
+
+.devconsole__topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+
+.devconsole__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary);
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-panel-bg);
+  text-decoration: none;
+}
+
+.devconsole__back:hover {
+  color: var(--color-text-primary);
+  background: var(--workspace-hover-bg);
+}
+
+.devconsole__body {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+/* ── Left nav rail ────────────────────────────────────────────────────── */
+.devconsole-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3, 12px);
+  border-right: var(--border-width, 1px) solid var(--workspace-divider);
+  background: var(--workspace-sidebar-bg);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.devconsole-nav__heading {
+  padding: 0 var(--space-2, 8px) var(--space-2, 8px);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.devconsole-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--color-text-secondary);
+  border: var(--border-width, 1px) solid transparent;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast, 120ms ease), background-color var(--transition-fast, 120ms ease);
+}
+
+.devconsole-nav__item:hover {
+  color: var(--color-text-primary);
+  background: var(--workspace-hover-bg);
+}
+
+.devconsole-nav__item--active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--workspace-tab-active-bg);
+}
+
+.devconsole-nav__item:focus-visible {
+  outline: 2px solid var(--color-focus-ring, var(--color-accent));
+  outline-offset: -2px;
+}
+
+/* ── Content area ─────────────────────────────────────────────────────── */
+.devconsole__content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5, 20px) var(--space-6, 24px);
+}
+
+/* ── Section wrapper ──────────────────────────────────────────────────── */
+.devconsole-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.devconsole-section__intro h2 {
+  margin: 0 0 var(--space-1, 4px);
+  font-size: var(--font-size-lg, 1rem);
+  color: var(--color-text-primary);
+}
+
+.devconsole-section__intro p {
+  margin: 0;
+  max-width: 72ch;
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Cross-reference strip (result → audit) ───────────────────────────── */
+.devconsole-crossnav {
+  padding: var(--space-3, 12px);
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface-raised);
+}
+
+.devconsole-crossnav__title {
+  margin: 0 0 var(--space-2, 8px);
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.devconsole-crossnav__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+/* ── Status summary cards (Overview) ──────────────────────────────────── */
+.devconsole-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.devconsole-summary__card {
+  padding: var(--space-3, 12px);
+  border: var(--border-width, 1px) solid var(--workspace-card-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--workspace-card-bg);
+}
+
+.devconsole-summary__card[data-tone="ok"] { border-color: var(--color-success, #5eba7d); }
+.devconsole-summary__card[data-tone="warn"] { border-color: var(--color-warning, #d4a843); }
+.devconsole-summary__card[data-tone="danger"] { border-color: var(--color-error, #e5656b); }
+
+.devconsole-summary__label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.devconsole-summary__value {
+  margin-top: var(--space-1, 4px);
+  font-size: var(--font-size-lg, 1rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-primary);
+}
+
+.devconsole-summary__sub {
+  margin-top: 2px;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary);
+}
+
+/* ── Safety badge bar + grouped safety panel ──────────────────────────── */
+.devconsole-badge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.devconsole-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  font-size: 0.6875rem;
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+}
+
+.devconsole-badge[data-tone="ok"] { color: var(--color-success, #5eba7d); border-color: var(--color-success, #5eba7d); }
+.devconsole-badge[data-tone="warn"] { color: var(--color-warning, #d4a843); border-color: var(--color-warning, #d4a843); }
+.devconsole-badge[data-tone="danger"] { color: var(--color-error, #e5656b); border-color: var(--color-error, #e5656b); }
+
+.devconsole-safety-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px);
+  border: var(--border-width, 1px) solid var(--workspace-card-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--workspace-card-bg);
+}
+
+.devconsole-safety-group__title {
+  margin: 0;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-primary);
+}
+
+.devconsole-safety-group__desc {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Key/value grid (Overview / Diagnostics details) ──────────────────── */
+.devconsole-kv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px var(--space-3, 12px);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.devconsole-kv dt { color: var(--color-text-secondary); }
+.devconsole-kv dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  word-break: break-all;
+}
+
+.devconsole-card {
+  padding: var(--space-3, 12px);
+  border: var(--border-width, 1px) solid var(--workspace-card-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--workspace-card-bg);
+}
+
+.devconsole-card h3 {
+  margin: 0 0 var(--space-2, 8px);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-primary);
+}
+
+.devconsole-note {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* ── Responsive: collapse the rail above the content on narrow screens ── */
+@media (max-width: 820px) {
+  .devconsole__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .devconsole-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: var(--border-width, 1px) solid var(--workspace-divider);
+  }
+  .devconsole-nav__heading { width: 100%; }
+  .devconsole-nav__item { width: auto; }
+}

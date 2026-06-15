@@ -197,6 +197,26 @@
   background: var(--workspace-hover-bg);
 }
 
+/* Phase 2E: Dev Console entry link mirrors the Theme Lab link styling. */
+.dev-console-link {
+  gap: 5px;
+  padding: 5px 8px;
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+  border: var(--border-width) solid var(--workspace-divider);
+  border-radius: var(--radius-md);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.dev-console-link:hover {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  background: var(--workspace-hover-bg);
+}
+
 .session-sidebar,
 .workspace-panel {
   min-width: 0;

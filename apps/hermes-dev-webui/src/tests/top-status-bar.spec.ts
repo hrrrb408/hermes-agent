@@ -15,7 +15,7 @@ describe('TopStatusBar', () => {
         stubs: {
           RouterLink: {
             props: ['to'],
-            template: '<a class="theme-lab-link" :href="to"><slot /></a>',
+            template: '<a :href="to"><slot /></a>',
           },
         },
       },
@@ -47,6 +47,13 @@ describe('TopStatusBar', () => {
     const link = mountBar().get('.theme-lab-link')
     expect(link.attributes('href')).toBe('/theme-lab')
     expect(link.text()).toContain('Theme Lab')
+  })
+
+  it('contains an accessible Dev Console link (Phase 2E)', () => {
+    const link = mountBar().get('.dev-console-link')
+    expect(link.attributes('href')).toBe('/console')
+    expect(link.text()).toContain('Dev Console')
+    expect(link.attributes('aria-label')).toBe('Open Dev Console')
   })
 
   it('renders status text alongside decorative icons', () => {
