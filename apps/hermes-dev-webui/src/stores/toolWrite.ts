@@ -11,11 +11,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-import { runWritePreview as runWritePreviewApi, executeWrite as executeWriteApi } from '@/api/toolWrite'
+import { runWritePreview as runWritePreviewApi, executeWrite as executeWriteApi, runRollbackPreview as runRollbackPreviewApi, executeRollback as executeRollbackApi } from '@/api/toolWrite'
 import { isDevApiError } from '@/api/client'
 import { WRITE_TOOL_IDS, type WriteToolArguments, type WriteToolId } from '@/types/api/toolWrite'
 
 import type {
+  RollbackExecuteResultData,
+  RollbackPreviewResultData,
   WriteExecuteResultData,
   WritePreviewResultData,
 } from '@/types/api/toolWrite'
@@ -52,6 +54,13 @@ export const useToolWriteStore = defineStore('tool-write', () => {
   const error = ref('')
   const preview = ref<WritePreviewResultData | null>(null)
   const executeResult = ref<WriteExecuteResultData | null>(null)
+
+  // Phase 2C-H1 — rollback execution state.
+  const rollbackId = ref('')
+  const rollbackPreview = ref<RollbackPreviewResultData | null>(null)
+  const rollbackResult = ref<RollbackExecuteResultData | null>(null)
+  const rollbackConfirmed = ref(false)
+  const rollbackStatus = ref<WriteStatus>('idle')
 
   const selectableTools = WRITE_TOOL_IDS
 
@@ -171,10 +180,96 @@ export const useToolWriteStore = defineStore('tool-write', () => {
       )
       executeResult.value = response.data
       status.value = response.data.status === 'completed' ? 'completed' : 'blocked'
+      // Phase 2C-H1: surface the rollback id so the UI can offer rollback.
+      if (response.data.status === 'completed' && response.data.rollbackId) {
+        rollbackId.value = response.data.rollbackId
+      }
     } catch (err) {
       if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
       error.value = _handleError(err)
       status.value = 'error'
+    }
+  }
+
+  // ---- Phase 2C-H1: rollback execution ----
+
+  function setRollbackId(value: string): void {
+    rollbackId.value = value.slice(0, 128)
+    rollbackPreview.value = null
+    rollbackResult.value = null
+    rollbackConfirmed.value = false
+    rollbackStatus.value = 'idle'
+  }
+
+  function setRollbackConfirmed(value: boolean): void {
+    rollbackConfirmed.value = value
+  }
+
+  const canRollbackPreview = computed(
+    () => rollbackId.value.trim().length > 0 && rollbackStatus.value !== 'loading',
+  )
+
+  const canRollbackExecute = computed(
+    () =>
+      rollbackPreview.value !== null &&
+      !rollbackPreview.value.blocked &&
+      rollbackPreview.value.confirmationToken !== null &&
+      rollbackConfirmed.value === true &&
+      rollbackStatus.value !== 'loading',
+  )
+
+  /** Token state derived from the last rollback result / blocked reason. */
+  const rollbackTokenState = computed<'idle' | 'active' | 'used' | 'expired' | 'replay_blocked' | 'blocked'>(() => {
+    if (rollbackResult.value === null) return 'idle'
+    if (rollbackResult.value.status === 'completed') return 'used'
+    const reason = rollbackResult.value.blockedReason ?? ''
+    if (reason.includes('already_used') || reason.includes('already_executed') || reason.includes('replay')) {
+      return 'replay_blocked'
+    }
+    if (reason.includes('expired')) return 'expired'
+    return 'blocked'
+  })
+
+  async function runRollbackPreviewFn(signal?: AbortSignal): Promise<void> {
+    if (!canRollbackPreview.value) return
+    rollbackStatus.value = 'loading'
+    rollbackPreview.value = null
+    rollbackResult.value = null
+    rollbackConfirmed.value = false
+    try {
+      const response = await runRollbackPreviewApi(
+        { mode: 'rollback_preview', rollbackId: rollbackId.value.trim(), includeManifestList: true },
+        signal,
+      )
+      rollbackPreview.value = response.data
+      rollbackStatus.value = response.data.blocked ? 'blocked' : 'previewed'
+    } catch (err) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      error.value = _handleError(err)
+      rollbackStatus.value = 'error'
+    }
+  }
+
+  async function runRollbackExecuteFn(signal?: AbortSignal): Promise<void> {
+    if (!canRollbackExecute.value || rollbackPreview.value === null) return
+    rollbackStatus.value = 'loading'
+    rollbackResult.value = null
+    try {
+      const response = await executeRollbackApi(
+        {
+          mode: 'rollback',
+          rollbackId: rollbackPreview.value.rollbackId,
+          confirmationToken: rollbackPreview.value.confirmationToken ?? '',
+          argumentDigest: rollbackPreview.value.argumentDigest,
+        },
+        signal,
+      )
+      rollbackResult.value = response.data
+      rollbackStatus.value = response.data.status === 'completed' ? 'completed' : 'blocked'
+    } catch (err) {
+      if (isDevApiError(err) && err.code === 'REQUEST_CANCELLED') return
+      error.value = _handleError(err)
+      rollbackStatus.value = 'error'
     }
   }
 
@@ -204,5 +299,18 @@ export const useToolWriteStore = defineStore('tool-write', () => {
     reset,
     runPreview,
     runExecute,
+    // Phase 2C-H1 rollback
+    rollbackId,
+    rollbackPreview,
+    rollbackResult,
+    rollbackConfirmed,
+    rollbackStatus,
+    rollbackTokenState,
+    canRollbackPreview,
+    canRollbackExecute,
+    setRollbackId,
+    setRollbackConfirmed,
+    runRollbackPreview: runRollbackPreviewFn,
+    runRollbackExecute: runRollbackExecuteFn,
   }
 })

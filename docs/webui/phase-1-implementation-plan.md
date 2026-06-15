@@ -2028,3 +2028,15 @@ reused via `mode` branches, so route governance stays 34/34/5/0/1/1. No
 shell/database/external-service write, no production rollout, no `~/.hermes`
 or production `state.db` access. See
 [phase-2c-controlled-tool-write-execution](phase-2c-controlled-tool-write-execution.md).
+
+## Phase 2C-H1 Update — Write Execution Hardening
+
+Phase 2C-H1 is complete and pushed (`feat(webui): harden sandbox write rollback
+and confirmation`). It closes two Phase 2C P2 items: **automatic rollback
+execution** (`dev_sandbox_rollback_execute`) and **file-backed confirmation
+token TTL** (dev-only store, scope binding, digest binding, persistent
+single-use replay protection). No new HTTP route — rollback reuses
+`/tools/dry-run` (`mode=rollback_preview`) and `/tools/execute`
+(`mode=rollback`) via `mode` branches, so route governance stays 34/34/5/0/1/1.
+Provider write remains preview-only. See
+[phase-2c-h1-write-execution-hardening](phase-2c-h1-write-execution-hardening.md).

@@ -749,3 +749,18 @@ entries (all mitigated, P0/P1 = 0):
   live PID `1962 → 28428` during the session; under user authorization the
   baseline constant was refreshed. The task sanctions an authorized PID refresh
   on drift (P2). The gateway was never stopped/restarted/signaled by Phase 2C.
+
+## Phase 2C-H1 Update — Write Execution Hardening
+
+Phase 2C-H1 closes two write-execution risks (all mitigated, P0/P1 = 0):
+
+- **R2C-H1-01 (rollback escapes sandbox)** — mitigated by manifest-store
+  `rollbackId` validation, sandbox target validation, symlink-escape check, and
+  current-hash verification at preview + execute time.
+- **R2C-H1-02 (token replay / expiry / scope confusion)** — mitigated by the
+  file-backed token store: plain secret never stored, TTL enforced, scope
+  isolation (write↔rollback↔provider), persistent single-use replay protection.
+- **R2C-H1-03 (beforeContent leak)** — mitigated: restore content stored
+  internally only, never returned by the public safe view or written to audit.
+- **R2C-H1-04 (production gateway PID drift)** — baseline carried from Phase 2C
+  at **28428**; unchanged by this work.

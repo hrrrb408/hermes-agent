@@ -77,16 +77,17 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
       echo "  phase2a                              Profile C — Phase 2A read-only multi-tool execution"
       echo "  phase2b_provider_fake_roundtrip      Profile D — Phase 2B provider fake round-trip"
       echo "  phase2c_write_sandbox                Profile E — Phase 2C controlled dev-sandbox write"
-      echo "  all                                  Run Profile A, B, C, D, then E (default)"
+      echo "  phase2c_h1_rollback_and_token_ttl    Profile F — Phase 2C-H1 rollback execution + token TTL"
+      echo "  all                                  Run Profile A, B, C, D, E, then F (default)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -344,6 +345,16 @@ configure_gates() {
       export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
       export EXECUTE_EXPECTED=phase2c_write_sandbox
       ;;
+    phase2c_h1_rollback_and_token_ttl)
+      # Phase 2C-H1: rollback execution + file-backed confirmation token TTL.
+      # Same gates as the write profile (rollback reuses the write gate) plus
+      # write enablement. Dev-only; the script process exit cleans the export.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
+      export EXECUTE_EXPECTED=phase2c_h1_rollback_and_token_ttl
+      ;;
   esac
 }
 
@@ -451,6 +462,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-2b-provider-fake-roundtrip-smoke.spec.ts"
   elif [ "$profile" = "phase2c_write_sandbox" ]; then
     spec_rel="tests/smoke/phase-2c-write-sandbox-smoke.spec.ts"
+  elif [ "$profile" = "phase2c_h1_rollback_and_token_ttl" ]; then
+    spec_rel="tests/smoke/phase-2c-h1-rollback-and-token-ttl-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -494,7 +507,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -503,6 +516,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase2a"
     run_smoke_for_profile "phase2b_provider_fake_roundtrip"
     run_smoke_for_profile "phase2c_write_sandbox"
+    run_smoke_for_profile "phase2c_h1_rollback_and_token_ttl"
     ;;
 esac
 

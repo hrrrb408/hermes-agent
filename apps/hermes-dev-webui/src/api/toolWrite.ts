@@ -16,6 +16,10 @@
 import { apiPost } from './client'
 
 import type {
+  RollbackExecuteRequest,
+  RollbackExecuteResultData,
+  RollbackPreviewRequest,
+  RollbackPreviewResultData,
   WriteExecuteRequest,
   WriteExecuteResultData,
   WritePreviewRequest,
@@ -51,6 +55,41 @@ export async function executeWrite(
   signal?: AbortSignal,
 ) {
   return apiPost<WriteExecuteResultData>(
+    `${API_PREFIX}/tools/execute`,
+    request,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Build a rollback preview (dry-run) for a stored rollback manifest. Reuses
+ * POST /api/dev/v1/tools/dry-run with body.mode='rollback_preview' — no new
+ * route. Loads the manifest, checks the current sandbox state, and returns a
+ * rollback-scoped confirmation token. NEVER mutates the filesystem.
+ */
+export async function runRollbackPreview(
+  request: RollbackPreviewRequest,
+  signal?: AbortSignal,
+) {
+  return apiPost<RollbackPreviewResultData>(
+    `${API_PREFIX}/tools/dry-run`,
+    request,
+    undefined,
+    signal,
+  )
+}
+
+/**
+ * Execute a controlled rollback. Requires a rollbackId, a rollback-scoped
+ * confirmation token, and an argument digest. Reuses
+ * POST /api/dev/v1/tools/execute with body.mode='rollback' — no new route.
+ */
+export async function executeRollback(
+  request: RollbackExecuteRequest,
+  signal?: AbortSignal,
+) {
+  return apiPost<RollbackExecuteResultData>(
     `${API_PREFIX}/tools/execute`,
     request,
     undefined,

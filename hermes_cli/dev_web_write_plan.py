@@ -419,23 +419,64 @@ def redact_write_plan_for_audit(plan: WritePlan) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 5. Confirmation token (stateless binding + in-memory single-use)
+# 5. Confirmation token (file-backed store, TTL, scope-bound, single-use)
 # ---------------------------------------------------------------------------
+#
+# Phase 2C-H1: write + rollback confirmation tokens are persisted in the
+# dev-only file-backed store (dev_web_confirmation_store). The token handed to
+# the client is ``<tokenId>.<secret>``; the secret is never stored. Tokens
+# carry a scope (write_execute / rollback_execute / provider_write_preview_confirm),
+# a TTL, and persistent single-use replay protection. Read-only (Phase 1G/2A)
+# confirmation is intentionally left on its existing path to avoid regression.
 
-# Per-process nonce. Tokens are valid for the lifetime of the server process.
-# File-backed TTL persistence + cross-process store are deferred to 2C-H1/2D.
-_CONFIRMATION_NONCE = secrets.token_hex(32)
-_CONSUMED_TOKENS: set[str] = set()
+# Map the granular store reasons to the write-level reasons where a coarse
+# signal is expected by the write dispatch.
+_STORE_REASON_TO_WRITE: dict[str, str] = {
+    "blocked_confirmation_token_not_found": BLOCKED_WRITE_CONFIRMATION_REQUIRED,
+    "blocked_confirmation_token_invalid": BLOCKED_WRITE_CONFIRMATION_REQUIRED,
+    "blocked_confirmation_token_expired": BLOCKED_WRITE_CONFIRMATION_REQUIRED,
+    "blocked_confirmation_token_already_used": "blocked_write_confirmation_already_used",
+    "blocked_confirmation_token_scope_mismatch": "blocked_write_confirmation_scope_mismatch",
+    "blocked_confirmation_token_digest_mismatch": BLOCKED_WRITE_DIGEST_MISMATCH,
+}
 
 
-def _expected_confirmation_token(write_plan_id: str, argument_digest: str) -> str:
-    raw = f"{write_plan_id}|{argument_digest}|{_CONFIRMATION_NONCE}"
-    return "wctok_" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:40]
+def issue_write_confirmation_token(
+    write_plan_id: str,
+    argument_digest: str,
+    *,
+    tool_id: str | None = None,
+    operation: str | None = None,
+    target_relative_path: str | None = None,
+    hermes_home: str | os.PathLike[str] | None = None,
+) -> str | None:
+    """Issue a file-backed, single-use write confirmation token.
 
+    Returns the opaque token string (``<tokenId>.<secret>``), or ``None`` on
+    store failure.
+    """
+    from hermes_cli.dev_web_confirmation_store import (
+        SCOPE_WRITE_EXECUTE,
+        DEFAULT_TTL_WRITE_SECONDS,
+        create_confirmation_token,
+    )
 
-def issue_write_confirmation_token(write_plan_id: str, argument_digest: str) -> str:
-    """Issue a confirmation token bound to (write_plan_id, argument_digest)."""
-    return _expected_confirmation_token(write_plan_id, argument_digest)
+    payload = {
+        "writePlanId": write_plan_id,
+        "toolId": tool_id,
+        "operation": operation,
+        "targetRelativePath": target_relative_path,
+    }
+    issue = create_confirmation_token(
+        payload,
+        scope=SCOPE_WRITE_EXECUTE,
+        argument_digest=argument_digest,
+        tool_id=tool_id,
+        operation=operation,
+        ttl_seconds=DEFAULT_TTL_WRITE_SECONDS,
+        hermes_home=hermes_home,
+    )
+    return issue.token if issue is not None else None
 
 
 def verify_write_confirmation_token(
@@ -444,23 +485,38 @@ def verify_write_confirmation_token(
     argument_digest: str,
     *,
     consume: bool = True,
+    hermes_home: str | os.PathLike[str] | None = None,
 ) -> tuple[bool, str | None]:
-    """Verify a confirmation token. Returns ``(verified, error_code)``."""
+    """Verify a write confirmation token. Returns ``(verified, error_code)``.
+
+    On success and ``consume=True``, the token is marked used (persistent
+    single-use). The ``error_code`` is the write-level reason.
+    """
+    from hermes_cli.dev_web_confirmation_store import (
+        SCOPE_WRITE_EXECUTE,
+        verify_confirmation_token,
+        mark_confirmation_token_used,
+    )
+
     if not raw_token or not isinstance(raw_token, str):
         return False, BLOCKED_WRITE_CONFIRMATION_REQUIRED
-    expected = _expected_confirmation_token(write_plan_id, argument_digest)
-    if not secrets.compare_digest(raw_token, expected):
-        return False, BLOCKED_WRITE_CONFIRMATION_REQUIRED
-    if raw_token in _CONSUMED_TOKENS:
-        return False, BLOCKED_WRITE_CONFIRMATION_REQUIRED
-    if consume:
-        _CONSUMED_TOKENS.add(raw_token)
+    result = verify_confirmation_token(
+        raw_token,
+        expected_scope=SCOPE_WRITE_EXECUTE,
+        expected_digest=argument_digest,
+        hermes_home=hermes_home,
+    )
+    if not result.verified:
+        store_reason = result.blocked_reason or BLOCKED_WRITE_CONFIRMATION_REQUIRED
+        return False, _STORE_REASON_TO_WRITE.get(store_reason, BLOCKED_WRITE_CONFIRMATION_REQUIRED)
+    if consume and result.record is not None:
+        mark_confirmation_token_used(result.record.tokenId, hermes_home=hermes_home)
     return True, None
 
 
 def _reset_confirmation_state_for_tests() -> None:
-    """Test-only hook to clear the in-memory consumed-token set."""
-    _CONSUMED_TOKENS.clear()
+    """Test-only hook (file-backed store is per-HERMES_HOME; kept for compat)."""
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -483,12 +539,21 @@ def build_write_preview(
     plan = build_write_plan(tool_id, normalized_args, hermes_home=hermes_home)
     preview = plan.to_safe_dict()
     if not plan.blocked:
-        token = issue_write_confirmation_token(plan.write_plan_id, plan.argument_digest)
+        token = issue_write_confirmation_token(
+            plan.write_plan_id,
+            plan.argument_digest,
+            tool_id=plan.tool_id,
+            operation=plan.operation,
+            target_relative_path=plan.target_relative_path,
+            hermes_home=hermes_home,
+        )
         preview["confirmationToken"] = token
+        preview["confirmationTokenScope"] = "write_execute"
         preview["requiresUserConfirmation"] = True
         preview["writeExecuted"] = False
     else:
         preview["confirmationToken"] = None
+        preview["confirmationTokenScope"] = None
         preview["requiresUserConfirmation"] = True
         preview["writeExecuted"] = False
     return preview
@@ -561,6 +626,21 @@ EVENT_WRITE_POST_EXECUTION_AUDIT = "write_post_execution_audit"
 EVENT_WRITE_ROLLBACK_MANIFEST_BUILT = "write_rollback_manifest_built"
 EVENT_PROVIDER_WRITE_PREVIEW_GENERATED = "provider_write_preview_generated"
 EVENT_PROVIDER_WRITE_AUTO_EXECUTE_BLOCKED = "provider_write_auto_execute_blocked"
+
+# Phase 2C-H1 — confirmation token lifecycle events.
+EVENT_CONFIRMATION_TOKEN_CREATED = "confirmation_token_created"
+EVENT_CONFIRMATION_TOKEN_VERIFIED = "confirmation_token_verified"
+EVENT_CONFIRMATION_TOKEN_EXPIRED = "confirmation_token_expired"
+EVENT_CONFIRMATION_TOKEN_USED = "confirmation_token_used"
+EVENT_CONFIRMATION_TOKEN_REPLAY_BLOCKED = "confirmation_token_replay_blocked"
+
+# Phase 2C-H1 — rollback execution lifecycle events.
+EVENT_ROLLBACK_PREVIEW_GENERATED = "rollback_preview_generated"
+EVENT_ROLLBACK_EXECUTION_BLOCKED = "rollback_execution_blocked"
+EVENT_ROLLBACK_PRE_EXECUTION_AUDIT = "rollback_pre_execution_audit"
+EVENT_ROLLBACK_HANDLER_CALLED = "rollback_handler_called"
+EVENT_ROLLBACK_POST_EXECUTION_AUDIT = "rollback_post_execution_audit"
+EVENT_ROLLBACK_MANIFEST_MARKED_EXECUTED = "rollback_manifest_marked_executed"
 
 ERROR_WRITE_AUDIT_HOME_MISSING = "WRITE_AUDIT_HERMES_HOME_MISSING"
 ERROR_WRITE_AUDIT_PATH_OUTSIDE = "WRITE_AUDIT_PATH_OUTSIDE_HERMES_HOME"

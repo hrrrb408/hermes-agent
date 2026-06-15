@@ -45,7 +45,9 @@ test.describe('Phase 2C controlled write', () => {
     test.skip(!(await apiAvailable(request)), 'Dev API not available on 127.0.0.1:5181')
 
     const target = 'notes/smoke-phase2c.md'
-    const content = '# Phase 2C Smoke\n\nwritten by the controlled write smoke.\n'
+    // Unique per run so a pre-existing sandbox file (from a prior smoke run)
+    // produces a distinct beforeHash != afterHash.
+    const content = `# Phase 2C Smoke\n\nwritten by the controlled write smoke at ${Date.now()}.\n`
 
     // 1. Dry-run preview (must not write).
     const previewResp = await request.post(DRY_RUN_URL, {

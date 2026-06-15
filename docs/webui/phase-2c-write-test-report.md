@@ -55,3 +55,14 @@ An external gateway restart during the session moved the live PID
 refreshed `1962 → 28428` (code, smoke harness, tests). The pre-existing
 `test_real_adapter_blocked_even_when_enabled` test (which gates on the live
 PID matching the baseline) now passes.
+
+## Phase 2C-H1 Update
+
+Phase 2C-H1 adds 7 backend test files (79 tests, 0 failed), extends the
+frontend write-panel spec (726 vitest tests pass), and adds the
+`phase2c_h1_rollback_and_token_ttl` smoke profile + spec. Two Phase 2C
+assertions were updated for the hardening: the unified allowlist now includes
+the rollback tool (11 members) and write-token replay reports the granular
+`blocked_write_confirmation_already_used` reason. Route governance stays
+34/34/5/0/1/1; PID baseline stays 28428. See
+[phase-2c-h1-test-report](phase-2c-h1-test-report.md).

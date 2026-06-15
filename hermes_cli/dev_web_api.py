@@ -196,10 +196,18 @@ from hermes_cli.dev_web_write_plan import (
 )
 from hermes_cli.dev_web_write_handlers import (
     dispatch_write_tool as _dispatch_write_tool,
+    dispatch_rollback_tool as _dispatch_rollback_tool,
 )
 from hermes_cli.dev_web_write_tool_registry import (
     is_phase_2c_write_tool as _is_phase_2c_write_tool,
     PHASE_2C_WRITE_TOOL_IDS as _PHASE_2C_WRITE_TOOL_IDS,
+)
+from hermes_cli.dev_web_write_rollback import (
+    build_rollback_execution_preview as _build_rollback_execution_preview,
+)
+from hermes_cli.dev_web_write_rollback_store import (
+    is_valid_rollback_id as _is_valid_rollback_id,
+    list_rollback_manifests as _list_rollback_manifests,
 )
 
 
@@ -2991,6 +2999,54 @@ def _register_tool_dry_run_routes(
         preview["mode"] = "write_preview"
         return {"data": preview, "meta": {"requestId": rid, "timestamp": ts}}
 
+    def _handle_rollback_preview(
+        body: dict[str, Any],
+        rid: str,
+        ts: str,
+    ) -> dict:
+        """Phase 2C-H1 rollback preview (dry-run) on the dry-run path.
+
+        Reuses ``POST /tools/dry-run`` with ``body.mode='rollback_preview'`` —
+        no new route. Loads the stored manifest, checks the current sandbox
+        state, and returns the preview + a rollback-scoped confirmation token.
+        NEVER mutates the filesystem.
+        """
+        rollback_id = body.get("rollbackId")
+        if not isinstance(rollback_id, str) or not rollback_id.strip():
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="rollbackId is required for rollback_preview mode.",
+                request_id=rid,
+            )
+        rollback_id = rollback_id.strip()
+        if not _is_valid_rollback_id(rollback_id):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="rollbackId is not a valid rollback manifest id.",
+                request_id=rid,
+            )
+        hermes_home_override = (
+            str(config.hermes_home) if config.hermes_home is not None else None
+        )
+        try:
+            preview = _build_rollback_execution_preview(
+                rollback_id, hermes_home=hermes_home_override
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500, code=_WRITE_INTERNAL_ERROR,
+                message="An unexpected error occurred during rollback preview.",
+                request_id=rid,
+            )
+        preview["mode"] = "rollback_preview"
+        # Optionally surface the known rollback manifest ids so the UI can list
+        # them without a new route.
+        if body.get("includeManifestList"):
+            preview["manifestList"] = _list_rollback_manifests(
+                limit=50, hermes_home=hermes_home_override
+            )
+        return {"data": preview, "meta": {"requestId": rid, "timestamp": ts}}
+
     # ── POST /tools/dry-run ──
 
     @app.post(
@@ -3013,6 +3069,10 @@ def _register_tool_dry_run_routes(
         mode = body.get("mode")
         if mode == "write_preview":
             return _handle_write_preview(body, rid, ts)
+
+        # Phase 2C-H1: rollback-preview branch (same path, no new route).
+        if mode == "rollback_preview":
+            return _handle_rollback_preview(body, rid, ts)
 
         # Step 1: Record start time for duration measurement
         import time
@@ -3628,6 +3688,55 @@ def _register_tool_execute_routes(
         data["mode"] = "write"
         return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
 
+    def _handle_rollback_execute(
+        body: dict[str, Any],
+        rid: str,
+        ts: str,
+    ) -> dict:
+        """Phase 2C-H1 controlled rollback on the execute path.
+
+        Reuses ``POST /tools/execute`` with ``body.mode='rollback'`` — no new
+        route. Requires a rollbackId, a rollback-scoped confirmation token, and
+        an argument digest. This route remains a Tool execution route, NOT a
+        Tool write route.
+        """
+        rollback_id = body.get("rollbackId")
+        if not isinstance(rollback_id, str) or not rollback_id.strip():
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="rollbackId is required for rollback mode.",
+                request_id=rid,
+            )
+        rollback_id = rollback_id.strip()
+        if not _is_valid_rollback_id(rollback_id):
+            return _make_error_json(
+                status_code=400, code=_WRITE_INVALID_TOOL,
+                message="rollbackId is not a valid rollback manifest id.",
+                request_id=rid,
+            )
+        context = {
+            "confirmationToken": body.get("confirmationToken") if isinstance(body.get("confirmationToken"), str) else None,
+            "argumentDigest": body.get("argumentDigest") if isinstance(body.get("argumentDigest"), str) else None,
+            "uiOrigin": body.get("uiOrigin") if isinstance(body.get("uiOrigin"), str) else None,
+            "sourceContext": body.get("sourceContext") if isinstance(body.get("sourceContext"), str) else None,
+        }
+        hermes_home_override = (
+            str(config.hermes_home) if config.hermes_home is not None else None
+        )
+        try:
+            result = _dispatch_rollback_tool(
+                rollback_id, context=context, hermes_home=hermes_home_override
+            )
+        except Exception:
+            return _make_error_json(
+                status_code=500, code=_WRITE_INTERNAL_ERROR,
+                message="An unexpected error occurred during rollback execution.",
+                request_id=rid,
+            )
+        data = result.to_safe_dict()
+        data["mode"] = "rollback"
+        return {"data": data, "meta": {"requestId": rid, "timestamp": ts}}
+
     # ── POST /tools/execute ──
 
     @app.post(
@@ -3657,6 +3766,10 @@ def _register_tool_execute_routes(
         # Phase 2C: controlled write branch (same path, no new route).
         if mode == "write":
             return _handle_write_execute(body, rid, ts)
+
+        # Phase 2C-H1: controlled rollback branch (same path, no new route).
+        if mode == "rollback":
+            return _handle_rollback_execute(body, rid, ts)
 
         # Step 1: Validate canonicalName
         canonical_name = body.get("canonicalName")

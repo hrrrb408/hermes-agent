@@ -133,7 +133,9 @@ class TestConfirmationAndDigest:
             "dev_sandbox_file_write", {"targetPath": "a.md", "content": "x"},
             context=ctx, hermes_home=dev_home,
         )
-        assert r2.to_safe_dict()["blockedReason"] == BLOCKED_WRITE_CONFIRMATION_REQUIRED
+        # Phase 2C-H1: file-backed single-use tokens report a granular
+        # already-used reason on replay.
+        assert r2.to_safe_dict()["blockedReason"] == "blocked_write_confirmation_already_used"
 
 
 # ---------------------------------------------------------------------------

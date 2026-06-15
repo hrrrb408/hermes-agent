@@ -94,3 +94,14 @@ refreshed from `1962` to `28428` in `dev_web_provider_request.py`,
 `dev_web_read_only_tool_handlers.py`, the smoke harness, and the relevant
 tests. The task sanctions an authorized PID refresh on drift (P2). Historical
 docs retain the `1962` baseline they recorded at their own time.
+
+## Phase 2C-H1 Update — Write Execution Hardening
+
+Phase 2C-H1 hardens the write chain with **automatic rollback execution**
+(`dev_sandbox_rollback_execute`) and **file-backed confirmation token TTL**.
+Write execution now persists each rollback manifest to the dev rollback store,
+and the write confirmation token is migrated from the stateless MVP to the
+file-backed, TTL'd, scope-bound, single-use store. Rollback reuses the existing
+`/tools/dry-run` + `/tools/execute` routes via `mode` branches — no new route.
+Provider write remains preview-only. See
+[phase-2c-h1-write-execution-hardening](phase-2c-h1-write-execution-hardening.md).

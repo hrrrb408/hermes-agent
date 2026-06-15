@@ -163,6 +163,75 @@ const unsafeTarget = computed(() => targetPathError.value !== '' || store.target
       </div>
       <p v-if="store.executeResult.blockedReason" class="tool-write__error">Blocked: {{ store.executeResult.blockedReason }}</p>
     </div>
+
+    <!-- Phase 2C-H1: rollback execution -->
+    <div class="tool-write__rollback">
+      <h4>Rollback</h4>
+      <div class="tool-write__field">
+        <label for="write-rollback-id">Rollback manifest id</label>
+        <input
+          id="write-rollback-id"
+          type="text"
+          :value="store.rollbackId"
+          placeholder="wrbk_…"
+          @input="store.setRollbackId(($event.target as HTMLInputElement).value)"
+        />
+      </div>
+      <div class="tool-write__actions">
+        <button
+          type="button"
+          class="tool-write__btn"
+          :disabled="!store.canRollbackPreview"
+          @click="store.runRollbackPreview()"
+        >
+          Preview rollback
+        </button>
+        <button
+          type="button"
+          class="tool-write__btn tool-write__btn--primary"
+          :disabled="!store.canRollbackExecute"
+          @click="store.runRollbackExecute()"
+        >
+          Execute rollback
+        </button>
+      </div>
+
+      <div v-if="store.rollbackPreview" class="tool-write__preview">
+        <h5>Rollback preview</h5>
+        <dl class="tool-write__kv">
+          <div><dt>Restore mode</dt><dd>{{ store.rollbackPreview.restoreMode }}</dd></div>
+          <div><dt>Target</dt><dd>{{ store.rollbackPreview.targetRelativePath }}</dd></div>
+          <div><dt>Current hash</dt><dd>{{ store.rollbackPreview.currentHash ? store.rollbackPreview.currentHash.slice(0, 12) + '…' : '—' }}</dd></div>
+          <div><dt>Hash check</dt><dd>{{ store.rollbackPreview.currentHash === store.rollbackPreview.expectedCurrentHash ? 'match' : 'mismatch' }}</dd></div>
+          <div><dt>Token scope</dt><dd>{{ store.rollbackPreview.confirmationTokenScope ?? '—' }}</dd></div>
+        </dl>
+        <p>{{ store.rollbackPreview.restorePreview }}</p>
+        <label v-if="!store.rollbackPreview.blocked" class="tool-write__confirm">
+          <input
+            type="checkbox"
+            :checked="store.rollbackConfirmed"
+            @change="store.setRollbackConfirmed(($event.target as HTMLInputElement).checked)"
+          />
+          I confirm this rollback inside the dev sandbox.
+        </label>
+        <p v-if="store.rollbackPreview.blocked" class="tool-write__error">Blocked: {{ store.rollbackPreview.blockedReason }}</p>
+      </div>
+
+      <div v-if="store.rollbackResult" class="tool-write__result">
+        <h5>Rollback result</h5>
+        <dl class="tool-write__kv">
+          <div><dt>Status</dt><dd>{{ store.rollbackResult.status }}</dd></div>
+          <div><dt>Restore mode</dt><dd>{{ store.rollbackResult.restoreMode }}</dd></div>
+          <div><dt>Final hash</dt><dd>{{ store.rollbackResult.finalHash ?? '— (deleted)' }}</dd></div>
+          <div><dt>Token state</dt><dd>{{ store.rollbackTokenState }}</dd></div>
+          <div><dt>Pre-exec audit</dt><dd>{{ store.rollbackResult.preExecutionAuditId ?? '—' }}</dd></div>
+          <div><dt>Post-exec audit</dt><dd>{{ store.rollbackResult.postExecutionAuditId ?? '—' }}</dd></div>
+        </dl>
+        <p v-if="store.rollbackResult.blockedReason" class="tool-write__error">Blocked: {{ store.rollbackResult.blockedReason }}</p>
+        <p v-if="store.rollbackTokenState === 'replay_blocked'" class="tool-write__warning">⚠ Replay blocked — this confirmation token was already used.</p>
+        <p v-else-if="store.rollbackTokenState === 'expired'" class="tool-write__warning">⚠ Confirmation token expired — re-run the preview.</p>
+      </div>
+    </div>
   </section>
 </template>
 

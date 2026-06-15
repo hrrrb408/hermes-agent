@@ -59,10 +59,23 @@ STATIC_WRITE_ALLOWLIST: frozenset[str] = frozenset(
 
 PHASE_2C_WRITE_TOOL_IDS: frozenset[str] = frozenset(STATIC_WRITE_ALLOWLIST)
 
-# Derived unified executable view (read-only ∪ write). This is a NEW name and
-# does NOT overwrite the frozen STATIC_ALLOWLIST in dev_web_tool_policy.py.
+# Phase 2C-H1: the rollback execution tool lives in its OWN allowlist, separate
+# from the four file-write tools (clean token-scope separation; the file-write
+# registry assertions stay frozen at four). Rollback execution loads a stored
+# manifest rather than taking file-write arguments, so it has its own flow.
+STATIC_ROLLBACK_TOOL_IDS: frozenset[str] = frozenset({"dev_sandbox_rollback_execute"})
+PHASE_2C_H1_ROLLBACK_TOOL_IDS: frozenset[str] = frozenset(STATIC_ROLLBACK_TOOL_IDS)
+
+
+def is_phase_2c_h1_rollback_tool(tool_id: str) -> bool:
+    """Return ``True`` if *tool_id* is the Phase 2C-H1 rollback execution tool."""
+    return tool_id in PHASE_2C_H1_ROLLBACK_TOOL_IDS
+
+
+# Derived unified executable view (read-only ∪ file-write ∪ rollback). This is
+# a NEW name and does NOT overwrite the frozen STATIC_ALLOWLIST.
 UNIFIED_EXECUTABLE_ALLOWLIST: frozenset[str] = frozenset(
-    STATIC_READ_ONLY_ALLOWLIST | STATIC_WRITE_ALLOWLIST
+    STATIC_READ_ONLY_ALLOWLIST | STATIC_WRITE_ALLOWLIST | STATIC_ROLLBACK_TOOL_IDS
 )
 
 
@@ -520,6 +533,23 @@ def _verify_write_registry_consistency() -> None:
     on_deny = STATIC_WRITE_ALLOWLIST & STATIC_DENYLIST
     if on_deny:
         errors.append(f"Write tools must not be on the denylist: {sorted(on_deny)}")
+
+    # Phase 2C-H1: rollback tool must be disjoint from read-only + file-write +
+    # production inventory + denylist.
+    if len(PHASE_2C_H1_ROLLBACK_TOOL_IDS) != 1:
+        errors.append(
+            f"Expected exactly 1 Phase 2C-H1 rollback tool, got "
+            f"{len(PHASE_2C_H1_ROLLBACK_TOOL_IDS)}"
+        )
+    rb_overlap = STATIC_ROLLBACK_TOOL_IDS & (STATIC_READ_ONLY_ALLOWLIST | STATIC_WRITE_ALLOWLIST)
+    if rb_overlap:
+        errors.append(f"Rollback tool must be disjoint: {sorted(rb_overlap)}")
+    rb_collide = STATIC_ROLLBACK_TOOL_IDS & set(TOOL_POLICY_INVENTORY.keys())
+    if rb_collide:
+        errors.append(f"Rollback tool collides with production: {sorted(rb_collide)}")
+    rb_deny = STATIC_ROLLBACK_TOOL_IDS & STATIC_DENYLIST
+    if rb_deny:
+        errors.append(f"Rollback tool must not be on denylist: {sorted(rb_deny)}")
 
     for definition in WRITE_TOOL_DEFINITIONS.values():
         tid = definition.tool_id

@@ -229,3 +229,127 @@ describe('ToolWritePanel', () => {
     }
   })
 })
+
+// Phase 2C-H1 — rollback panel
+describe('ToolWritePanel — rollback (Phase 2C-H1)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  function mountPanel() {
+    return mount(ToolWritePanel, { attachTo: document.body })
+  }
+
+  it('renders the rollback id input and preview button', () => {
+    const wrapper = mountPanel()
+    expect(wrapper.find('#write-rollback-id').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Rollback')
+  })
+
+  it('disables the rollback preview button until a rollback id is set', () => {
+    const wrapper = mountPanel()
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Preview rollback'))!
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('shows the replay-blocked message on a used-token rollback result', async () => {
+    const wrapper = mountPanel()
+    const store = useToolWriteStore()
+    store.rollbackResult = {
+      mode: 'rollback',
+      executionId: 'rbexe_test',
+      rollbackId: 'wrbk_test',
+      status: 'blocked',
+      operation: 'rollback',
+      targetRelativePath: 'notes/x.md',
+      restoreMode: 'delete_created_file',
+      beforeHash: null,
+      afterHash: 'a'.repeat(64),
+      finalHash: null,
+      readOnly: false,
+      writeRequired: true,
+      localSideEffects: true,
+      externalSideEffects: false,
+      providerSchemaSent: false,
+      providerApiCalled: false,
+      externalNetworkCalled: false,
+      confirmationTokenId: 'cft_test',
+      preExecutionAuditId: null,
+      postExecutionAuditId: null,
+      blockedReason: 'blocked_rollback_already_executed',
+      warnings: [],
+    }
+    store.rollbackStatus = 'blocked'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('Replay blocked')
+  })
+
+  it('shows the expired-token message on an expired rollback result', async () => {
+    const wrapper = mountPanel()
+    const store = useToolWriteStore()
+    store.rollbackResult = {
+      mode: 'rollback',
+      executionId: 'rbexe_test',
+      rollbackId: 'wrbk_test',
+      status: 'blocked',
+      operation: 'rollback',
+      targetRelativePath: 'notes/x.md',
+      restoreMode: 'delete_created_file',
+      beforeHash: null,
+      afterHash: 'a'.repeat(64),
+      finalHash: null,
+      readOnly: false,
+      writeRequired: true,
+      localSideEffects: true,
+      externalSideEffects: false,
+      providerSchemaSent: false,
+      providerApiCalled: false,
+      externalNetworkCalled: false,
+      confirmationTokenId: 'cft_test',
+      preExecutionAuditId: null,
+      postExecutionAuditId: null,
+      blockedReason: 'blocked_confirmation_token_expired',
+      warnings: [],
+    }
+    store.rollbackStatus = 'blocked'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('expired')
+  })
+
+  it('disables the rollback execute button before explicit confirmation', async () => {
+    const wrapper = mountPanel()
+    const store = useToolWriteStore()
+    store.rollbackId = 'wrbk_test'
+    store.rollbackPreview = {
+      mode: 'rollback_preview',
+      rollbackId: 'wrbk_test',
+      operation: 'rollback',
+      targetRelativePath: 'notes/x.md',
+      restoreMode: 'delete_created_file',
+      beforeExists: false,
+      beforeHash: null,
+      afterHash: 'a'.repeat(64),
+      currentHash: 'a'.repeat(64),
+      expectedCurrentHash: 'a'.repeat(64),
+      restorePreview: 'Rollback would delete the created file.',
+      argumentDigest: 'd'.repeat(64),
+      readOnly: false,
+      writeRequired: true,
+      localSideEffects: true,
+      externalSideEffects: false,
+      requiresConfirmation: true,
+      requiresWriteEnablement: true,
+      blocked: false,
+      blockedReason: null,
+      sandboxOnly: true,
+      requiresUserConfirmation: true,
+      confirmationToken: 'cft_test.secret',
+      confirmationTokenScope: 'rollback_execute',
+    }
+    store.rollbackStatus = 'previewed'
+    store.rollbackConfirmed = false
+    await wrapper.vm.$nextTick()
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Execute rollback'))!
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+})

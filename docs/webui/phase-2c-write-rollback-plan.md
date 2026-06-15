@@ -42,3 +42,15 @@ is persisted to the write audit JSONL.
 The manifest is also surfaced in the execute result (`rollbackId`,
 `rollbackAvailable`) and recorded by a `write_rollback_manifest_built` audit
 event.
+
+## Phase 2C-H1 Update — Automatic Rollback Execution
+
+Phase 2C-H1 implements the deferred automatic rollback **execution**. The write
+chain now persists each manifest to the dev rollback store
+(`tool-write-rollback-manifests/<rollbackId>.json`, carrying the internal
+`beforeContent` needed for restore). The new `dev_sandbox_rollback_execute`
+tool loads a manifest, verifies current sandbox state, and either deletes the
+created file or restores the previous content — gated by write enablement, a
+rollback-scoped confirmation token, digest verification, and current-hash
+verification. See
+[phase-2c-h1-rollback-execution](phase-2c-h1-rollback-execution.md).

@@ -128,3 +128,92 @@ export interface WriteExecuteRequest {
   readonly confirmationToken: string
   readonly argumentDigest: string
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2C-H1 — Rollback execution
+// ---------------------------------------------------------------------------
+
+/** Confirmation token scope (write vs rollback vs provider preview). */
+export type ConfirmationTokenScope = 'write_execute' | 'rollback_execute' | 'provider_write_preview_confirm'
+
+/** Safe rollback-preview (dry-run) response data. */
+export interface RollbackPreviewResultData {
+  readonly mode: 'rollback_preview'
+  readonly rollbackId: string
+  readonly operation: string
+  readonly targetRelativePath: string
+  readonly restoreMode: 'delete_created_file' | 'restore_previous_content' | 'none'
+  readonly beforeExists: boolean
+  readonly beforeHash: string | null
+  readonly afterHash: string
+  readonly currentHash: string
+  readonly expectedCurrentHash: string
+  readonly restorePreview: string
+  readonly argumentDigest: string
+  readonly readOnly: false
+  readonly writeRequired: true
+  readonly localSideEffects: true
+  readonly externalSideEffects: false
+  readonly requiresConfirmation: true
+  readonly requiresWriteEnablement: true
+  readonly blocked: boolean
+  readonly blockedReason: string | null
+  readonly sandboxOnly: boolean
+  readonly requiresUserConfirmation: boolean
+  readonly confirmationToken: string | null
+  readonly confirmationTokenScope: ConfirmationTokenScope | null
+  readonly manifestList?: readonly RollbackManifestSummary[]
+}
+
+/** Safe summary of a stored rollback manifest (no beforeContent / canonical path). */
+export interface RollbackManifestSummary {
+  readonly rollbackId: string
+  readonly operation: string
+  readonly targetRelativePath: string
+  readonly beforeExists: boolean
+  readonly beforeHash: string | null
+  readonly afterHash: string
+  readonly restoreMode: string
+  readonly executed: boolean
+}
+
+/** Request body for the rollback-preview branch of the dry-run route. */
+export interface RollbackPreviewRequest {
+  readonly mode: 'rollback_preview'
+  readonly rollbackId: string
+  readonly includeManifestList?: boolean
+}
+
+/** Safe rollback execution response data. */
+export interface RollbackExecuteResultData {
+  readonly mode: 'rollback'
+  readonly executionId: string
+  readonly rollbackId: string
+  readonly status: 'completed' | 'blocked'
+  readonly operation: string
+  readonly targetRelativePath: string
+  readonly restoreMode: string
+  readonly beforeHash: string | null
+  readonly afterHash: string
+  readonly finalHash: string | null
+  readonly readOnly: false
+  readonly writeRequired: true
+  readonly localSideEffects: true
+  readonly externalSideEffects: false
+  readonly providerSchemaSent: false
+  readonly providerApiCalled: false
+  readonly externalNetworkCalled: false
+  readonly confirmationTokenId: string | null
+  readonly preExecutionAuditId: string | null
+  readonly postExecutionAuditId: string | null
+  readonly blockedReason: string | null
+  readonly warnings: readonly string[]
+}
+
+/** Request body for the rollback branch of the execute route. */
+export interface RollbackExecuteRequest {
+  readonly mode: 'rollback'
+  readonly rollbackId: string
+  readonly confirmationToken: string
+  readonly argumentDigest: string
+}

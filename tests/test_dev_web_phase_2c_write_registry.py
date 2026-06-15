@@ -68,10 +68,13 @@ class TestWriteAllowlist:
         )
 
     def test_unified_executable_allowlist_is_union(self) -> None:
+        # Phase 2C-H1: the rollback execution tool joins the unified view.
+        from hermes_cli.dev_web_write_tool_registry import STATIC_ROLLBACK_TOOL_IDS
+
         assert UNIFIED_EXECUTABLE_ALLOWLIST == (
-            STATIC_READ_ONLY_ALLOWLIST | STATIC_WRITE_ALLOWLIST
+            STATIC_READ_ONLY_ALLOWLIST | STATIC_WRITE_ALLOWLIST | STATIC_ROLLBACK_TOOL_IDS
         )
-        assert len(UNIFIED_EXECUTABLE_ALLOWLIST) == 10
+        assert len(UNIFIED_EXECUTABLE_ALLOWLIST) == 11
 
     def test_write_disjoint_from_read_only(self) -> None:
         assert STATIC_WRITE_ALLOWLIST.isdisjoint(STATIC_READ_ONLY_ALLOWLIST)

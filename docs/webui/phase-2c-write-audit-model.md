@@ -54,3 +54,20 @@ Every value is re-redacted via the audit `_sanitize`: secret value patterns
 …) become `[REDACTED]`; non-JSON values become `<non_json_value>` (never a
 callable/function repr). The raw file content body is never stored verbatim —
 only a content digest and bounded lengths.
+
+## Phase 2C-H1 Update — Confirmation + Rollback Audit Events
+
+Phase 2C-H1 adds lifecycle audit events (all written to `tool-write-audit.jsonl`,
+queryable via `auditKind=write`, `redactionApplied=true`):
+
+- Confirmation: `confirmation_token_created`, `confirmation_token_verified`,
+  `confirmation_token_expired`, `confirmation_token_used`,
+  `confirmation_token_replay_blocked`.
+- Rollback: `rollback_preview_generated`, `rollback_execution_blocked`,
+  `rollback_pre_execution_audit`, `rollback_handler_called`,
+  `rollback_post_execution_audit`, `rollback_manifest_marked_executed`.
+
+These events never include the token secret, the full tokenHash, the rollback
+`beforeContent`, or callable reprs. See
+[phase-2c-h1-confirmation-token-ttl](phase-2c-h1-confirmation-token-ttl.md)
+and [phase-2c-h1-rollback-execution](phase-2c-h1-rollback-execution.md).
