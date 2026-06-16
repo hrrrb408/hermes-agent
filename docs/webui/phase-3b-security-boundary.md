@@ -64,8 +64,10 @@ Dev services bind `127.0.0.1` only. No `~/.hermes` access; no production
 ## 7. Residual risks (P2 — deferred)
 
 Streaming; multi-provider routing; provider write; token encryption at rest;
-multi-user namespace; live real-provider enablement (requires Phase 3B-H1
-hardening + a separately-authorized real client wiring).
+multi-user namespace; live real-provider enablement (the scope is now **frozen**
+under `PHASE-3B-LIVE-ENABLEMENT-PLANNING-001` — Strict Manual Real Provider
+Read-only Enablement — but remains **not started**; see
+[phase-3b-live-enablement-planning.md](phase-3b-live-enablement-planning.md)).
 
 ---
 

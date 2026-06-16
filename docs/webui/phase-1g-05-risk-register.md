@@ -31,6 +31,19 @@
 > remain blocked. Route governance (34/34/5/0/1/1) and Production Gateway PID
 > `28428` are unchanged.
 
+> **Phase 3B-Live-Enablement Planning Update (2026-06-17):** A docs-only
+> planning pass (`PHASE-3B-LIVE-ENABLEMENT-PLANNING-001`) froze the minimal
+> safe closed-loop for a future, separately-authorized Strict Manual Real
+> Provider Read-only Enablement (human approval, env-only secret read, empty-
+> default HTTPS network allowlist, strict budget / rate-limit caps, read-only
+> tool allowlist, redacted dual-write audit, kill switch / rollback, layered
+> smoke). Live enablement is **not** started; no real HTTP client wiring, no
+> real API key read, no external network call, no provider write / auto-write /
+> autonomous write, no production rollout. Live-layer risks (LIV-P0..P2) live
+> in [phase-3b-live-enablement-risk-register.md](phase-3b-live-enablement-risk-register.md);
+> nothing here is relaxed. Route governance (34/34/5/0/1/1) and Production
+> Gateway PID `28428` are unchanged.
+
 ## Document Information
 
 | Field | Value |

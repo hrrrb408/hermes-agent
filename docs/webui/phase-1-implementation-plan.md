@@ -2220,3 +2220,20 @@ key read, no real network, no provider write, no production rollout. Route
 governance unchanged (34/34/5/0/1/1). **Phase 3C was not started.** See
 [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md)
 and [phase-3b-h1-test-report](phase-3b-h1-test-report.md).
+
+## Phase 3B-Live-Enablement Planning Status Update (2026-06-17)
+
+Phase 3B-Live-Enablement Planning — **Strict Manual Real Provider Enablement
+Scope Freeze** — is recorded under `PHASE-3B-LIVE-ENABLEMENT-PLANNING-001`. It is
+a **docs-only** planning pass that freezes the minimal safe closed-loop for a
+**future, separately-authorized** live real-provider enablement: human approval,
+secret-read boundary, network allowlist, budget / rate-limit caps, read-only tool
+allowlist, audit, kill switch / rollback, smoke strategy, risk register, and GO /
+NO-GO. It does **not** enable a live provider, does **not** implement a real HTTP
+client wiring, does **not** read a real API key, and does **not** perform any
+external network call. No product / frontend / backend / script change. Route
+governance unchanged (34/34/5/0/1/1). Production Gateway PID `28428` untouched.
+**Phase 3B-Live-Enablement Implementation was not started. Phase 3C was not
+started.** See
+[phase-3b-live-enablement-planning](phase-3b-live-enablement-planning.md) and
+[phase-3b-live-enablement-go-no-go](phase-3b-live-enablement-go-no-go.md).

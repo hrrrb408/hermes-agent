@@ -71,12 +71,24 @@ Result: **10 / 10 PASS, P0 = 0, P1 = 0.**
 
 ## Deferred / Not Implemented
 
-- Live real-provider enablement.
+- Live real-provider enablement (scope now frozen under
+  `PHASE-3B-LIVE-ENABLEMENT-PLANNING-001`; implementation not started).
 - Real HTTP client wiring (urllib concrete client) into the live request path.
 - Real API key reading in tests/smoke.
 - Streaming, multi-provider routing, provider write, provider auto-write,
   autonomous write, production rollout, plugin registry.
 - Phase 3C (not started).
+
+## Phase 3B-Live-Enablement Planning note (2026-06-17)
+
+A docs-only planning pass froze the Strict Manual Real Provider Read-only
+Enablement scope (human approval, env-only secret read, empty-default HTTPS
+allowlist, strict budget / rate-limit caps, read-only tool allowlist, redacted
+dual-write audit, kill switch / rollback, layered smoke). It adds the live
+layer on top of this hardened boundary without relaxing any lens here. No live
+enablement; no real HTTP client wiring; no real API key read; no real network
+call. See [phase-3b-live-enablement-planning](phase-3b-live-enablement-planning.md)
+and [phase-3b-live-enablement-risk-register](phase-3b-live-enablement-risk-register.md).
 
 ## Residual Risk
 

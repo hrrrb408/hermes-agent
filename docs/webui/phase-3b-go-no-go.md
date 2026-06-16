@@ -138,3 +138,20 @@ blocked without explicit, separately-authorized enablement. No live real-provide
 call, no real key read, no provider write, no autonomous write, no production
 rollout. Live real-provider enablement remains a future, separately-authorized
 step. See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).
+
+---
+
+## Phase 3B-Live-Enablement Planning (recorded — GO for prompt prep only)
+
+A docs-only planning pass (`PHASE-3B-LIVE-ENABLEMENT-PLANNING-001`) froze the
+Strict Manual Real Provider Read-only Enablement scope: human approval,
+env-only secret read, empty-default HTTPS network allowlist, strict budget /
+rate-limit caps, read-only tool allowlist, redacted dual-write audit, kill
+switch / rollback, and layered smoke. **GO** for preparing the live-enablement
+implementation prompt only; **NO-GO** for actual live enablement until the user
+explicitly authorizes. Live enablement is not started; no real HTTP client
+wiring, no real API key read, no external network call, no provider write /
+auto-write / autonomous write, no production rollout. Route governance
+(34/34/5/0/1/1) and Production Gateway PID `28428` are unchanged. See
+[phase-3b-live-enablement-go-no-go](phase-3b-live-enablement-go-no-go.md) and
+[phase-3b-live-enablement-planning](phase-3b-live-enablement-planning.md).
