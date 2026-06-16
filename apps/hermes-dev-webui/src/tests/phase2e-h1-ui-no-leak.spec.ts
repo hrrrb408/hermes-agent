@@ -17,7 +17,7 @@ vi.mock('@/api/toolPolicy', () => ({ fetchToolPolicyStatus: vi.fn(), fetchToolCa
 vi.mock('@/api/toolAudit', () => ({ getAuditEvents: vi.fn(), getAuditEventsV2: vi.fn() }))
 vi.mock('@/api/toolExecute', () => ({ runDryRun: vi.fn(), executeTool: vi.fn() }))
 vi.mock('@/api/toolWrite', () => ({ runWritePreview: vi.fn(), executeWrite: vi.fn(), runRollbackPreview: vi.fn(), executeRollback: vi.fn() }))
-vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn() }))
+vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn(), fetchProviderBoundary: vi.fn().mockResolvedValue(null) }))
 
 import OverviewSection from '@/components/devconsole/OverviewSection.vue'
 import SafetySection from '@/components/devconsole/SafetySection.vue'

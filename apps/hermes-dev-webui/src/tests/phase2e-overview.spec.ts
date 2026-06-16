@@ -27,7 +27,7 @@ vi.mock('@/api/toolWrite', () => ({
   runRollbackPreview: vi.fn(),
   executeRollback: vi.fn(),
 }))
-vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn() }))
+vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn(), fetchProviderBoundary: vi.fn().mockResolvedValue(null) }))
 
 import { fetchToolPolicyStatus } from '@/api/toolPolicy'
 import { getAuditEventsV2 } from '@/api/toolAudit'

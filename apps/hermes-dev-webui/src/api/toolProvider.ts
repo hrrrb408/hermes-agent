@@ -12,9 +12,10 @@
  *   - No raw arguments, tokens, or secrets are persisted here.
  */
 
-import { apiPost } from './client'
+import { apiGet, apiPost } from './client'
 
 import type {
+  ProviderBoundaryStatus,
   ProviderRoundtripRequest,
   ProviderRoundtripResultData,
 } from '@/types/api/toolProvider'
@@ -38,4 +39,26 @@ export async function runProviderRoundtrip(
     undefined,
     signal,
   )
+}
+
+/**
+ * Phase 3B: fetch the real-provider boundary safe-metadata block.
+ *
+ * Reads GET /api/dev/v1/status data.providerBoundary. Value-free only — the
+ * response never carries an API-key value, Authorization header, raw token,
+ * or full tokenHash. The UI renders this as a boundary status badge.
+ */
+export async function fetchProviderBoundary(
+  signal?: AbortSignal,
+): Promise<ProviderBoundaryStatus | null> {
+  try {
+    const resp = await apiGet<{ providerBoundary: ProviderBoundaryStatus }>(
+      `${API_PREFIX}/status`,
+      undefined,
+      signal,
+    )
+    return resp.data.providerBoundary ?? null
+  } catch {
+    return null
+  }
 }

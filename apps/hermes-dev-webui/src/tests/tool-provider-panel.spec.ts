@@ -16,7 +16,7 @@ import type { ProviderRoundtripResultData } from '@/types/api/toolProvider'
 
 vi.mock('@/api/toolProvider', () => ({
   runProviderRoundtrip: vi.fn(),
-}))
+  fetchProviderBoundary: vi.fn().mockResolvedValue(null),}))
 
 function makeResult(overrides: Partial<ProviderRoundtripResultData> = {}): ProviderRoundtripResultData {
   return {

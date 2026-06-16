@@ -73,3 +73,52 @@ export interface ProviderRoundtripRequest {
   readonly message: string
   readonly allowedToolIds?: readonly string[]
 }
+
+/**
+ * Phase 3B: real-provider boundary safe-metadata block.
+ *
+ * Surfaced by GET /api/dev/v1/status as data.providerBoundary. Value-free
+ * only — never an API-key value, never an Authorization header, never a raw
+ * secret, never a full tokenHash. The UI renders this as a boundary status
+ * badge. Real provider stays disabled by default.
+ */
+export interface ProviderBoundaryStatus {
+  readonly providerMode: ProviderMode
+  readonly apiEnabled: boolean
+  readonly providerName: string
+  readonly providerNameImplemented: boolean
+  readonly baseUrlHost: string
+  readonly baseUrlAllowed: boolean
+  readonly model: string
+  readonly modelAllowed: boolean
+  readonly timeoutSeconds: number
+  readonly maxRetries: number
+  readonly dailyBudgetCents: number
+  readonly maxTokens: number
+  readonly perMinuteRequestCap: number
+  readonly dailyRequestCap: number
+  readonly dailyTokenCap: number
+  /** Value-free: 'env' only. */
+  readonly apiKeySource: 'env'
+  /** Value-free: env_present / env_missing. */
+  readonly apiKeyPresent: boolean
+  readonly apiKeySourceDetail: 'env_present' | 'env_missing'
+  readonly isDevHome: boolean
+  /** True only when EVERY eligibility gate passes (live PID gate included). */
+  readonly realReachable: boolean
+  readonly gatingReason: string | null
+  readonly providerWriteBlocked: boolean
+  readonly providerAutoWriteBlocked: boolean
+  readonly autonomousWriteBlocked: boolean
+  readonly productionRolloutBlocked: boolean
+  readonly redactionApplied: boolean
+}
+
+/** Safe provider-boundary status returned by GET /status (data.providerBoundary). */
+export interface SystemStatusData {
+  readonly environment: string
+  readonly apiVersion: string
+  readonly status: string
+  readonly readOnly: boolean
+  readonly providerBoundary: ProviderBoundaryStatus
+}

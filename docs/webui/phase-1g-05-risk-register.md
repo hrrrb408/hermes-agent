@@ -20,6 +20,17 @@
 > route governance (34/34/5/0/1/1) and Production Gateway PID `28428` are
 > unchanged. This register remains the historical Phase 1G-05 baseline.
 
+> **Phase 3B Implementation Update:** Phase 3B (Real Provider Read-only
+> Controlled Integration) is now **implemented** — see
+> [phase-3b-security-boundary.md](phase-3b-security-boundary.md) and
+> [phase-3b-test-report.md](phase-3b-test-report.md). The real-provider
+> boundary is disabled by default; no real network call is exercised in tests
+> or smoke; the API key is env-only (never persisted/logged/rendered); provider
+> write / auto-write / autonomous execution / rollback / shell / db /
+> external-write / streaming / multi-provider routing / production rollout all
+> remain blocked. Route governance (34/34/5/0/1/1) and Production Gateway PID
+> `28428` are unchanged.
+
 ## Document Information
 
 | Field | Value |

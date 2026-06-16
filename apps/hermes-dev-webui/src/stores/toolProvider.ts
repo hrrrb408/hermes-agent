@@ -10,11 +10,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-import { runProviderRoundtrip as runProviderRoundtripApi } from '@/api/toolProvider'
+import { fetchProviderBoundary, runProviderRoundtrip as runProviderRoundtripApi } from '@/api/toolProvider'
 import { isDevApiError } from '@/api/client'
 import { SELECTABLE_TOOL_IDS } from '@/constants/readOnlyTools'
 
 import type {
+  ProviderBoundaryStatus,
   ProviderMode,
   ProviderRoundtripResultData,
 } from '@/types/api/toolProvider'
@@ -38,6 +39,25 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
   const status = ref<ProviderRoundtripStatus>('idle')
   const error = ref('')
   const result = ref<ProviderRoundtripResultData | null>(null)
+  // Phase 3B: real-provider boundary safe metadata (value-free; never a key).
+  const boundary = ref<ProviderBoundaryStatus | null>(null)
+
+  /**
+   * A coarse boundary label for the UI:
+   *   - 'disabled'     → real provider off entirely
+   *   - 'fake'         → offline deterministic adapter
+   *   - 'real_blocked' → real mode selected / reachable flag false (blocked)
+   *   - 'real_gated'   → real mode fully enabled + reachable (gated on)
+   */
+  const boundaryLabel = computed<'disabled' | 'fake' | 'real_blocked' | 'real_gated'>(() => {
+    const b = boundary.value
+    if (!b) {
+      return providerMode.value === 'fake' ? 'fake' : 'disabled'
+    }
+    if (b.providerMode === 'fake') return 'fake'
+    if (b.providerMode !== 'real') return 'disabled'
+    return b.realReachable ? 'real_gated' : 'real_blocked'
+  })
 
   const canRun = computed(
     () => providerMode.value === 'fake' && message.value.trim().length > 0 && status.value !== 'loading',
@@ -78,6 +98,14 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
     result.value = null
   }
 
+  /**
+   * Phase 3B: load the real-provider boundary safe metadata from /status.
+   * Never throws; never exposes an API-key value.
+   */
+  async function loadBoundary(signal?: AbortSignal): Promise<void> {
+    boundary.value = await fetchProviderBoundary(signal)
+  }
+
   async function runRoundtrip(signal?: AbortSignal): Promise<void> {
     if (providerMode.value !== 'fake') {
       // Real / disabled modes are surfaced but the backend blocks real mode;
@@ -112,6 +140,8 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
     status,
     error,
     result,
+    boundary,
+    boundaryLabel,
     canRun,
     isRealBlocked,
     setProviderMode,
@@ -120,6 +150,7 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
     selectAllTools,
     clearAllTools,
     reset,
+    loadBoundary,
     runRoundtrip,
   }
 })

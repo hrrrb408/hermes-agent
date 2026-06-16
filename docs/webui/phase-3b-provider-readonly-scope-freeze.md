@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3B Scope Freeze |
 | Title | Phase 3B — Real Provider Read-only Controlled Integration (Scope Freeze) |
-| Status | Frozen — Phase 3B implementation **not started** (scope frozen for a future, separately-authorized phase) |
+| Status | Frozen — Phase 3B implementation **complete** (see [phase-3b-real-provider-readonly-integration.md](phase-3b-real-provider-readonly-integration.md)); the frozen scope was implemented with real provider remaining **disabled by default** |
 | Date | 2026-06-16 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3B-PLANNING-001` |

@@ -14,11 +14,17 @@
  * The UI NEVER accepts an API key. Real mode is surfaced but always blocked
  * by the backend unless explicitly enabled.
  */
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useToolProviderStore, PROVIDER_MODES } from '@/stores/toolProvider'
 import { SELECTABLE_TOOLS } from '@/constants/readOnlyTools'
+import ProviderBoundaryStatus from './ProviderBoundaryStatus.vue'
 
 const store = useToolProviderStore()
+
+// Phase 3B: load the value-free real-provider boundary metadata on mount.
+onMounted(() => {
+  void store.loadBoundary()
+})
 
 const safetyBadges = computed(() => [
   { key: 'readonly', label: 'Read-only only', value: true },
@@ -93,6 +99,8 @@ function onRun(): void {
         {{ badge.label }}
       </span>
     </div>
+
+    <ProviderBoundaryStatus data-testid="provider-boundary-status" />
 
     <div class="provider-rt__block">
       <label class="provider-rt__label" for="provider-mode">Provider mode</label>

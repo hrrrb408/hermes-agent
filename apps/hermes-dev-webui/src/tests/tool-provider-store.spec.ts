@@ -12,7 +12,7 @@ import { useToolProviderStore } from '@/stores/toolProvider'
 
 vi.mock('@/api/toolProvider', () => ({
   runProviderRoundtrip: vi.fn(),
-}))
+  fetchProviderBoundary: vi.fn().mockResolvedValue(null),}))
 
 import { runProviderRoundtrip } from '@/api/toolProvider'
 import type { ProviderRoundtripResultData } from '@/types/api/toolProvider'

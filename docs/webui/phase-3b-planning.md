@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3B Planning |
 | Title | Real Provider Read-only Controlled Integration — Scope Freeze, Risk Gate & Prompt Preparation |
-| Status | Planning complete; Phase 3B implementation **not started** |
+| Status | Planning complete; Phase 3B implementation **complete** (see [phase-3b-real-provider-readonly-integration.md](phase-3b-real-provider-readonly-integration.md)) — real provider remains **disabled by default** |
 | Date | 2026-06-16 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3B-PLANNING-001` |

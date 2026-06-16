@@ -472,6 +472,44 @@ def _audit_store_error_json(result: Any, request_id: str) -> JSONResponse:
     )
 
 
+def _provider_boundary_status() -> dict[str, Any]:
+    """Phase 3B: return the real-provider boundary safe-metadata block.
+
+    Value-free only — never the API-key value, never an Authorization header,
+    never a raw secret. Used by the ``/status`` response so the UI can render a
+    boundary status badge. Real provider stays disabled by default; this
+    surface is read-only and never performs a network call.
+    """
+    try:
+        from hermes_cli.dev_web_provider_config import load_provider_real_config
+        from hermes_cli.dev_web_provider_real_policy import (
+            BLOCKED_PROVIDER_REAL_NOT_ENABLED,
+            evaluate_real_provider_gating,
+        )
+
+        cfg = load_provider_real_config()
+        safe = cfg.to_safe_dict()
+        # Evaluate gating for a UI-facing "realReachable" flag WITHOUT a
+        # production-gate override so the badge reflects the live PID gate.
+        eligible, reason = evaluate_real_provider_gating(cfg, production_gate_override=None)
+        safe["realReachable"] = bool(eligible)
+        safe["gatingReason"] = reason or (BLOCKED_PROVIDER_REAL_NOT_ENABLED if not eligible else None)
+        safe["providerWriteBlocked"] = True
+        safe["providerAutoWriteBlocked"] = True
+        safe["autonomousWriteBlocked"] = True
+        safe["productionRolloutBlocked"] = True
+        return safe
+    except Exception:  # pragma: no cover — defensive; never fail /status
+        return {
+            "providerMode": "disabled",
+            "apiEnabled": False,
+            "available": False,
+            "providerWriteBlocked": True,
+            "autonomousWriteBlocked": True,
+            "productionRolloutBlocked": True,
+        }
+
+
 def _register_routes(
     app: FastAPI,
     config: DevWebApiConfig,
@@ -514,6 +552,12 @@ def _register_routes(
             else False
         )
 
+        # Phase 3B: real-provider boundary safe metadata. Value-free only —
+        # never the API-key value, never the Authorization header, never a raw
+        # secret. The UI renders this as a boundary status badge. Real provider
+        # stays disabled by default; this surface is read-only.
+        provider_boundary = _provider_boundary_status()
+
         return {
             "data": {
                 "environment": "development",
@@ -526,6 +570,7 @@ def _register_routes(
                     "usesDevelopmentHome": has_dev_home,
                     "productionHomeUntouched": True,
                 },
+                "providerBoundary": provider_boundary,
                 "services": {
                     "api": {"available": True, "readOnly": True},
                     "sessions": {

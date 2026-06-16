@@ -1,5 +1,15 @@
 # Phase 1 Implementation Plan
 
+> **Phase 3B Implementation Update:** Phase 3B (Real Provider Read-only
+> Controlled Integration) is now **implemented** — see
+> [phase-3b-real-provider-readonly-integration.md](phase-3b-real-provider-readonly-integration.md)
+> and [phase-3b-test-report.md](phase-3b-test-report.md). The real-provider
+> boundary is a disabled-by-default, injectable-HTTP-client, gated, audited,
+> redacted, time/retry/rate/cost-bounded read-only path; **no real network call
+> is exercised in tests or smoke**, no API key is read/persisted/rendered, and
+> route governance remains 34 / 34 / 5 / 0 / 1 / 1 (no new route). Production
+> Gateway PID `28428` unchanged.
+
 > **Phase 2A Update:** Phase 2A (read-only multi-tool execution MVP) implemented.
 > `STATIC_ALLOWLIST` transitioned `frozenset({"clarify"})` → 6 read-only tools
 > (clarify + tool_policy_read, route_governance_read, audit_events_read,

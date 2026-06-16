@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
-vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn() }))
+vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn(), fetchProviderBoundary: vi.fn().mockResolvedValue(null) }))
 
 import { runProviderRoundtrip } from '@/api/toolProvider'
 import ProviderSection from '@/components/devconsole/ProviderSection.vue'
