@@ -45,3 +45,12 @@ API-key input / Authorization / Bearer in the DOM.
 - frontend `pnpm type-check`, `pnpm lint`, `pnpm test`, `pnpm build` (PASS)
 - `scripts/run-dev-hermes.sh memory-check`, `dev-check` (PASS)
 - Production Gateway PID `28428` unchanged; ports 5180/5181 free.
+
+---
+
+## Phase 3B-H1 hardening test report
+
+Phase 3B-H1 added 8 backend hardening test files (329 tests) + 5 frontend
+hardening test files (30 tests) + the `phase3b_h1_provider_boundary_hardening`
+smoke profile, all PASS. Result: **10 / 10 lenses PASS, P0 = 0, P1 = 0.**
+See [phase-3b-h1-test-report](phase-3b-h1-test-report.md).

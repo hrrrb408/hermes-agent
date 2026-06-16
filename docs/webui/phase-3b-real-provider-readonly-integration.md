@@ -169,3 +169,21 @@ access; no production `state.db` access.
 - [Phase 3B UI](phase-3b-provider-ui.md)
 - [Phase 3B test report](phase-3b-test-report.md)
 - [Phase 3B security boundary](phase-3b-security-boundary.md)
+
+---
+
+## Phase 3B-H1 — Provider Boundary Hardening (completed)
+
+Phase 3B-H1 is a deterministic hardening pass over this read-only boundary.
+Result: **10 / 10 lenses PASS, P0 = 0, P1 = 0.**
+
+- No live real-provider enablement; no real API key read; no real network call.
+- Provider write / auto-write / autonomous write, production rollout remain blocked.
+- Real client wiring remains deferred.
+- New: 8 backend hardening tests + 5 frontend hardening tests + the
+  `phase3b_h1_provider_boundary_hardening` smoke profile + the
+  `run-dev-webui-phase3b-hardening-audit.sh` gate.
+
+See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md)
+and [phase-3b-h1-test-report](phase-3b-h1-test-report.md). Route governance
+unchanged (34/34/5/0/1/1). Production Gateway PID `28428` untouched.

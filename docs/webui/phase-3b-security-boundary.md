@@ -66,3 +66,13 @@ Dev services bind `127.0.0.1` only. No `~/.hermes` access; no production
 Streaming; multi-provider routing; provider write; token encryption at rest;
 multi-user namespace; live real-provider enablement (requires Phase 3B-H1
 hardening + a separately-authorized real client wiring).
+
+---
+
+## Phase 3B-H1 update (completed)
+
+The Phase 3B-H1 hardening pass (`HARDENING-3B-H1-001`) verified all 10 lenses of
+this boundary: **10 / 10 PASS, P0 = 0, P1 = 0.** No live real-provider enablement,
+no real API key read, no real network call. Provider write / auto-write /
+autonomous write and production rollout remain blocked. The concrete real HTTP
+client remains deferred. See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).

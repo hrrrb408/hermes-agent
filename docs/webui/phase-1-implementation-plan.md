@@ -2206,3 +2206,17 @@ access, no production `state.db` access, no new HTTP route (OpenAPI 34 / runtime
 `28428` untouched. **Phase 3B implementation was not started.** See
 [phase-3b-planning](phase-3b-planning.md), [phase-3b-provider-readonly-scope-freeze](phase-3b-provider-readonly-scope-freeze.md),
 and [phase-3b-go-no-go](phase-3b-go-no-go.md).
+
+---
+
+## Phase 3B-H1 — Provider Boundary Hardening (completed)
+
+Phase 3B (real-provider read-only boundary) shipped and was followed by Phase
+3B-H1, a deterministic hardening pass: **10 / 10 lenses PASS, P0 = 0, P1 = 0.**
+Added 8 backend + 5 frontend hardening test files, the
+`phase3b_h1_provider_boundary_hardening` smoke profile, and the
+`run-dev-webui-phase3b-hardening-audit.sh` gate. No live real-provider, no real
+key read, no real network, no provider write, no production rollout. Route
+governance unchanged (34/34/5/0/1/1). **Phase 3C was not started.** See
+[phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md)
+and [phase-3b-h1-test-report](phase-3b-h1-test-report.md).

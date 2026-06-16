@@ -127,3 +127,14 @@ future Phase 3B execution:
 - [Phase 3B execution brief](phase-3b-execution-brief.md)
 - [Phase 3B prompt draft](phase-3b-prompt.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
+
+---
+
+## Phase 3B-H1 (completed — GO)
+
+Phase 3B-H1 hardened the real-provider read-only boundary. **10 / 10 lenses
+PASS, P0 = 0, P1 = 0.** The boundary stays disabled-by-default; the real path is
+blocked without explicit, separately-authorized enablement. No live real-provider
+call, no real key read, no provider write, no autonomous write, no production
+rollout. Live real-provider enablement remains a future, separately-authorized
+step. See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).

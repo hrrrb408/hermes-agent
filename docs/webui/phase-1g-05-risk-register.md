@@ -987,3 +987,16 @@ no `~/.hermes` access, no production `state.db` access, route governance
 unchanged (34/34/5/0/1/1), Production Gateway PID `28428` untouched. **Phase 3B
 implementation was not started.** See [phase-3b-planning](phase-3b-planning.md)
 and [phase-3b-go-no-go](phase-3b-go-no-go.md).
+
+---
+
+## Phase 3B-H1 update (completed)
+
+Phase 3B (real-provider read-only boundary) shipped, then Phase 3B-H1 hardened
+it: **10 / 10 lenses PASS, P0 = 0, P1 = 0.** Every P0 stop condition holds —
+real provider disabled by default, API key not read / not leaked (env-only,
+value-free), no external network call (mock-only), provider write / auto-write /
+autonomous write blocked, shell / db / external write blocked, no `~/.hermes`
+access, no production `state.db` access, route governance unchanged
+(34/34/5/0/1/1), Production Gateway PID `28428` untouched. **Phase 3C was not
+started.** See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).
