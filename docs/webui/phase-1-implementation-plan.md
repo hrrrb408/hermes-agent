@@ -2163,3 +2163,36 @@ Boundaries unchanged: no real provider, no autonomous write, no workflow
 write/rollback execution, no shell / database / external write, no production
 rollout, no `~/.hermes` access, route governance 34/34/5/0/1/1. See
 [phase-3a-h1-workflow-hardening](phase-3a-h1-workflow-hardening.md).
+
+## Phase 3B Planning Status Update (2026-06-16)
+
+Phase 3B Planning — **Real Provider Read-only Controlled Integration Scope
+Freeze** (`PHASE-3B-PLANNING-001`) — is complete. It is a **docs-only** planning
+phase: no product code, frontend, backend, or script was modified. It freezes the
+**future** Phase 3B implementation scope without implementing it.
+
+Summary of what was frozen:
+
+- **Selection:** a generic OpenAI-compatible adapter boundary is the recommended
+  first slice (non-streaming, read-only); Anthropic / Z.ai / OpenRouter plug in
+  behind the same boundary later; the offline fake adapter stays as the baseline.
+- **Defaults:** real provider stays **disabled by default**; provider write /
+  auto-write / rollback / autonomous execution / streaming / multi-provider
+  routing / production rollout are all **forbidden**.
+- **Secrets:** API key is **env-only**, never UI, never stored / logged /
+  committed; the Phase 2B-H1 sanitizer is reused unchanged.
+- **Network:** the only allowed egress is a single HTTPS POST to an allowlisted
+  provider endpoint, bounded by timeout / size / retry / rate-limit / cost caps.
+- **Audit:** `provider_real_*` events dual-write into the Phase 2D durable store;
+  no key / header / raw token / full hash / raw body / production path.
+- **Routes:** default **no new HTTP route**; the real round-trip reuses the
+  existing `mode`-branched `/tools/dry-run` + `/tools/execute`.
+
+Boundaries held by this planning phase: no real provider call, no API key read,
+no external network call, no provider write / auto-write / autonomous execution,
+no shell / database / external-service write, no production rollout, no `~/.hermes`
+access, no production `state.db` access, no new HTTP route (OpenAPI 34 / runtime
+34 / Tool GET 5 / write 0 / dry-run 1 / execution 1). Production Gateway PID
+`28428` untouched. **Phase 3B implementation was not started.** See
+[phase-3b-planning](phase-3b-planning.md), [phase-3b-provider-readonly-scope-freeze](phase-3b-provider-readonly-scope-freeze.md),
+and [phase-3b-go-no-go](phase-3b-go-no-go.md).

@@ -111,10 +111,29 @@ a future Phase 3A execution:
 
 ---
 
-## 7. Cross-References
+## 7. Phase 3B Planning Update (2026-06-16)
+
+Phase 3A has since been **implemented** and hardened (Phase 3A-H1), so the Phase
+3A container that Phase 3B was sequenced behind now exists. The next slice —
+**Phase 3B — Real Provider Read-only Controlled Integration** — has now had its
+own **GO for prompt preparation only** decision recorded in a separate docs-only
+planning phase (`PHASE-3B-PLANNING-001`, decision `PHASE-3B-GO-NOGO-001`),
+without being implemented. The Phase 3B decision keeps every constraint of this
+Phase 3 decision (separately authorized, human-approval-gated, no autonomous
+write, no shell / db / external write, no production rollout, default no new
+route) and additionally pins: real provider **disabled by default**, **read-only**
+only, env-only API key, no UI key input, full audit + redaction. See
+[phase-3b-go-no-go](phase-3b-go-no-go.md) and
+[phase-3b-planning](phase-3b-planning.md).
+
+---
+
+## 8. Cross-References
 
 - [Phase 3 planning](phase-3-planning.md)
 - [Phase 3 scope freeze](phase-3-scope-freeze.md)
 - [Phase 3 risk register](phase-3-risk-register.md)
 - [Phase 3A execution brief](phase-3a-execution-brief.md)
 - [Phase 3A prompt draft](phase-3a-prompt.md)
+- [Phase 3B planning](phase-3b-planning.md)
+- [Phase 3B GO / NO-GO](phase-3b-go-no-go.md)

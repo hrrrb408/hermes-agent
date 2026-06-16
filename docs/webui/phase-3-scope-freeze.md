@@ -210,7 +210,26 @@ is [phase-3a-prompt.md](phase-3a-prompt.md).
 
 ---
 
-## 16. Cross-References
+## 16. Phase 3B Scope Freeze Update (2026-06-16)
+
+Phase 3A (this scope) was implemented and hardened (Phase 3A-H1). The next slice
+— **Phase 3B — Real Provider Read-only Controlled Integration** — has now had its
+own **scope frozen** in a separate docs-only planning phase
+(`PHASE-3B-PLANNING-001`), without being implemented. The Phase 3B freeze keeps
+the same disciplines this document established (default no new route, `mode`
+branching, full redaction, dev `HERMES_HOME`-only audit files) and adds: real
+provider **disabled by default**, a generic OpenAI-compatible adapter boundary as
+the first slice (non-streaming, read-only), an env-only API-key strategy, a
+single allowlisted HTTPS egress bounded by timeout / size / retry / rate-limit /
+cost caps, `provider_real_*` audit events, and an explicit GO for prompt
+preparation only. See
+[phase-3b-planning](phase-3b-planning.md),
+[phase-3b-provider-readonly-scope-freeze](phase-3b-provider-readonly-scope-freeze.md),
+and [phase-3b-go-no-go](phase-3b-go-no-go.md).
+
+---
+
+## 17. Cross-References
 
 - [Phase 3 planning](phase-3-planning.md)
 - [Phase 3 options evaluation](phase-3-options-evaluation.md)
@@ -218,3 +237,6 @@ is [phase-3a-prompt.md](phase-3a-prompt.md).
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
 - [Phase 3A execution brief](phase-3a-execution-brief.md)
 - [Phase 3A prompt draft](phase-3a-prompt.md)
+- [Phase 3B planning](phase-3b-planning.md)
+- [Phase 3B scope freeze](phase-3b-provider-readonly-scope-freeze.md)
+- [Phase 3B GO / NO-GO](phase-3b-go-no-go.md)

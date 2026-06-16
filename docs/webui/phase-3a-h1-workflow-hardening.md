@@ -99,6 +99,20 @@ the execution brief's "Modifiable code range" would have been touched.)
 - Route governance: OpenAPI 34 / runtime 34 / Tool GET 5 / write 0 / dry-run 1 /
   execution 1.
 
+## Successor — Phase 3B Planning (2026-06-16)
+
+Phase 3A-H1 is the **direct predecessor** of **Phase 3B Planning — Real Provider
+Read-only Controlled Integration Scope Freeze** (`PHASE-3B-PLANNING-001`). With
+the dev-only workflow container implemented and hardened, the next slice (the
+real provider read-only round-trip) had its scope frozen in a separate docs-only
+planning phase — **without being implemented**. Phase 3B Planning changes no
+product code, reads no API key, makes no network call, and keeps every Phase 3A-H1
+boundary: real provider blocked, provider auto-write / autonomous write blocked,
+no shell / db / external write, no production rollout, route governance unchanged
+(34/34/5/0/1/1), Production Gateway PID `28428` untouched. See
+[phase-3b-planning](phase-3b-planning.md) and
+[phase-3b-provider-readonly-scope-freeze](phase-3b-provider-readonly-scope-freeze.md).
+
 ## Related docs
 
 - [Workflow State Consistency](phase-3a-h1-workflow-state-consistency.md)
@@ -107,3 +121,4 @@ the execution brief's "Modifiable code range" would have been touched.)
 - [Workflow UI Security](phase-3a-h1-workflow-ui-security.md)
 - [Phase 3A-H1 Test Report](phase-3a-h1-test-report.md)
 - [Phase 3A Security Boundary](phase-3a-security-boundary.md)
+- [Phase 3B planning](phase-3b-planning.md)

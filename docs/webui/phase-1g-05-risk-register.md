@@ -945,3 +945,34 @@ governance unchanged (34/34/5/0/1/1), Production Gateway PID `28428` untouched
 
 No new risk introduced. Residual risks are unchanged from Phase 3A. See
 [phase-3a-h1-workflow-hardening](phase-3a-h1-workflow-hardening.md).
+
+## Phase 3B Planning Addendum — Real Provider Read-only Scope Freeze (2026-06-16)
+
+**ID:** `PHASE-3B-PLANNING-001` (companion register:
+`PHASE-3B-RISK-REGISTER-001`, see
+[phase-3b-security-risk-register](phase-3b-security-risk-register.md)).
+
+Phase 3B Planning is the **docs-only** scope freeze for the future Real Provider
+Read-only Controlled Integration. It introduces **no new risk** — it does not
+wire or enable a real provider, does not read an API key, does not make a network
+call, and does not change any product code. The real provider remains blocked by
+default exactly as after Phase 2B-H1 (`blocked_real_provider_not_wired_in_phase_2b`).
+
+The companion register records the risks that govern a **future** Phase 3B
+implementation (12 P0 stop conditions, 9 P1 push-gates, 7 P2 deferrals). The P0
+stop conditions of direct relevance here are: real provider enabled without
+authorization (`R3B-P0-01`), API-key leak (`R3B-P0-02`), secret in audit / log /
+UI (`R3B-P0-03`), prompt-injection-driven disallowed tool call (`R3B-P0-04`),
+arbitrary-URL fetch / SSRF (`R3B-P0-05`), provider write / auto-write /
+autonomous execution (`R3B-P0-06`), shell / db / external write (`R3B-P0-07`),
+route drift (`R3B-P0-08`), production rollout (`R3B-P0-09`), `~/.hermes` /
+production `state.db` access (`R3B-P0-10`), Production Gateway PID drift
+(`R3B-P0-11`), runtime-artifact commit (`R3B-P0-12`).
+
+All P0 stop conditions remain clear after this planning phase: real provider
+blocked, API key not read / not leaked, no external network call, provider write
+/ auto-write / autonomous execution blocked, shell / db / external write blocked,
+no `~/.hermes` access, no production `state.db` access, route governance
+unchanged (34/34/5/0/1/1), Production Gateway PID `28428` untouched. **Phase 3B
+implementation was not started.** See [phase-3b-planning](phase-3b-planning.md)
+and [phase-3b-go-no-go](phase-3b-go-no-go.md).
