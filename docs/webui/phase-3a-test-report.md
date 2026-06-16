@@ -64,3 +64,11 @@ route **0**, dry-run route **1**, execution route **1**. No new path.
 Production Gateway PID `28428` unchanged (1 process); Dev Gateway stopped;
 Dashboard not started; 5180/5181 free; no `~/.hermes` access; no production
 `state.db` access.
+
+## Phase 3A-H1 hardening follow-up
+
+Phase 3A was followed by the Phase 3A-H1 hardening pass
+(`HARDENING-3A-H1-001`): 7 backend hardening files (300 tests), 5 frontend
+hardening specs (33 tests), a `phase3a_h1_workflow_hardening` smoke profile,
+and an 11-lens audit script — all PASS, no implementation change. See the
+[Phase 3A-H1 Test Report](phase-3a-h1-test-report.md).

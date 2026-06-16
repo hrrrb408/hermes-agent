@@ -93,3 +93,15 @@ rollback.
 - [Workflow UI](phase-3a-workflow-ui.md)
 - [Security boundary](phase-3a-security-boundary.md)
 - [Test report](phase-3a-test-report.md)
+
+## 7. Phase 3A-H1 hardening pass
+
+Phase 3A was followed by **Phase 3A-H1 — Workflow Hardening**
+(`HARDENING-3A-H1-001`), a deterministic verification pass (NOT Phase 3B). It
+added adversarial backend tests (7 files / 300 tests), frontend hardening
+specs (5 files / 33 tests), a `phase3a_h1_workflow_hardening` smoke profile,
+and an 11-lens hardening audit script — without changing the implementation.
+All 11 lenses PASS; no real provider, provider auto-write, autonomous write,
+workflow write/rollback execution, shell, database, external-service write, or
+production rollout was introduced; route governance is unchanged. See
+[Phase 3A-H1 Workflow Hardening](phase-3a-h1-workflow-hardening.md).

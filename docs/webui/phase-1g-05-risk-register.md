@@ -923,3 +923,25 @@ blocked, write/rollback execution from the workflow blocked, shell / db /
 external write blocked, no `~/.hermes` access, no production `state.db` access,
 route governance unchanged (34/34/5/0/1/1), Production Gateway PID `28428`
 untouched. See [phase-3a-security-boundary](phase-3a-security-boundary.md).
+
+## Phase 3A-H1 Addendum — Workflow Hardening (2026-06-16)
+
+**ID:** `HARDENING-3A-H1-001` (with `WORKFLOW-STATE-3A-H1-001`,
+`WORKFLOW-APPROVAL-3A-H1-001`, `WORKFLOW-AUDIT-3A-H1-001`,
+`WORKFLOW-UI-3A-H1-001`).
+
+Phase 3A-H1 is the deterministic hardening pass that follows Phase 3A (NOT
+Phase 3B). It adds adversarial backend tests (7 files / 300 tests), frontend
+hardening specs (5 files / 33 tests), a `phase3a_h1_workflow_hardening` smoke
+profile, and an 11-lens audit script — with **no implementation change** and
+**no new capability**.
+
+All P0 stop conditions remain clear after the pass: real provider blocked,
+provider auto-write / autonomous write blocked, workflow write-execute and
+rollback-execute blocked (preview / reference only), shell / db / external
+write blocked, no `~/.hermes` access, no production `state.db` access, route
+governance unchanged (34/34/5/0/1/1), Production Gateway PID `28428` untouched
+(read-only check). 11/11 lenses PASS; P0 = 0; P1 = 0; Phase 3B not started.
+
+No new risk introduced. Residual risks are unchanged from Phase 3A. See
+[phase-3a-h1-workflow-hardening](phase-3a-h1-workflow-hardening.md).

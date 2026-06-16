@@ -2150,3 +2150,16 @@ external service write, no production rollout, no `~/.hermes` access, no new HTT
 route (OpenAPI 34 / runtime 34 / Tool GET 5 / write 0 / dry-run 1 / execution 1).
 Write and rollback steps are preview / reference only. See
 [phase-3a-dev-only-agent-workflow-mvp](phase-3a-dev-only-agent-workflow-mvp.md).
+
+## Phase 3A-H1 Status Update (2026-06-16)
+
+Phase 3A was followed by **Phase 3A-H1 — Workflow Hardening**
+(`HARDENING-3A-H1-001`), a deterministic verification pass (NOT Phase 3B). It
+added adversarial backend tests (7 files / 300 tests), frontend hardening
+specs (5 files / 33 tests), a `phase3a_h1_workflow_hardening` smoke profile,
+and an 11-lens hardening audit script — with **no implementation change** and
+**no new capability**. All 11 lenses PASS; P0 = 0; P1 = 0; Phase 3B not started.
+Boundaries unchanged: no real provider, no autonomous write, no workflow
+write/rollback execution, no shell / database / external write, no production
+rollout, no `~/.hermes` access, route governance 34/34/5/0/1/1. See
+[phase-3a-h1-workflow-hardening](phase-3a-h1-workflow-hardening.md).

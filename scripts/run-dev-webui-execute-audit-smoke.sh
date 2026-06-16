@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -91,7 +91,8 @@ for arg in "$@"; do
       echo "  phase2e_frontend_ux_polish           Profile H — Phase 2E unified developer console UX"
       echo "  phase2e_h1_frontend_ux_hardening     Profile I — Phase 2E-H1 console hardening invariants"
       echo "  phase3a_workflow_mvp                 Profile J — Phase 3A dev-only Agent Workflow MVP"
-      echo "  all                                  Run Profile A, B, C, D, E, F, G, H, I, then J (default)"
+      echo "  phase3a_h1_workflow_hardening        Profile K — Phase 3A-H1 workflow hardening invariants"
+      echo "  all                                  Run Profile A, B, C, D, E, F, G, H, I, J, then K (default)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -414,6 +415,20 @@ configure_gates() {
       export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
       export EXECUTE_EXPECTED=phase3a_workflow_mvp
       ;;
+    phase3a_h1_workflow_hardening)
+      # Phase 3A-H1: workflow hardening. The gate set mirrors phase3a
+      # (read-only execution + fake provider + write enablement) so the
+      # hardened workflow invariants — route governance, forbidden-step
+      # blocking, write/rollback never-execute, single-use approval, no-leak —
+      # are demonstrable end-to-end. No production rollout, no ~/.hermes
+      # access, no new route.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export HERMES_TOOL_WRITE_EXECUTION_ENABLED=true
+      export EXECUTE_EXPECTED=phase3a_h1_workflow_hardening
+      ;;
   esac
 }
 
@@ -531,6 +546,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-2e-h1-console-hardening-smoke.spec.ts"
   elif [ "$profile" = "phase3a_workflow_mvp" ]; then
     spec_rel="tests/smoke/phase-3a-workflow-mvp-smoke.spec.ts"
+  elif [ "$profile" = "phase3a_h1_workflow_hardening" ]; then
+    spec_rel="tests/smoke/phase-3a-h1-workflow-hardening-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -574,7 +591,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -588,6 +605,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase2e_frontend_ux_polish"
     run_smoke_for_profile "phase2e_h1_frontend_ux_hardening"
     run_smoke_for_profile "phase3a_workflow_mvp"
+    run_smoke_for_profile "phase3a_h1_workflow_hardening"
     ;;
 esac
 

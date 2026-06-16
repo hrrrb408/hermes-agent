@@ -50,3 +50,12 @@
 
 Real provider integration, plugin registry, scheduling, multi-user workflow,
 production pilot — all deferred to later phases.
+
+## Phase 3A-H1 hardening confirmation
+
+The Phase 3A-H1 hardening pass (`HARDENING-3A-H1-001`) re-verified every layer
+above with adversarial tests and confirmed no regression: the schema, store,
+planner, preview, execution, approval-scope, audit-redaction, and UI-no-leak
+boundaries all hold. Route governance remains 34/34/5/0/1/1; no new route, no
+real provider, no autonomous write, no workflow write/rollback execution. See
+[Phase 3A-H1 Workflow Hardening](phase-3a-h1-workflow-hardening.md).
