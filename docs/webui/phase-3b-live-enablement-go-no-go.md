@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3B-Live-Enablement (Planning) |
 | Title | Strict Manual Real Provider Enablement — GO / NO-GO |
-| Status | Decision recorded — live enablement **not started**; real provider remains **disabled by default** |
+| Status | Implementation **shipped** (`PHASE-3B-LIVE-ENABLEMENT-IMPL-001`); live provider remains **disabled by default**. The **manual one-shot live execution** is still NO-GO until separately authorized. |
 | Date | 2026-06-17 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3B-LIVE-ENABLEMENT-PLANNING-001` |
@@ -16,18 +16,19 @@
 
 | Field | Value |
 |-------|-------|
-| Decision | **GO** for preparing the Phase 3B-Live-Enablement **implementation prompt only** |
-| Live provider may start now | **no** (not in planning) |
-| Real API key may be read now | **no** |
-| Real network may be called now | **no** |
-| Implementation prompt may be prepared | **yes** |
+| Decision | **GO** for the Phase 3B-Live-Enablement implementation (shipped) |
+| Live gate implemented + tested | **yes** (default-disabled, mock-only) |
+| Live provider actually enabled | **no** (still disabled by default) |
+| Real API key read by default tests / smoke | **no** |
+| Real network called by default tests / smoke | **no** |
+| Manual one-shot live execution | **no** (NO-GO until separately authorized) |
 | Production rollout | **no** |
 | Provider write | **no** |
 | Provider auto-write | **no** |
 | Autonomous write | **no** |
-| Human approval required (future) | **yes** |
-| Budget cap required (future) | **yes** |
-| Kill switch required (future) | **yes** |
+| Human approval required (runtime) | **yes** |
+| Budget cap required (runtime) | **yes** |
+| Kill switch required (runtime) | **yes** |
 
 ## 2. Basis
 
@@ -95,7 +96,9 @@ future live enablement:
 ## 7. Cross-references
 
 - [Phase 3B-Live-Enablement planning](phase-3b-live-enablement-planning.md)
+- [Phase 3B-Live-Enablement implementation](phase-3b-live-enablement-implementation.md)
 - [Phase 3B-Live-Enablement risk register](phase-3b-live-enablement-risk-register.md)
 - [Phase 3B-Live-Enablement execution brief](phase-3b-live-enablement-execution-brief.md)
 - [Phase 3B-Live-Enablement prompt draft](phase-3b-live-enablement-prompt.md)
+- [Phase 3B-Live-Enablement test report](phase-3b-live-enablement-test-report.md)
 - [Phase 3B GO / NO-GO](phase-3b-go-no-go.md)

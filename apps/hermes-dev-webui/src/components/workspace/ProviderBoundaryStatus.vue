@@ -72,6 +72,50 @@ const blockedFlags = computed(() => [
 ])
 
 const readOnlyAllowlist = computed(() => SELECTABLE_TOOL_IDS)
+
+/**
+ * Phase 3B-Live-Enablement: the strict manual one-shot live gate. Live provider
+ * stays disabled by default; the UI never accepts an API key. Value-free only.
+ */
+const live = computed(() => store.liveStatus)
+
+const liveStateLabel = computed(() => {
+  const l = live.value
+  if (!l) return 'unknown'
+  if (l.killSwitchActive) return 'kill switch active'
+  if (l.liveEnabled) return 'live enabled'
+  return 'disabled by default'
+})
+
+const liveCaps = computed(() => {
+  const l = live.value
+  if (!l) return []
+  const b = l.budget
+  return [
+    { key: 'liveState', label: 'Live state', value: liveStateLabel.value },
+    { key: 'approval', label: 'Approval', value: l.approvalRequired ? 'required (single-use, 5 min)' : 'not required' },
+    { key: 'requests', label: 'Max requests', value: `${b.maxRequests}` },
+    { key: 'tokens', label: 'Max total tokens', value: `${b.maxTotalTokens}` },
+    { key: 'output', label: 'Max output tokens', value: `${b.maxOutputTokens}` },
+    { key: 'budget', label: 'Max budget', value: `${b.maxBudgetCents}c` },
+    { key: 'retry', label: 'Max retries', value: `${b.maxRetries}` },
+    { key: 'runtime', label: 'Max runtime', value: `${b.maxRuntimeSeconds}s` },
+    { key: 'host', label: 'Allowlisted host', value: 'api.openai.com' },
+    { key: 'toolExec', label: 'Tool execution', value: l.toolExecutionDisabled ? 'disabled for first live' : 'ENABLED' },
+  ]
+})
+
+const liveBlockedFlags = computed(() => {
+  const l = live.value
+  return [
+    { key: 'liveWrite', label: 'Provider write', blocked: l?.providerWriteBlocked ?? true },
+    { key: 'liveAutoWrite', label: 'Provider auto-write', blocked: l?.providerAutoWriteBlocked ?? true },
+    { key: 'liveAutonomous', label: 'Autonomous write', blocked: l?.autonomousWriteBlocked ?? true },
+    { key: 'liveRollout', label: 'Production rollout', blocked: l?.productionRolloutBlocked ?? true },
+    { key: 'liveStreaming', label: 'Streaming', blocked: l?.streamingBlocked ?? true },
+    { key: 'liveMulti', label: 'Multi-provider', blocked: l?.multiProviderBlocked ?? true },
+  ]
+})
 </script>
 
 <template>
@@ -120,6 +164,53 @@ const readOnlyAllowlist = computed(() => SELECTABLE_TOOL_IDS)
       <span class="provider-boundary__allowlist-label">Read-only tool allowlist:</span>
       <code v-for="t in readOnlyAllowlist" :key="t" class="provider-boundary__allowlist-tool">{{ t }}</code>
     </div>
+
+    <section
+      v-if="live"
+      class="provider-live"
+      aria-label="Live provider enablement status"
+      data-testid="provider-live-status"
+    >
+      <header class="provider-live__header">
+        <h5 class="provider-live__title">Live Provider Enablement</h5>
+        <span class="provider-live__label" data-testid="provider-live-label">{{ liveStateLabel }}</span>
+      </header>
+
+      <p class="provider-live__note">
+        Real provider is disabled by default. First live enablement requires
+        explicit human approval. First live request is one-shot. Budget cap:
+        5 cents. Retries: 0. Provider tool execution is disabled for the first
+        live request. Provider write and autonomous actions are blocked.
+        Production rollout is not allowed.
+      </p>
+
+      <dl class="provider-live__caps" data-testid="provider-live-caps">
+        <div v-for="f in liveCaps" :key="f.key" class="provider-live__cap">
+          <dt>{{ f.label }}</dt>
+          <dd>{{ f.value }}</dd>
+        </div>
+      </dl>
+
+      <ul class="provider-live__blocked" aria-label="Live permanently blocked operations">
+        <li
+          v-for="bf in liveBlockedFlags"
+          :key="bf.key"
+          class="provider-live__blocked-item"
+          :data-blocked="bf.blocked ? 'true' : 'false'"
+        >
+          <span class="provider-live__blocked-name">{{ bf.label }}</span>
+          <span class="provider-live__blocked-state">{{ bf.blocked ? 'blocked' : 'ALLOWED' }}</span>
+        </li>
+      </ul>
+
+      <p
+        v-if="live.killSwitchActive"
+        class="provider-live__kill"
+        data-testid="provider-live-kill-switch"
+      >
+        Kill switch active ({{ live.killSwitchTriggeredBy }}). All live requests blocked; a fresh approval is required to re-enable.
+      </p>
+    </section>
   </section>
 </template>
 
@@ -206,5 +297,70 @@ const readOnlyAllowlist = computed(() => SELECTABLE_TOOL_IDS)
   border-radius: 4px;
   background: var(--chip-bg, rgba(127, 127, 127, 0.15));
   font-size: 0.7rem;
+}
+
+.provider-live {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-color, #333);
+  border-radius: 8px;
+}
+.provider-live__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.provider-live__title {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.provider-live__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #333);
+}
+.provider-live__note {
+  margin: 8px 0;
+  font-size: 0.74rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+.provider-live__caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 4px 16px;
+  margin: 0 0 8px;
+}
+.provider-live__cap { display: flex; justify-content: space-between; gap: 8px; }
+.provider-live__cap dt { opacity: 0.7; font-size: 0.74rem; }
+.provider-live__cap dd { margin: 0; font-size: 0.74rem; font-weight: 600; }
+.provider-live__blocked {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.provider-live__blocked-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #333);
+}
+.provider-live__blocked-state {
+  color: var(--warn-fg, #fbbf24);
+  font-weight: 700;
+}
+.provider-live__kill {
+  font-size: 0.74rem;
+  color: var(--danger-fg, #f87171);
+  margin: 0;
 }
 </style>

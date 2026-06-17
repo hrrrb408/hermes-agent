@@ -2237,3 +2237,24 @@ governance unchanged (34/34/5/0/1/1). Production Gateway PID `28428` untouched.
 started.** See
 [phase-3b-live-enablement-planning](phase-3b-live-enablement-planning.md) and
 [phase-3b-live-enablement-go-no-go](phase-3b-live-enablement-go-no-go.md).
+
+## Phase 3B-Live-Enablement Implementation Status Update (2026-06-17)
+
+Phase 3B-Live-Enablement Implementation — **Strict Manual One-shot Real Provider
+Enablement** — shipped under `PHASE-3B-LIVE-ENABLEMENT-IMPL-001`. It adds a live
+gate on top of the Phase 3B / 3B-H1 boundary: a fresh, single-use, 5-minute
+human approval; an env-only value-free secret read; an HTTPS single-host
+allowlist (`api.openai.com`); frozen first-live caps (1 request / 1000 / 200 /
+5c / 0 retry / 60s); a 14-trigger kill switch; and 18 redacted dual-write
+`provider_live_*` audit events. Seven new backend modules, eight backend test
+files (115 cases), five frontend test files (22 cases), a `providerLive` status
+block under the existing `/status` `providerBoundary` (no new route), a
+`ProviderBoundaryStatus.vue` live section, and the `phase3b_live_enablement_boundary`
+smoke profile. The real provider stays **disabled by default**; default tests /
+smoke read no real key and make no real network call; the manual one-shot live
+profile is opt-in and not in `all`. Route governance unchanged (34/34/5/0/1/1).
+Production Gateway PID `28428` untouched. **The manual one-shot live execution
+remains NO-GO until separately authorized. Phase 3C was not started.** See
+[phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md),
+[phase-3b-live-enablement-security-boundary](phase-3b-live-enablement-security-boundary.md),
+and [phase-3b-live-enablement-test-report](phase-3b-live-enablement-test-report.md).

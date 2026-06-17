@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -94,7 +94,8 @@ for arg in "$@"; do
       echo "  phase3a_h1_workflow_hardening        Profile K — Phase 3A-H1 workflow hardening invariants"
       echo "  phase3b_provider_readonly_boundary   Profile L — Phase 3B real-provider read-only boundary"
       echo "  phase3b_h1_provider_boundary_hardening Profile M — Phase 3B-H1 provider boundary hardening invariants"
-      echo "  all                                  Run Profile A..M (default)"
+      echo "  phase3b_live_enablement_boundary     Profile N — Phase 3B-Live-Enablement strict manual live gate (blocked/default; no real key, no real network)"
+      echo "  all                                  Run Profile A..N (default; never runs the manual one-shot live profile)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -463,6 +464,24 @@ configure_gates() {
       export HERMES_PROVIDER_MODE=fake
       export EXECUTE_EXPECTED=phase3b_h1_provider_boundary_hardening
       ;;
+    phase3b_live_enablement_boundary)
+      # Phase 3B-Live-Enablement: strict manual one-shot live gate. The gate
+      # set mirrors phase3b (read-only execution gates on + FAKE provider
+      # only). The real provider is intentionally NOT enabled
+      # (HERMES_PROVIDER_API_ENABLED unset) and NO provider key is exported,
+      # so the live path stays blocked (no approval → blocked_live_provider_*,
+      # externalNetworkCalled=false). The profile verifies the live status
+      # block, the default-disabled gate, the kill-switch inactive default,
+      # the value-free secret state, the no-leak invariant, and that no real
+      # network call / no real key read happens. This is NOT the manual
+      # one-shot live profile — that profile (phase3b_live_enablement_manual_one_shot)
+      # is opt-in and NEVER runs in the default `all` target.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export EXECUTE_EXPECTED=phase3b_live_enablement_boundary
+      ;;
   esac
 }
 
@@ -586,6 +605,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-3b-provider-readonly-boundary-smoke.spec.ts"
   elif [ "$profile" = "phase3b_h1_provider_boundary_hardening" ]; then
     spec_rel="tests/smoke/phase-3b-h1-provider-boundary-hardening-smoke.spec.ts"
+  elif [ "$profile" = "phase3b_live_enablement_boundary" ]; then
+    spec_rel="tests/smoke/phase-3b-live-enablement-boundary-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -629,7 +650,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -646,6 +667,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase3a_h1_workflow_hardening"
     run_smoke_for_profile "phase3b_provider_readonly_boundary"
     run_smoke_for_profile "phase3b_h1_provider_boundary_hardening"
+    run_smoke_for_profile "phase3b_live_enablement_boundary"
     ;;
 esac
 

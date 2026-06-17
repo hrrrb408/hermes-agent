@@ -78,3 +78,18 @@ this boundary: **10 / 10 PASS, P0 = 0, P1 = 0.** No live real-provider enablemen
 no real API key read, no real network call. Provider write / auto-write /
 autonomous write and production rollout remain blocked. The concrete real HTTP
 client remains deferred. See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).
+
+---
+
+## Phase 3B-Live-Enablement update (implemented — default disabled)
+
+The live layer (`PHASE-3B-LIVE-ENABLEMENT-IMPL-001`) adds a strict manual
+one-shot live gate on top of this boundary without relaxing any lens: a fresh,
+single-use, 5-minute human approval; an env-only value-free secret read; an
+HTTPS single-host allowlist (`api.openai.com`); frozen first-live caps
+(1 request / 1000 / 200 / 5c / 0 retry / 60s); a 14-trigger kill switch; and
+18 redacted dual-write `provider_live_*` audit events. The real provider stays
+**disabled by default**; default tests / smoke read no real key and make no real
+network call. No new route (governance unchanged 34 / 34 / 5 / 0 / 1 / 1). See
+[phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md)
+and [phase-3b-live-enablement-security-boundary](phase-3b-live-enablement-security-boundary.md).

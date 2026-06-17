@@ -90,6 +90,19 @@ enablement; no real HTTP client wiring; no real API key read; no real network
 call. See [phase-3b-live-enablement-planning](phase-3b-live-enablement-planning.md)
 and [phase-3b-live-enablement-risk-register](phase-3b-live-enablement-risk-register.md).
 
+## Phase 3B-Live-Enablement Implementation note (2026-06-17)
+
+The live layer has now been implemented (`PHASE-3B-LIVE-ENABLEMENT-IMPL-001`)
+on top of this hardened boundary. It reuses these hardened lenses unchanged:
+the Phase 2B-H1 redaction / sanitizer (defensive re-redaction before every
+`provider_live_*` audit write), the Phase 2A read-only tool allowlist, the
+Phase 2B audit writer + Phase 2D durable dual-write, and the Phase 3B budget /
+network surfaces. The added gates (approval, value-free secret read, kill
+switch, single-use invalidation) layer in front of the real-gated path's
+concrete network call. The real provider stays disabled by default; default
+tests / smoke read no real key and make no real network call; no new route.
+See [phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md).
+
 ## Residual Risk
 
 - P0: none.

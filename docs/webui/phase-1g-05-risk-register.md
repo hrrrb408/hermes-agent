@@ -1013,3 +1013,30 @@ autonomous write blocked, shell / db / external write blocked, no `~/.hermes`
 access, no production `state.db` access, route governance unchanged
 (34/34/5/0/1/1), Production Gateway PID `28428` untouched. **Phase 3C was not
 started.** See [phase-3b-h1-provider-boundary-hardening](phase-3b-h1-provider-boundary-hardening.md).
+
+## Phase 3B-Live-Enablement implementation update (2026-06-17)
+
+The live layer shipped (`PHASE-3B-LIVE-ENABLEMENT-IMPL-001`) on top of the
+hardened boundary. P0 = 0, P1 = 0: live provider disabled by default; a live
+request requires a fresh single-use 5-minute human approval; the API key is
+read env-only and only past every gate, value-free (never in audit / log / UI /
+exception); the only egress is a single HTTPS POST to `api.openai.com`
+(http / localhost / private IP / off-allowlist redirect blocked); first-live
+caps enforced (1 request / 1000 / 200 / 5c / 0 retry / 60s); 14-trigger kill
+switch blocks before secret read / network; provider write / auto-write /
+autonomous write / shell / db / external / production remain blocked; no tool
+execution for the first live request; 18 redacted dual-write `provider_live_*`
+audit events (fail-closed); single-use approval invalidated after use; no new
+route (34/34/5/0/1/1); no `~/.hermes` / production `state.db` access; PID
+`28428` untouched. Default tests / smoke read no real key and make no real
+network call. **Manual one-shot live execution remains NO-GO until separately
+authorized. Phase 3C was not started.** See
+[phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md),
+[phase-3b-live-enablement-security-boundary](phase-3b-live-enablement-security-boundary.md),
+[phase-3b-live-enablement-risk-register](phase-3b-live-enablement-risk-register.md),
+and [phase-3b-live-enablement-test-report](phase-3b-live-enablement-test-report.md).
+
+Remaining P2 (deferred, unchanged): streaming, multi-provider routing, provider
+write, token encryption at rest, multi-user namespace, and the separately-
+authorized manual one-shot live execution (and any concrete real HTTP client
+wiring behind it).

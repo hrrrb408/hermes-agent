@@ -498,6 +498,12 @@ def _provider_boundary_status() -> dict[str, Any]:
         safe["providerAutoWriteBlocked"] = True
         safe["autonomousWriteBlocked"] = True
         safe["productionRolloutBlocked"] = True
+        # Phase 3B-Live-Enablement: the strict manual one-shot live gate. This
+        # is a read-only, value-free status block. Live provider stays disabled
+        # by default; a live request requires a fresh, single-use human approval,
+        # an allowlisted HTTPS host, valid budget caps, an inactive kill switch,
+        # and active redacted audit. Never the API-key value / header / token.
+        safe["providerLive"] = _provider_live_status()
         return safe
     except Exception:  # pragma: no cover — defensive; never fail /status
         return {
@@ -505,8 +511,75 @@ def _provider_boundary_status() -> dict[str, Any]:
             "apiEnabled": False,
             "available": False,
             "providerWriteBlocked": True,
+            "providerAutoWriteBlocked": True,
             "autonomousWriteBlocked": True,
             "productionRolloutBlocked": True,
+            "providerLive": {
+                "liveEnabled": False,
+                "available": False,
+                "approvalRequired": True,
+                "toolExecutionDisabled": True,
+            },
+        }
+
+
+def _provider_live_status() -> dict[str, Any]:
+    """Phase 3B-Live-Enablement: the value-free live-gate status block.
+
+    Read-only. Live provider is **disabled by default**. Surfaced under
+    ``/status`` data.providerBoundary.providerLive so the UI can render the
+    live gate. Never the API-key value, Authorization header, raw token, raw
+    prompt/response secret, or callable repr. Never performs a network call.
+    """
+    try:
+        from hermes_cli.dev_web_provider_live_budget import (
+            LiveBudgetCaps,
+            live_budget_badge,
+            read_live_counters,
+        )
+        from hermes_cli.dev_web_provider_live_kill_switch import (
+            read_kill_switch,
+        )
+        from hermes_cli.dev_web_provider_live_approval import list_approvals
+
+        import os
+
+        hermes_home = os.environ.get("HERMES_HOME", "")
+        from datetime import datetime, timezone
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        caps = LiveBudgetCaps()
+        counters = read_live_counters(hermes_home=hermes_home, now_iso=now_iso)
+        kill = read_kill_switch(hermes_home=hermes_home)
+        approvals = list_approvals(hermes_home=hermes_home)
+        unused = [a for a in approvals if a.single_use and not a.used_at]
+        return {
+            "liveEnabled": False,
+            "available": False,
+            "approvalRequired": True,
+            "approvalPresent": bool(unused),
+            "approvalCount": len(approvals),
+            "approvalSingleUse": True,
+            "approvalTtlSeconds": 300,
+            "killSwitchActive": kill.active,
+            "killSwitchTriggeredBy": kill.triggered_by if kill.active else "",
+            "toolExecutionDisabled": True,
+            "providerWriteBlocked": True,
+            "providerAutoWriteBlocked": True,
+            "autonomousWriteBlocked": True,
+            "productionRolloutBlocked": True,
+            "streamingBlocked": True,
+            "multiProviderBlocked": True,
+            "manualOneShot": False,
+            "budget": live_budget_badge(caps=caps, counters=counters),
+            "redactionApplied": True,
+        }
+    except Exception:  # pragma: no cover — defensive; never fail /status
+        return {
+            "liveEnabled": False,
+            "available": False,
+            "approvalRequired": True,
+            "toolExecutionDisabled": True,
         }
 
 

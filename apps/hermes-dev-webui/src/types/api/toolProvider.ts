@@ -75,6 +75,57 @@ export interface ProviderRoundtripRequest {
 }
 
 /**
+ * Phase 3B-Live-Enablement: the strict manual one-shot live gate status.
+ *
+ * Surfaced by GET /api/dev/v1/status as data.providerBoundary.providerLive.
+ * Value-free only — never an API-key value, Authorization header, raw token,
+ * raw prompt/response secret, or callable repr. Live provider stays disabled
+ * by default; the UI never accepts an API-key input.
+ */
+export interface ProviderLiveStatus {
+  readonly liveEnabled: boolean
+  readonly available: boolean
+  readonly approvalRequired: boolean
+  readonly approvalPresent: boolean
+  readonly approvalCount: number
+  readonly approvalSingleUse: boolean
+  readonly approvalTtlSeconds: number
+  readonly killSwitchActive: boolean
+  readonly killSwitchTriggeredBy: string
+  readonly toolExecutionDisabled: boolean
+  readonly providerWriteBlocked: boolean
+  readonly providerAutoWriteBlocked: boolean
+  readonly autonomousWriteBlocked: boolean
+  readonly productionRolloutBlocked: boolean
+  readonly streamingBlocked: boolean
+  readonly multiProviderBlocked: boolean
+  readonly manualOneShot: boolean
+  readonly budget: ProviderLiveBudgetBadge
+  readonly redactionApplied: boolean
+}
+
+/** Value-free live budget badge (caps + remaining; never a key). */
+export interface ProviderLiveBudgetBadge {
+  readonly available: boolean
+  readonly maxRequests: number
+  readonly maxTotalTokens: number
+  readonly maxInputTokens: number
+  readonly maxOutputTokens: number
+  readonly maxBudgetCents: number
+  readonly maxRuntimeSeconds: number
+  readonly maxRetries: number
+  readonly rateLimitWindow: number
+  readonly failClosedOnCounterError: boolean
+  readonly requestsUsed?: number
+  readonly tokensUsed?: number
+  readonly centsUsed?: number
+  readonly remainingCents?: number
+  readonly remainingRequests?: number
+  readonly windowMinute?: string
+  readonly redactionApplied?: boolean
+}
+
+/**
  * Phase 3B: real-provider boundary safe-metadata block.
  *
  * Surfaced by GET /api/dev/v1/status as data.providerBoundary. Value-free
@@ -112,6 +163,8 @@ export interface ProviderBoundaryStatus {
   readonly autonomousWriteBlocked: boolean
   readonly productionRolloutBlocked: boolean
   readonly redactionApplied: boolean
+  /** Phase 3B-Live-Enablement: the strict manual one-shot live gate. */
+  readonly providerLive: ProviderLiveStatus
 }
 
 /** Safe provider-boundary status returned by GET /status (data.providerBoundary). */

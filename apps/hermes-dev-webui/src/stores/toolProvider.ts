@@ -16,6 +16,7 @@ import { SELECTABLE_TOOL_IDS } from '@/constants/readOnlyTools'
 
 import type {
   ProviderBoundaryStatus,
+  ProviderLiveStatus,
   ProviderMode,
   ProviderRoundtripResultData,
 } from '@/types/api/toolProvider'
@@ -65,6 +66,20 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
 
   const isRealBlocked = computed(
     () => providerMode.value === 'real',
+  )
+
+  /**
+   * Phase 3B-Live-Enablement: the strict manual one-shot live gate status.
+   * Live provider is disabled by default. The UI never accepts an API key.
+   * Returns null when the boundary has not been loaded yet.
+   */
+  const liveStatus = computed<ProviderLiveStatus | null>(
+    () => boundary.value?.providerLive ?? null,
+  )
+
+  /** True only when a live request could proceed (approval + gates). */
+  const liveEnabled = computed(
+    () => liveStatus.value?.liveEnabled === true && liveStatus.value?.killSwitchActive !== true,
   )
 
   function setProviderMode(mode: ProviderMode): void {
@@ -144,6 +159,8 @@ export const useToolProviderStore = defineStore('tool-provider', () => {
     boundaryLabel,
     canRun,
     isRealBlocked,
+    liveStatus,
+    liveEnabled,
     setProviderMode,
     setMessage,
     toggleTool,
