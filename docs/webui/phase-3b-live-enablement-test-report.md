@@ -78,3 +78,13 @@ API-key input. The manual one-shot profile was **not** run and is not in `all`.
 
 - [Live enablement implementation](phase-3b-live-enablement-implementation.md)
 - [Security boundary](phase-3b-live-enablement-security-boundary.md)
+
+## 7. H1 hardening (2026-06-17)
+
+The live gate was hardened in place under `HARDENING-3B-LIVE-H1-001`. The H1
+pass added 8 backend hardening test files + 5 frontend hardening test files +
+the `phase3b_live_h1_hardening` smoke profile (in `all`) + a hardening audit
+script. 11/11 lenses PASS, P0 = 0, P1 = 0. No live request executed, no real
+`OPENAI_API_KEY` read, no real network call, no implementation defect found.
+See [phase-3b-live-h1-test-report](phase-3b-live-h1-test-report.md) and
+[phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md).

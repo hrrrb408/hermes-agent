@@ -127,3 +127,17 @@ production `state.db` access. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 
 - [GO / NO-GO](phase-3b-live-enablement-go-no-go.md)
 - [Phase 3B real-provider read-only integration](phase-3b-real-provider-readonly-integration.md)
 - [Phase 3B-H1 provider boundary hardening](phase-3b-h1-provider-boundary-hardening.md)
+
+## 10. H1 hardening (2026-06-17)
+
+This implementation was hardened in place under `HARDENING-3B-LIVE-H1-001`
+(Phase 3B-Live-Enablement H1). The deterministic 11-lens hardening pass added
+edge-case backend + frontend tests, the `phase3b_live_h1_hardening` smoke
+profile (included in `all`), a hardening audit script
+(`scripts/run-dev-webui-phase3b-live-hardening-audit.sh`), and hardening docs.
+11/11 lenses PASS, P0 = 0, P1 = 0. No live request was executed, no real
+`OPENAI_API_KEY` was read, no real provider network call was made, and no
+implementation defect was found — so no production-boundary code changed. The
+manual one-shot live profile remains excluded from the default `all` smoke
+target. See [phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md) and
+[phase-3b-live-h1-test-report](phase-3b-live-h1-test-report.md).

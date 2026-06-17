@@ -2258,3 +2258,22 @@ remains NO-GO until separately authorized. Phase 3C was not started.** See
 [phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md),
 [phase-3b-live-enablement-security-boundary](phase-3b-live-enablement-security-boundary.md),
 and [phase-3b-live-enablement-test-report](phase-3b-live-enablement-test-report.md).
+
+## Phase 3B-Live-Enablement H1 Status Update (2026-06-17)
+
+Phase 3B-Live-Enablement H1 — **Strict Manual One-shot Live Gate Hardening** —
+completed under `HARDENING-3B-LIVE-H1-001`. A deterministic hardening pass: no
+live request executed, no real `OPENAI_API_KEY` read, no real provider network
+call. Eight backend hardening test files + five frontend hardening test files +
+a `phase3b_live_h1_hardening` smoke profile (included in `all`) + a hardening
+audit script (`scripts/run-dev-webui-phase3b-live-hardening-audit.sh`) +
+hardening documentation. The 11-lens review passed 11/11 (P0 = 0, P1 = 0). No
+implementation defect was found, so no production-boundary code changed. The
+live approval model remains 5-minute / single-use / in-scope / value-free /
+dev-only; the secret read gate still never inspects the env on a blocked path;
+the manual one-shot live profile remains excluded from the default `all` smoke
+target. Route governance unchanged (34/34/5/0/1/1). Production Gateway PID
+`28428` untouched. **The manual one-shot live execution remains NO-GO until
+separately authorized. Phase 3C was not started.** See
+[phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md) and
+[phase-3b-live-h1-test-report](phase-3b-live-h1-test-report.md).

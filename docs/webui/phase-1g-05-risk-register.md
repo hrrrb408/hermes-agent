@@ -1036,6 +1036,22 @@ authorized. Phase 3C was not started.** See
 [phase-3b-live-enablement-risk-register](phase-3b-live-enablement-risk-register.md),
 and [phase-3b-live-enablement-test-report](phase-3b-live-enablement-test-report.md).
 
+The live gate was hardened in place under `HARDENING-3B-LIVE-H1-001`
+(Phase 3B-Live-Enablement H1). The deterministic 11-lens hardening pass added
+edge-case backend + frontend tests, a `phase3b_live_h1_hardening` smoke profile
+(in `all`), a hardening audit script, and hardening docs. 11/11 lenses PASS,
+P0 = 0, P1 = 0. No live request was executed, no real `OPENAI_API_KEY` was read,
+no real network call was made, and no implementation defect was found (so no
+production-boundary code changed). The TTL / single-use / in-scope / value-free
+approval, the never-reads-env-on-blocked-path secret gate, the single-host
+HTTPS allowlist, the frozen caps + fail-closed counters, the 14-trigger kill
+switch, the no-tool-execution round-trip, and the redacted fail-closed
+`provider_live_*` audit all held under the added edge-case probes. The manual
+one-shot live profile remains excluded from `all`. Route governance unchanged
+(34/34/5/0/1/1). PID `28428` untouched. See
+[phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md) and
+[phase-3b-live-h1-test-report](phase-3b-live-h1-test-report.md).
+
 Remaining P2 (deferred, unchanged): streaming, multi-provider routing, provider
 write, token encryption at rest, multi-user namespace, and the separately-
 authorized manual one-shot live execution (and any concrete real HTTP client

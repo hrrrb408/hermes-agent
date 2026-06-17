@@ -93,3 +93,18 @@ real key and do not call a real network.
 - [Phase 3B security boundary](phase-3b-security-boundary.md)
 - [Phase 3B-H1 provider boundary hardening](phase-3b-h1-provider-boundary-hardening.md)
 - [Test report](phase-3b-live-enablement-test-report.md)
+
+## 7. H1 hardening (2026-06-17)
+
+This boundary was hardened in place under `HARDENING-3B-LIVE-H1-001`. Every
+invariant above was re-verified under edge-case probes (TTL boundary, single-use
+idempotency, scope/mode/match tampering, never-reads-env-on-blocked-path,
+scheme/private-IP/redirect/allowlist boundaries, request/token/output/budget
+cap boundaries + counter fail-closed, 14 triggers + clear-is-not-approval,
+gate ordering + no-tool-execution + forbidden-suggestion kill + secret-in-content
+kill, defensive re-redaction + production-home fail-closed, and a no-leak sweep
+over the live UI in every state). 11/11 lenses PASS, P0 = 0, P1 = 0. No
+implementation defect was found, so no boundary code changed. The manual
+one-shot live profile remains excluded from `all`; route governance unchanged
+(34/34/5/0/1/1); PID `28428` untouched. See
+[phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md).
