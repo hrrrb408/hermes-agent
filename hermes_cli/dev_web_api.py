@@ -472,6 +472,41 @@ def _audit_store_error_json(result: Any, request_id: str) -> JSONResponse:
     )
 
 
+def _capability_registry_status() -> dict[str, Any]:
+    """Phase 3C: return the static dev-only Capability Registry summary block.
+
+    Read-only and value-free — never an API key, Authorization header, raw
+    secret, callable repr, shell command, SQL statement, production path, local
+    plugin path, or dynamic import path. Surfaced under ``/status`` data
+    ``capabilityRegistry`` so the UI can render the registry panel. The registry
+    describes capabilities only; it never grants permission, never loads a
+    plugin, and never performs a side effect. No new route is introduced.
+    """
+    try:
+        from hermes_cli.dev_web_capability_registry import get_registry_status_block
+
+        return get_registry_status_block()
+    except Exception:  # pragma: no cover — defensive; never fail /status
+        return {
+            "status": "validation_failed",
+            "loaded": False,
+            "validationPassed": False,
+            "capabilityCount": 0,
+            "enabledCount": 0,
+            "disabledCount": 0,
+            "blockedCount": 0,
+            "plannedCount": 0,
+            "deprecatedCount": 0,
+            "devOnly": True,
+            "productionAllowed": False,
+            "dynamicLoadingAllowed": False,
+            "remoteRegistryAllowed": False,
+            "marketplaceAllowed": False,
+            "validation": {"valid": False, "errorCount": 1, "warningCount": 0},
+            "redactionApplied": True,
+        }
+
+
 def _provider_boundary_status() -> dict[str, Any]:
     """Phase 3B: return the real-provider boundary safe-metadata block.
 
@@ -631,6 +666,12 @@ def _register_routes(
         # stays disabled by default; this surface is read-only.
         provider_boundary = _provider_boundary_status()
 
+        # Phase 3C: static dev-only Capability Registry summary block.
+        # Read-only and value-free. The registry describes capabilities only;
+        # it never grants permission, loads a plugin, or performs a side effect.
+        # Surfaced under /status data capabilityRegistry; no new route.
+        capability_registry = _capability_registry_status()
+
         return {
             "data": {
                 "environment": "development",
@@ -644,6 +685,7 @@ def _register_routes(
                     "productionHomeUntouched": True,
                 },
                 "providerBoundary": provider_boundary,
+                "capabilityRegistry": capability_registry,
                 "services": {
                     "api": {"available": True, "readOnly": True},
                     "sessions": {

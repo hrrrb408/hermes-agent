@@ -1076,6 +1076,12 @@ operation exposed (CAP-P0-07), `~/.hermes` / production `state.db` accessed
 in registry or UI (CAP-P0-10), runtime artifact committed (CAP-P0-11), and
 `.claude/` committed (CAP-P0-12). The registry is static, dev-only, and
 descriptive (grants no permission, loads no code, adds no route by default).
-**Phase 3C Implementation was not started.** See
-[phase-3c-planning](phase-3c-planning.md) and
-[phase-3c-go-no-go](phase-3c-go-no-go.md).
+**Phase 3C Implementation was completed (2026-06-17) within the frozen scope.**
+All CAP-P0 stop conditions remain closed: no dynamic loading, marketplace,
+remote registry, permission grant, gate bypass, shell/SQL/HTTP/production
+capability execution, `~/.hermes` / production `state.db` access, route drift,
+secret/callable/path leak, or runtime/`.claude` artifact. Forbidden fields are
+rejected by validation; the registry is read-only and no-leak. See
+[phase-3c-static-capability-registry-implementation](phase-3c-static-capability-registry-implementation.md),
+[phase-3c-capability-registry-security-boundary](phase-3c-capability-registry-security-boundary.md),
+and [phase-3c-go-no-go](phase-3c-go-no-go.md).

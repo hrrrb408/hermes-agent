@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3C (Planning) |
 | Title | Plugin / Capability Registry — Scope Freeze (Planning) |
-| Status | Planning prepared — Capability Registry **not started**; no dynamic loading, no marketplace, no remote registry |
+| Status | Planning prepared — Capability Registry **implemented** (Phase 3C static dev-only registry; no dynamic loading, no marketplace, no remote registry) |
 | Date | 2026-06-17 |
 | Branch | `dev-huangruibang` |
 | Input HEAD | `31ba0a62d838ded03b5fd38e22d71ee6811ab84b` (`chore(webui): harden provider live enablement gate`) |

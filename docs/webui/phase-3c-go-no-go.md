@@ -6,7 +6,7 @@
 |-------|-------|
 | Phase | 3C (Planning) |
 | Title | Capability Registry — GO / NO-GO |
-| Status | Decision recorded — Capability Registry **not started**; no dynamic loading, no marketplace, no remote registry |
+| Status | Decision recorded — Capability Registry **implemented** (Phase 3C static dev-only registry; no dynamic loading, no marketplace, no remote registry) |
 | Date | 2026-06-17 |
 | Branch | `dev-huangruibang` |
 | Planning ID | `PHASE-3C-PLANNING-001` |

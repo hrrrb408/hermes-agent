@@ -4,6 +4,7 @@ import {
   ClipboardList,
   FilePen,
   LayoutDashboard,
+  ListChecks,
   Plug,
   ShieldCheck,
   Workflow,
@@ -30,6 +31,7 @@ const ICONS: Readonly<Record<DevConsoleSection, Component>> = {
   safety: ShieldCheck,
   diagnostics: Activity,
   workflow: Workflow,
+  capabilities: ListChecks,
 }
 
 function select(section: DevConsoleSection): void {

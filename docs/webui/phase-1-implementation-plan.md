@@ -2303,3 +2303,26 @@ only after explicit user authorization.** See
 [phase-3c-planning](phase-3c-planning.md),
 [phase-3c-capability-registry-scope-freeze](phase-3c-capability-registry-scope-freeze.md),
 and [phase-3c-go-no-go](phase-3c-go-no-go.md).
+
+## Phase 3C Implementation Status Update (2026-06-17)
+
+Phase 3C Implementation — **Static dev-only Capability Registry** — completed
+under explicit user authorization. The registry **describes capabilities only;
+it grants no permission and loads no code**. Deliverables: backend modules
+(`dev_web_capability_registry_{schema,manifest,policy,audit}.py` +
+`dev_web_capability_registry.py`), a read-only `capabilityRegistry` block added
+to the **existing** `GET /status` response (no new route), a read-only Dev
+Console section + components + frozen TS manifest mirror, `capability_registry_*`
+audit events (reusing `AUDIT_KIND_INTERNAL`, redacted, fail-safe), 8 backend
+test files (160 tests), 6 frontend test files, a smoke profile
+(`phase3c_capability_registry_static`, included in `all`), and the Phase 3C
+doc set. Forbidden fields (pythonImportPath / callable / shellCommand /
+externalUrl / downloadUrl / pluginPackage / dynamicModule / evalCode / execCode /
+sqlStatement / productionPath / apiKey / Authorization / secret) are rejected by
+validation. No plugin runtime, dynamic loading, remote registry, marketplace,
+external plugin fetch, provider write, autonomous write, live provider request,
+real API-key read, external network, production rollout, `~/.hermes` access, or
+production `state.db` access was introduced. Route governance unchanged
+(34/34/5/0/1/1). Production Gateway PID `28428` untouched. See
+[phase-3c-static-capability-registry-implementation](phase-3c-static-capability-registry-implementation.md)
+and [phase-3c-capability-registry-security-boundary](phase-3c-capability-registry-security-boundary.md).

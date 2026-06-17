@@ -38,7 +38,7 @@ describe('Dev Console accessibility (Phase 2E)', () => {
     const tablist = wrapper.find('[role="tablist"]')
     expect(tablist.exists()).toBe(true)
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs.length).toBe(8)
+    expect(tabs.length).toBe(9)
     // Active (overview) is in the tab order; others are not.
     const active = tabs.find((t) => t.attributes('aria-selected') === 'true')
     expect(active?.attributes('tabindex')).toBe('0')

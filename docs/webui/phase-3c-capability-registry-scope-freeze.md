@@ -4,7 +4,7 @@
 |-------|-------|
 | Phase | 3C (Planning) |
 | Title | Static Dev-only Capability Registry Scope Freeze |
-| Status | Frozen (docs-only planning; Capability Registry **not started**) |
+| Status | Frozen — Capability Registry **implemented** within the frozen scope (Phase 3C static dev-only registry) |
 | Date | 2026-06-17 |
 | Planning ID | `PHASE-3C-PLANNING-001` |
 | Scope-Freeze ID | `PHASE-3C-SCOPE-FREEZE-001` |
