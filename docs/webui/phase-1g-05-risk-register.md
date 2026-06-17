@@ -1056,3 +1056,26 @@ Remaining P2 (deferred, unchanged): streaming, multi-provider routing, provider
 write, token encryption at rest, multi-user namespace, and the separately-
 authorized manual one-shot live execution (and any concrete real HTTP client
 wiring behind it).
+
+---
+
+## Phase 3C Planning update (scope frozen — not implemented)
+
+The next slice — **Phase 3C — Plugin / Capability Registry** — had its scope
+**frozen** in a separate docs-only planning phase (`PHASE-3C-PLANNING-001`)
+without being implemented. The Phase 3C risk register
+([phase-3c-security-risk-register.md](phase-3c-security-risk-register.md)) is
+**additive** to this one; it does not relax any P0/P1 here. Its P0 stop
+conditions include: dynamic plugin loading introduced (CAP-P0-01), external
+marketplace / remote registry introduced (CAP-P0-02), capability grants
+permission instead of describing it (CAP-P0-03), write capability bypasses
+dry-run / confirmation (CAP-P0-04), provider live gate bypassed (CAP-P0-05),
+shell / database / external-HTTP capability exposed (CAP-P0-06), production
+operation exposed (CAP-P0-07), `~/.hermes` / production `state.db` accessed
+(CAP-P0-08), route governance drift (CAP-P0-09), secret / callable / path leak
+in registry or UI (CAP-P0-10), runtime artifact committed (CAP-P0-11), and
+`.claude/` committed (CAP-P0-12). The registry is static, dev-only, and
+descriptive (grants no permission, loads no code, adds no route by default).
+**Phase 3C Implementation was not started.** See
+[phase-3c-planning](phase-3c-planning.md) and
+[phase-3c-go-no-go](phase-3c-go-no-go.md).

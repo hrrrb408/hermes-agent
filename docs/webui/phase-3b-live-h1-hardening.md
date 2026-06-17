@@ -93,3 +93,19 @@ multi-provider routing, production rollout, `~/.hermes` access, and production
 - [Live enablement implementation](phase-3b-live-enablement-implementation.md)
 - [Live enablement security boundary](phase-3b-live-enablement-security-boundary.md)
 - [H1 test report](phase-3b-live-h1-test-report.md)
+
+---
+
+## Phase 3C Planning update (scope frozen — not implemented)
+
+After this H1 hardening pass, the next slice — **Phase 3C — Plugin / Capability
+Registry** — had its scope **frozen** in a separate docs-only planning phase
+(`PHASE-3C-PLANNING-001`) without being implemented. The Phase 3C registry is a
+**descriptive read-only layer** that classifies the existing tool / provider /
+workflow capabilities (including this hardening's `provider.live_manual_one_shot`
+= LIVE_PROVIDER_GATED) **without relaxing any H1 lens**. It grants no permission,
+loads no code, adds no route by default, and is dev-only /
+`productionAllowed=false`. No dynamic plugin runtime, marketplace, or remote
+registry. The manual one-shot live execution remains NO-GO until separately
+authorized. See [phase-3c-planning](phase-3c-planning.md) and
+[phase-3c-go-no-go](phase-3c-go-no-go.md).

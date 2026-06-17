@@ -2277,3 +2277,29 @@ target. Route governance unchanged (34/34/5/0/1/1). Production Gateway PID
 separately authorized. Phase 3C was not started.** See
 [phase-3b-live-h1-hardening](phase-3b-live-h1-hardening.md) and
 [phase-3b-live-h1-test-report](phase-3b-live-h1-test-report.md).
+
+## Phase 3C Planning Status Update (2026-06-17)
+
+Phase 3C Planning — **Plugin / Capability Registry Scope Freeze** — prepared
+under `PHASE-3C-PLANNING-001`. This is a **docs-only planning phase**: no product
+/ frontend / backend / test / script change, no `toolsets.py` change, no new
+route, no plugin runtime, no dynamic loading, no marketplace, no remote registry,
+no `~/.hermes` / production `state.db` access, no real API-key read, and no
+network call. It freezes a **static, dev-only, descriptive** Capability Registry
+that classifies the existing tool / provider / workflow / sandbox / audit /
+system capabilities by a frozen permission-class + trust-level taxonomy, validates
+a static manifest against an explicit forbidden-fields list, exposes a read-only
+panel + `/status` block (no new route by default), and audits
+`capability_registry_*` events (safe fields only, dual-write, fail-closed). The
+registry **grants no permission** and **loads no code**. Deliverables: planning +
+scope-freeze + capability-model + permission/trust + static-manifest-schema +
+no-dynamic-loading + tool/provider/workflow mappings + UI/status + audit-policy +
+risk-register + GO/NO-GO + execution-brief + prompt-draft (+ optional
+threat-model, test-strategy, UI-wireframe), plus updates to phase-1 plan, phase-1g
+risk register, phase-3b boundary, phase-3b-live-h1, phase-3 scope-freeze, and
+phase-3 GO/NO-GO. Route governance unchanged (34/34/5/0/1/1). Production Gateway
+PID `28428` untouched. **Phase 3C Implementation was not started; it may start
+only after explicit user authorization.** See
+[phase-3c-planning](phase-3c-planning.md),
+[phase-3c-capability-registry-scope-freeze](phase-3c-capability-registry-scope-freeze.md),
+and [phase-3c-go-no-go](phase-3c-go-no-go.md).

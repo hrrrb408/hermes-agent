@@ -240,3 +240,27 @@ and [phase-3b-go-no-go](phase-3b-go-no-go.md).
 - [Phase 3B planning](phase-3b-planning.md)
 - [Phase 3B scope freeze](phase-3b-provider-readonly-scope-freeze.md)
 - [Phase 3B GO / NO-GO](phase-3b-go-no-go.md)
+
+---
+
+## 18. Phase 3C Scope Freeze Update (2026-06-17)
+
+After Phase 3A, Phase 3B (+ H1), and Phase 3B-Live-Enablement (+ H1) shipped,
+the next slice — **Phase 3C — Plugin / Capability Registry** — has now had its
+own **scope frozen** in a separate docs-only planning phase
+(`PHASE-3C-PLANNING-001`), without being implemented. The Phase 3C freeze keeps
+every discipline this document established (default no new route, full
+redaction, dev `HERMES_HOME`-only audit files, no production rollout) and pins:
+a **static, dev-only** capability registry that is **descriptive only**
+(grants no permission), a frozen permission-class / trust-level taxonomy, a
+static manifest with an explicit **forbidden-fields** list, a **no-dynamic-
+loading** policy (no `importlib`, no marketplace, no remote registry, no
+arbitrary-URL fetch), frozen tool / provider / workflow capability mappings, a
+read-only UI + `/status` block (no new route by default), and `capability_registry_*`
+audit (safe fields only). No plugin runtime, no dynamic loading, no
+marketplace, no remote registry, no new route by default, no production rollout.
+Route governance unchanged (34/34/5/0/1/1). Production Gateway PID `28428`
+untouched. **Phase 3C Implementation was not started.** See
+[phase-3c-planning](phase-3c-planning.md),
+[phase-3c-capability-registry-scope-freeze](phase-3c-capability-registry-scope-freeze.md),
+and [phase-3c-go-no-go](phase-3c-go-no-go.md).

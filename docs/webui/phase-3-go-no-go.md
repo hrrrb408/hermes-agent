@@ -137,3 +137,23 @@ only, env-only API key, no UI key input, full audit + redaction. See
 - [Phase 3A prompt draft](phase-3a-prompt.md)
 - [Phase 3B planning](phase-3b-planning.md)
 - [Phase 3B GO / NO-GO](phase-3b-go-no-go.md)
+
+---
+
+## 9. Phase 3C Planning Update (2026-06-17)
+
+After Phase 3A (+ H1), Phase 3B (+ H1), and Phase 3B-Live-Enablement (+ H1)
+shipped, the next slice — **Phase 3C — Plugin / Capability Registry** — has now
+had its own **GO for implementation-prompt preparation only** decision recorded
+in a separate docs-only planning phase (`PHASE-3C-PLANNING-001`, decision
+`PHASE-3C-GO-NOGO-001`), without being implemented. The Phase 3C decision keeps
+every constraint of this Phase 3 decision (separately authorized, human-approval-
+gated, no autonomous write, no shell / db / external write, no production
+rollout, default no new route) and additionally pins: a **static, dev-only,
+descriptive** capability registry (grants no permission), a frozen permission /
+trust taxonomy, a static manifest with a forbidden-fields list, a no-dynamic-
+loading policy, and `capability_registry_*` audit. **NO-GO** for a dynamic plugin
+runtime, external plugin loading, remote registry / marketplace, production
+rollout, provider write, and autonomous write. **Phase 3C Implementation was not
+started.** See [phase-3c-go-no-go](phase-3c-go-no-go.md) and
+[phase-3c-planning](phase-3c-planning.md).

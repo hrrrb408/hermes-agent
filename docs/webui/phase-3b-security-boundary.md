@@ -93,3 +93,22 @@ HTTPS single-host allowlist (`api.openai.com`); frozen first-live caps
 network call. No new route (governance unchanged 34 / 34 / 5 / 0 / 1 / 1). See
 [phase-3b-live-enablement-implementation](phase-3b-live-enablement-implementation.md)
 and [phase-3b-live-enablement-security-boundary](phase-3b-live-enablement-security-boundary.md).
+
+---
+
+## Phase 3C Planning update (scope frozen — not implemented)
+
+The next slice — **Phase 3C — Plugin / Capability Registry** — has had its scope
+**frozen** in a separate docs-only planning phase
+(`PHASE-3C-PLANNING-001`) without being implemented. The Phase 3C freeze is a
+**descriptive read-only layer** that references this boundary: it classifies the
+existing provider capabilities (`provider.fake_roundtrip` = READ_ONLY,
+`provider.real_gated_roundtrip` / `provider.live_manual_one_shot` =
+LIVE_PROVIDER_GATED, `provider.write` / `provider.auto_write` /
+`provider.autonomous_action` / `provider.tool_execution` = blocked) **without
+relaxing any lens here**. The registry grants no permission, loads no code, adds
+no route by default, and is dev-only / `productionAllowed=false`. No dynamic
+plugin runtime, marketplace, or remote registry. See
+[phase-3c-planning](phase-3c-planning.md),
+[phase-3c-provider-capability-mapping](phase-3c-provider-capability-mapping.md),
+and [phase-3c-go-no-go](phase-3c-go-no-go.md).
