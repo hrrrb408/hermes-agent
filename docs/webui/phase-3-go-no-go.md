@@ -298,3 +298,30 @@ PID `28428` untouched. See
 [phase-3d-human-review-signoff](phase-3d-human-review-signoff.md),
 [phase-3d-final-signoff-decision](phase-3d-final-signoff-decision.md), and
 [phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).
+
+## 16. Phase 3E Planning Update (2026-06-19)
+
+The docs-only **Phase 3E Planning** (`PHASE-3E-PLANNING-001`, decision
+`PHASE-3E-GO-NOGO-001`) has now been prepared — exactly the conditional GO the
+Phase 3D signoff recorded (only after explicit user request). It keeps every
+constraint of this Phase 3 decision (separately authorized, human-approval-
+gated, no autonomous write, no shell / db / external write, no production
+rollout, default no new route) and additionally freezes, as documentation only,
+the prerequisites a future real Plugin Runtime would require: a 30-item runtime
+threat model, a runtime scope freeze, a four-option sandbox architecture
+(descriptor-only recommended), a process-isolation model, a filesystem-boundary
+model, a network-boundary model, a supply-chain policy, a permission review, an
+audit / redaction review, a UI review, a route-governance review, a
+production-isolation review, a risk register, implementation entry criteria, a
+human-review brief, and a prompt draft. **GO** for Phase 3E Planning completion +
+Phase 3E Planning Closeout preparation only after explicit user request.
+**NO-GO** for Phase 3E Implementation, real plugin runtime, plugin loader,
+plugin execution, dynamic loading, local plugin directory loading, remote
+registry, marketplace, external plugin fetch, provider-generated plugin,
+LLM-generated plugin install, shell execution, DB mutation, external HTTP
+execution, production operation, provider write, autonomous write, and
+production rollout. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1);
+Production Gateway PID `28428` untouched. **Phase 3E Implementation was not
+started.** See [phase-3e-planning](phase-3e-planning.md),
+[phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md), and
+[phase-3e-human-review-brief](phase-3e-human-review-brief.md).

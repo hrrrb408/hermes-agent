@@ -94,3 +94,25 @@ approval follows planning closeout.
 - [Phase 3E entry criteria](phase-3d-phase-3e-entry-criteria.md)
 - [Real runtime NO-GO](phase-3d-real-runtime-no-go.md)
 - [Closeout](phase-3d-closeout.md)
+
+## 8. Execution record (2026-06-19)
+
+Phase 3E Planning has now been **prepared and executed** under this authorization
+(`PHASE-3E-PLANNING-001`, decision `PHASE-3E-GO-NOGO-001`), after explicit user
+request and while the §5 entry criteria held (P0 = 0, P1 = 0, route governance
+34 / 34 / 5 / 0 / 1 / 1, Production Gateway PID `28428` unchanged, no
+`~/.hermes` / production `state.db` access). The planning pass produced, as
+**documentation only**: a 30-item real-runtime threat model, a runtime scope
+freeze, a four-option sandbox architecture, a process-isolation model, a
+filesystem-boundary model, a network-boundary model, a supply-chain policy, a
+permission review, an audit / redaction review, a UI review, a
+route-governance review, a production-isolation review, a runtime GO / NO-GO, a
+risk register, implementation entry criteria, a human-review brief, and a prompt
+draft. **Phase 3E Implementation remains NO-GO. Real plugin runtime execution
+remains NO-GO.** No code, route, loader, dynamic loading, local plugin
+directory loading, remote registry, marketplace, external plugin fetch,
+provider-generated plugin, LLM-generated plugin install, shell / DB /
+external-HTTP / production execution, provider write, autonomous write,
+production rollout, or new route was introduced. See
+[phase-3e-planning](phase-3e-planning.md) and
+[phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md).

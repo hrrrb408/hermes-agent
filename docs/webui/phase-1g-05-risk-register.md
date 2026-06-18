@@ -1,5 +1,25 @@
 # Phase 1G-05: Risk Register
 
+> **Phase 3E Planning Update (2026-06-19):** The docs-only **Phase 3E Planning**
+> (`PHASE-3E-PLANNING-001`, companion register `PHASE-3E-RISK-REGISTER-001`, see
+> [phase-3e-risk-register](phase-3e-risk-register.md)) has been prepared. It is
+> **additive** to this register and relaxes nothing. Phase 3E Planning introduces
+> **0 P0 and 0 P1** (it is docs-only; no code, route, runtime, loader, dynamic
+> loading, local plugin directory loading, remote registry, marketplace,
+> external plugin fetch, provider-generated plugin, LLM-generated plugin
+> install, shell / DB / external-HTTP / production execution, provider write,
+> autonomous write, `~/.hermes` access, production `state.db` access, or new
+> route was introduced). The companion register records the risks that govern a
+> **future** real Plugin Runtime: 24 P0 stop conditions (RUNTIME-P0-01 …
+> RUNTIME-P0-24), 10 P1 ambiguity push-gates (RUNTIME-P1-01 … RUNTIME-P1-10),
+> and 5 P2 deferrals (RUNTIME-P2-01 … RUNTIME-P2-05). All P0 stop conditions
+> remain clear after this planning phase. **Phase 3E Implementation was not
+> started.** Real plugin runtime execution remains NO-GO. Route governance
+> unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+> See [phase-3e-planning](phase-3e-planning.md),
+> [phase-3e-real-runtime-threat-model](phase-3e-real-runtime-threat-model.md),
+> and [phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md).
+
 > **Phase 3D Human Review Signoff Update (2026-06-19):** Phase 3D closeout is
 > formally **signed off** as a dev-only static Plugin Descriptor Registry
 > milestone (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Risk

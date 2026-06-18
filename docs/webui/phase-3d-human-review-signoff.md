@@ -230,3 +230,37 @@ Production rollout remains NO-GO.
 - [Closeout](phase-3d-closeout.md)
 - [Real runtime NO-GO](phase-3d-real-runtime-no-go.md)
 - [Phase 3E entry criteria](phase-3d-phase-3e-entry-criteria.md)
+
+## 17. Phase 3E Planning Preparation Record (2026-06-19)
+
+The **Phase 3E Planning** authorized in §13 (and in
+[phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md))
+has now been **prepared and pushed** under `PHASE-3E-PLANNING-001`, after
+explicit user request and while the §15 entry conditions held (P0 = 0, P1 = 0,
+route governance 34 / 34 / 5 / 0 / 1 / 1, Production Gateway PID `28428`
+unchanged, no `~/.hermes` / production `state.db` access). It is a **docs-only**
+pass that evaluates real-plugin-runtime feasibility and freezes, as
+documentation only, the runtime threat model, scope freeze, sandbox
+architecture, process / filesystem / network isolation models, supply-chain
+policy, permission / audit / UI / route / production-isolation reviews, risk
+register, implementation entry criteria, human-review brief, and prompt draft.
+
+This record does **not** change the signoff decision in any way:
+
+```
+Phase 3D closeout: APPROVED (unchanged)
+Real plugin runtime execution: NO-GO (unchanged)
+Phase 3E Planning: CONDITIONAL GO — now executed as docs-only (unchanged scope)
+Phase 3E Implementation: NO-GO (unchanged)
+Production rollout: NO-GO (unchanged)
+```
+
+No code, route, loader, dynamic loading, local plugin directory loading, remote
+registry, marketplace, external plugin fetch, provider-generated plugin,
+LLM-generated plugin install, shell / DB / external-HTTP / production execution,
+provider write, autonomous write, production rollout, `~/.hermes` access,
+production `state.db` access, or new route was introduced. Route governance
+unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+See [phase-3e-planning](phase-3e-planning.md),
+[phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md), and
+[phase-3e-human-review-brief](phase-3e-human-review-brief.md).

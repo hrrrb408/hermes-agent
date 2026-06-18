@@ -1,5 +1,34 @@
 # Phase 1 Implementation Plan
 
+> **Phase 3E Planning Update (2026-06-19):** The docs-only **Phase 3E Planning**
+> (`PHASE-3E-PLANNING-001`, decision `PHASE-3E-GO-NOGO-001`) has now been prepared
+> — exactly the conditional GO the Phase 3D signoff recorded (only after explicit
+> user request). It evaluates real-plugin-runtime feasibility and freezes, as
+> documentation only, a 30-item runtime threat model, a runtime scope freeze, a
+> four-option sandbox architecture, a process-isolation model, a
+> filesystem-boundary model, a network-boundary model, a supply-chain policy, a
+> permission review, an audit / redaction review, a UI review, a
+> route-governance review, a production-isolation review, a risk register (P0 =
+> 0, P1 = 0 introduced; 24 future-runtime P0 stop conditions recorded), an
+> implementation-entry-criteria, a human-review brief, and a prompt draft. It
+> introduces **no** code, route, runtime, loader, dynamic loading, local plugin
+> directory loading, remote registry, marketplace, external plugin fetch,
+> provider-generated plugin, LLM-generated plugin install, shell / DB /
+> external-HTTP / production execution, provider write, autonomous write,
+> production rollout, `~/.hermes` access, production `state.db` access, or new
+> route. **GO** for Phase 3E Planning completion + Phase 3E Planning Closeout
+> preparation only after explicit user request. **NO-GO** for Phase 3E
+> Implementation, real plugin runtime, plugin loader, plugin execution, dynamic
+> loading, local plugin directory loading, remote registry, marketplace,
+> external plugin fetch, provider-generated plugin, LLM-generated plugin install,
+> shell execution, DB mutation, external HTTP execution, production operation,
+> provider write, autonomous write, and production rollout. Route governance
+> unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+> **Phase 3E Implementation was not started.** See
+> [phase-3e-planning](phase-3e-planning.md),
+> [phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md), and
+> [phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).
+
 > **Phase 3D Human Review Signoff Update (2026-06-19):** Phase 3D closeout is
 > formally **signed off** as a dev-only static Plugin Descriptor Registry
 > milestone (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Decision:

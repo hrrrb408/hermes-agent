@@ -403,3 +403,28 @@ Implementation NO-GO**. P0 = 0; P1 = 0. Route governance unchanged (34 / 34 / 5
 / 0 / 1 / 1); Production Gateway PID `28428` untouched. See
 [phase-3d-human-review-signoff](phase-3d-human-review-signoff.md) and
 [phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).
+
+## 25. Phase 3E Planning Update (2026-06-19)
+
+After Phase 3D closed and was signed off, the docs-only **Phase 3E Planning**
+(`PHASE-3E-PLANNING-001`) has now been prepared — exactly the conditional GO
+recorded above (only after explicit user request). It freezes, as documentation
+only, the prerequisites a future real Plugin Runtime would require: a 30-item
+runtime threat model, a runtime scope freeze (currently-allowed /
+future-considerable-but-not-approved / continuously-forbidden), a four-option
+sandbox architecture (descriptor-only recommended), a process-isolation model, a
+filesystem-boundary model, a network-boundary model, a supply-chain policy, a
+permission review, an audit / redaction review, a UI review, a
+route-governance review, a production-isolation review, a risk register,
+implementation entry criteria, a human-review brief, and a prompt draft. It keeps
+every discipline this document established: default no new route, full
+redaction, dev `HERMES_HOME`-only, no production rollout, no dynamic loading,
+no remote registry, no marketplace, no external plugin fetch, no
+provider-generated plugin, no LLM-generated plugin install, no shell / DB /
+external-HTTP / production execution, no provider write, no autonomous write.
+Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+`28428` untouched. **Phase 3E Implementation was not started** and remains NO-GO
+until separately and explicitly approved. See
+[phase-3e-planning](phase-3e-planning.md),
+[phase-3e-runtime-scope-freeze](phase-3e-runtime-scope-freeze.md), and
+[phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md).
