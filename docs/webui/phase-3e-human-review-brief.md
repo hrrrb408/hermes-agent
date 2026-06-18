@@ -152,3 +152,19 @@ NO-GO. Production rollout remains NO-GO.
 - [Phase 3E implementation entry criteria](phase-3e-implementation-entry-criteria.md)
 - [Phase 3E risk register](phase-3e-risk-register.md)
 - [Phase 3D human review signoff](phase-3d-human-review-signoff.md)
+
+## 13. Closeout / standalone review docs
+
+The planning closeout is recorded in
+[phase-3e-planning-closeout](phase-3e-planning-closeout.md). Three standalone
+human-review documents accompany it:
+
+- [Phase 3E design alternatives](phase-3e-design-alternatives.md) — the four
+  runtime architecture options in standalone review form.
+- [Phase 3E human approver checklist](phase-3e-human-approver-checklist.md) —
+  the reviewer checklist before any future runtime implementation may be
+  considered.
+- [Phase 3E review board decision template](phase-3e-review-board-decision-template.md)
+  — the formal decision record template.
+
+None of these authorizes implementation; they prepare human review only.

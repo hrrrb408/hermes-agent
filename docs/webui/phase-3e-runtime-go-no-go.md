@@ -99,7 +99,9 @@ Until then, the runtime and every execution surface in §2 stays **NO-GO**.
 ## 5. Cross-references
 
 - [Phase 3E planning](phase-3e-planning.md)
+- [Phase 3E planning closeout](phase-3e-planning-closeout.md)
 - [Phase 3E implementation entry criteria](phase-3e-implementation-entry-criteria.md)
 - [Phase 3E human review brief](phase-3e-human-review-brief.md)
+- [Phase 3E review board decision template](phase-3e-review-board-decision-template.md)
 - [Phase 3D real runtime NO-GO](phase-3d-real-runtime-no-go.md)
 - [Phase 3D Phase 3E planning authorization](phase-3d-phase-3e-planning-authorization.md)
