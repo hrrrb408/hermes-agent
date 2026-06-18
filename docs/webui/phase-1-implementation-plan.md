@@ -2400,3 +2400,22 @@ Runtime) is not started; Phase 3D Planning is CONDITIONAL GO only after
 explicit user request; Phase 3D Implementation is NO-GO.** See
 [phase-3c-closeout](phase-3c-closeout.md) and
 [phase-3c-final-go-no-go](phase-3c-final-go-no-go.md).
+
+## Update — Phase 3D Implementation COMPLETE (static descriptor skeleton)
+
+**Phase 3D Implementation is COMPLETE** as a **static dev-only plugin
+descriptor registry skeleton** (descriptor-only, disabled-by-default,
+capability-bound, read-only). It binds only to existing Phase 3C capabilityIds,
+inherits the most-restrictive permission class, and rejects permission
+escalation + trust self-upgrade + forbidden/nested/alias fields fail-closed. It
+does **not** implement a plugin runtime, loader, dynamic loading, local plugin
+directory loading, remote registry, marketplace, external plugin fetch,
+provider-generated plugin, or LLM-generated plugin install — those remain
+**deferred / NO-GO**. Backend (10 files / 316 tests), frontend (7 Phase 3D
+files; 1188 total), type-check / lint / build, smoke Profile R, route-governance
+(34/34/5/0/1/1), memory-check, and dev-check all pass. Production Gateway PID
+`28428` untouched. See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md),
+[phase-3d-plugin-descriptor-security-boundary](phase-3d-plugin-descriptor-security-boundary.md),
+and
+[phase-3d-plugin-descriptor-test-report](phase-3d-plugin-descriptor-test-report.md).

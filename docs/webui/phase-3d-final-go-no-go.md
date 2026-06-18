@@ -64,3 +64,14 @@ implementation execution.
 - [Implementation readiness review](phase-3d-implementation-readiness-review.md)
 - [Human approver checklist](phase-3d-human-approver-checklist.md)
 - [Phase 3C final GO / NO-GO](phase-3c-final-go-no-go.md)
+
+## Update — Phase 3D Implementation COMPLETE (static descriptor skeleton)
+
+The static dev-only plugin descriptor registry skeleton was implemented under
+the frozen red lines: descriptor-only, disabled-by-default, capability-bound,
+read-only. No plugin runtime, loader, dynamic loading, local plugin directory
+loading, remote registry, marketplace, external plugin fetch, provider-generated
+plugin, or LLM-generated plugin install was introduced — those remain NO-GO /
+deferred. All gates pass; route governance unchanged (34/34/5/0/1/1);
+Production Gateway PID `28428` untouched. See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md).

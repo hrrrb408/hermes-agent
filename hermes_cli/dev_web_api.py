@@ -507,6 +507,51 @@ def _capability_registry_status() -> dict[str, Any]:
         }
 
 
+def _plugin_descriptor_registry_status() -> dict[str, Any]:
+    """Phase 3D: return the static dev-only Plugin Descriptor Registry block.
+
+    Read-only and value-free — never an API key, Authorization header, raw
+    secret, callable repr, shell command, SQL statement, production path, local
+    plugin path, dynamic import path, external URL, or install command. Surfaced
+    under ``/status`` data ``pluginDescriptorRegistry`` so the UI can render the
+    descriptor panel. The registry describes future plugin descriptors only; it
+    never grants permission, never loads a plugin, never executes a plugin, and
+    never performs a side effect. No new route is introduced. No plugin runtime,
+    no plugin loader, no dynamic loading, no local plugin directory loading, no
+    remote registry / marketplace / external plugin fetch.
+    """
+    try:
+        from hermes_cli.dev_web_plugin_descriptor_registry import (
+            get_plugin_descriptor_status_block,
+        )
+
+        return get_plugin_descriptor_status_block()
+    except Exception:  # pragma: no cover — defensive; never fail /status
+        return {
+            "status": "validation_failed",
+            "descriptorCount": 0,
+            "visibleCount": 0,
+            "disabledCount": 0,
+            "blockedCount": 0,
+            "devOnly": True,
+            "productionAllowed": False,
+            "pluginRuntimeImplemented": False,
+            "pluginLoaderImplemented": False,
+            "dynamicLoadingAllowed": False,
+            "localPluginDirectoryLoadingAllowed": False,
+            "remoteRegistryAllowed": False,
+            "marketplaceAllowed": False,
+            "externalPluginFetchAllowed": False,
+            "providerGeneratedPluginAllowed": False,
+            "llmGeneratedPluginInstallAllowed": False,
+            "pluginExecutionAllowed": False,
+            "newRouteIntroduced": False,
+            "routeGovernanceExpected": "34/34/5/0/1/1",
+            "validation": {"valid": False, "errorCount": 1, "warningCount": 0},
+            "redactionApplied": True,
+        }
+
+
 def _provider_boundary_status() -> dict[str, Any]:
     """Phase 3B: return the real-provider boundary safe-metadata block.
 
@@ -672,6 +717,15 @@ def _register_routes(
         # Surfaced under /status data capabilityRegistry; no new route.
         capability_registry = _capability_registry_status()
 
+        # Phase 3D: static dev-only Plugin Descriptor Registry block.
+        # Read-only and value-free. The registry describes future plugin
+        # descriptors only — it never grants permission, never loads a plugin,
+        # never executes a plugin, and never performs a side effect. No plugin
+        # runtime / loader / dynamic loading / local plugin directory loading /
+        # remote registry / marketplace / external plugin fetch. Surfaced under
+        # /status data pluginDescriptorRegistry; no new route.
+        plugin_descriptor_registry = _plugin_descriptor_registry_status()
+
         return {
             "data": {
                 "environment": "development",
@@ -686,6 +740,7 @@ def _register_routes(
                 },
                 "providerBoundary": provider_boundary,
                 "capabilityRegistry": capability_registry,
+                "pluginDescriptorRegistry": plugin_descriptor_registry,
                 "services": {
                     "api": {"available": True, "readOnly": True},
                     "sessions": {

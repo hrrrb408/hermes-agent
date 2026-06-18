@@ -24,6 +24,7 @@ vi.mock('@/api/toolWrite', () => ({ runWritePreview: vi.fn(), executeWrite: vi.f
 vi.mock('@/api/toolProvider', () => ({ runProviderRoundtrip: vi.fn(), fetchProviderBoundary: vi.fn().mockResolvedValue(null) }))
 
 import DevConsoleNav from '@/components/devconsole/DevConsoleNav.vue'
+import { CONSOLE_SECTIONS } from '@/stores/devConsoleNav'
 import OverviewSection from '@/components/devconsole/OverviewSection.vue'
 import LoadingState from '@/components/common/LoadingState.vue'
 import ErrorState from '@/components/common/ErrorState.vue'
@@ -45,7 +46,7 @@ describe('Lens 6 — Accessibility / keyboard / responsive (Phase 2E-H1)', () =>
     expect(tablist.exists()).toBe(true)
     expect(tablist.attributes('aria-orientation')).toBe('vertical')
     expect(wrapper.attributes('aria-label')).toBeTruthy()
-    expect(wrapper.findAll('[role="tab"]').length).toBe(9)
+    expect(wrapper.findAll('[role="tab"]').length).toBe(CONSOLE_SECTIONS.length)
   })
 
   it('exactly one tab is in the tab order (roving tabindex) and it is aria-selected', () => {

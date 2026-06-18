@@ -23,7 +23,7 @@ import DiagnosticsSection from '@/components/devconsole/DiagnosticsSection.vue'
 import ToolExecutionSection from '@/components/devconsole/ToolExecutionSection.vue'
 import ProviderSection from '@/components/devconsole/ProviderSection.vue'
 import WriteRollbackSection from '@/components/devconsole/WriteRollbackSection.vue'
-import { useDevConsoleNavStore } from '@/stores/devConsoleNav'
+import { useDevConsoleNavStore, CONSOLE_SECTIONS } from '@/stores/devConsoleNav'
 
 describe('Dev Console accessibility (Phase 2E)', () => {
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe('Dev Console accessibility (Phase 2E)', () => {
     const tablist = wrapper.find('[role="tablist"]')
     expect(tablist.exists()).toBe(true)
     const tabs = wrapper.findAll('[role="tab"]')
-    expect(tabs.length).toBe(9)
+    expect(tabs.length).toBe(CONSOLE_SECTIONS.length)
     // Active (overview) is in the tab order; others are not.
     const active = tabs.find((t) => t.attributes('aria-selected') === 'true')
     expect(active?.attributes('tabindex')).toBe('0')

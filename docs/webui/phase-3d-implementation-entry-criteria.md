@@ -68,3 +68,15 @@ part of Phase 3D. Production rollout is never part of Phase 3D.
 - [Phase 3D execution brief](phase-3d-execution-brief.md)
 - [Phase 3D prompt draft](phase-3d-prompt.md)
 - [Phase 3C Phase 3D entry criteria](phase-3c-phase-3d-entry-criteria.md)
+
+## Update — entry criteria SATISFIED; implementation COMPLETE
+
+All entry criteria were satisfied and the static descriptor registry skeleton
+was implemented. The implementation stayed within the static-descriptor surface:
+no plugin runtime, no loader, no dynamic loading, no local plugin directory
+loading, no remote registry / marketplace / external plugin fetch, no
+provider-generated plugin, no LLM-generated plugin install. Manual one-shot live
+provider execution remains separately gated. See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md)
+and
+[phase-3d-plugin-descriptor-test-report](phase-3d-plugin-descriptor-test-report.md).

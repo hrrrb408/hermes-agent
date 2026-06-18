@@ -232,3 +232,18 @@ provider execution as part of Phase 3D. Risk closure: P0 = 0, P1 = 0, P2 = 5
 deferred. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D
 Implementation was not started.** See
 [Phase 3D planning closeout](phase-3d-planning-closeout.md).
+
+## Update — Phase 3D Implementation COMPLETE (static descriptor skeleton)
+
+**Phase 3D Implementation is COMPLETE** as a static dev-only plugin descriptor
+registry skeleton (descriptor-only, disabled-by-default, capability-bound,
+read-only). All deferred execution surfaces (plugin runtime, loader, dynamic
+loading, local plugin directory loading, remote registry, marketplace, external
+plugin fetch, provider-generated plugin, LLM-generated plugin install, shell,
+DB mutation, external HTTP, production operation, provider write, autonomous
+write, live provider execution) remain **NO-GO / deferred**. Risk posture: no
+new risk introduced. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1);
+Production Gateway PID `28428` untouched. See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md)
+and
+[phase-3d-plugin-descriptor-test-report](phase-3d-plugin-descriptor-test-report.md).

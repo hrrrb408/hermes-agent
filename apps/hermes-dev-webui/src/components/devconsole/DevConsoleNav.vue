@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Plug,
+  Puzzle,
   ShieldCheck,
   Workflow,
   Wrench,
@@ -32,6 +33,7 @@ const ICONS: Readonly<Record<DevConsoleSection, Component>> = {
   diagnostics: Activity,
   workflow: Workflow,
   capabilities: ListChecks,
+  plugins: Puzzle,
 }
 
 function select(section: DevConsoleSection): void {

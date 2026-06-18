@@ -336,3 +336,18 @@ untouched. **Implementation readiness = CONDITIONAL GO for prompt preparation
 only; execution remains NO-GO until explicitly approved.** See
 [Phase 3D planning closeout](phase-3d-planning-closeout.md) and
 [Phase 3D final GO / NO-GO](phase-3d-final-go-no-go.md).
+
+## Update — Phase 3D Implementation COMPLETE (static descriptor skeleton)
+
+**Phase 3D Implementation is COMPLETE** as a static dev-only plugin descriptor
+registry skeleton (descriptor-only, disabled-by-default, capability-bound,
+read-only). The scope freeze held: no plugin runtime, no loader, no dynamic
+loading, no local plugin directory loading, no remote registry / marketplace /
+external plugin fetch, no provider-generated plugin, no LLM-generated plugin
+install, no shell / DB / external-HTTP / production execution, no provider write,
+no autonomous write, no new route, no production rollout. Route governance
+unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md)
+and
+[phase-3d-plugin-descriptor-security-boundary](phase-3d-plugin-descriptor-security-boundary.md).

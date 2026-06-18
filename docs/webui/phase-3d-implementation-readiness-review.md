@@ -69,3 +69,12 @@ conditionally allowed.
 - [Implementation prompt candidate](phase-3d-implementation-prompt-candidate.md)
 - [Human approver checklist](phase-3d-human-approver-checklist.md)
 - [Final GO / NO-GO](phase-3d-final-go-no-go.md)
+
+## Update — readiness realized; implementation COMPLETE
+
+The readiness review's GO-for-prompt-preparation transitioned to an executed,
+bounded implementation: the static dev-only plugin descriptor registry skeleton
+(descriptor-only, disabled-by-default, capability-bound, read-only). All
+deferred execution surfaces remain NO-GO. All gates pass; route governance
+unchanged (34/34/5/0/1/1); Production Gateway PID `28428` untouched. See
+[phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md).

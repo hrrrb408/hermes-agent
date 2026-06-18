@@ -1174,3 +1174,19 @@ for prompt preparation only, **NO-GO** for execution. See
 [phase-3d-risk-closure](phase-3d-risk-closure.md),
 [phase-3d-planning-closeout](phase-3d-planning-closeout.md), and
 [phase-3d-final-go-no-go](phase-3d-final-go-no-go.md).
+
+## Update — Phase 3D Implementation COMPLETE (static descriptor skeleton)
+
+**Phase 3D Implementation is COMPLETE** as a static dev-only plugin descriptor
+registry skeleton (descriptor-only, disabled-by-default, capability-bound,
+read-only). No new risk was introduced: there is no plugin runtime, no loader,
+no dynamic loading, no local plugin directory loading, no remote registry /
+marketplace / external plugin fetch, no provider-generated plugin, no
+LLM-generated plugin install, no shell / DB / external-HTTP / production
+execution, no provider write, no autonomous write, no new route, no `~/.hermes`
+access, no production `state.db` access. The plugin-runtime risk items remain
+**deferred / NO-GO**. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1);
+Production Gateway PID `28428` untouched. See
+[phase-3d-plugin-descriptor-security-boundary](phase-3d-plugin-descriptor-security-boundary.md)
+and
+[phase-3d-plugin-descriptor-test-report](phase-3d-plugin-descriptor-test-report.md).
