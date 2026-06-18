@@ -29,7 +29,14 @@
 11. **Generated frontend mirror deferred.** A generator that derives the mirror
     from the backend is P2-deferred.
 12. **Phase 3D requires explicit approval.** No Phase 3D work begins without a
-    separately authorized planning phase.
+    separately authorized planning phase. The docs-only **Phase 3D Planning**
+    (`PHASE-3D-PLANNING-001`) has now been prepared (2026-06-18): it froze a
+    future dev-only, static, reviewed, capability-bound plugin descriptor
+    architecture and its threat model / trust boundary / risk register / GO-NO-GO,
+    without implementing it. **Phase 3D Implementation remains deferred and
+    NO-GO** until separately and explicitly approved. See
+    [Phase 3D planning](phase-3d-planning.md) and
+    [Phase 3D implementation entry criteria](phase-3d-implementation-entry-criteria.md).
 
 ## 2. These are intentional deferrals
 

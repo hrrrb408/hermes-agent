@@ -293,3 +293,27 @@ runtime, dynamic loading, marketplace, remote registry, new route by default,
 or production rollout. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1).
 **Phase 3D Planning is CONDITIONAL GO (explicit user request only); Phase 3D
 Implementation is NO-GO.** See [Phase 3C closeout](phase-3c-closeout.md).
+
+---
+
+## 21. Phase 3D Planning Update (2026-06-18)
+
+After Phase 3C closed, the docs-only **Phase 3D Planning** (`PHASE-3D-PLANNING-001`)
+has now been prepared — exactly the conditional GO this document recorded. It
+freezes a future **dev-only, static, reviewed, capability-bound** plugin
+descriptor runtime architecture, plus its scope freeze, threat model, trust
+boundary, non-goals / forbidden scope, plugin manifest contract, plugin lifecycle
+model, execution isolation model, capability-registry integration, permission /
+approval model, provider / workflow boundary, audit / redaction policy, UI /
+status design, test strategy, risk register, GO / NO-GO, implementation entry
+criteria, execution brief, and prompt draft. It keeps every discipline this
+document established: default no new route, full redaction, dev
+`HERMES_HOME`-only audit files, no production rollout, no dynamic loading, no
+remote registry, no marketplace, no external plugin fetch, no provider-generated
+plugin, no LLM-generated plugin install, no shell / DB / external-HTTP / production
+execution, no provider write, no autonomous write. Route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1). Production Gateway PID `28428` untouched. **Phase 3D
+Implementation was not started** and remains NO-GO until separately and explicitly
+approved. See [Phase 3D planning](phase-3d-planning.md),
+[Phase 3D scope freeze](phase-3d-plugin-runtime-scope-freeze.md), and
+[Phase 3D GO / NO-GO](phase-3d-go-no-go.md).

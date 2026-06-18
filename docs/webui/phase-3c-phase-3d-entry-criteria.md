@@ -44,9 +44,22 @@ Before any Phase 3D Implementation, a planning phase must produce:
 The manual one-shot live provider execution remains **separately gated** and is
 not part of Phase 3D. Production rollout is never part of Phase 3D.
 
-## 5. Cross-references
+## 5. Phase 3D Planning Status (2026-06-18)
+
+The docs-only **Phase 3D Planning** (`PHASE-3D-PLANNING-001`) has now been
+prepared — it produced exactly the artifacts §3 requires (a Phase 3D scope freeze,
+a dynamic-loading / plugin-execution threat model, an explicit decision to keep
+remote-registry / marketplace forbidden, a Phase 3D risk register, and a Phase 3D
+GO / NO-GO). It did **not** implement the plugin runtime. **Phase 3D
+Implementation remains NO-GO** until all entry criteria in §1 / §2 are met and the
+user explicitly approves it. See [Phase 3D planning](phase-3d-planning.md),
+[Phase 3D implementation entry criteria](phase-3d-implementation-entry-criteria.md),
+and [Phase 3D GO / NO-GO](phase-3d-go-no-go.md).
+
+## 6. Cross-references
 
 - [Closeout](phase-3c-closeout.md)
 - [Final GO / NO-GO](phase-3c-final-go-no-go.md)
 - [Known limitations / deferred work](phase-3c-known-limitations-and-deferred-work.md)
+- [Phase 3D planning](phase-3d-planning.md)
 - [Closeout prompt](phase-3c-closeout-prompt.md)

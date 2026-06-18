@@ -190,3 +190,27 @@ governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D Planning is
 CONDITIONAL GO (only after explicit user request); Phase 3D Implementation is
 NO-GO.** See [Phase 3C closeout](phase-3c-closeout.md) and
 [Phase 3C final GO / NO-GO](phase-3c-final-go-no-go.md).
+
+---
+
+## 12. Phase 3D Planning Update (2026-06-18)
+
+The docs-only **Phase 3D Planning** (`PHASE-3D-PLANNING-001`, decision
+`PHASE-3D-GO-NOGO-001`) has now been prepared — exactly the conditional GO this
+document recorded (only after explicit user request). It keeps every constraint of
+this Phase 3 decision (separately authorized, human-approval-gated, no autonomous
+write, no shell / db / external write, no production rollout, default no new
+route) and additionally freezes a future **dev-only, static, reviewed,
+capability-bound** plugin descriptor runtime architecture: descriptor-only (no
+execution), capability-bound to existing Phase 3C IDs, disabled-by-default,
+audit-only-dry-run, no dynamic loading, no remote registry, no marketplace, no
+external plugin fetch, no provider-generated plugin, no LLM-generated plugin
+install, no provider write. **GO** for Phase 3D Planning completion + Phase 3D
+Implementation prompt preparation only after explicit user request. **NO-GO** for
+Phase 3D Implementation, plugin runtime, dynamic loading, remote registry,
+marketplace, external plugin fetch, provider-generated plugin, LLM-generated
+plugin install, shell execution, DB mutation, external HTTP execution, production
+operation, provider write, autonomous write, and production rollout. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D Implementation was not
+started.** See [Phase 3D planning](phase-3d-planning.md) and
+[Phase 3D GO / NO-GO](phase-3d-go-no-go.md).

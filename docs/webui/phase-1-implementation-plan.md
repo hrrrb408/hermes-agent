@@ -1,5 +1,22 @@
 # Phase 1 Implementation Plan
 
+> **Phase 3D Planning Update (2026-06-18):** After Phase 3C closed, the docs-only
+> **Phase 3D Planning** (`PHASE-3D-PLANNING-001`) froze the architecture of a
+> future Plugin Runtime — a **dev-only, static, reviewed, capability-bound**
+> plugin descriptor runtime skeleton (descriptor-only; no execution). It is
+> **docs-only**: no plugin runtime, no plugin loader, no dynamic loading, no
+> remote registry, no marketplace, no external plugin fetch, no provider-generated
+> plugin, no LLM-generated plugin install, no shell / DB / external-HTTP /
+> production execution, no provider write, no autonomous write, no production
+> rollout, no new route, no `~/.hermes` / production `state.db` access, no API-key
+> read, no network call, no backend / frontend / test / script change. Route
+> governance remains 34 / 34 / 5 / 0 / 1 / 1; Production Gateway PID `28428`
+> untouched. **Phase 3D Implementation was not started** and remains NO-GO until
+> separately and explicitly approved. See
+> [phase-3d-planning](phase-3d-planning.md),
+> [phase-3d-plugin-runtime-scope-freeze](phase-3d-plugin-runtime-scope-freeze.md),
+> and [phase-3d-go-no-go](phase-3d-go-no-go.md).
+
 > **Phase 3B Implementation Update:** Phase 3B (Real Provider Read-only
 > Controlled Integration) is now **implemented** — see
 > [phase-3b-real-provider-readonly-integration.md](phase-3b-real-provider-readonly-integration.md)

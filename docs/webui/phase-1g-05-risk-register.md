@@ -1118,3 +1118,40 @@ non-blocking, and its drift is bounded by the H1 manifest-consistency test.
 Phase 3D (Plugin Runtime) carries its own future risk register and is not
 started. See [phase-3c-risk-closure](phase-3c-risk-closure.md) and
 [phase-3c-closeout](phase-3c-closeout.md).
+
+---
+
+## Phase 3D Planning Addendum — Plugin Runtime Scope Freeze (2026-06-18)
+
+**ID:** `PHASE-3D-PLANNING-001` (companion register: `PHASE-3D-RISK-REGISTER-001`,
+see [phase-3d-risk-register](phase-3d-risk-register.md)).
+
+Phase 3D Planning is the **docs-only** scope freeze for a future Phase 3D Plugin
+Runtime. It introduces **no new risk** — it does not implement a plugin runtime,
+does not load any plugin, does not perform dynamic loading, does not read any API
+key, does not make a network call, and does not change any product code.
+
+The companion register records the risks that govern a **future** Phase 3D
+implementation (22 P0 stop conditions, 8 P1 push-gates, 5 P2 deferrals). The P0
+stop conditions of direct relevance here are: plugin runtime implemented during
+planning (PLUG-P0-01), dynamic import (PLUG-P0-02), local plugin directory loading
+(PLUG-P0-03), remote registry (PLUG-P0-04), marketplace (PLUG-P0-05), external
+plugin fetch (PLUG-P0-06), provider-generated plugin (PLUG-P0-07), LLM-generated
+tool auto-install (PLUG-P0-08), shell command execution (PLUG-P0-09), database
+mutation (PLUG-P0-10), external HTTP execution (PLUG-P0-11), production operation
+(PLUG-P0-12), permission grant bypass (PLUG-P0-13), Tool policy bypass
+(PLUG-P0-14), Provider live gate bypass (PLUG-P0-15), Workflow approval bypass
+(PLUG-P0-16), audit bypass (PLUG-P0-17), secret / callable / path leak
+(PLUG-P0-18), route governance drift (PLUG-P0-19), `~/.hermes` / production
+`state.db` access (PLUG-P0-20), runtime artifact commit (PLUG-P0-21), and
+`.claude/` commit (PLUG-P0-22).
+
+All P0 stop conditions remain clear after this planning phase: no plugin runtime,
+no dynamic loading, no remote registry, no marketplace, no external plugin fetch,
+no provider-generated plugin, no LLM-generated plugin install, no shell / DB /
+external-HTTP / production execution, no provider write, no autonomous write, no
+`~/.hermes` access, no production `state.db` access, route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1), Production Gateway PID `28428` untouched. **Phase 3D
+Implementation was not started.** See [phase-3d-planning](phase-3d-planning.md),
+[phase-3d-plugin-runtime-scope-freeze](phase-3d-plugin-runtime-scope-freeze.md),
+and [phase-3d-go-no-go](phase-3d-go-no-go.md).
