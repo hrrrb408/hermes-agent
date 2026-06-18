@@ -242,6 +242,18 @@ Decision, by explicit user request only.
 Implementation must not start after this closeout.
 ```
 
+## L. Human review signoff recorded
+
+Phase 3F Planning Closeout has been formally signed off for documentation /
+planning purposes only:
+
+- Formal signoff document: [phase-3f-human-review-signoff.md](phase-3f-human-review-signoff.md)
+- Filled review-board decision record: [phase-3f-review-board-decision.md](phase-3f-review-board-decision.md)
+
+The signoff **approves Phase 3F Planning Closeout only**. It does **not**
+authorize implementation, real plugin runtime, production rollout, or any new
+route. Implementation, real runtime, and production rollout remain **NO-GO**.
+
 ## Cross-references
 
 - [Phase 3F planning](phase-3f-planning.md)

@@ -115,6 +115,17 @@ Human Review Signoff   = NOT STARTED
 Implementation         = NO-GO
 ```
 
+## H. Human review signoff recorded
+
+Phase 3F Planning Closeout has been formally signed off. The final human review
+signoff / planning closeout decision is recorded in:
+
+- [Phase 3F human review signoff](phase-3f-human-review-signoff.md)
+- [Phase 3F review board decision](phase-3f-review-board-decision.md)
+
+Decision: **Approve Phase 3F Planning Closeout only.** Implementation, real
+plugin runtime, production rollout, and any new route remain **NO-GO**.
+
 ## Cross-references
 
 - [Phase 3F planning closeout](phase-3f-planning-closeout.md)

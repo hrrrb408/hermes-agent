@@ -23,8 +23,8 @@
 | Item | Verdict |
 | ---- | ------- |
 | Phase 3F Planning | GO |
-| Phase 3F Planning Closeout | GO FOR HUMAN REVIEW |
-| Phase 3F Human Review Signoff | NOT STARTED |
+| Phase 3F Planning Closeout | SIGNED OFF |
+| Phase 3F Human Review Signoff | ACCEPTED |
 | Phase 3F Implementation | NO-GO |
 | Real plugin runtime | NO-GO |
 | Plugin loader | NO-GO |
@@ -86,8 +86,8 @@ production rollout
 ## D. Next gate
 
 ```
-Phase 3F Planning Closeout is prepared (GO FOR HUMAN REVIEW).
-Phase 3F Human Review Signoff — by explicit user request only.
+Phase 3F Planning Closeout is signed off; Human Review Readiness is accepted.
+Phase 3F Archive / Index Update — by explicit user request only.
 Implementation must not start.
 ```
 

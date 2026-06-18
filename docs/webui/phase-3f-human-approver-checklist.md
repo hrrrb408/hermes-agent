@@ -151,3 +151,5 @@ Confirm **none** of the following was introduced:
 - [Phase 3F review board decision template](phase-3f-review-board-decision-template.md)
 - [Phase 3F human review plan](phase-3f-human-review-plan.md)
 - [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)
+- [Phase 3F human review signoff](phase-3f-human-review-signoff.md) — filled signoff approving Planning Closeout only.
+- [Phase 3F review board decision](phase-3f-review-board-decision.md) — filled decision record.

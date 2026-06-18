@@ -216,5 +216,8 @@ See [phase-3f-go-no-go](phase-3f-go-no-go.md) and
 - [Phase 3F P0 gate consolidation](phase-3f-p0-gate-consolidation.md)
 - [Phase 3F implementation entry review](phase-3f-implementation-entry-review.md)
 - [Phase 3F risk register](phase-3f-risk-register.md)
+- [Phase 3F planning closeout](phase-3f-planning-closeout.md)
+- [Phase 3F human review signoff](phase-3f-human-review-signoff.md) — signs off Planning Closeout only; does not authorize implementation.
+- [Phase 3F review board decision](phase-3f-review-board-decision.md)
 - [Phase 3E archive index](phase-3e-archive-index.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
