@@ -1155,3 +1155,22 @@ external-HTTP / production execution, no provider write, no autonomous write, no
 Implementation was not started.** See [phase-3d-planning](phase-3d-planning.md),
 [phase-3d-plugin-runtime-scope-freeze](phase-3d-plugin-runtime-scope-freeze.md),
 and [phase-3d-go-no-go](phase-3d-go-no-go.md).
+
+---
+
+## Phase 3D Planning Closeout Addendum (2026-06-18)
+
+Phase 3D Planning is formally **closed** (`PHASE-3D-PLANNING-CLOSEOUT-001`,
+docs-only). Risk closure: **P0 introduced by planning = 0; P1 = 0; P2 deferred =
+5** (PLUG-P2-01 … PLUG-P2-05, intentional deferrals). Every PLUG-P0 stop condition
+remains clear (closed) at the closeout baseline: no plugin runtime, no dynamic
+loading, no remote registry, no marketplace, no external plugin fetch, no
+provider-generated plugin, no LLM-generated plugin install, no shell / DB /
+external-HTTP / production execution, no provider write, no autonomous write, no
+`~/.hermes` access, no production `state.db` access, route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1), Production Gateway PID `28428` untouched. **Phase 3D
+Implementation was not started.** Implementation readiness = **CONDITIONAL GO**
+for prompt preparation only, **NO-GO** for execution. See
+[phase-3d-risk-closure](phase-3d-risk-closure.md),
+[phase-3d-planning-closeout](phase-3d-planning-closeout.md), and
+[phase-3d-final-go-no-go](phase-3d-final-go-no-go.md).

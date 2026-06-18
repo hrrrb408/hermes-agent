@@ -8,6 +8,13 @@
 | Date | 2026-06-18 |
 | Planning ID | `PHASE-3D-PLANNING-001` |
 
+> **Planning Closeout (2026-06-18):** This brief is now superseded in depth by the
+> closeout human-review package —
+> [phase-3d-human-review-readiness.md](phase-3d-human-review-readiness.md),
+> [phase-3d-human-approver-checklist.md](phase-3d-human-approver-checklist.md),
+> and [phase-3d-final-go-no-go.md](phase-3d-final-go-no-go.md). Phase 3D Planning
+> is closed; **Implementation remains NO-GO** until explicitly approved.
+
 > A short brief for the human reviewer of this docs-only planning phase. It states
 > what was decided, what was deliberately **not** done, and what approval is
 > required next.

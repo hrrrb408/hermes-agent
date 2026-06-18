@@ -317,3 +317,22 @@ Implementation was not started** and remains NO-GO until separately and explicit
 approved. See [Phase 3D planning](phase-3d-planning.md),
 [Phase 3D scope freeze](phase-3d-plugin-runtime-scope-freeze.md), and
 [Phase 3D GO / NO-GO](phase-3d-go-no-go.md).
+
+---
+
+## 22. Phase 3D Planning Closeout Update (2026-06-18)
+
+Phase 3D Planning is formally **closed** (`PHASE-3D-PLANNING-CLOSEOUT-001`,
+docs-only). The closeout produced a human-review-ready package (final
+threat-model / trust-boundary summaries, final security boundary, risk closure,
+final GO / NO-GO, implementation readiness review, human approver checklist,
+implementation prompt candidate) without implementing anything. The freeze holds:
+no plugin runtime, no dynamic loading, no remote registry, no marketplace, no
+external plugin fetch, no provider-generated plugin, no LLM-generated plugin
+install, no shell / DB / external-HTTP / production execution, no provider write,
+no autonomous write, no new route by default, no production rollout. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1). Production Gateway PID `28428`
+untouched. **Implementation readiness = CONDITIONAL GO for prompt preparation
+only; execution remains NO-GO until explicitly approved.** See
+[Phase 3D planning closeout](phase-3d-planning-closeout.md) and
+[Phase 3D final GO / NO-GO](phase-3d-final-go-no-go.md).

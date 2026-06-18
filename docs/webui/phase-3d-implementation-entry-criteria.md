@@ -9,6 +9,12 @@
 | Planning ID | `PHASE-3D-PLANNING-001` |
 | Criteria ID | `PHASE-3D-IMPL-ENTRY-001` |
 
+> **Planning Closeout (2026-06-18):** Phase 3D Planning is **closed**
+> (`PHASE-3D-PLANNING-CLOSEOUT-001`); implementation readiness is reviewed in
+> [phase-3d-implementation-readiness-review.md](phase-3d-implementation-readiness-review.md)
+> — **CONDITIONAL GO** for prompt preparation only, **NO-GO** for execution. All
+> entry criteria below still must hold before any implementation begins.
+
 ## 1. Phase 3D Implementation — NO-GO until ALL are true
 
 Phase 3D Implementation may start only when **all** of the following hold:

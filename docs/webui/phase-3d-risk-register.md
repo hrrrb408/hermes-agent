@@ -10,6 +10,11 @@
 | Planning ID | `PHASE-3D-PLANNING-001` |
 | Risk-Register ID | `PHASE-3D-RISK-REGISTER-001` |
 
+> **Planning Closeout (2026-06-18):** The risk register is **closed** at the
+> planning baseline — P0 introduced by planning = 0, P1 = 0, P2 deferred = 5. See
+> [phase-3d-risk-closure.md](phase-3d-risk-closure.md). All P0/P1 items govern a
+> **future** implementation; none was introduced by this docs-only phase.
+
 > Companion to [phase-3d-planning.md](phase-3d-planning.md). This register is
 > **additive** to the Phase 3 risk register; it does not relax any P0 / P1 there.
 > None of these risks is **introduced** by this planning phase — this is docs-only.

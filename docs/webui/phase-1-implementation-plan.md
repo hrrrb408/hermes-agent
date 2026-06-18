@@ -17,6 +17,18 @@
 > [phase-3d-plugin-runtime-scope-freeze](phase-3d-plugin-runtime-scope-freeze.md),
 > and [phase-3d-go-no-go](phase-3d-go-no-go.md).
 
+> **Phase 3D Planning Closeout Update (2026-06-18):** Phase 3D Planning is now
+> **closed** (`PHASE-3D-PLANNING-CLOSEOUT-001`, docs-only). The closeout produced
+> a human-review-ready package: final threat-model / trust-boundary summaries, a
+> final security boundary, risk closure (P0 = 0, P1 = 0, P2 = 5 deferred), a final
+> GO / NO-GO, an implementation readiness review (**CONDITIONAL GO** for prompt
+> preparation only, **NO-GO** for execution), a human approver checklist, and an
+> implementation prompt candidate — without implementing anything. **Phase 3D
+> Implementation was not started** and remains NO-GO until explicitly approved.
+> Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+> `28428` untouched. See [phase-3d-planning-closeout](phase-3d-planning-closeout.md)
+> and [phase-3d-final-go-no-go](phase-3d-final-go-no-go.md).
+
 > **Phase 3B Implementation Update:** Phase 3B (Real Provider Read-only
 > Controlled Integration) is now **implemented** — see
 > [phase-3b-real-provider-readonly-integration.md](phase-3b-real-provider-readonly-integration.md)

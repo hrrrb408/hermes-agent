@@ -8,6 +8,13 @@
 | Date | 2026-06-18 |
 | Planning ID | `PHASE-3D-PLANNING-001` |
 
+> **Planning Closeout (2026-06-18):** Phase 3D Planning is **closed**
+> (`PHASE-3D-PLANNING-CLOSEOUT-001`). This checklist now complements the closeout
+> package — [final security boundary](phase-3d-final-security-boundary.md),
+> [risk closure](phase-3d-risk-closure.md),
+> [human review readiness](phase-3d-human-review-readiness.md). Every box still
+> holds at the closeout baseline.
+
 > A checklist a reviewer can run against this docs-only planning phase (and later,
 > against any future implementation). Every box must hold.
 

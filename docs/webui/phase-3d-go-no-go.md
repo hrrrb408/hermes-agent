@@ -10,6 +10,13 @@
 | Planning ID | `PHASE-3D-PLANNING-001` |
 | Decision ID | `PHASE-3D-GO-NOGO-001` |
 
+> **Planning Closeout (2026-06-18):** Phase 3D Planning is now **closed**
+> (`PHASE-3D-PLANNING-CLOSEOUT-001`). The final GO / NO-GO is recorded in
+> [phase-3d-final-go-no-go.md](phase-3d-final-go-no-go.md) and the closeout in
+> [phase-3d-planning-closeout.md](phase-3d-planning-closeout.md). **Phase 3D
+> Implementation was not started** and remains NO-GO until separately and
+> explicitly approved.
+
 ## 1. Decision
 
 | Item | Decision |
