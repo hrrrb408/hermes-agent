@@ -284,3 +284,17 @@ Production Gateway PID `28428` untouched. **Phase 3E Planning is CONDITIONAL GO
 (explicit user approval only); Phase 3E Implementation is NO-GO by default.**
 See [phase-3d-closeout](phase-3d-closeout.md) and
 [phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).
+
+## 15. Phase 3D Human Review Signoff Update (2026-06-19)
+
+Phase 3D closeout is formally **signed off** as a dev-only static Plugin
+Descriptor Registry milestone
+(`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Decision: **Phase 3D
+closeout signoff APPROVED**; real plugin runtime **NO-GO**; production rollout
+**NO-GO**; **Phase 3E Planning CONDITIONAL GO** (explicit user request only);
+**Phase 3E Implementation NO-GO**. Every Phase 3 / 3D NO-GO still holds. P0 = 0;
+P1 = 0. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway
+PID `28428` untouched. See
+[phase-3d-human-review-signoff](phase-3d-human-review-signoff.md),
+[phase-3d-final-signoff-decision](phase-3d-final-signoff-decision.md), and
+[phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).

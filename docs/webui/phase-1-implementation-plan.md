@@ -1,5 +1,20 @@
 # Phase 1 Implementation Plan
 
+> **Phase 3D Human Review Signoff Update (2026-06-19):** Phase 3D closeout is
+> formally **signed off** as a dev-only static Plugin Descriptor Registry
+> milestone (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Decision:
+> **APPROVED** — Phase 3D closeout only. Real plugin runtime, plugin loader,
+> plugin execution, dynamic loading, local plugin directory loading, remote
+> registry, marketplace, external plugin fetch, provider-generated plugin,
+> LLM-generated plugin install, new route, and production rollout are all **NOT
+> APPROVED** (remain NO-GO). **Phase 3E Planning may be prepared only after
+> explicit user request; Phase 3E Implementation remains NO-GO.** P0 = 0; P1 = 0.
+> Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+> `28428` untouched. See
+> [phase-3d-human-review-signoff](phase-3d-human-review-signoff.md),
+> [phase-3d-final-signoff-decision](phase-3d-final-signoff-decision.md), and
+> [phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).
+
 > **Phase 3D Closeout Update (2026-06-19):** Phase 3D is formally **closed** as a
 > static dev-only Plugin Descriptor Registry milestone (`PHASE-3D-CLOSEOUT-001`,
 > docs-only). After Planning, Planning Closeout, Implementation

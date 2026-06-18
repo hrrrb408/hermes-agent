@@ -78,7 +78,16 @@ external plugin fetch all remain NO-GO.
 - Production Gateway PID `28428` (count 1) is unchanged.
 - No `~/.hermes` access; no production `state.db` access.
 
-## 6. Cross-references
+## 6. Phase 3D Human Review Signoff Update (2026-06-19)
+
+Phase 3E Planning is **conditionally authorized** by the Phase 3D Human Review
+Signoff (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`): it may be prepared
+**only after explicit user request** and only while the §2 entry criteria hold.
+**Phase 3E Implementation remains NO-GO.** See
+[phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md)
+and [phase-3d-human-review-signoff](phase-3d-human-review-signoff.md).
+
+## 7. Cross-references
 
 - [Closeout](phase-3d-closeout.md)
 - [Release readiness](phase-3d-release-readiness.md)

@@ -1,5 +1,18 @@
 # Phase 1G-05: Risk Register
 
+> **Phase 3D Human Review Signoff Update (2026-06-19):** Phase 3D closeout is
+> formally **signed off** as a dev-only static Plugin Descriptor Registry
+> milestone (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Risk
+> posture at signoff: **Phase 3D P0 = 0; Phase 3D P1 = 0**; Phase 3D-H1 likewise
+> introduced zero P0 / P1. Runtime-related risks remain **deferred / NO-GO**;
+> any real runtime requires a new threat model and sandbox / process /
+> filesystem / network isolation planning (see
+> [phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md)).
+> This register remains the historical Phase 1G-05 baseline; nothing here is
+> relaxed. Route governance (34 / 34 / 5 / 0 / 1 / 1) and Production Gateway PID
+> `28428` are unchanged. See
+> [phase-3d-human-review-signoff](phase-3d-human-review-signoff.md).
+
 > **Phase 3D Closeout Update (2026-06-19):** Phase 3D is formally **closed** as a
 > static dev-only Plugin Descriptor Registry milestone (`PHASE-3D-CLOSEOUT-001`,
 > docs-only). After Planning Closeout, Implementation (`PHASE-3D-IMPL-001`), and

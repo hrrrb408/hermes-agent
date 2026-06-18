@@ -85,3 +85,16 @@ P0 stop condition in the risk register (PLUG-P0-01 … PLUG-P0-22).
 - [Known limitations / deferred work](phase-3d-known-limitations-and-deferred-work.md)
 - [Phase 3E entry criteria](phase-3d-phase-3e-entry-criteria.md)
 - [Planning final GO / NO-GO](phase-3d-final-go-no-go.md)
+
+## 6. Human Review Signoff Reaffirmation (2026-06-19)
+
+The real-runtime NO-GO in §1 is **reaffirmed** by the Phase 3D Human Review
+Signoff (`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`): real plugin runtime
+execution, plugin loader execution, dynamic loading, local plugin directory
+loading, remote registry, marketplace, external plugin fetch,
+provider-generated plugin, LLM-generated plugin install, and production rollout
+all remain **NO-GO**. The signoff does not authorize a runtime; it only permits
+Phase 3E Planning (docs-only, explicit user request) to consider the runtime
+prerequisites listed in §3. See
+[phase-3d-human-review-signoff](phase-3d-human-review-signoff.md) and
+[phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).

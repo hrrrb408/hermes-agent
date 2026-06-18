@@ -162,6 +162,20 @@ DO NOT approve production rollout.
 - [H1 hardening](phase-3d-h1-plugin-descriptor-registry-hardening.md)
 - [H1 test report](phase-3d-h1-test-report.md)
 
+## 13. Human review signoff (2026-06-19)
+
+Human review signoff **completed**. Decision: **APPROVED** for Phase 3D
+closeout only — a dev-only static Plugin Descriptor Registry milestone. Real
+plugin runtime, plugin loader, plugin execution, dynamic loading, local plugin
+directory loading, remote registry, marketplace, external plugin fetch,
+provider-generated plugin, LLM-generated plugin install, new route, and
+production rollout are all **NOT APPROVED** (remain NO-GO). Phase 3E Planning
+may be prepared only after explicit user request; Phase 3E Implementation
+remains NO-GO. See
+[phase-3d-human-review-signoff](phase-3d-human-review-signoff.md),
+[phase-3d-final-signoff-decision](phase-3d-final-signoff-decision.md), and
+[phase-3d-phase-3e-planning-authorization](phase-3d-phase-3e-planning-authorization.md).
+
 ## 12. Cross-references
 
 - [Human review readiness (planning)](phase-3d-human-review-readiness.md)

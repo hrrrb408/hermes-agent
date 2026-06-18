@@ -105,3 +105,15 @@ Implementation **NO-GO**. Every NO-GO in §1 still holds. P0 = 0; P1 = 0 (Phase
 [phase-3d-closeout](phase-3d-closeout.md),
 [phase-3d-final-acceptance](phase-3d-final-acceptance.md), and
 [phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).
+
+## Update — Phase 3D Human Review Signoff
+
+Phase 3D closeout is formally **signed off**
+(`SIGNOFF-3D-2026-PLUGIN-DESCRIPTOR-REGISTRY`, docs-only). Decision:
+**APPROVED** — Phase 3D closeout only; production **NO**; real plugin runtime
+**NO-GO**; **Phase 3E Planning CONDITIONAL GO** (explicit user request only);
+**Phase 3E Implementation NO-GO**. Every NO-GO in §1 still holds. P0 = 0; P1 =
+0. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+`28428` untouched. See
+[phase-3d-human-review-signoff](phase-3d-human-review-signoff.md) and
+[phase-3d-final-signoff-decision](phase-3d-final-signoff-decision.md).
