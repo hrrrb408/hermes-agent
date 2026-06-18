@@ -261,3 +261,4 @@ explicitly authorizes otherwise.
 - [Phase 3E runtime GO / NO-GO](phase-3e-runtime-go-no-go.md)
 - [Phase 3D human review signoff](phase-3d-human-review-signoff.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
+- [Phase 3F planning authorization](phase-3f-planning-authorization.md) — a later docs-only authorization; it does **not** change Phase 3E signoff conclusions.

@@ -361,3 +361,31 @@ Implementation: NO-GO. Phase 3F: NOT AUTHORIZED BY THIS DOCUMENT.** Real plugin
 runtime remains NO-GO; production rollout remains NO-GO. Route governance
 unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
 See [phase-3e-archive-index](phase-3e-archive-index.md).
+
+## 19. Phase 3F Planning Authorization Update (2026-06-19)
+
+A docs-only **Phase 3F Planning Authorization** (`PHASE-3F-PLANNING-AUTH-001`)
+has now been issued as a separate explicit authorization, after Phase 3E was
+archived. It authorizes **only** a future Phase 3F Planning task, and only as
+docs-only; it does **not** start that task and does **not** authorize any
+implementation, runtime, route, or production change. It inherits every Phase 3E
+constraint and P0 stop condition.
+
+```
+Phase 3F Planning Authorization:                 GO
+Phase 3F Planning:                               AUTHORIZED FOR FUTURE DOCS-ONLY TASK
+Phase 3F Planning started:                       NO
+Phase 3F Implementation:                         NO-GO
+Real plugin runtime:                             NO-GO
+Plugin loader:                                   NO-GO
+Plugin execution:                                NO-GO
+Dynamic loading:                                 NO-GO
+Production rollout:                              NO-GO
+New route:                                       NO-GO
+```
+
+No code, route, loader, runtime, production access, or new route was introduced.
+Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+`28428` untouched. See
+[phase-3f-planning-authorization](phase-3f-planning-authorization.md) and
+[phase-3f-boundary-and-inherited-constraints](phase-3f-boundary-and-inherited-constraints.md).

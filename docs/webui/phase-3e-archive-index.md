@@ -232,6 +232,13 @@ The only recommended future tasks are:
 Implementation must not start from this archive/index document.
 ```
 
+> Forward pointer (added 2026-06-19): a separate
+> [Phase 3F Planning Authorization](phase-3f-planning-authorization.md) was created
+> **after** this archive. The archive itself did **not** authorize Phase 3F; that
+> authorization authorizes only a future docs-only planning task. **Phase 3F
+> Implementation remains NO-GO.** See also
+> [Phase 3F boundary and inherited constraints](phase-3f-boundary-and-inherited-constraints.md).
+
 ## Cross-references
 
 - [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
