@@ -209,8 +209,17 @@ It authorizes nothing executable.
 It leaves implementation, runtime, route, and production rollout NO-GO.
 ```
 
+## H. Closeout forward pointer (added after review)
+
+- Phase 3G Closeout / Human Review Readiness has been prepared.
+- The review remains docs-only.
+- Implementation Authorization remains NO-GO.
+
+See [phase-3g-closeout](phase-3g-closeout.md) and [phase-3g-go-no-go](phase-3g-go-no-go.md).
+
 ## Cross-references
 
+- [Phase 3G closeout](phase-3g-closeout.md)
 - [Phase 3G readiness evidence review](phase-3g-readiness-evidence-review.md)
 - [Phase 3G P0 gate resolution review](phase-3g-p0-gate-resolution-review.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)

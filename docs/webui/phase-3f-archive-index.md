@@ -298,6 +298,7 @@ Implementation must not start from this archive/index document.
 ## M. Phase 3G forward pointer (added after archive)
 
 - Phase 3G Implementation Authorization Review was created after the Phase 3F archive.
+- Phase 3G Closeout / Human Review Readiness exists as a later docs-only closeout; it does not change Phase 3F archive conclusions.
 - The Phase 3F archive itself did not authorize Phase 3G.
 - The Phase 3G review denies implementation authorization.
 - Implementation remains NO-GO.

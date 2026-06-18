@@ -23,7 +23,7 @@
 | ---- | ------- |
 | Phase 3G Implementation Authorization Review | GO |
 | Implementation Authorization | NO-GO |
-| Phase 3G Closeout | NOT STARTED |
+| Phase 3G Closeout | GO FOR HUMAN REVIEW |
 | Phase 3G Human Review Signoff | NOT STARTED |
 | Phase 3G Archive / Index | NOT STARTED |
 | Phase 3G Implementation | NO-GO |
@@ -63,6 +63,7 @@ Only the review itself is GO.
 GO scope:
   Phase 3G Implementation Authorization Review — docs-only review that records
   the authorization answer as NO-GO.
+  Phase 3G Closeout — docs-only closeout prepared for human review readiness.
 ```
 
 ## C. NO-GO conditions
@@ -103,13 +104,14 @@ Any prohibited surface attempting to go live ⇒ STOP.
 ## D. Next gate
 
 ```
-Phase 3G Closeout / Human Review Readiness — by explicit user request only.
+Phase 3G Human Review Signoff / Authorization Denial Decision — by explicit user request only.
 Implementation must not start.
 ```
 
 ## Cross-references
 
 - [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)
+- [Phase 3G closeout](phase-3g-closeout.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)
 - [Phase 3G next step recommendation](phase-3g-next-step-recommendation.md)
 - [Phase 3G risk review](phase-3g-risk-review.md)

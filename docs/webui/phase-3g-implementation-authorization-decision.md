@@ -162,8 +162,19 @@ Decision signature:
   Signed date:              2026-06-19
 ```
 
+## H. Closeout forward pointer (added after decision)
+
+- Closeout / human review readiness documents now exist.
+- The decision remains Implementation Authorization = NO-GO.
+
+See [phase-3g-human-review-brief](phase-3g-human-review-brief.md), [phase-3g-human-approver-checklist](phase-3g-human-approver-checklist.md), and [phase-3g-review-board-decision-template](phase-3g-review-board-decision-template.md).
+
 ## Cross-references
 
+- [Phase 3G closeout](phase-3g-closeout.md)
+- [Phase 3G human review brief](phase-3g-human-review-brief.md)
+- [Phase 3G human approver checklist](phase-3g-human-approver-checklist.md)
+- [Phase 3G review board decision template](phase-3g-review-board-decision-template.md)
 - [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)
 - [Phase 3G P0 gate resolution review](phase-3g-p0-gate-resolution-review.md)
 - [Phase 3G readiness evidence review](phase-3g-readiness-evidence-review.md)
