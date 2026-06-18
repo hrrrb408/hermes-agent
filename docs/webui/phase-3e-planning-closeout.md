@@ -136,6 +136,17 @@ Decision, and only by explicit user request.
 Implementation must not start.
 ```
 
+## I. Human review signoff recorded
+
+Phase 3E Planning Closeout has been formally signed off:
+
+- Formal signoff document: [phase-3e-human-review-signoff.md](phase-3e-human-review-signoff.md)
+- Filled review-board decision record: [phase-3e-review-board-decision.md](phase-3e-review-board-decision.md)
+
+The signoff **approves Planning Closeout only**. It does **not** authorize
+implementation, real plugin runtime, or production rollout. Implementation,
+real runtime, and production rollout remain **NO-GO**.
+
 ## Cross-references
 
 - [Phase 3E planning](phase-3e-planning.md)
@@ -144,6 +155,8 @@ Implementation must not start.
 - [Phase 3E design alternatives](phase-3e-design-alternatives.md)
 - [Phase 3E human approver checklist](phase-3e-human-approver-checklist.md)
 - [Phase 3E review board decision template](phase-3e-review-board-decision-template.md)
+- [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
+- [Phase 3E review board decision](phase-3e-review-board-decision.md)
 - [Phase 3E implementation entry criteria](phase-3e-implementation-entry-criteria.md)
 - [Phase 3D human review signoff](phase-3d-human-review-signoff.md)
 - [Phase 3D Phase 3E planning authorization](phase-3d-phase-3e-planning-authorization.md)

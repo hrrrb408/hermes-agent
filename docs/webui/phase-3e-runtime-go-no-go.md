@@ -103,5 +103,20 @@ Until then, the runtime and every execution surface in §2 stays **NO-GO**.
 - [Phase 3E implementation entry criteria](phase-3e-implementation-entry-criteria.md)
 - [Phase 3E human review brief](phase-3e-human-review-brief.md)
 - [Phase 3E review board decision template](phase-3e-review-board-decision-template.md)
+- [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
+- [Phase 3E review board decision](phase-3e-review-board-decision.md)
 - [Phase 3D real runtime NO-GO](phase-3d-real-runtime-no-go.md)
 - [Phase 3D Phase 3E planning authorization](phase-3d-phase-3e-planning-authorization.md)
+
+## 6. Signoff recorded
+
+Phase 3E Planning Closeout has been signed off
+([phase-3e-human-review-signoff](phase-3e-human-review-signoff.md),
+[phase-3e-review-board-decision](phase-3e-review-board-decision.md)).
+
+```
+Phase 3E Planning Closeout has been signed off.
+Phase 3E Implementation remains NO-GO.
+Real plugin runtime remains NO-GO.
+Production rollout remains NO-GO.
+```

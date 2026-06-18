@@ -168,3 +168,14 @@ human-review documents accompany it:
   — the formal decision record template.
 
 None of these authorizes implementation; they prepare human review only.
+
+## 14. Human review signoff recorded
+
+Phase 3E Planning Closeout has been formally signed off. The final human review
+signoff / planning closeout decision is recorded in:
+
+- [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
+- [Phase 3E review board decision](phase-3e-review-board-decision.md)
+
+Decision: **Approve Phase 3E Planning Closeout only.** Implementation, real
+plugin runtime, and production rollout remain **NO-GO**.

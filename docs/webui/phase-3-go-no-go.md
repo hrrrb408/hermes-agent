@@ -325,3 +325,26 @@ Production Gateway PID `28428` untouched. **Phase 3E Implementation was not
 started.** See [phase-3e-planning](phase-3e-planning.md),
 [phase-3e-runtime-go-no-go](phase-3e-runtime-go-no-go.md), and
 [phase-3e-human-review-brief](phase-3e-human-review-brief.md).
+
+## 17. Phase 3E Planning Closeout Signoff Update (2026-06-19)
+
+Phase 3E Planning Closeout is formally **signed off** as a docs-only milestone
+(`SIGNOFF-3E-2026-RUNTIME-PLANNING-CLOSEOUT`, docs-only). Decision: **Approve
+Phase 3E Planning Closeout only.** The planning + closeout documentation set
+(threat model, sandbox architecture, process / filesystem / network isolation
+models, supply-chain policy, permission / audit / UI / route / production-
+isolation reviews, runtime GO / NO-GO, risk register, implementation entry
+criteria, human-review brief, design alternatives, human approver checklist,
+review-board decision template, planning closeout) is accepted as complete and
+human-review-ready. **Phase 3E Implementation remains NO-GO. Real plugin runtime
+remains NO-GO. Production rollout remains NO-GO.** No code, route, loader,
+dynamic loading, local plugin directory loading, remote registry, marketplace,
+external plugin fetch, provider-generated plugin, LLM-generated plugin install,
+shell / DB / external-HTTP / production execution, provider write, autonomous
+write, live provider request, real API key read, external network call, `~/.hermes`
+access, production `state.db` access, or new route was introduced. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428`
+untouched. See
+[phase-3e-human-review-signoff](phase-3e-human-review-signoff.md),
+[phase-3e-review-board-decision](phase-3e-review-board-decision.md), and
+[phase-3e-planning-closeout](phase-3e-planning-closeout.md).
