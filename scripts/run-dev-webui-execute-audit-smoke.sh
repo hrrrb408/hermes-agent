@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|phase3d_plugin_descriptor_registry_static|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|phase3d_plugin_descriptor_registry_static|phase3d_h1_plugin_descriptor_registry_hardening|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|phase3d_plugin_descriptor_registry_static|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|phase3d_plugin_descriptor_registry_static|phase3d_h1_plugin_descriptor_registry_hardening|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -99,7 +99,8 @@ for arg in "$@"; do
       echo "  phase3c_capability_registry_static   Profile P — Phase 3C static dev-only Capability Registry (read-only; no plugin runtime, no dynamic loading, no remote registry, no marketplace)"
       echo "  phase3c_h1_capability_registry_hardening Profile Q — Phase 3C-H1 Capability Registry hardening invariants (read-only; no plugin runtime, no dynamic loading, no remote registry, no marketplace; no real key, no real network)"
       echo "  phase3d_plugin_descriptor_registry_static Profile R — Phase 3D static dev-only Plugin Descriptor Registry (descriptor-only; no plugin runtime, no plugin loader, no dynamic loading, no local plugin directory loading, no remote registry, no marketplace, no external plugin fetch; no real key, no real network)"
-      echo "  all                                  Run Profile A..R (default; never runs the manual one-shot live profile)"
+      echo "  phase3d_h1_plugin_descriptor_registry_hardening Profile S — Phase 3D-H1 Plugin Descriptor Registry hardening invariants (descriptor-only; no plugin runtime, no plugin loader, no dynamic loading, no local plugin directory loading, no remote registry, no marketplace, no external plugin fetch; no real key, no real network)"
+      echo "  all                                  Run Profile A..S (default; never runs the manual one-shot live profile)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -564,6 +565,33 @@ configure_gates() {
       export HERMES_PROVIDER_MODE=fake
       export EXECUTE_EXPECTED=phase3d_plugin_descriptor_registry_static
       ;;
+    phase3d_h1_plugin_descriptor_registry_hardening)
+      # Phase 3D-H1: Plugin Descriptor Registry HARDENING. Identical read-only
+      # gate env as the Phase 3D boundary profile (read-only execution gates on
+      # + FAKE provider only). The registry is descriptor-only and descriptive
+      # — there is NO plugin runtime, NO plugin loader, NO dynamic loading, NO
+      # local plugin directory loading, NO remote registry / marketplace /
+      # external plugin fetch, NO provider-generated plugin, NO LLM-generated
+      # plugin install, NO live provider request, and NO real API key read. The
+      # profile re-asserts the hardening invariants: descriptor count = 12,
+      # validation valid, frozen runtime-disabled flags (pluginRuntimeImplemented
+      # / pluginLoaderImplemented / dynamicLoadingAllowed /
+      # localPluginDirectoryLoadingAllowed / remoteRegistryAllowed /
+      # marketplaceAllowed / externalPluginFetchAllowed /
+      # providerGeneratedPluginAllowed / llmGeneratedPluginInstallAllowed /
+      # pluginExecutionAllowed / newRouteIntroduced / productionAllowed = false),
+      # descriptor-only / does-not-grant-permission, the manual one-shot live
+      # profile listed but disabled, dynamic/remote/marketplace/shell/DB/
+      # external-HTTP/production-operation permanently blocked, UI badges carry
+      # text labels, no secret / callable / production-path / plugin-path leak,
+      # and route governance unchanged. This is NOT the manual one-shot live
+      # profile — that profile is opt-in and NEVER runs in the default `all`.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export EXECUTE_EXPECTED=phase3d_h1_plugin_descriptor_registry_hardening
+      ;;
   esac
 }
 
@@ -697,6 +725,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-3c-h1-capability-registry-hardening-smoke.spec.ts"
   elif [ "$profile" = "phase3d_plugin_descriptor_registry_static" ]; then
     spec_rel="tests/smoke/phase-3d-plugin-descriptor-registry-smoke.spec.ts"
+  elif [ "$profile" = "phase3d_h1_plugin_descriptor_registry_hardening" ]; then
+    spec_rel="tests/smoke/phase-3d-h1-plugin-descriptor-registry-hardening-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -762,6 +792,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase3c_capability_registry_static"
     run_smoke_for_profile "phase3c_h1_capability_registry_hardening"
     run_smoke_for_profile "phase3d_plugin_descriptor_registry_static"
+    run_smoke_for_profile "phase3d_h1_plugin_descriptor_registry_hardening"
     ;;
 esac
 

@@ -2419,3 +2419,19 @@ files; 1188 total), type-check / lint / build, smoke Profile R, route-governance
 [phase-3d-plugin-descriptor-security-boundary](phase-3d-plugin-descriptor-security-boundary.md),
 and
 [phase-3d-plugin-descriptor-test-report](phase-3d-plugin-descriptor-test-report.md).
+
+## Update — Phase 3D-H1 Hardening COMPLETE
+
+Phase 3D-H1 hardened the static dev-only plugin descriptor registry skeleton
+(HARDENING-3D-H1-001). The hardening pass added 10 backend + 8 frontend
+hardening tests, a `phase3d_h1_plugin_descriptor_registry_hardening` smoke
+profile + spec, and `scripts/run-dev-webui-phase3d-hardening-audit.sh`. **No
+implementation code changed** — no defect required a fix. All 12 lenses PASS;
+P0 = 0; P1 = 0. The registry remains descriptor-only, disabled-by-default,
+capability-bound, read-only, and dev-only — no plugin runtime, no loader, no
+dynamic loading, no local plugin directory loading, no remote registry, no
+marketplace, no external plugin fetch, no provider-generated plugin, no
+LLM-generated plugin install. Route governance unchanged (34 / 34 / 5 / 0 / 1 /
+1); Production Gateway PID `28428` untouched. See
+[phase-3d-h1-plugin-descriptor-registry-hardening](phase-3d-h1-plugin-descriptor-registry-hardening.md)
+and [phase-3d-h1-test-report](phase-3d-h1-test-report.md).
