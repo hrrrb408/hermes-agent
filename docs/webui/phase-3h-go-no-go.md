@@ -1,18 +1,20 @@
-# Phase 3G GO / NO-GO
+# Phase 3H GO / NO-GO
 
 | Field | Value |
 |-------|-------|
-| Phase | 3G (Implementation Authorization Review) |
-| Title | Real Plugin Runtime — Phase 3G GO / NO-GO |
-| Decision ID | `PHASE-3G-GO-NOGO-001` |
+| Phase | 3H (Sandbox Proof Planning Authorization) |
+| Title | Real Plugin Runtime — Phase 3H GO / NO-GO |
+| Decision ID | `PHASE-3H-GO-NOGO-001` |
 | Date | 2026-06-19 |
 | Branch | `dev-huangruibang` |
-| Source commit | `f9de4c395f4eb05b2f3285cb254d8b46fcd568d7` |
-| Status | Frozen (docs-only authorization review; implementation **not authorized**) |
+| Source commit | `7d0af37ef99ba5ddc79775c941305c7625c0476a` |
+| Status | Frozen (docs-only planning authorization; Phase 3H Sandbox Proof Planning **not started**) |
 
 > This document is docs-only.
-> This document records GO/NO-GO state only.
+> This document records Phase 3H GO/NO-GO state only.
+> This document does not start Phase 3H Sandbox Proof Planning.
 > This document does not authorize implementation.
+> This document does not authorize sandbox proof implementation.
 > This document does not authorize real plugin runtime.
 > This document does not authorize production rollout.
 > This document does not authorize new routes.
@@ -21,15 +23,17 @@
 
 | Item | Verdict |
 | ---- | ------- |
-| Phase 3G Implementation Authorization Review | GO |
-| Implementation Authorization | NO-GO |
-| Phase 3G Closeout | SIGNED OFF |
-| Phase 3G Human Review Signoff | ACCEPTED |
-| Phase 3G Archive / Index | COMPLETE |
-| Phase 3H | NOT AUTHORIZED BY THIS DOCUMENT |
+| Phase 3H Sandbox Proof Planning Authorization | GO |
+| Phase 3H Sandbox Proof Planning | NOT STARTED |
+| Phase 3H Closeout | NOT STARTED |
+| Phase 3H Human Review Signoff | NOT STARTED |
+| Phase 3H Archive / Index | NOT STARTED |
+| Phase 3H Sandbox Proof Implementation | NO-GO |
+| Phase 3H Implementation | NO-GO |
 | Phase 3G Implementation | NO-GO |
 | Phase 3F Implementation | NO-GO |
 | Phase 3E Implementation | NO-GO |
+| Implementation Authorization | NO-GO |
 | Real plugin runtime | NO-GO |
 | Plugin loader | NO-GO |
 | Plugin execution | NO-GO |
@@ -52,30 +56,41 @@
 | Production rollout | NO-GO |
 
 ```
-The single GO is for performing the Phase 3G review only.
+The single GO is the Phase 3H Sandbox Proof Planning Authorization.
+It permits only a future docs-only planning task to be requested separately.
 It is not an authorization to implement, run, route, or roll out anything.
 ```
 
 ## B. GO conditions
 
-Only the review itself is GO.
+Only the authorization is GO:
 
 ```
-GO scope:
-  Phase 3G Implementation Authorization Review — docs-only review that records
-  the authorization answer as NO-GO.
-  Phase 3G Closeout — docs-only closeout prepared for human review readiness.
+Phase 3H Sandbox Proof Planning Authorization = GO
 ```
 
-## C. NO-GO conditions
+This permits only a future separately-requested docs-only planning task.
+
+## C. NOT STARTED conditions
+
+```
+Phase 3H Sandbox Proof Planning = NOT STARTED
+Phase 3H Closeout = NOT STARTED
+Phase 3H Human Review Signoff = NOT STARTED
+Phase 3H Archive / Index = NOT STARTED
+```
+
+## D. NO-GO conditions
 
 The full prohibited scope (each remains NO-GO unless separately and explicitly
 authorized):
 
 ```
+Phase 3H Implementation
 Phase 3G Implementation
 Phase 3F Implementation
 Phase 3E Implementation
+sandbox proof implementation
 real plugin runtime
 plugin loader
 plugin execution
@@ -102,27 +117,17 @@ production rollout
 Any prohibited surface attempting to go live ⇒ STOP.
 ```
 
-## D. Next gate
+## E. Next gate
 
 ```
-Phase 3G is archived (Archive / Index = COMPLETE).
-Phase 3H is NOT AUTHORIZED BY THIS DOCUMENT.
-Any future Phase 3H Sandbox Proof Planning Authorization requires an explicit
-user request and must be docs-only.
+Phase 3H Sandbox Proof Planning — docs-only, explicit user request only.
 Implementation must not start.
 ```
 
 ## Cross-references
 
-> Forward pointer (added 2026-06-19): A later docs-only **Phase 3H Sandbox Proof
-> Planning Authorization** is GO for a future docs-only planning task only. Phase 3G
-> conclusions remain unchanged; Implementation Authorization remains NO-GO. See
-> [phase-3h-go-no-go](phase-3h-go-no-go.md).
-
-- [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)
-- [Phase 3G closeout](phase-3g-closeout.md)
-- [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)
-- [Phase 3G next step recommendation](phase-3g-next-step-recommendation.md)
-- [Phase 3G risk review](phase-3g-risk-review.md)
-- [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)
+- [Phase 3H sandbox proof planning authorization](phase-3h-sandbox-proof-planning-authorization.md)
+- [Phase 3H boundary and inherited constraints](phase-3h-boundary-and-inherited-constraints.md)
+- [Phase 3H prompt](phase-3h-prompt.md)
+- [Phase 3G GO / NO-GO](phase-3g-go-no-go.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)

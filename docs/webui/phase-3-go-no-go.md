@@ -579,3 +579,32 @@ rollout remains NO-GO. New route remains NO-GO.** No code, route, loader,
 dynamic loading, runtime, production access, or new route was introduced. Route
 governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428`
 untouched. See [phase-3g-archive-index](phase-3g-archive-index.md).
+
+## 28. Phase 3H Sandbox Proof Planning Authorization Update (2026-06-19)
+
+A docs-only **Phase 3H Sandbox Proof Planning Authorization**
+(`PHASE-3H-PLANNING-AUTH-001`) has now been issued as a separate explicit
+authorization, after the Phase 3G archive (which preserved Implementation
+Authorization = NO-GO). It authorizes **only** a future Phase 3H Sandbox Proof
+Planning task, and only as docs-only; it does **not** start that task and does
+**not** authorize any implementation, sandbox proof implementation, runtime,
+route, or production change. It inherits every Phase 3E, Phase 3F, and Phase 3G
+constraint and P0 stop condition.
+
+```
+Phase 3H Sandbox Proof Planning Authorization:  GO
+Phase 3H Sandbox Proof Planning:                NOT STARTED
+Phase 3H Sandbox Proof Implementation:          NO-GO
+Phase 3H Implementation:                        NO-GO
+Implementation Authorization:                   NO-GO
+Real plugin runtime:                            NO-GO
+Production rollout:                             NO-GO
+New route:                                      NO-GO
+```
+
+No code, route, loader, dynamic loading, runtime, production access, or new route was
+introduced. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway
+PID `28428` untouched. See
+[phase-3h-sandbox-proof-planning-authorization](phase-3h-sandbox-proof-planning-authorization.md),
+[phase-3h-go-no-go](phase-3h-go-no-go.md), and
+[phase-3h-boundary-and-inherited-constraints](phase-3h-boundary-and-inherited-constraints.md).

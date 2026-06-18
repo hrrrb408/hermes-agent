@@ -166,6 +166,11 @@ Decision signature:
 
 ## Cross-references
 
+> Forward pointer (added 2026-06-19): A later docs-only **Phase 3H Sandbox Proof
+> Planning Authorization** exists. It does **not** override the Phase 3G authorization
+> denial; Implementation Authorization remains NO-GO. See
+> [phase-3h-sandbox-proof-planning-authorization](phase-3h-sandbox-proof-planning-authorization.md).
+
 - [Phase 3G human review signoff](phase-3g-human-review-signoff.md) — the formal signoff this decision records.
 - [Phase 3G archive index](phase-3g-archive-index.md) — preserves the selected denial decision and NO-GO boundaries.
 - [Phase 3G review board decision template](phase-3g-review-board-decision-template.md)

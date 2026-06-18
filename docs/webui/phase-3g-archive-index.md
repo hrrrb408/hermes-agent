@@ -312,6 +312,25 @@ The only recommended future tasks are:
 Implementation must not start from this archive/index document.
 ```
 
+## M. Phase 3H forward pointer (added after archive)
+
+- Phase 3H Sandbox Proof Planning Authorization was created after the Phase 3G archive.
+- The Phase 3G archive itself did not authorize implementation.
+- The Phase 3H authorization is docs-only and authorizes only a future planning task.
+- The Phase 3H authorization does not start Phase 3H Sandbox Proof Planning.
+- The Phase 3H authorization does not authorize Phase 3H implementation.
+- Implementation Authorization remains NO-GO.
+
+```
+Phase 3H Sandbox Proof Planning Authorization:  created (docs-only)
+Phase 3G archive authorization of Phase 3H:     none
+Implementation authorization:                   NO-GO
+```
+
+See [phase-3h-sandbox-proof-planning-authorization](phase-3h-sandbox-proof-planning-authorization.md),
+[phase-3h-go-no-go](phase-3h-go-no-go.md), and
+[phase-3h-boundary-and-inherited-constraints](phase-3h-boundary-and-inherited-constraints.md).
+
 ## Cross-references
 
 - [Phase 3G human review signoff](phase-3g-human-review-signoff.md)
