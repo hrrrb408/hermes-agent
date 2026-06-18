@@ -308,4 +308,5 @@ Implementation must not start after this signoff.
 - [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)
 - [Phase 3E human review signoff](phase-3e-human-review-signoff.md) — the prior planning-closeout signoff precedent.
 - [Phase 3E archive index](phase-3e-archive-index.md)
+- [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md) — exists as a later docs-only review; does not change Phase 3F signoff conclusions.
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)

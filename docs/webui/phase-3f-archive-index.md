@@ -295,6 +295,21 @@ The only recommended future tasks are:
 Implementation must not start from this archive/index document.
 ```
 
+## M. Phase 3G forward pointer (added after archive)
+
+- Phase 3G Implementation Authorization Review was created after the Phase 3F archive.
+- The Phase 3F archive itself did not authorize Phase 3G.
+- The Phase 3G review denies implementation authorization.
+- Implementation remains NO-GO.
+
+```
+Phase 3G Implementation Authorization Review:  created (docs-only)
+Phase 3F archive authorization of Phase 3G:    none
+Implementation authorization:                  NO-GO
+```
+
+See [phase-3g-implementation-authorization-review](phase-3g-implementation-authorization-review.md).
+
 ## Cross-references
 
 - [Phase 3F human review signoff](phase-3f-human-review-signoff.md)

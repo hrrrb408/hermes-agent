@@ -1,20 +1,19 @@
-# Phase 3F GO / NO-GO
+# Phase 3G GO / NO-GO
 
 | Field | Value |
 |-------|-------|
-| Phase | 3F (Planning) |
-| Title | Real Plugin Runtime — Phase 3F GO / NO-GO (Frozen) |
-| Decision ID | `PHASE-3F-GO-NOGO-001` |
+| Phase | 3G (Implementation Authorization Review) |
+| Title | Real Plugin Runtime — Phase 3G GO / NO-GO |
+| Decision ID | `PHASE-3G-GO-NOGO-001` |
 | Date | 2026-06-19 |
 | Branch | `dev-huangruibang` |
-| Status | Frozen (docs-only planning; real Plugin Runtime **not started**) |
+| Source commit | `f9de4c395f4eb05b2f3285cb254d8b46fcd568d7` |
+| Status | Frozen (docs-only authorization review; implementation **not authorized**) |
 
 > This document is docs-only.
-> This document records Phase 3F Planning GO / NO-GO only.
+> This document records GO/NO-GO state only.
 > This document does not authorize implementation.
 > This document does not authorize real plugin runtime.
-> This document does not authorize plugin execution.
-> This document does not authorize dynamic loading.
 > This document does not authorize production rollout.
 > This document does not authorize new routes.
 
@@ -22,10 +21,14 @@
 
 | Item | Verdict |
 | ---- | ------- |
-| Phase 3F Planning | GO |
-| Phase 3F Planning Closeout | SIGNED OFF |
-| Phase 3F Human Review Signoff | ACCEPTED |
+| Phase 3G Implementation Authorization Review | GO |
+| Implementation Authorization | NO-GO |
+| Phase 3G Closeout | NOT STARTED |
+| Phase 3G Human Review Signoff | NOT STARTED |
+| Phase 3G Archive / Index | NOT STARTED |
+| Phase 3G Implementation | NO-GO |
 | Phase 3F Implementation | NO-GO |
+| Phase 3E Implementation | NO-GO |
 | Real plugin runtime | NO-GO |
 | Plugin loader | NO-GO |
 | Plugin execution | NO-GO |
@@ -47,11 +50,19 @@
 | New route | NO-GO |
 | Production rollout | NO-GO |
 
+```
+The single GO is for performing the Phase 3G review only.
+It is not an authorization to implement, run, route, or roll out anything.
+```
+
 ## B. GO conditions
 
+Only the review itself is GO.
+
 ```
-Only planning is GO:
-  Phase 3F Planning — docs-only implementation readiness roadmap.
+GO scope:
+  Phase 3G Implementation Authorization Review — docs-only review that records
+  the authorization answer as NO-GO.
 ```
 
 ## C. NO-GO conditions
@@ -60,7 +71,9 @@ The full prohibited scope (each remains NO-GO unless separately and explicitly
 authorized):
 
 ```
+Phase 3G Implementation
 Phase 3F Implementation
+Phase 3E Implementation
 real plugin runtime
 plugin loader
 plugin execution
@@ -83,21 +96,22 @@ new route
 production rollout
 ```
 
+```
+Any prohibited surface attempting to go live ⇒ STOP.
+```
+
 ## D. Next gate
 
 ```
-Phase 3F Planning Closeout is signed off; Human Review Readiness is accepted.
-Phase 3F Archive / Index Update — by explicit user request only.
+Phase 3G Closeout / Human Review Readiness — by explicit user request only.
 Implementation must not start.
 ```
 
 ## Cross-references
 
-- [Phase 3F planning](phase-3f-planning.md)
-- [Phase 3F human review plan](phase-3f-human-review-plan.md)
-- [Phase 3F implementation entry review](phase-3f-implementation-entry-review.md)
-- [Phase 3F P0 gate consolidation](phase-3f-p0-gate-consolidation.md)
-- [Phase 3F risk register](phase-3f-risk-register.md)
-- [Phase 3F planning authorization](phase-3f-planning-authorization.md)
-- [Phase 3G GO / NO-GO](phase-3g-go-no-go.md) — later docs-only review; keeps implementation NO-GO; Phase 3F conclusions unchanged.
+- [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)
+- [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)
+- [Phase 3G next step recommendation](phase-3g-next-step-recommendation.md)
+- [Phase 3G risk review](phase-3g-risk-review.md)
+- [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
