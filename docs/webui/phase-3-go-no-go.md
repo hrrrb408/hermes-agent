@@ -348,3 +348,16 @@ untouched. See
 [phase-3e-human-review-signoff](phase-3e-human-review-signoff.md),
 [phase-3e-review-board-decision](phase-3e-review-board-decision.md), and
 [phase-3e-planning-closeout](phase-3e-planning-closeout.md).
+
+## 18. Phase 3E Archive / Index Update (2026-06-19)
+
+Phase 3E is **archived** as a completed docs-only planning and human-review
+package (`PHASE-3E-ARCHIVE-INDEX-001`, docs-only). The archive/index freezes the
+full Phase 3E documentation set, commit chain, final GO / NO-GO, signoff state,
+route governance, production safety, deferred / not-authorized list, and
+next-phase boundary. No code, route, loader, runtime, production access, or new
+route was introduced. **Phase 3E Archive / Index: COMPLETE. Phase 3E
+Implementation: NO-GO. Phase 3F: NOT AUTHORIZED BY THIS DOCUMENT.** Real plugin
+runtime remains NO-GO; production rollout remains NO-GO. Route governance
+unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+See [phase-3e-archive-index](phase-3e-archive-index.md).

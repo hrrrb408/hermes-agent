@@ -135,6 +135,7 @@ implementation planning only if explicitly requested
 
 ## Cross-references
 
+- [Phase 3E archive index](phase-3e-archive-index.md) — preserves the selected decision and NO-GO boundaries.
 - [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
 - [Phase 3E review board decision template](phase-3e-review-board-decision-template.md)
 - [Phase 3E planning closeout](phase-3e-planning-closeout.md)

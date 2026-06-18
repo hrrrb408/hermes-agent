@@ -149,6 +149,7 @@ real runtime, and production rollout remain **NO-GO**.
 
 ## Cross-references
 
+- [Phase 3E archive index](phase-3e-archive-index.md) — closeout has now been archived; the archive preserves the final package and does not authorize implementation.
 - [Phase 3E planning](phase-3e-planning.md)
 - [Phase 3E runtime GO / NO-GO](phase-3e-runtime-go-no-go.md)
 - [Phase 3E human review brief](phase-3e-human-review-brief.md)

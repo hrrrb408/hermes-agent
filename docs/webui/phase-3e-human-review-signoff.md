@@ -254,6 +254,7 @@ explicitly authorizes otherwise.
 
 ## Cross-references
 
+- [Phase 3E archive index](phase-3e-archive-index.md) — archives the full Phase 3E documentation package; does not authorize implementation.
 - [Phase 3E planning closeout](phase-3e-planning-closeout.md)
 - [Phase 3E review board decision](phase-3e-review-board-decision.md)
 - [Phase 3E human review brief](phase-3e-human-review-brief.md)
