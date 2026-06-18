@@ -2352,3 +2352,22 @@ production rollout, `~/.hermes` access, or production `state.db` access was
 introduced. Route governance unchanged (34/34/5/0/1/1). Production Gateway PID
 `28428` untouched. **Phase 3D (Plugin Runtime) not started.** See
 [phase-3c-h1-capability-registry-hardening](phase-3c-h1-capability-registry-hardening.md).
+
+---
+
+## Phase 3C Closeout Status Update (2026-06-18)
+
+Phase 3C is formally **closed** (`PHASE-3C-CLOSEOUT-001`, docs-only closeout).
+The registry ships static / dev-only / read-only / descriptive-only; 12 / 12
+hardening lenses PASS; P0 = 0, P1 = 0; the one real defect (nested forbidden-
+field leak) is closed by a recursive scan + scalar-string type guard. All
+backend (160 + 8 H1 files), frontend (1147), smoke/E2E (incl. Profile P + Q),
+hardening-audit, route-governance (34/34/5/0/1/1), memory-check, and dev-check
+gates pass. Production Gateway PID `28428` untouched. No plugin runtime,
+dynamic loading, remote registry, marketplace, provider write, autonomous
+write, live provider request, real API-key read, external network, new route,
+`~/.hermes` access, or production `state.db` access. **Phase 3D (Plugin
+Runtime) is not started; Phase 3D Planning is CONDITIONAL GO only after
+explicit user request; Phase 3D Implementation is NO-GO.** See
+[phase-3c-closeout](phase-3c-closeout.md) and
+[phase-3c-final-go-no-go](phase-3c-final-go-no-go.md).

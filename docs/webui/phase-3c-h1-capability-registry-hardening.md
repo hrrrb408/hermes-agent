@@ -147,3 +147,15 @@ bounded by the consistency test; a generator is deferred).
 - [UI a11y / no-leak hardening](phase-3c-h1-ui-a11y-no-leak-hardening.md)
 - [Smoke + preservation report](phase-3c-h1-smoke-and-preservation-report.md)
 - [H1 test report](phase-3c-h1-test-report.md)
+
+---
+
+## 12. Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** (`PHASE-3C-CLOSEOUT-001`, docs-only). This
+hardening pass (`HARDENING-3C-H1-001`) is the final hardening of the static
+registry; its 12 / 12 PASS result stands at closeout (P0 = 0, P1 = 0). The
+nested forbidden-field defect fixed here remains CLOSED. See
+[Phase 3C closeout](phase-3c-closeout.md),
+[final security boundary](phase-3c-security-boundary-final.md), and
+[risk closure](phase-3c-risk-closure.md).

@@ -83,3 +83,16 @@ or not) smuggles past the scalar read model. Three independent layers now
 enforce the forbidden-field boundary: the recursive scan, the scalar type
 guard, and the `DETAIL_FIELDS` read-model allowlist. See
 [forbidden-fields hardening](phase-3c-h1-forbidden-fields-hardening.md).
+
+---
+
+## 9. Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** (`PHASE-3C-CLOSEOUT-001`). The final, frozen
+security boundary is recorded in
+[phase-3c-security-boundary-final](phase-3c-security-boundary-final.md); this
+document remains the implementation-time boundary statement. The boundary is
+unchanged at closeout: the registry is static / dev-only / read-only /
+descriptive-only, grants no permission, executes nothing, and bypasses no
+policy. See [Phase 3C closeout](phase-3c-closeout.md) and
+[risk closure](phase-3c-risk-closure.md).

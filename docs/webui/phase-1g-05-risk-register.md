@@ -1105,3 +1105,16 @@ profile (Profile Q), and `scripts/run-dev-webui-phase3c-hardening-audit.sh`
 were added. No new P0/P1 risk introduced. **Phase 3D (Plugin Runtime) not
 started.** See [phase-3c-h1-capability-registry-hardening](phase-3c-h1-capability-registry-hardening.md)
 and [phase-3c-h1-forbidden-fields-hardening](phase-3c-h1-forbidden-fields-hardening.md).
+
+---
+
+## Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** (`PHASE-3C-CLOSEOUT-001`). The Phase 3C risk
+register (CAP-P0-01 … CAP-P0-12) is fully **CLOSED** — P0 open = 0, P1 open =
+0. The one real defect (nested forbidden-field leak, CAP-P0-10 reinforcement)
+is CLOSED. The single P2 (frontend TS manifest mirror generator) is deferred,
+non-blocking, and its drift is bounded by the H1 manifest-consistency test.
+Phase 3D (Plugin Runtime) carries its own future risk register and is not
+started. See [phase-3c-risk-closure](phase-3c-risk-closure.md) and
+[phase-3c-closeout](phase-3c-closeout.md).

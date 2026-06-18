@@ -122,3 +122,17 @@ access. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D
 (Plugin Runtime) was not started.** See
 [Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md) and
 [Phase 3C implementation](phase-3c-static-capability-registry-implementation.md).
+
+---
+
+## 9. Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** (`PHASE-3C-CLOSEOUT-001`, docs-only). Final
+state: static / dev-only / read-only / descriptive-only Capability Registry;
+12 / 12 hardening lenses PASS; P0 = 0, P1 = 0; nested forbidden-field leak
+closed. Every NO-GO of this decision still holds. Route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1). **Phase 3D Planning is CONDITIONAL GO (explicit
+user request only); Phase 3D Implementation is NO-GO.** See
+[Phase 3C closeout](phase-3c-closeout.md),
+[Phase 3C final GO / NO-GO](phase-3c-final-go-no-go.md), and
+[Phase 3D entry criteria](phase-3c-phase-3d-entry-criteria.md).

@@ -280,3 +280,16 @@ marketplace, no remote registry, no new route by default, no production
 rollout. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D
 (Plugin Runtime) was not started.** See
 [Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md).
+
+---
+
+## 20. Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** within the frozen scope (`PHASE-3C-CLOSEOUT-001`,
+docs-only). The registry shipped static / dev-only / read-only / descriptive-
+only, was hardened (12 / 12 lenses PASS, P0 = 0, P1 = 0), and the one real
+defect (nested forbidden-field leak) is closed. The freeze holds: no plugin
+runtime, dynamic loading, marketplace, remote registry, new route by default,
+or production rollout. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1).
+**Phase 3D Planning is CONDITIONAL GO (explicit user request only); Phase 3D
+Implementation is NO-GO.** See [Phase 3C closeout](phase-3c-closeout.md).

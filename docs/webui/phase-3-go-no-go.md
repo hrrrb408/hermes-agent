@@ -175,3 +175,18 @@ new route, no `~/.hermes` / production `state.db` access. Route governance
 unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D (Plugin Runtime) was not
 started.** See [Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md)
 and [Phase 3C implementation](phase-3c-static-capability-registry-implementation.md).
+
+---
+
+## 11. Phase 3C Closeout Update (2026-06-18)
+
+Phase 3C is formally **closed** as a static dev-only Capability Registry
+milestone (`PHASE-3C-CLOSEOUT-001`, docs-only). Final state: static / dev-only
+/ read-only / descriptive-only; 12 / 12 hardening lenses PASS; P0 = 0, P1 = 0.
+Every Phase 3 / 3C NO-GO still holds: no plugin runtime, dynamic loading,
+remote registry, marketplace, provider write, autonomous write, production
+rollout, new route, or `~/.hermes` / production `state.db` access. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D Planning is
+CONDITIONAL GO (only after explicit user request); Phase 3D Implementation is
+NO-GO.** See [Phase 3C closeout](phase-3c-closeout.md) and
+[Phase 3C final GO / NO-GO](phase-3c-final-go-no-go.md).
