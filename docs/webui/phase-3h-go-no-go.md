@@ -2,13 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | 3H (Sandbox Proof Planning — Closeout) |
+| Phase | 3H (Sandbox Proof Planning — Signoff) |
 | Title | Real Plugin Runtime — Phase 3H GO / NO-GO |
 | Decision ID | `PHASE-3H-GO-NOGO-001` |
 | Date | 2026-06-19 |
 | Branch | `dev-huangruibang` |
-| Source commit | `77db644c5d8893d271d13f08c524e3c5d42e6348` |
-| Status | Updated (docs-only closeout; Phase 3H Closeout **GO FOR HUMAN REVIEW**; implementation still **NO-GO**) |
+| Source commit | `96f15c2131a4dee73edb84f2432e0f1510da9b4d` |
+| Status | Updated (docs-only signoff; Phase 3H Closeout **SIGNED OFF**, Human Review Signoff **ACCEPTED**; implementation still **NO-GO**) |
 
 > This document is docs-only.
 > This document records Phase 3H GO/NO-GO state only.
@@ -25,8 +25,8 @@
 | ---- | ------- |
 | Phase 3H Sandbox Proof Planning Authorization | GO |
 | Phase 3H Sandbox Proof Planning | GO |
-| Phase 3H Closeout | GO FOR HUMAN REVIEW |
-| Phase 3H Human Review Signoff | NOT STARTED |
+| Phase 3H Closeout | SIGNED OFF |
+| Phase 3H Human Review Signoff | ACCEPTED |
 | Phase 3H Archive / Index | NOT STARTED |
 | Phase 3H Sandbox Proof Implementation | NO-GO |
 | Phase 3H Implementation | NO-GO |
@@ -57,8 +57,9 @@
 
 ```
 The GOs are the Phase 3H Sandbox Proof Planning Authorization, the Phase 3H Sandbox Proof
-Planning itself, and the Phase 3H Closeout (GO FOR HUMAN REVIEW).
-All three are docs-only and resolve no P0 gate.
+Planning itself, and the Phase 3H Closeout (SIGNED OFF).
+Phase 3H Human Review Signoff is ACCEPTED.
+All are docs-only and resolve no P0 gate.
 They are not an authorization to implement, run, route, or roll out anything.
 ```
 
@@ -67,16 +68,16 @@ They are not an authorization to implement, run, route, or roll out anything.
 ```
 Phase 3H Sandbox Proof Planning Authorization = GO
 Phase 3H Sandbox Proof Planning = GO
-Phase 3H Closeout = GO FOR HUMAN REVIEW
+Phase 3H Closeout = SIGNED OFF
+Phase 3H Human Review Signoff = ACCEPTED
 ```
 
-This permits docs-only planning and a docs-only closeout only. The closeout is "ready" only
-for a human signoff review, not for implementation.
+This approves docs-only planning and a docs-only planning closeout only. The signoff accepts
+the closeout; it does not authorize implementation.
 
 ## C. NOT STARTED conditions
 
 ```
-Phase 3H Human Review Signoff = NOT STARTED
 Phase 3H Archive / Index = NOT STARTED
 ```
 
@@ -120,7 +121,7 @@ Any prohibited surface attempting to go live ⇒ STOP.
 ## E. Next gate
 
 ```
-Phase 3H Human Review Signoff / Planning Closeout Decision — docs-only, explicit user request only.
+Phase 3H Archive / Index Update — docs-only, explicit user request only.
 Implementation must not start.
 ```
 
@@ -134,11 +135,15 @@ Any unresolved P0 means STOP toward implementation.
 
 The Phase 3H Sandbox Proof Planning documentation set is recorded in
 [phase-3h-sandbox-proof-planning](phase-3h-sandbox-proof-planning.md). The closeout / human
-review readiness is recorded in [phase-3h-closeout](phase-3h-closeout.md). Both are docs-only
-and authorize no implementation.
+review readiness is recorded in [phase-3h-closeout](phase-3h-closeout.md). The signoff is
+recorded in [phase-3h-human-review-signoff](phase-3h-human-review-signoff.md) and the filled
+decision in [phase-3h-review-board-decision](phase-3h-review-board-decision.md). All are
+docs-only and authorize no implementation.
 
 ## Cross-references
 
+- [Phase 3H human review signoff](phase-3h-human-review-signoff.md)
+- [Phase 3H review board decision](phase-3h-review-board-decision.md)
 - [Phase 3H closeout](phase-3h-closeout.md)
 - [Phase 3H human review brief](phase-3h-human-review-brief.md)
 - [Phase 3H human approver checklist](phase-3h-human-approver-checklist.md)

@@ -176,8 +176,16 @@ Blank fields for a future reviewer (this document fills none):
 - Explicitly authorized next phase: ____________
 - Explicitly forbidden work: ____________
 
+## J. Signoff record note (added)
+
+- The filled signoff now exists: [phase-3h-human-review-signoff](phase-3h-human-review-signoff.md).
+- The filled review board decision now exists: [phase-3h-review-board-decision](phase-3h-review-board-decision.md).
+- This checklist remains historical review-readiness evidence; it does not itself record a decision.
+
 ## Cross-references
 
+- [Phase 3H human review signoff](phase-3h-human-review-signoff.md)
+- [Phase 3H review board decision](phase-3h-review-board-decision.md)
 - [Phase 3H closeout](phase-3h-closeout.md)
 - [Phase 3H human review brief](phase-3h-human-review-brief.md)
 - [Phase 3H review board decision template](phase-3h-review-board-decision-template.md)

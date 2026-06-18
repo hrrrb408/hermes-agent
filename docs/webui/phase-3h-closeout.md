@@ -308,7 +308,7 @@ Production rollout = NO-GO
 The next recommended task is:
 
 ```
-Phase 3H Human Review Signoff / Planning Closeout Decision — docs-only
+Phase 3H Archive / Index Update — docs-only
 ```
 
 That task must be requested explicitly by the user.
@@ -317,8 +317,19 @@ That task must be requested explicitly by the user.
 Implementation must not start after this closeout.
 ```
 
+## M. Signoff record (added)
+
+- Phase 3H Human Review Signoff has been completed.
+- Signoff document: [phase-3h-human-review-signoff](phase-3h-human-review-signoff.md).
+- Filled review board decision: [phase-3h-review-board-decision](phase-3h-review-board-decision.md).
+- The signoff approves Phase 3H Planning Closeout only (Option 1).
+- The signoff does not authorize sandbox proof implementation, implementation, real runtime,
+  production rollout, or new routes.
+
 ## Cross-references
 
+- [Phase 3H human review signoff](phase-3h-human-review-signoff.md)
+- [Phase 3H review board decision](phase-3h-review-board-decision.md)
 - [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md)
 - [Phase 3H human review brief](phase-3h-human-review-brief.md)
 - [Phase 3H human approver checklist](phase-3h-human-approver-checklist.md)

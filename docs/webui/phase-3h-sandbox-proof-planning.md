@@ -233,6 +233,15 @@ This planning is "ready" only for a human signoff review, not for implementation
 - Implementation Authorization remains NO-GO.
 - See [phase-3h-closeout](phase-3h-closeout.md) and [phase-3h-go-no-go](phase-3h-go-no-go.md).
 
+### Signoff update
+
+- Phase 3H Planning Closeout has been signed off (Option 1).
+- Phase 3H Human Review Signoff = ACCEPTED.
+- Sandbox Proof Implementation remains NO-GO.
+- Implementation Authorization remains NO-GO.
+- See [phase-3h-human-review-signoff](phase-3h-human-review-signoff.md) and
+  [phase-3h-review-board-decision](phase-3h-review-board-decision.md).
+
 ## Cross-references
 
 - [Phase 3H closeout](phase-3h-closeout.md)

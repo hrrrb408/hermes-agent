@@ -669,3 +669,22 @@ PID `28428` untouched. See
 [phase-3h-human-review-brief](phase-3h-human-review-brief.md),
 [phase-3h-human-approver-checklist](phase-3h-human-approver-checklist.md), and
 [phase-3h-review-board-decision-template](phase-3h-review-board-decision-template.md).
+
+## 31. Phase 3H Human Review Signoff / Planning Closeout Decision Update (2026-06-19)
+
+Phase 3H Planning Closeout is formally **signed off** and Human Review Readiness is
+**accepted** (`SIGNOFF-3H-2026-SANDBOX-PROOF-PLANNING-CLOSEOUT`, docs-only). Decision:
+**Approve Phase 3H Planning Closeout only (Option 1).** Phase 3H planning documentation and
+Human Review Readiness are accepted as planning-only. **Implementation Authorization remains
+NO-GO. Phase 3H Sandbox Proof Implementation, Phase 3H Implementation, Phase 3G / 3F / 3E
+Implementation, real plugin runtime, plugin loader, plugin execution, dynamic loading, local
+plugin directory loading, remote registry, marketplace, external plugin fetch,
+provider-generated plugin, LLM-generated plugin install, shell execution, DB mutation,
+external HTTP execution, provider write, autonomous write, live provider execution, real API
+key read, external network, any new route, and production rollout all remain NO-GO. Phase 3I
+is not authorized by this signoff.** No code, route, loader, dynamic loading, runtime,
+production access, real provider request, real API key read, external network call,
+`~/.hermes` access, production `state.db` access, or new route was introduced. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+See [phase-3h-human-review-signoff](phase-3h-human-review-signoff.md) and
+[phase-3h-review-board-decision](phase-3h-review-board-decision.md).

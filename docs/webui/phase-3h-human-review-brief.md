@@ -159,6 +159,8 @@ rollout.
 
 ## Cross-references
 
+- [Phase 3H human review signoff](phase-3h-human-review-signoff.md) — the final human review signoff / planning closeout decision.
+- [Phase 3H review board decision](phase-3h-review-board-decision.md) — the filled decision record (Option 1).
 - [Phase 3H closeout](phase-3h-closeout.md)
 - [Phase 3H human approver checklist](phase-3h-human-approver-checklist.md)
 - [Phase 3H review board decision template](phase-3h-review-board-decision-template.md)
