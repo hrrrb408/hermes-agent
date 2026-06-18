@@ -300,6 +300,7 @@ Implementation must not start after this signoff.
 
 - [Phase 3F planning closeout](phase-3f-planning-closeout.md)
 - [Phase 3F review board decision](phase-3f-review-board-decision.md) — the filled decision record for this signoff.
+- [Phase 3F archive index](phase-3f-archive-index.md) — records the final Phase 3F documentation package; does not authorize implementation.
 - [Phase 3F human review brief](phase-3f-human-review-brief.md)
 - [Phase 3F human approver checklist](phase-3f-human-approver-checklist.md)
 - [Phase 3F review board decision template](phase-3f-review-board-decision-template.md)

@@ -142,6 +142,7 @@ additional planning review
 
 - [Phase 3F human review signoff](phase-3f-human-review-signoff.md) — the formal signoff this decision records.
 - [Phase 3F review board decision template](phase-3f-review-board-decision-template.md)
+- [Phase 3F archive index](phase-3f-archive-index.md) — preserves the selected decision and NO-GO boundaries.
 - [Phase 3F planning closeout](phase-3f-planning-closeout.md)
 - [Phase 3F human approver checklist](phase-3f-human-approver-checklist.md)
 - [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)

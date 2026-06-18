@@ -256,6 +256,7 @@ route. Implementation, real runtime, and production rollout remain **NO-GO**.
 
 ## Cross-references
 
+- [Phase 3F archive index](phase-3f-archive-index.md) — closeout has now been archived as part of the full Phase 3F documentation package.
 - [Phase 3F planning](phase-3f-planning.md)
 - [Phase 3F GO / NO-GO](phase-3f-go-no-go.md)
 - [Phase 3F human review plan](phase-3f-human-review-plan.md)
