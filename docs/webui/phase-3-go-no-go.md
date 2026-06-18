@@ -389,3 +389,30 @@ Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
 `28428` untouched. See
 [phase-3f-planning-authorization](phase-3f-planning-authorization.md) and
 [phase-3f-boundary-and-inherited-constraints](phase-3f-boundary-and-inherited-constraints.md).
+
+## 20. Phase 3F Planning Update (2026-06-19)
+
+The docs-only **Phase 3F Planning** (`PHASE-3F-PLANNING-001`, decision
+`PHASE-3F-GO-NOGO-001`) has now been started under the Phase 3F Planning
+Authorization. It produces an **implementation readiness roadmap** as
+documentation only — a gap analysis, readiness roadmap, future subphase
+decomposition, P0 gate consolidation, implementation entry review, test-strategy
+planning, route-governance planning, production-isolation planning, audit/
+redaction planning, UI/review-flow planning, human-review plan, GO / NO-GO, risk
+register, and archived prompt. It implements nothing and authorizes nothing.
+
+```
+Phase 3F Planning:                 GO
+Phase 3F Planning Closeout:        NOT STARTED
+Phase 3F Human Review Signoff:     NOT STARTED
+Phase 3F Implementation:           NO-GO
+Real plugin runtime:               NO-GO
+Production rollout:                NO-GO
+New route:                         NO-GO
+```
+
+No code, route, loader, runtime, production access, or new route was introduced.
+Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+`28428` untouched. See [phase-3f-planning](phase-3f-planning.md),
+[phase-3f-go-no-go](phase-3f-go-no-go.md), and
+[phase-3f-readiness-roadmap](phase-3f-readiness-roadmap.md).

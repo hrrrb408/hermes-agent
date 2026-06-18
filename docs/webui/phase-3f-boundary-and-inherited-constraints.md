@@ -78,6 +78,11 @@ Phase 3F Implementation remains NO-GO.
 
 ## Cross-references
 
+> Execution note (added 2026-06-19): Phase 3F Planning now **consumes** these
+> inherited constraints. The constraints remain active. See
+> [phase-3f-p0-gate-consolidation.md](phase-3f-p0-gate-consolidation.md) and
+> [phase-3f-go-no-go.md](phase-3f-go-no-go.md).
+
 - [Phase 3F planning authorization](phase-3f-planning-authorization.md) — the authorization that permits a future docs-only Phase 3F Planning task.
 - [Phase 3E archive index](phase-3e-archive-index.md)
 - [Phase 3E runtime GO / NO-GO](phase-3e-runtime-go-no-go.md)

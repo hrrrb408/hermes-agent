@@ -287,6 +287,12 @@ Implementation must not start.
 
 ## Cross-references
 
+> Execution note (added 2026-06-19): Phase 3F Planning has now **started** as a
+> docs-only planning task under this authorization (`PHASE-3F-PLANNING-001`).
+> This does **not** change the implementation NO-GO. See
+> [phase-3f-planning.md](phase-3f-planning.md) and
+> [phase-3f-go-no-go.md](phase-3f-go-no-go.md).
+
 - [Phase 3F boundary and inherited constraints](phase-3f-boundary-and-inherited-constraints.md) — companion boundary document for a future Phase 3F Planning task.
 - [Phase 3E archive index](phase-3e-archive-index.md) — closed and archived Phase 3E record; does not authorize Phase 3F.
 - [Phase 3E human review signoff](phase-3e-human-review-signoff.md)
