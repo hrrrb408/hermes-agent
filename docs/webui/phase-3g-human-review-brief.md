@@ -135,6 +135,8 @@ It performs no signoff and authorizes nothing executable.
 ## Cross-references
 
 - [Phase 3G closeout](phase-3g-closeout.md)
+- [Phase 3G human review signoff](phase-3g-human-review-signoff.md) — records the final human review signoff / authorization denial decision.
+- [Phase 3G review board decision](phase-3g-review-board-decision.md) — the filled decision record for that signoff.
 - [Phase 3G human approver checklist](phase-3g-human-approver-checklist.md)
 - [Phase 3G review board decision template](phase-3g-review-board-decision-template.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)

@@ -157,6 +157,8 @@ Implementation authorization is not an approval choice.
 ## Cross-references
 
 - [Phase 3G closeout](phase-3g-closeout.md)
+- [Phase 3G human review signoff](phase-3g-human-review-signoff.md) — filled signoff record now exists.
+- [Phase 3G review board decision](phase-3g-review-board-decision.md) — filled decision record now exists.
 - [Phase 3G human review brief](phase-3g-human-review-brief.md)
 - [Phase 3G review board decision template](phase-3g-review-board-decision-template.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)

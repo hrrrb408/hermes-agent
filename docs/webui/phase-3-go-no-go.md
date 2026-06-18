@@ -540,3 +540,26 @@ Production Gateway PID `28428` untouched. See
 [phase-3g-closeout](phase-3g-closeout.md),
 [phase-3g-human-review-brief](phase-3g-human-review-brief.md), and
 [phase-3g-go-no-go](phase-3g-go-no-go.md).
+
+## 26. Phase 3G Human Review Signoff Update (2026-06-19)
+
+Phase 3G Closeout is formally **signed off** and the implementation authorization
+denial is **accepted** (`SIGNOFF-3G-2026-IMPL-AUTHORIZATION-DENIAL`, docs-only).
+Decision: **Approve Phase 3G Closeout only and accept Implementation
+Authorization denial.** Phase 3G review documentation and Human Review Readiness
+are accepted as complete; the filled review board decision selects **Option 1 —
+Approve Phase 3G Closeout and accept implementation authorization denial.**
+**Implementation Authorization remains NO-GO. Phase 3G Implementation,
+Phase 3F Implementation, and Phase 3E Implementation remain NO-GO. Real plugin
+runtime, plugin loader, plugin execution, dynamic loading, local plugin directory
+loading, remote registry, marketplace, external plugin fetch, provider-generated
+plugin, LLM-generated plugin install, shell execution, DB mutation, external HTTP
+execution, production operation, provider write, autonomous write, live provider
+execution, real API key read, external network, any new route, and production
+rollout all remain NO-GO.** **Phase 3H is not authorized by this signoff.** No
+code, route, loader, dynamic loading, runtime, production access, real provider
+request, real API key read, external network call, `~/.hermes` access, production
+`state.db` access, or new route was introduced. Route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched. See
+[phase-3g-human-review-signoff](phase-3g-human-review-signoff.md) and
+[phase-3g-review-board-decision](phase-3g-review-board-decision.md).

@@ -293,6 +293,20 @@ Denial Decision, by explicit user request only.
 Implementation must not start after this closeout.
 ```
 
+## N. Signoff forward pointer (added after closeout)
+
+- Phase 3G Human Review Signoff has been completed.
+- Signoff document: [phase-3g-human-review-signoff.md](phase-3g-human-review-signoff.md).
+- Filled review board decision: [phase-3g-review-board-decision.md](phase-3g-review-board-decision.md).
+- The signoff approves Phase 3G Closeout only and accepts Implementation Authorization denial.
+- The signoff does not authorize implementation, real runtime, production rollout, or new routes.
+
+```
+Phase 3G Closeout:             SIGNED OFF
+Phase 3G Human Review Signoff: ACCEPTED
+Implementation Authorization:  NO-GO
+```
+
 ## Cross-references
 
 - [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)

@@ -166,6 +166,8 @@ Decision signature:
 
 - Closeout / human review readiness documents now exist.
 - The decision remains Implementation Authorization = NO-GO.
+- Phase 3G Human Review Signoff has been completed and accepts this NO-GO decision.
+- Signoff: [phase-3g-human-review-signoff](phase-3g-human-review-signoff.md); filled decision: [phase-3g-review-board-decision](phase-3g-review-board-decision.md).
 
 See [phase-3g-human-review-brief](phase-3g-human-review-brief.md), [phase-3g-human-approver-checklist](phase-3g-human-approver-checklist.md), and [phase-3g-review-board-decision-template](phase-3g-review-board-decision-template.md).
 

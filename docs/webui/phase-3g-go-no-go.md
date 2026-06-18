@@ -23,8 +23,8 @@
 | ---- | ------- |
 | Phase 3G Implementation Authorization Review | GO |
 | Implementation Authorization | NO-GO |
-| Phase 3G Closeout | GO FOR HUMAN REVIEW |
-| Phase 3G Human Review Signoff | NOT STARTED |
+| Phase 3G Closeout | SIGNED OFF |
+| Phase 3G Human Review Signoff | ACCEPTED |
 | Phase 3G Archive / Index | NOT STARTED |
 | Phase 3G Implementation | NO-GO |
 | Phase 3F Implementation | NO-GO |
