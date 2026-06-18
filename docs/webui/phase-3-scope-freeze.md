@@ -264,3 +264,19 @@ untouched. **Phase 3C Implementation was not started.** See
 [phase-3c-planning](phase-3c-planning.md),
 [phase-3c-capability-registry-scope-freeze](phase-3c-capability-registry-scope-freeze.md),
 and [phase-3c-go-no-go](phase-3c-go-no-go.md).
+
+---
+
+## 19. Phase 3C Implementation + 3C-H1 Hardening Update (2026-06-18)
+
+Phase 3C (Static dev-only Capability Registry) was subsequently **implemented**
+(`PHASE-3C-IMPL-001`) within the frozen scope above, and then **hardened** by
+`HARDENING-3C-H1-001` (12 / 12 lenses PASS, P0 = 0, P1 = 0). The hardening
+pass closed one real defect (the forbidden-field scan is now recursive, so a
+nested forbidden field cannot leak through the read model) and bounded every
+boundary with tests, a new smoke profile (Profile Q), and a hardening audit
+script. The freeze holds: no plugin runtime, no dynamic loading, no
+marketplace, no remote registry, no new route by default, no production
+rollout. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D
+(Plugin Runtime) was not started.** See
+[Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md).

@@ -92,3 +92,17 @@ A read-only Dev Console section (`/#/console` → "Capability Registry"):
 - [Phase 3C no dynamic loading policy](phase-3c-no-dynamic-loading-policy.md)
 - [Phase 3C security boundary](phase-3c-capability-registry-security-boundary.md)
 - [Phase 3C test report](phase-3c-capability-registry-test-report.md)
+
+---
+
+## 9. Phase 3C-H1 Hardening Update (2026-06-18)
+
+The registry was hardened by `HARDENING-3C-H1-001` — 12 / 12 lenses PASS,
+P0 = 0, P1 = 0. One real defect was found and fixed minimally: the forbidden-
+field scanner is now **recursive** (a nested forbidden field inside an allowed
+field's value is detected and blocked), and scalar-string fields are type-
+guarded (no nested structure smuggling). All 160 Phase 3C backend tests still
+pass. Coverage added: 8 backend + 6 frontend hardening test files, a new smoke
+profile (Profile Q), and `scripts/run-dev-webui-phase3c-hardening-audit.sh`.
+Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); no new route; production
+untouched. See [Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md).

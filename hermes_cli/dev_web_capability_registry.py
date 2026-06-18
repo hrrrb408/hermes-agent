@@ -91,6 +91,22 @@ DETAIL_FIELDS: tuple[str, ...] = (
     "metadataSchema",
 )
 
+#: Fields that must be scalar strings when present (never a nested dict/list).
+#: A nested structure on one of these fields could smuggle content past the
+#: scalar read model, so validation rejects it fail-closed.
+SCALAR_STRING_FIELDS: tuple[str, ...] = (
+    "displayName",
+    "description",
+    "version",
+    "owner",
+    "blockedReason",
+    "auditEventPrefix",
+    "metadataSchema",
+    "toolBinding",
+    "providerBinding",
+    "workflowBinding",
+)
+
 
 # ---------------------------------------------------------------------------
 # 1. Validation
@@ -153,6 +169,15 @@ def _validate_entry(entry: Any) -> list[CapabilityValidationError]:
     ):
         if bool_field in entry and entry[bool_field] is not None and not is_valid_bool(entry[bool_field]):
             _err(bool_field, f"{bool_field} must be a boolean")
+
+    # Scalar-string fields must never carry a nested dict/list value — a nested
+    # structure could smuggle content (including a forbidden field already
+    # caught above, but also any arbitrary untrusted blob) past the scalar read
+    # model. Defense in depth alongside the recursive forbidden-field scan.
+    for scalar_field in SCALAR_STRING_FIELDS:
+        if scalar_field in entry and entry[scalar_field] is not None:
+            if not isinstance(entry[scalar_field], str):
+                _err(scalar_field, f"{scalar_field} must be a string scalar (no nested structure)")
 
     # First-version invariants.
     if entry.get("devOnly") is not True:
@@ -420,6 +445,7 @@ __all__ = [
     "DEV_ONLY",
     "PRODUCTION_ALLOWED",
     "DETAIL_FIELDS",
+    "SCALAR_STRING_FIELDS",
     "validate_manifest",
     "list_capability_details",
     "get_capability_detail",

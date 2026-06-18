@@ -105,3 +105,20 @@ future Phase 3C execution:
 - [Phase 3C execution brief](phase-3c-execution-brief.md)
 - [Phase 3C prompt draft](phase-3c-prompt.md)
 - [Phase 3 GO / NO-GO](phase-3-go-no-go.md)
+
+---
+
+## 8. Phase 3C Implementation + 3C-H1 Hardening Update (2026-06-18)
+
+Phase 3C (Static dev-only Capability Registry) was subsequently **implemented**
+(`PHASE-3C-IMPL-001`) and then **hardened** by `HARDENING-3C-H1-001` (12 / 12
+lenses PASS, P0 = 0, P1 = 0). The hardening pass closed one real defect
+(recursive forbidden-field scan + scalar type guard) and bounded every boundary
+with tests, a smoke profile (Profile Q), and a hardening audit script. Every
+NO-GO of this decision still holds: no plugin runtime, no dynamic loading, no
+remote registry / marketplace, no provider write, no autonomous write, no
+production rollout, no new route, no `~/.hermes` / production `state.db`
+access. Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D
+(Plugin Runtime) was not started.** See
+[Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md) and
+[Phase 3C implementation](phase-3c-static-capability-registry-implementation.md).

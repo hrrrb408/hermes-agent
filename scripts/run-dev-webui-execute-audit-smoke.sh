@@ -77,9 +77,9 @@ GLOBAL_RESULT=0
 PROFILE="all"
 for arg in "$@"; do
   case "$arg" in
-    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|all) PROFILE="$arg" ;;
+    blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|all) PROFILE="$arg" ;;
     --help|-h)
-      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|all] [--help]"
+      echo "Usage: $0 [blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening|all] [--help]"
       echo ""
       echo "  blocked                              Profile A — blocked_tool_handler_call_not_enabled"
       echo "  completed                            Profile B — clarify_execution_completed"
@@ -97,7 +97,8 @@ for arg in "$@"; do
       echo "  phase3b_live_enablement_boundary     Profile N — Phase 3B-Live-Enablement strict manual live gate (blocked/default; no real key, no real network)"
       echo "  phase3b_live_h1_hardening            Profile O — Phase 3B-Live-Enablement H1 live gate hardening invariants (blocked/default; no real key, no real network)"
       echo "  phase3c_capability_registry_static   Profile P — Phase 3C static dev-only Capability Registry (read-only; no plugin runtime, no dynamic loading, no remote registry, no marketplace)"
-      echo "  all                                  Run Profile A..P (default; never runs the manual one-shot live profile)"
+      echo "  phase3c_h1_capability_registry_hardening Profile Q — Phase 3C-H1 Capability Registry hardening invariants (read-only; no plugin runtime, no dynamic loading, no remote registry, no marketplace; no real key, no real network)"
+      echo "  all                                  Run Profile A..Q (default; never runs the manual one-shot live profile)"
       echo "  --help                               Show this help message"
       exit 0
       ;;
@@ -519,6 +520,27 @@ configure_gates() {
       export HERMES_PROVIDER_MODE=fake
       export EXECUTE_EXPECTED=phase3c_capability_registry_static
       ;;
+    phase3c_h1_capability_registry_hardening)
+      # Phase 3C-H1: Capability Registry HARDENING. Identical read-only gate env
+      # as the Phase 3C boundary profile (read-only execution gates on + FAKE
+      # provider only). The registry is static and descriptive — there is NO
+      # plugin runtime, NO dynamic loading, NO remote registry / marketplace
+      # fetch, NO live provider request, and NO real API key read. The profile
+      # re-asserts the hardening invariants: capability count = 46, validation
+      # valid, frozen policy flags (dynamicLoadingAllowed /
+      # remoteRegistryAllowed / marketplaceAllowed / productionAllowed = false),
+      # registry describes only / does not grant permission, the manual one-shot
+      # live profile listed but disabled, dynamic/remote/marketplace/shell/DB/
+      # external-HTTP/production-operation permanently blocked, UI badges carry
+      # text labels, no secret / callable / production-path leak, and route
+      # governance unchanged. This is NOT the manual one-shot live profile —
+      # that profile is opt-in and NEVER runs in the default `all` target.
+      export HERMES_TOOL_EXECUTION_ENABLED=true
+      export HERMES_AGENT_TOOLS_ENABLED=true
+      export HERMES_TOOL_HANDLER_CALL_ENABLED=true
+      export HERMES_PROVIDER_MODE=fake
+      export EXECUTE_EXPECTED=phase3c_h1_capability_registry_hardening
+      ;;
   esac
 }
 
@@ -648,6 +670,8 @@ run_smoke_for_profile() {
     spec_rel="tests/smoke/phase-3b-live-h1-hardening-smoke.spec.ts"
   elif [ "$profile" = "phase3c_capability_registry_static" ]; then
     spec_rel="tests/smoke/phase-3c-capability-registry-smoke.spec.ts"
+  elif [ "$profile" = "phase3c_h1_capability_registry_hardening" ]; then
+    spec_rel="tests/smoke/phase-3c-h1-capability-registry-hardening-smoke.spec.ts"
   fi
   local spec_path="$WEBUI_DIR/$spec_rel"
   if [ ! -f "$spec_path" ]; then
@@ -691,7 +715,7 @@ run_smoke_for_profile() {
 
 # ── 4. Run the requested profile(s) ──────────────────────────────────────
 case "$PROFILE" in
-  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static)
+  blocked|completed|phase2a|phase2b_provider_fake_roundtrip|phase2c_write_sandbox|phase2c_h1_rollback_and_token_ttl|phase2d_audit_store_indexing|phase2e_frontend_ux_polish|phase2e_h1_frontend_ux_hardening|phase3a_workflow_mvp|phase3a_h1_workflow_hardening|phase3b_provider_readonly_boundary|phase3b_h1_provider_boundary_hardening|phase3b_live_enablement_boundary|phase3b_live_h1_hardening|phase3c_capability_registry_static|phase3c_h1_capability_registry_hardening)
     run_smoke_for_profile "$PROFILE"
     ;;
   all)
@@ -711,6 +735,7 @@ case "$PROFILE" in
     run_smoke_for_profile "phase3b_live_enablement_boundary"
     run_smoke_for_profile "phase3b_live_h1_hardening"
     run_smoke_for_profile "phase3c_capability_registry_static"
+    run_smoke_for_profile "phase3c_h1_capability_registry_hardening"
     ;;
 esac
 

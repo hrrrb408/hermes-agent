@@ -47,3 +47,14 @@ renders with no leak.
 
 Production Gateway PID 28428 unchanged; dev services 127.0.0.1 only; ports
 5180/5181 free before and after; no `~/.hermes` / production `state.db` access.
+
+---
+
+## 6. Phase 3C-H1 Hardening Update (2026-06-18)
+
+`HARDENING-3C-H1-001` added 8 backend hardening test files + 6 frontend
+hardening test files + a new smoke profile (Profile Q,
+`phase3c_h1_capability_registry_hardening`) + the hardening audit script
+`scripts/run-dev-webui-phase3c-hardening-audit.sh`. One real defect was fixed
+(recursive forbidden-field scan + scalar type guard). All Phase 3C tests (160)
+still pass. See [Phase 3C-H1 test report](phase-3c-h1-test-report.md).

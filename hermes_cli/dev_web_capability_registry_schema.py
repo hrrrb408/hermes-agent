@@ -285,14 +285,45 @@ def is_valid_bool(value: Any) -> bool:
     return isinstance(value, bool)
 
 
+def _scan_for_forbidden(node: Any) -> str | None:
+    """Return the first forbidden key found anywhere in ``node`` (recursive).
+
+    Pre-order, depth-first traversal that checks every dict key — at the top
+    level and inside any nested dict / list / tuple value — so a forbidden
+    field cannot be smuggled inside an allowed field's nested value (e.g.
+    inside a ``metadataSchema`` dict). Returns the first forbidden key found,
+    else ``None``. Never raises.
+    """
+    if isinstance(node, dict):
+        for key in node:
+            if key in FORBIDDEN_FIELDS:
+                return str(key)
+        for value in node.values():
+            found = _scan_for_forbidden(value)
+            if found is not None:
+                return found
+    elif isinstance(node, (list, tuple)):
+        for item in node:
+            found = _scan_for_forbidden(item)
+            if found is not None:
+                return found
+    return None
+
+
 def is_forbidden_field_present(entry: Any) -> str | None:
-    """Return the first forbidden field present on ``entry``, else ``None``."""
+    """Return the first forbidden field present anywhere in ``entry``, else ``None``.
+
+    The scan is **recursive**: it walks top-level keys AND any nested dict /
+    list / tuple structure, so a forbidden field (``shellCommand``,
+    ``Authorization``, ``secret``, …) hidden inside an allowed field's value
+    — e.g. ``{"metadataSchema": {"shellCommand": "rm -rf"}}`` — is detected
+    and treated as a fail-closed validation error, never exposed by the read
+    model. Non-dict input returns ``None`` (a non-dict entry is reported by
+    the caller's type check, not here).
+    """
     if not isinstance(entry, dict):
         return None
-    for key in entry:
-        if key in FORBIDDEN_FIELDS:
-            return key
-    return None
+    return _scan_for_forbidden(entry)
 
 
 def is_terminal_forbidden(permission_class: str) -> bool:
@@ -332,6 +363,7 @@ __all__ = [
     "is_valid_capability_id",
     "is_valid_bool",
     "is_forbidden_field_present",
+    "_scan_for_forbidden",
     "is_terminal_forbidden",
     "is_executable_status",
 ]

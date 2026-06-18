@@ -157,3 +157,21 @@ runtime, external plugin loading, remote registry / marketplace, production
 rollout, provider write, and autonomous write. **Phase 3C Implementation was not
 started.** See [phase-3c-go-no-go](phase-3c-go-no-go.md) and
 [phase-3c-planning](phase-3c-planning.md).
+
+---
+
+## 10. Phase 3C Implementation + 3C-H1 Hardening Update (2026-06-18)
+
+Phase 3C (Static dev-only Capability Registry) was subsequently **implemented**
+(`PHASE-3C-IMPL-001`) and then **hardened** by `HARDENING-3C-H1-001` (12 / 12
+lenses PASS, P0 = 0, P1 = 0). The hardening pass closed one real defect
+(recursive forbidden-field scan + scalar type guard) and bounded every boundary
+with tests, a new smoke profile (Profile Q,
+`phase3c_h1_capability_registry_hardening`), and the hardening audit script
+`scripts/run-dev-webui-phase3c-hardening-audit.sh`. Every Phase 3 / 3C NO-GO
+still holds: no plugin runtime, no dynamic loading, no remote registry /
+marketplace, no provider write, no autonomous write, no production rollout, no
+new route, no `~/.hermes` / production `state.db` access. Route governance
+unchanged (34 / 34 / 5 / 0 / 1 / 1). **Phase 3D (Plugin Runtime) was not
+started.** See [Phase 3C-H1 hardening](phase-3c-h1-capability-registry-hardening.md)
+and [Phase 3C implementation](phase-3c-static-capability-registry-implementation.md).

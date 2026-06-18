@@ -1085,3 +1085,23 @@ rejected by validation; the registry is read-only and no-leak. See
 [phase-3c-static-capability-registry-implementation](phase-3c-static-capability-registry-implementation.md),
 [phase-3c-capability-registry-security-boundary](phase-3c-capability-registry-security-boundary.md),
 and [phase-3c-go-no-go](phase-3c-go-no-go.md).
+
+---
+
+## Phase 3C-H1 Hardening Update (2026-06-18)
+
+`HARDENING-3C-H1-001` hardened the static Capability Registry through a 12-lens
+review (12 / 12 PASS, P0 = 0, P1 = 0). **One real defect was found and closed:**
+the forbidden-field scanner was shallow, so a forbidden field nested inside an
+allowed field's value (e.g. `{"metadataSchema": {"shellCommand": ...}}`) could
+pass validation and leak through the read model. The scan is now **recursive**
+(top-level keys + any nested dict / list / tuple), and scalar-string fields are
+type-guarded against nested-structure smuggling. CAP-P0-10 (secret / callable /
+path leak in registry or UI) is reinforced: three independent layers now
+enforce the forbidden-field boundary — the recursive scan, the scalar type
+guard, and the `DETAIL_FIELDS` read-model allowlist. All 160 Phase 3C backend
+tests still pass; 8 backend + 6 frontend hardening test files, a new smoke
+profile (Profile Q), and `scripts/run-dev-webui-phase3c-hardening-audit.sh`
+were added. No new P0/P1 risk introduced. **Phase 3D (Plugin Runtime) not
+started.** See [phase-3c-h1-capability-registry-hardening](phase-3c-h1-capability-registry-hardening.md)
+and [phase-3c-h1-forbidden-fields-hardening](phase-3c-h1-forbidden-fields-hardening.md).

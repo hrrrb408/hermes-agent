@@ -69,3 +69,17 @@ The Production Gateway (PID 28428) is never touched. The dev services bind to
 - [No dynamic loading policy](phase-3c-no-dynamic-loading-policy.md)
 - [Audit policy](phase-3c-capability-audit-policy.md)
 - [Risk register](phase-3c-security-risk-register.md)
+
+---
+
+## 8. Phase 3C-H1 Hardening Update (2026-06-18)
+
+`HARDENING-3C-H1-001` closed one boundary gap: the forbidden-field scan is now
+**recursive**. A forbidden field nested inside an allowed field's value
+(`{"metadataSchema": {"shellCommand": ...}}`) is detected and the entry is
+blocked fail-closed — it can no longer leak through the read model. Scalar-
+string fields are additionally type-guarded so no nested structure (forbidden
+or not) smuggles past the scalar read model. Three independent layers now
+enforce the forbidden-field boundary: the recursive scan, the scalar type
+guard, and the `DETAIL_FIELDS` read-model allowlist. See
+[forbidden-fields hardening](phase-3c-h1-forbidden-fields-hardening.md).

@@ -2326,3 +2326,29 @@ production `state.db` access was introduced. Route governance unchanged
 (34/34/5/0/1/1). Production Gateway PID `28428` untouched. See
 [phase-3c-static-capability-registry-implementation](phase-3c-static-capability-registry-implementation.md)
 and [phase-3c-capability-registry-security-boundary](phase-3c-capability-registry-security-boundary.md).
+
+---
+
+## Phase 3C-H1 Status Update (2026-06-18)
+
+Phase 3C-H1 — **Static Capability Registry Hardening** — is **complete and
+pushed** (`chore(webui): harden static capability registry`). It is a
+hardening pass (`HARDENING-3C-H1-001`), not Phase 3D — 12 / 12 lenses PASS,
+P0 = 0, P1 = 0.
+
+One real defect was found and fixed minimally: the forbidden-field scanner is
+now **recursive** (a forbidden field nested inside an allowed field's value —
+e.g. `{"metadataSchema": {"shellCommand": ...}}` — is detected and blocked
+fail-closed instead of leaking through the read model), and scalar-string
+fields are type-guarded against nested-structure smuggling.
+
+Deliverables: 8 backend hardening test files, 6 frontend hardening test files,
+a new smoke profile (`phase3c_h1_capability_registry_hardening`, Profile Q,
+included in `all`), and `scripts/run-dev-webui-phase3c-hardening-audit.sh`.
+All 160 Phase 3C backend tests still pass. No plugin runtime, dynamic loading,
+remote registry, marketplace, external plugin fetch, provider write,
+autonomous write, live provider request, real API-key read, external network,
+production rollout, `~/.hermes` access, or production `state.db` access was
+introduced. Route governance unchanged (34/34/5/0/1/1). Production Gateway PID
+`28428` untouched. **Phase 3D (Plugin Runtime) not started.** See
+[phase-3c-h1-capability-registry-hardening](phase-3c-h1-capability-registry-hardening.md).
