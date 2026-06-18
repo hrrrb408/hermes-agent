@@ -293,6 +293,12 @@ Implementation must not start.
 > [phase-3f-planning.md](phase-3f-planning.md) and
 > [phase-3f-go-no-go.md](phase-3f-go-no-go.md).
 
+> Execution note (updated 2026-06-19): Phase 3F Planning has progressed to
+> closeout / human review readiness (`PHASE-3F-PLANNING-CLOSEOUT-001`,
+> docs-only). This does **not** change the authorization boundary.
+> Implementation remains NO-GO. See
+> [phase-3f-planning-closeout.md](phase-3f-planning-closeout.md).
+
 - [Phase 3F boundary and inherited constraints](phase-3f-boundary-and-inherited-constraints.md) — companion boundary document for a future Phase 3F Planning task.
 - [Phase 3E archive index](phase-3e-archive-index.md) — closed and archived Phase 3E record; does not authorize Phase 3F.
 - [Phase 3E human review signoff](phase-3e-human-review-signoff.md)

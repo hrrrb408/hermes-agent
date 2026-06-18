@@ -62,6 +62,12 @@ Human Review Signoff  = NOT STARTED
 Implementation        = NO-GO
 ```
 
+> Execution note (added 2026-06-19): Human review readiness docs now exist —
+> [phase-3f-human-review-brief](phase-3f-human-review-brief.md),
+> [phase-3f-human-approver-checklist](phase-3f-human-approver-checklist.md), and
+> [phase-3f-review-board-decision-template](phase-3f-review-board-decision-template.md).
+> Human Review Signoff is still NOT STARTED.
+
 ## Cross-references
 
 - [Phase 3F planning](phase-3f-planning.md)

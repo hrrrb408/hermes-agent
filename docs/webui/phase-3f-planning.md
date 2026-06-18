@@ -200,6 +200,12 @@ Implementation must not start after this task.
 See [phase-3f-go-no-go](phase-3f-go-no-go.md) and
 [phase-3f-human-review-plan](phase-3f-human-review-plan.md).
 
+> Execution note (added 2026-06-19): Phase 3F Planning Closeout / Human Review
+> Readiness has now been prepared. Planning remains docs-only. Implementation
+> remains NO-GO. See
+> [phase-3f-planning-closeout](phase-3f-planning-closeout.md) and
+> [phase-3f-go-no-go](phase-3f-go-no-go.md).
+
 ## Cross-references
 
 - [Phase 3F planning authorization](phase-3f-planning-authorization.md)
