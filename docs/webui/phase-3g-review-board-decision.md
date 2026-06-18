@@ -167,6 +167,7 @@ Decision signature:
 ## Cross-references
 
 - [Phase 3G human review signoff](phase-3g-human-review-signoff.md) — the formal signoff this decision records.
+- [Phase 3G archive index](phase-3g-archive-index.md) — preserves the selected denial decision and NO-GO boundaries.
 - [Phase 3G review board decision template](phase-3g-review-board-decision-template.md)
 - [Phase 3G closeout](phase-3g-closeout.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)

@@ -329,6 +329,7 @@ Implementation must not start after this signoff.
 ## Cross-references
 
 - [Phase 3G review board decision](phase-3g-review-board-decision.md) — the filled decision record for this signoff.
+- [Phase 3G archive index](phase-3g-archive-index.md) — records the final Phase 3G documentation package; does not authorize implementation.
 - [Phase 3G closeout](phase-3g-closeout.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)
 - [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)

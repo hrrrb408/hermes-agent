@@ -563,3 +563,19 @@ request, real API key read, external network call, `~/.hermes` access, productio
 (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched. See
 [phase-3g-human-review-signoff](phase-3g-human-review-signoff.md) and
 [phase-3g-review-board-decision](phase-3g-review-board-decision.md).
+
+## 27. Phase 3G Archive / Index Update (2026-06-19)
+
+Phase 3G is **archived** as a completed docs-only implementation authorization
+review, closeout, and authorization-denial signoff package
+(`PHASE-3G-ARCHIVE-INDEX-001`, docs-only). The archive/index freezes the full
+Phase 3G documentation set, commit chain, final GO / NO-GO, signoff state,
+route governance, production safety, deferred / not-authorized list, and
+next-phase boundary. The archive preserves **Implementation Authorization =
+NO-GO.** **Phase 3G Archive / Index: COMPLETE. Phase 3H: NOT AUTHORIZED BY THIS
+DOCUMENT. Phase 3G Implementation, Phase 3F Implementation, and Phase 3E
+Implementation remain NO-GO. Real plugin runtime remains NO-GO. Production
+rollout remains NO-GO. New route remains NO-GO.** No code, route, loader,
+dynamic loading, runtime, production access, or new route was introduced. Route
+governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428`
+untouched. See [phase-3g-archive-index](phase-3g-archive-index.md).

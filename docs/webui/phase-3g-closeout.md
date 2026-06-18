@@ -309,6 +309,7 @@ Implementation Authorization:  NO-GO
 
 ## Cross-references
 
+- [Phase 3G archive index](phase-3g-archive-index.md) — Phase 3G closeout and signoff have now been archived.
 - [Phase 3G implementation authorization review](phase-3g-implementation-authorization-review.md)
 - [Phase 3G implementation authorization decision](phase-3g-implementation-authorization-decision.md)
 - [Phase 3G readiness evidence review](phase-3g-readiness-evidence-review.md)

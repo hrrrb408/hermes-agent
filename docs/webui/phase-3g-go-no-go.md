@@ -25,7 +25,8 @@
 | Implementation Authorization | NO-GO |
 | Phase 3G Closeout | SIGNED OFF |
 | Phase 3G Human Review Signoff | ACCEPTED |
-| Phase 3G Archive / Index | NOT STARTED |
+| Phase 3G Archive / Index | COMPLETE |
+| Phase 3H | NOT AUTHORIZED BY THIS DOCUMENT |
 | Phase 3G Implementation | NO-GO |
 | Phase 3F Implementation | NO-GO |
 | Phase 3E Implementation | NO-GO |
@@ -104,7 +105,10 @@ Any prohibited surface attempting to go live ⇒ STOP.
 ## D. Next gate
 
 ```
-Phase 3G Human Review Signoff / Authorization Denial Decision — by explicit user request only.
+Phase 3G is archived (Archive / Index = COMPLETE).
+Phase 3H is NOT AUTHORIZED BY THIS DOCUMENT.
+Any future Phase 3H Sandbox Proof Planning Authorization requires an explicit
+user request and must be docs-only.
 Implementation must not start.
 ```
 
