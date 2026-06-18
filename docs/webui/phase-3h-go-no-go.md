@@ -2,13 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Phase | 3H (Sandbox Proof Planning Authorization) |
+| Phase | 3H (Sandbox Proof Planning) |
 | Title | Real Plugin Runtime — Phase 3H GO / NO-GO |
 | Decision ID | `PHASE-3H-GO-NOGO-001` |
 | Date | 2026-06-19 |
 | Branch | `dev-huangruibang` |
-| Source commit | `7d0af37ef99ba5ddc79775c941305c7625c0476a` |
-| Status | Frozen (docs-only planning authorization; Phase 3H Sandbox Proof Planning **not started**) |
+| Source commit | `8fdf49d8d509ed6091e47894eea011f1bd7781df` |
+| Status | Updated (docs-only planning; Phase 3H Sandbox Proof Planning **GO**; implementation still **NO-GO**) |
 
 > This document is docs-only.
 > This document records Phase 3H GO/NO-GO state only.
@@ -24,7 +24,7 @@
 | Item | Verdict |
 | ---- | ------- |
 | Phase 3H Sandbox Proof Planning Authorization | GO |
-| Phase 3H Sandbox Proof Planning | NOT STARTED |
+| Phase 3H Sandbox Proof Planning | GO |
 | Phase 3H Closeout | NOT STARTED |
 | Phase 3H Human Review Signoff | NOT STARTED |
 | Phase 3H Archive / Index | NOT STARTED |
@@ -56,25 +56,25 @@
 | Production rollout | NO-GO |
 
 ```
-The single GO is the Phase 3H Sandbox Proof Planning Authorization.
-It permits only a future docs-only planning task to be requested separately.
+The two GOs are the Phase 3H Sandbox Proof Planning Authorization and the Phase 3H Sandbox
+Proof Planning itself.
+The planning is docs-only and resolves no P0 gate.
 It is not an authorization to implement, run, route, or roll out anything.
 ```
 
 ## B. GO conditions
 
-Only the authorization is GO:
-
 ```
 Phase 3H Sandbox Proof Planning Authorization = GO
+Phase 3H Sandbox Proof Planning = GO
 ```
 
-This permits only a future separately-requested docs-only planning task.
+This permits docs-only planning only. It is "ready" only for a future docs-only closeout /
+human review, not for implementation.
 
 ## C. NOT STARTED conditions
 
 ```
-Phase 3H Sandbox Proof Planning = NOT STARTED
 Phase 3H Closeout = NOT STARTED
 Phase 3H Human Review Signoff = NOT STARTED
 Phase 3H Archive / Index = NOT STARTED
@@ -120,12 +120,25 @@ Any prohibited surface attempting to go live ⇒ STOP.
 ## E. Next gate
 
 ```
-Phase 3H Sandbox Proof Planning — docs-only, explicit user request only.
+Phase 3H Closeout / Human Review Readiness — docs-only, explicit user request only.
 Implementation must not start.
 ```
 
+```
+24 of 24 P0 gates remain unresolved.
+This planning resolves no P0 gate.
+Any unresolved P0 means STOP toward implementation.
+```
+
+## F. Planning reference
+
+The Phase 3H Sandbox Proof Planning documentation set is recorded in
+[phase-3h-sandbox-proof-planning](phase-3h-sandbox-proof-planning.md). It is docs-only and
+authorizes no implementation.
+
 ## Cross-references
 
+- [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md)
 - [Phase 3H sandbox proof planning authorization](phase-3h-sandbox-proof-planning-authorization.md)
 - [Phase 3H boundary and inherited constraints](phase-3h-boundary-and-inherited-constraints.md)
 - [Phase 3H prompt](phase-3h-prompt.md)

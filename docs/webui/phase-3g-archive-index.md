@@ -323,9 +323,15 @@ Implementation must not start from this archive/index document.
 
 ```
 Phase 3H Sandbox Proof Planning Authorization:  created (docs-only)
+Phase 3H Sandbox Proof Planning:                exists as a later docs-only planning task
 Phase 3G archive authorization of Phase 3H:     none
+Phase 3G archive conclusions changed by Phase 3H planning: none
 Implementation authorization:                   NO-GO
 ```
+
+- Phase 3H Sandbox Proof Planning exists as a later docs-only planning task.
+- It does not change Phase 3G archive conclusions.
+- Implementation Authorization remains NO-GO.
 
 See [phase-3h-sandbox-proof-planning-authorization](phase-3h-sandbox-proof-planning-authorization.md),
 [phase-3h-go-no-go](phase-3h-go-no-go.md), and

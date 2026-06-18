@@ -353,6 +353,7 @@ no production rollout.
 
 ## Cross-references
 
+- [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md) — the Phase 3H Sandbox Proof Planning task executed under this authorization (docs-only). It does not change any authorization boundary; sandbox proof implementation remains NO-GO; Implementation Authorization remains NO-GO.
 - [Phase 3H boundary and inherited constraints](phase-3h-boundary-and-inherited-constraints.md) — companion boundary document for a future Phase 3H Sandbox Proof Planning task.
 - [Phase 3H GO / NO-GO](phase-3h-go-no-go.md) — Phase 3H GO / NO-GO state.
 - [Phase 3H prompt](phase-3h-prompt.md) — archived authorization prompt.

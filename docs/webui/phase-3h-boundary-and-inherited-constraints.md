@@ -173,6 +173,7 @@ Phase 3H Implementation remains NO-GO.
 
 ## Cross-references
 
+- [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md) — the Phase 3H Sandbox Proof Planning task (docs-only). It respects every boundary recorded here and changes none.
 - [Phase 3H sandbox proof planning authorization](phase-3h-sandbox-proof-planning-authorization.md) — the authorization that permits a future docs-only Phase 3H Sandbox Proof Planning task.
 - [Phase 3H GO / NO-GO](phase-3h-go-no-go.md)
 - [Phase 3G archive index](phase-3g-archive-index.md)
