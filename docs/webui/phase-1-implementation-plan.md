@@ -1,5 +1,28 @@
 # Phase 1 Implementation Plan
 
+> **Phase 3D Closeout Update (2026-06-19):** Phase 3D is formally **closed** as a
+> static dev-only Plugin Descriptor Registry milestone (`PHASE-3D-CLOSEOUT-001`,
+> docs-only). After Planning, Planning Closeout, Implementation
+> (`PHASE-3D-IMPL-001`), and the H1 12-lens hardening
+> (`HARDENING-3D-H1-001`), the registry is descriptor-only, disabled-by-default,
+> capability-bound, read-only, and dev-only — 12 descriptors (3 visible / 4
+> disabled / 5 blocked) binding only to existing Phase 3C capabilityIds,
+> exposed via the existing `/status` response only. **No** plugin runtime,
+> plugin loader, plugin execution, dynamic loading, local plugin directory
+> loading, remote registry, marketplace, external plugin fetch,
+> provider-generated plugin, LLM-generated plugin install, shell / DB /
+> external-HTTP / production execution, provider write, autonomous write, live
+> provider request, real API-key read, external network, production rollout,
+> new HTTP route, `~/.hermes` access, or production `state.db` access was
+> introduced. P0 = 0; P1 = 0 (Phase 3D and Phase 3D-H1 each introduced zero).
+> Route governance unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID
+> `28428` untouched. **Real plugin runtime execution remains NO-GO. Phase 3E
+> Planning is CONDITIONAL GO (explicit user approval only); Phase 3E
+> Implementation is NO-GO by default.** See
+> [phase-3d-closeout](phase-3d-closeout.md),
+> [phase-3d-release-readiness](phase-3d-release-readiness.md), and
+> [phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).
+
 > **Phase 3D Planning Update (2026-06-18):** After Phase 3C closed, the docs-only
 > **Phase 3D Planning** (`PHASE-3D-PLANNING-001`) froze the architecture of a
 > future Plugin Runtime — a **dev-only, static, reviewed, capability-bound**

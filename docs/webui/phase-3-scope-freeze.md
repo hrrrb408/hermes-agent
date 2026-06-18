@@ -367,3 +367,21 @@ LLM-generated plugin install. Route governance unchanged (34 / 34 / 5 / 0 / 1 /
 1); Production Gateway PID `28428` untouched. See
 [phase-3d-h1-plugin-descriptor-registry-hardening](phase-3d-h1-plugin-descriptor-registry-hardening.md)
 and [phase-3d-h1-test-report](phase-3d-h1-test-report.md).
+
+## 23. Phase 3D Closeout Update (2026-06-19)
+
+Phase 3D is formally **closed** as a static dev-only Plugin Descriptor Registry
+milestone (`PHASE-3D-CLOSEOUT-001`, docs-only). The scope freeze held end to
+end: descriptor-only, disabled-by-default, capability-bound, read-only,
+dev-only; no plugin runtime, no loader, no dynamic loading, no local plugin
+directory loading, no remote registry, no marketplace, no external plugin
+fetch, no provider-generated plugin, no LLM-generated plugin install, no shell /
+DB / external-HTTP / production execution, no provider write, no autonomous
+write, no new route by default, no production rollout. P0 = 0; P1 = 0 (Phase 3D
+and Phase 3D-H1 each introduced zero). Route governance unchanged (34 / 34 / 5
+/ 0 / 1 / 1); Production Gateway PID `28428` untouched. **Real plugin runtime
+execution remains NO-GO. Phase 3E Planning is CONDITIONAL GO (explicit user
+approval only); Phase 3E Implementation is NO-GO by default.** See
+[phase-3d-closeout](phase-3d-closeout.md),
+[phase-3d-final-acceptance](phase-3d-final-acceptance.md), and
+[phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).

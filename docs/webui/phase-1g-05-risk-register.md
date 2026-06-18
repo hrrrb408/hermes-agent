@@ -1,5 +1,22 @@
 # Phase 1G-05: Risk Register
 
+> **Phase 3D Closeout Update (2026-06-19):** Phase 3D is formally **closed** as a
+> static dev-only Plugin Descriptor Registry milestone (`PHASE-3D-CLOSEOUT-001`,
+> docs-only). After Planning Closeout, Implementation (`PHASE-3D-IMPL-001`), and
+> the H1 12-lens hardening (`HARDENING-3D-H1-001`), the registry is
+> descriptor-only, disabled-by-default, capability-bound, read-only, and
+> dev-only. No plugin runtime, loader, dynamic loading, local plugin directory
+> loading, remote registry, marketplace, external plugin fetch,
+> provider-generated plugin, LLM-generated plugin install, shell / DB /
+> external-HTTP / production execution, provider write, autonomous write, new
+> route, `~/.hermes` access, or production `state.db` access was introduced. P0 =
+> 0; P1 = 0 (Phase 3D and Phase 3D-H1 each introduced zero); the Phase 3D
+> P0/P1 stop conditions live in [phase-3d-risk-register](phase-3d-risk-register.md)
+> and are all NOT introduced (see [phase-3d-risk-closure-after-h1](phase-3d-risk-closure-after-h1.md)).
+> This register remains the historical Phase 1G-05 baseline; nothing here is
+> relaxed. Route governance (34 / 34 / 5 / 0 / 1 / 1) and Production Gateway PID
+> `28428` are unchanged. Real plugin runtime execution remains NO-GO.
+
 > **Phase 2A Update:** The five Phase 2A planning risks (R2A-01..R2A-05) are
 > mitigated by the Phase 2A implementation. R2A-01/R2A-02: every added tool was
 > per-tool audited + individually authorized + read-only proven (bounded

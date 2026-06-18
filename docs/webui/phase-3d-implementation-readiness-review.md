@@ -78,3 +78,16 @@ bounded implementation: the static dev-only plugin descriptor registry skeleton
 deferred execution surfaces remain NO-GO. All gates pass; route governance
 unchanged (34/34/5/0/1/1); Production Gateway PID `28428` untouched. See
 [phase-3d-static-plugin-descriptor-registry-implementation](phase-3d-static-plugin-descriptor-registry-implementation.md).
+
+## Update — Phase 3D Closeout COMPLETE
+
+Phase 3D is formally **closed** as a static dev-only Plugin Descriptor Registry
+milestone (`PHASE-3D-CLOSEOUT-001`, docs-only). The readiness arc is complete:
+Planning → Planning Closeout → Implementation → H1 Hardening → Closeout. The
+15 preconditions held throughout (P0 = 0, P1 = 0, route governance 34/34/5/0/1/1,
+Production PID `28428` unchanged, no `~/.hermes` / production `state.db`
+access). **Real plugin runtime execution remains NO-GO. Phase 3E Planning is
+CONDITIONAL GO (explicit user approval only); Phase 3E Implementation is NO-GO
+by default.** See [phase-3d-closeout](phase-3d-closeout.md),
+[phase-3d-release-readiness](phase-3d-release-readiness.md), and
+[phase-3d-phase-3e-entry-criteria](phase-3d-phase-3e-entry-criteria.md).

@@ -65,3 +65,19 @@ LLM-generated plugin install. Route governance unchanged (34 / 34 / 5 / 0 / 1 /
 1); Production Gateway PID `28428` untouched. See
 [phase-3d-h1-plugin-descriptor-registry-hardening](phase-3d-h1-plugin-descriptor-registry-hardening.md)
 and [phase-3d-h1-test-report](phase-3d-h1-test-report.md).
+
+## Update — Phase 3D Closeout COMPLETE
+
+Phase 3D is formally **closed** as a static dev-only Plugin Descriptor Registry
+milestone (`PHASE-3D-CLOSEOUT-001`, docs-only). The frozen boundary above held
+end to end; the final security boundary is recorded in
+[phase-3d-final-security-boundary-after-h1](phase-3d-final-security-boundary-after-h1.md).
+No plugin runtime, loader, dynamic loading, local plugin directory loading,
+remote registry, marketplace, external plugin fetch, provider-generated plugin,
+LLM-generated plugin install, shell / DB / external-HTTP / production execution,
+provider write, autonomous write, new route, `~/.hermes` access, or production
+`state.db` access was introduced. P0 = 0; P1 = 0. Route governance unchanged
+(34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched. Real
+plugin runtime execution remains NO-GO. See
+[phase-3d-closeout](phase-3d-closeout.md) and
+[phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).

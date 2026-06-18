@@ -72,3 +72,15 @@ production rollout. No new route.
 
 The registry describes descriptors only; it does not grant permission and does not
 execute a plugin.
+
+## Update — Phase 3D Closeout COMPLETE
+
+Phase 3D is formally **closed** as a static dev-only Plugin Descriptor Registry
+milestone (`PHASE-3D-CLOSEOUT-001`, docs-only) — including the 12-lens
+hardening documented here. All 12 lenses remain PASS; P0 = 0; P1 = 0. The
+final test-gate and production-isolation evidence is consolidated in
+[phase-3d-test-gate-summary-after-h1](phase-3d-test-gate-summary-after-h1.md)
+and [phase-3d-production-isolation-summary](phase-3d-production-isolation-summary.md).
+Real plugin runtime execution remains NO-GO. See
+[phase-3d-closeout](phase-3d-closeout.md) and
+[phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).

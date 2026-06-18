@@ -321,3 +321,17 @@ LLM-generated plugin install. Route governance unchanged (34 / 34 / 5 / 0 / 1 /
 1); Production Gateway PID `28428` untouched. See
 [phase-3d-h1-plugin-descriptor-registry-hardening](phase-3d-h1-plugin-descriptor-registry-hardening.md)
 and [phase-3d-h1-test-report](phase-3d-h1-test-report.md).
+
+## Update — Phase 3D Closeout COMPLETE
+
+Phase 3D is formally **closed** as a static dev-only Plugin Descriptor Registry
+milestone (`PHASE-3D-CLOSEOUT-001`, docs-only). Final risk closure is recorded
+in [phase-3d-risk-closure-after-h1](phase-3d-risk-closure-after-h1.md):
+**P0 introduced by Phase 3D = 0; P1 = 0; P0 introduced by Phase 3D-H1 = 0; P1 =
+0.** All 22 P0 stop conditions (PLUG-P0-01 … PLUG-P0-22) were NOT introduced;
+all 8 P1 push-gates (PLUG-P1-01 … PLUG-P1-08) are closed; P2 deferred items are
+runtime-related only (intentional deferrals, not defects). Route governance
+unchanged (34 / 34 / 5 / 0 / 1 / 1); Production Gateway PID `28428` untouched.
+Real plugin runtime execution remains NO-GO. See
+[phase-3d-closeout](phase-3d-closeout.md) and
+[phase-3d-real-runtime-no-go](phase-3d-real-runtime-no-go.md).
