@@ -84,8 +84,24 @@ A future Phase 3H signoff must not authorize production rollout.
 Implementation Authorization remains NO-GO unless separately and explicitly authorized.
 ```
 
+## F. Closeout readiness artifacts
+
+The Phase 3H Closeout / Human Review Readiness has prepared the reviewer-facing artifacts:
+
+- [phase-3h-closeout.md](phase-3h-closeout.md) — the closeout / human review readiness document.
+- [phase-3h-human-review-brief.md](phase-3h-human-review-brief.md) — the reviewer brief.
+- [phase-3h-human-approver-checklist.md](phase-3h-human-approver-checklist.md) — the approver checklist.
+- [phase-3h-review-board-decision-template.md](phase-3h-review-board-decision-template.md) — the review board decision template (blank).
+
+- Human Review Signoff remains NOT STARTED.
+- These artifacts prepare review only; none performs a signoff or authorizes implementation.
+
 ## Cross-references
 
+- [Phase 3H closeout](phase-3h-closeout.md)
+- [Phase 3H human review brief](phase-3h-human-review-brief.md)
+- [Phase 3H human approver checklist](phase-3h-human-approver-checklist.md)
+- [Phase 3H review board decision template](phase-3h-review-board-decision-template.md)
 - [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md)
 - [Phase 3H GO / NO-GO](phase-3h-go-no-go.md)
 - [Phase 3H risk register](phase-3h-risk-register.md)

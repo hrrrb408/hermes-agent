@@ -215,19 +215,27 @@ Any unresolved P0 means STOP toward implementation.
 The next recommended task is:
 
 ```
-Phase 3H Closeout / Human Review Readiness — docs-only
+Phase 3H Human Review Signoff / Planning Closeout Decision — docs-only
 ```
 
-That task requires an explicit user request. It would prepare a closeout and human-review
-readiness package for this planning, and even then it must remain docs-only.
+That task requires an explicit user request.
 
 ```
 Implementation must not start after this planning.
-This planning is "ready" only for a future docs-only closeout / human review, not for implementation.
+This planning is "ready" only for a human signoff review, not for implementation.
 ```
+
+### Closeout readiness update
+
+- Phase 3H Closeout / Human Review Readiness has been prepared as a docs-only closeout.
+- Planning remains docs-only.
+- Sandbox Proof Implementation remains NO-GO.
+- Implementation Authorization remains NO-GO.
+- See [phase-3h-closeout](phase-3h-closeout.md) and [phase-3h-go-no-go](phase-3h-go-no-go.md).
 
 ## Cross-references
 
+- [Phase 3H closeout](phase-3h-closeout.md)
 - [Phase 3H sandbox proof planning authorization](phase-3h-sandbox-proof-planning-authorization.md)
 - [Phase 3H boundary and inherited constraints](phase-3h-boundary-and-inherited-constraints.md)
 - [Phase 3H GO / NO-GO](phase-3h-go-no-go.md)
