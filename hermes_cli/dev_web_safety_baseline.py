@@ -66,8 +66,11 @@ ALLOWED_SOURCE_ROOT: Path = Path(__file__).resolve().parents[1]
 ALLOWED_HERMES_HOME: Path = Path("/Users/huangruibang/Code/hermes-home-dev").resolve()
 
 #: Production ``HERMES_HOME`` — referenced ONLY as a denial target. Never
-#: opened, stated, read, or written by anything in this module.
-PRODUCTION_HERMES_HOME: Path = Path("/Users/huangruibang/.hermes").resolve()
+#: opened, stated, read, or written by anything in this module. Deliberately
+#: NOT ``.resolve()``-d: resolving would stat/realpath the production directory
+#: at import time (a forbidden metadata access); the literal path is all the
+#: string-only evaluators need.
+PRODUCTION_HERMES_HOME: Path = Path("/Users/huangruibang/.hermes")
 
 #: The only bind host dev services may ever use.
 ALLOWED_BIND_HOST: str = "127.0.0.1"

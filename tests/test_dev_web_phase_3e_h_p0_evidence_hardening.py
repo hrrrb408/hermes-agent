@@ -975,6 +975,7 @@ SANDBOX_MODULES = {
     "dev_web_sandbox_policy",
     "dev_web_sandbox_audit",
     "dev_web_safety_baseline",
+    "dev_web_p0_evidence",
 }
 
 
