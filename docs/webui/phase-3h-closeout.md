@@ -328,6 +328,7 @@ Implementation must not start after this closeout.
 
 ## Cross-references
 
+- [Phase 3H archive index](phase-3h-archive-index.md) — Phase 3H closeout and signoff have been archived.
 - [Phase 3H human review signoff](phase-3h-human-review-signoff.md)
 - [Phase 3H review board decision](phase-3h-review-board-decision.md)
 - [Phase 3H sandbox proof planning](phase-3h-sandbox-proof-planning.md)

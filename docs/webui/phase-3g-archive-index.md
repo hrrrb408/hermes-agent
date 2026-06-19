@@ -326,14 +326,16 @@ Phase 3H Sandbox Proof Planning Authorization:  created (docs-only)
 Phase 3H Sandbox Proof Planning:                exists as a later docs-only planning task
 Phase 3H Closeout / Human Review Readiness:     exists as a later docs-only closeout
 Phase 3H Human Review Signoff:                  exists as a later docs-only signoff
+Phase 3H Archive / Index:                       exists as a later docs-only archive
 Phase 3G archive authorization of Phase 3H:     none
-Phase 3G archive conclusions changed by Phase 3H planning / closeout / signoff: none
+Phase 3G archive conclusions changed by Phase 3H planning / closeout / signoff / archive: none
 Implementation authorization:                   NO-GO
 ```
 
 - Phase 3H Sandbox Proof Planning exists as a later docs-only planning task.
 - Phase 3H Closeout / Human Review Readiness exists as a later docs-only closeout.
 - Phase 3H Human Review Signoff / Planning Closeout Decision exists as a later docs-only signoff.
+- Phase 3H Archive / Index exists as a later docs-only archive.
 - None of these changes Phase 3G archive conclusions.
 - Implementation Authorization remains NO-GO.
 

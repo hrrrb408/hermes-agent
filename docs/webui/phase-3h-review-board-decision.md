@@ -173,6 +173,7 @@ It authorizes no implementation, runtime, route, or production rollout.
 
 ## Cross-references
 
+- [Phase 3H archive index](phase-3h-archive-index.md) — Phase 3H Archive / Index preserves the selected Option 1 decision. It does not authorize Option 4 or Option 5. It does not authorize Phase 3I.
 - [Phase 3H human review signoff](phase-3h-human-review-signoff.md) — the formal signoff record this decision supports.
 - [Phase 3H review board decision template](phase-3h-review-board-decision-template.md) — the blank template this fills.
 - [Phase 3H closeout](phase-3h-closeout.md)

@@ -390,6 +390,7 @@ Implementation must not start after this signoff.
 
 ## Cross-references
 
+- [Phase 3H archive index](phase-3h-archive-index.md) — Phase 3H Archive / Index has been created and preserves this signoff decision. Sandbox Proof Implementation remains NO-GO; Implementation Authorization remains NO-GO.
 - [Phase 3H review board decision](phase-3h-review-board-decision.md) — the filled decision record (Option 1).
 - [Phase 3H closeout](phase-3h-closeout.md)
 - [Phase 3H human review brief](phase-3h-human-review-brief.md)

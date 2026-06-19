@@ -271,8 +271,53 @@ examples, and no shell scripts.
 It authorizes no implementation, runtime, route, Phase 3I, or production rollout.
 ```
 
+## 14. Phase 3H Archive / Index Update task summary (appended)
+
+The Phase 3H Archive / Index Update task was subsequently executed as the final Phase 3H
+documentation closure step. The summary below archives that task only.
+
+- Task title: Phase 3H Archive / Index Update — docs-only.
+- Docs-only scope: add Markdown documentation under `docs/webui/` only; create the Phase 3H
+  archive / index; minimal cross-reference updates; read-only validation; commit and push
+  docs-only changes.
+- Deliverables: `phase-3h-archive-index.md`, plus minimal updates to the human review signoff,
+  review board decision, closeout, GO / NO-GO, phase-level GO / NO-GO, Phase 3G archive index,
+  and this prompt.
+- Forbidden work: no Phase 3I start or authorization; no Phase 3I planning / authorization
+  documents; no sandbox proof implementation; no implementation of any kind; no real plugin
+  runtime, loader, execution, or dynamic loading; no new route; no production rollout; no
+  product / frontend / backend / test / script / runtime / config / route changes; no
+  `~/.hermes` access; no production `state.db` access; no `.claude` staging or commit.
+- Validation: docs-only git validation; boundary search for secrets / runtime artifacts /
+  implementation / route / production / Phase 3I authorization; route governance unchanged at
+  34 / 34 / 5 / 0 / 1 / 1; `memory-check` PASS; `dev-check` WARN only on dirty docs or
+  untracked `.claude`; production safety unchanged (PID 28428; ports 5180 / 5181 free).
+- Final expected state:
+
+```
+Phase 3H Sandbox Proof Planning Authorization = GO
+Phase 3H Sandbox Proof Planning = GO
+Phase 3H Closeout = SIGNED OFF
+Phase 3H Human Review Signoff = ACCEPTED
+Phase 3H Archive / Index = COMPLETE
+Phase 3I = NOT AUTHORIZED BY THIS DOCUMENT
+Phase 3H Sandbox Proof Implementation = NO-GO
+Implementation Authorization = NO-GO
+Real plugin runtime = NO-GO
+New route = NO-GO
+Production rollout = NO-GO
+```
+
+```
+This prompt is documentation only.
+It contains no secrets, no executable implementation code, no runtime code, no route
+examples, and no shell scripts.
+It authorizes no implementation, runtime, route, Phase 3I, or production rollout.
+```
+
 ## Cross-references
 
+- [Phase 3H archive index](phase-3h-archive-index.md)
 - [Phase 3H human review signoff](phase-3h-human-review-signoff.md)
 - [Phase 3H review board decision](phase-3h-review-board-decision.md)
 - [Phase 3H closeout](phase-3h-closeout.md)
