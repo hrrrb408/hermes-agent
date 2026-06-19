@@ -657,6 +657,142 @@ def get_fixed_scenarios() -> tuple[ProofScenario, ...]:
     return tuple(scenario for scenario in FIXED_SCENARIOS)
 
 
+# ===========================================================================
+# Phase 3I runtime-themed proof scenarios (separate, fixed, dev-only).
+#
+# A second, isolated block of dev-only proof scenarios that reference the
+# Phase 3I dev-only local plugin runtime concerns. These are **proof scenarios**
+# driven through the existing descriptor-only proof runner — they do NOT execute
+# the runtime (the runtime is invoked only by tests that call ``run_dev_plugin``
+# directly). Each is a pure static record: no executable content, no module
+# path, no shell command, no real URL call, no real secret, no production path.
+#
+# Kept OUT of :data:`FIXED_SCENARIOS` so the frozen Phase 3H 22-scenario library
+# (and its ``len == 22`` regression assertions) is unchanged. A scenario pass is
+# dev-only evidence — it never resolves a P0 gate, never authorizes
+# implementation / Phase 3I / real runtime / a new route / production.
+# ===========================================================================
+
+
+# A clean, descriptor-only record that names a reviewed fixture plugin. Read as
+# metadata only; never loaded / executed by the proof runner.
+_RUNTIME_FIXTURE_DESCRIPTOR: Mapping[str, Any] = {
+    "pluginId": "fixture.echo",
+    "operation": "echo_uppercase",
+    "source": "descriptor_only",
+    "version": "1.0.0",
+}
+
+
+# ---------------------------------------------------------------------------
+# R1. local_runtime_echo_descriptor_allowed — a descriptor-only read of a
+#     reviewed fixture descriptor is a valid dev-only proof input (NOT plugin
+#     execution, NOT runtime approval).
+# ---------------------------------------------------------------------------
+LOCAL_RUNTIME_ECHO_DESCRIPTOR_ALLOWED = ProofScenario(
+    scenario_id="local_runtime_echo_descriptor_allowed",
+    title="Local runtime fixture descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of a reviewed fixture descriptor is a valid "
+    "dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor=dict(_RUNTIME_FIXTURE_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# R2. local_runtime_network_denied — a runtime request for an external network
+#     target / network capability is denied; no DNS, no socket, no external call.
+# ---------------------------------------------------------------------------
+LOCAL_RUNTIME_NETWORK_DENIED = ProofScenario(
+    scenario_id="local_runtime_network_denied",
+    title="Local runtime network request denied",
+    purpose="A dev-only runtime request for an external network target / network "
+    "capability is denied; no DNS, no socket, no external call.",
+    requested_capabilities=("network.request",),
+    requested_network_targets=("https://registry.example.org/plugin",),
+    expected_decision="denied",
+    expected_denial_reasons=("network_request_denied",),
+    expected_triggered_guards=("capability:network.request", "network_deny"),
+    linked_p0_gates=("P0-04",),
+)
+
+
+# ---------------------------------------------------------------------------
+# R3. local_runtime_secret_denied — a runtime request for a secret is denied and
+#     redacted; no real environment read.
+# ---------------------------------------------------------------------------
+LOCAL_RUNTIME_SECRET_DENIED = ProofScenario(
+    scenario_id="local_runtime_secret_denied",
+    title="Local runtime secret request denied",
+    purpose="A dev-only runtime request for a secret is denied and redacted from "
+    "the audit; no real environment read.",
+    requested_secret_names=("OPENAI_API_KEY=fake-runtime-secret",),
+    expected_decision="denied",
+    expected_denial_reasons=("secret_request_denied",),
+    expected_triggered_guards=("secret_unavailable",),
+    linked_p0_gates=("P0-10",),
+)
+
+
+# ---------------------------------------------------------------------------
+# R4. local_runtime_kill_switch_denied — an active kill switch fails a runtime
+#     proof closed; no process signal.
+# ---------------------------------------------------------------------------
+LOCAL_RUNTIME_KILL_SWITCH_DENIED = ProofScenario(
+    scenario_id="local_runtime_kill_switch_denied",
+    title="Local runtime kill switch denied",
+    purpose="An active kill switch fails a dev-only runtime proof closed; no "
+    "process signal.",
+    kill_switch_state=True,
+    expected_decision="denied",
+    expected_denial_reasons=("kill_switch_active",),
+    expected_triggered_guards=("kill_switch",),
+    linked_p0_gates=("P0-08",),
+)
+
+
+# ---------------------------------------------------------------------------
+# R5. local_runtime_descriptor_execution_denied — a runtime descriptor carrying
+#     a loader / module field is denied descriptor-only read; no load, no import.
+# ---------------------------------------------------------------------------
+LOCAL_RUNTIME_DESCRIPTOR_EXECUTION_DENIED = ProofScenario(
+    scenario_id="local_runtime_descriptor_execution_denied",
+    title="Local runtime descriptor execution surface denied",
+    purpose="A runtime descriptor carrying a loader / module field is denied "
+    "descriptor-only read; no load, no import, no execution.",
+    descriptor={
+        "pluginId": "runtime-loader-descriptor",
+        "operation": "load",
+        "module": "pkg.runtime.loader",
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("descriptor_carries_execution_surface",),
+    expected_triggered_guards=("descriptor_only",),
+    linked_p0_gates=("P0-12", "P0-18"),
+)
+
+
+#: The frozen, ordered library of Phase 3I runtime-themed dev-only proof
+#: scenarios. Separate from :data:`FIXED_SCENARIOS` (the frozen Phase 3H
+#: 22-scenario library) so that library's regression assertions are unchanged.
+RUNTIME_PROOF_SCENARIOS: tuple[ProofScenario, ...] = (
+    LOCAL_RUNTIME_ECHO_DESCRIPTOR_ALLOWED,
+    LOCAL_RUNTIME_NETWORK_DENIED,
+    LOCAL_RUNTIME_SECRET_DENIED,
+    LOCAL_RUNTIME_KILL_SWITCH_DENIED,
+    LOCAL_RUNTIME_DESCRIPTOR_EXECUTION_DENIED,
+)
+
+
+def get_runtime_proof_scenarios() -> tuple[ProofScenario, ...]:
+    """Return a defensive copy of the Phase 3I runtime-themed scenario library."""
+    return tuple(scenario for scenario in RUNTIME_PROOF_SCENARIOS)
+
+
 __all__ = [
     "DESCRIPTOR_ONLY_SAFE_READ",
     "EXECUTABLE_DESCRIPTOR_DENIED",
@@ -682,4 +818,12 @@ __all__ = [
     "ADVERSARIAL_CAPABILITY_OVERSIZED_DENIED",
     "FIXED_SCENARIOS",
     "get_fixed_scenarios",
+    # Phase 3I runtime-themed proof scenarios (separate, fixed, dev-only).
+    "LOCAL_RUNTIME_ECHO_DESCRIPTOR_ALLOWED",
+    "LOCAL_RUNTIME_NETWORK_DENIED",
+    "LOCAL_RUNTIME_SECRET_DENIED",
+    "LOCAL_RUNTIME_KILL_SWITCH_DENIED",
+    "LOCAL_RUNTIME_DESCRIPTOR_EXECUTION_DENIED",
+    "RUNTIME_PROOF_SCENARIOS",
+    "get_runtime_proof_scenarios",
 ]

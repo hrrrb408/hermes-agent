@@ -978,6 +978,12 @@ SANDBOX_MODULES = {
     "dev_web_p0_evidence",
     "dev_web_sandbox_runner",
     "dev_web_sandbox_scenarios",
+    # Phase 3I dev-only local plugin runtime — part of the sandbox safety
+    # family: it reuses the guards / policy / audit / P0 evidence primitives
+    # (by design) and is itself excluded from dev_web_api (the FastAPI-wiring
+    # assertion below now also forbids these two modules there).
+    "dev_web_plugin_runtime",
+    "dev_web_fixture_plugins",
 }
 
 

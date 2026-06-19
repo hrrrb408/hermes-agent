@@ -573,6 +573,11 @@ def test_no_dev_web_module_imports_p0_evidence() -> None:
         "dev_web_safety_baseline",
         "dev_web_sandbox_runner",
         "dev_web_sandbox_scenarios",
+        # Phase 3I dev-only local plugin runtime — part of the sandbox safety
+        # family: it reuses the guards / policy / audit / P0 evidence primitives
+        # (by design) and is itself excluded from dev_web_api below.
+        "dev_web_plugin_runtime",
+        "dev_web_fixture_plugins",
     }
     candidates = sorted((REPO_ROOT / "hermes_cli").glob("dev_web_*.py"))
     for path in candidates:
