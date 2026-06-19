@@ -66,6 +66,7 @@ FS_GUARD_REASONS: frozenset[str] = frozenset(
         "symlink_escape",
         "home_directory_fallback",
         "write_outside_allowed_root",
+        "read_outside_allowed_root",
         "unknown_write_location",
         "invalid_path",
     }
@@ -167,6 +168,14 @@ def evaluate_filesystem_path(
     if allow_write and not roots and "write_outside_allowed_root" not in reasons:
         reasons.append("unknown_write_location")
 
+    # Read confinement (default-deny): a sandbox READ is allowed ONLY inside an
+    # explicit allowed root. Without this, an arbitrary host path
+    # (``~/.ssh/config``, ``/etc/passwd``, ``~/.aws/credentials``) presented
+    # with no root — or outside a supplied root — would otherwise be allowed,
+    # breaking the "allow only explicit dev-safe temp / fixture roots" contract.
+    if not allow_write and not inside and "read_outside_allowed_root" not in reasons:
+        reasons.append("read_outside_allowed_root")
+
     allowed = len(reasons) == 0
     return FilesystemDecision(
         path_redacted=_redact_path_for_audit(candidate) if allowed else REDACTED_VALUE,
@@ -220,6 +229,10 @@ NETWORK_GUARD_REASONS: frozenset[str] = frozenset(
 #: classifier — no host is ever contacted.
 _NETWORK_INTENT_MARKERS: tuple[tuple[str, str], ...] = (
     ("://", "external_url_denied"),
+    ("file://", "external_url_denied"),
+    ("ftp://", "external_url_denied"),
+    ("ws://", "external_url_denied"),
+    ("wss://", "external_url_denied"),
     ("api.openai.com", "provider_endpoint_denied"),
     ("api.anthropic.com", "provider_endpoint_denied"),
     ("registry", "remote_registry_denied"),
@@ -237,6 +250,8 @@ _NETWORK_INTENT_MARKERS: tuple[tuple[str, str], ...] = (
     ("localhost", "private_loopback_denied"),
     ("127.0.0.1", "private_loopback_denied"),
     ("0.0.0.0", "private_loopback_denied"),
+    ("::1", "private_loopback_denied"),
+    ("[::1]", "private_loopback_denied"),
 )
 
 
@@ -375,12 +390,89 @@ def _is_secret_bearing_name(name: Any) -> bool:
     return any(stem.replace("_", "") in normalized for stem in _SECRET_FIELD_STEMS)
 
 
+#: An identifier key immediately followed by ``=`` / ``:`` (an assignment
+#: head). Used to redact ``.env``-style secret lines. Only the KEY is captured
+#: (not the value) so two assignments on one line — e.g.
+#: ``config: API_KEY=leaked`` — are both found instead of the first greedily
+#: consuming the second. The key is then classified by segmented tokens (see
+#: :func:`_identifier_secret_joins`) so a camelCase config field such as
+#: ``maxTokens=1024`` is never matched while ``db_password=hunter2`` /
+#: ``api_key=...`` / ``OPENAI_API_KEY=...`` are.
+_ENV_SECRET_ASSIGNMENT: re.Pattern[str] = re.compile(
+    r"(?<![A-Za-z0-9_])([A-Za-z][A-Za-z0-9_]{1,})\s*[:=]"
+)
+
+#: Secret-bearing segments (lowercase) an env-style key may carry. Matched by
+#: segmented token + contiguous join so ``api_key`` / ``API_KEY`` / ``apikey``
+#: all resolve to the stem ``apikey``; ``maxTokens`` resolves to ``tokens``
+#: (NOT a stem, since the singular ``token`` is) and ``temperature`` is left
+#: alone. ``token`` is intentionally singular to avoid the ``maxTokens`` false
+#: positive.
+_ENV_SECRET_STEMS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "secrets",
+        "token",
+        "credential",
+        "credentials",
+        "apikey",
+        "privatekey",
+        "accesstoken",
+        "authtoken",
+        "authorization",
+    }
+)
+
+
+def _split_identifier_segments(identifier: str) -> list[str]:
+    """Split an identifier into lowercase tokens on separators AND camelCase."""
+    tokens: list[str] = []
+    for part in re.split(r"[^A-Za-z0-9]+", identifier):
+        if not part:
+            continue
+        sub = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+", part)
+        tokens.extend(s.lower() for s in (sub or [part.lower()]))
+    return tokens
+
+
+def _identifier_secret_joins(identifier: str) -> set[str]:
+    """Lowercase tokens + contiguous joins (length 1–3) of an identifier.
+
+    ``api_key`` → {api, key, apikey}; ``accessToken`` → {access, token,
+    accesstoken}; ``maxTokens`` → {max, tokens, maxtokens}.
+    """
+    tokens = _split_identifier_segments(identifier)
+    joins: set[str] = set(tokens)
+    n = len(tokens)
+    for i in range(n):
+        for j in range(i + 2, min(i + 4, n + 1)):
+            joins.add("".join(tokens[i:j]))
+    return joins
+
+
+def _detect_env_secret_assignment(value: str) -> bool:
+    """True if *value* carries a secret-like ``key=value`` assignment.
+
+    Conservative: matches any-case identifier keys whose segmented form (or a
+    contiguous join of segments) is a secret stem. So ``db_password=hunter2``,
+    ``api_key=...``, ``OPENAI_API_KEY=...``, ``accessToken=...`` are all caught,
+    while ``maxTokens=1024`` and ``temperature=0.7`` are not.
+    """
+    for match in _ENV_SECRET_ASSIGNMENT.finditer(value):
+        if _identifier_secret_joins(match.group(1)) & _ENV_SECRET_STEMS:
+            return True
+    return False
+
+
 def detect_secret_in_string(value: Any) -> tuple[bool, str]:
     """Return ``(detected, reason)`` for a secret / forbidden value in a string.
 
     Detects ``sk-`` / ``ghp_`` / ``xox`` tokens, ``Bearer …`` /
-    ``Authorization: …`` headers, PEM private-key blocks, and production
-    path-like values (``~/.hermes`` / ``state.db``). Never raises.
+    ``Authorization: …`` headers, PEM private-key blocks, production
+    path-like values (``~/.hermes`` / ``state.db``), and any-case
+    ``.env``-style secret assignments. Never raises.
     """
     if not isinstance(value, str):
         return False, ""
@@ -390,6 +482,8 @@ def detect_secret_in_string(value: Any) -> tuple[bool, str]:
     for pattern in _FORBIDDEN_VALUE_PATTERNS:
         if pattern.search(value):
             return True, "secret_value_detected"
+    if _detect_env_secret_assignment(value):
+        return True, "secret_value_detected"
     return False, ""
 
 

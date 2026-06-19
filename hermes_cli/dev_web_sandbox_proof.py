@@ -25,6 +25,7 @@ Status: implemented (skeleton). NOT a real runtime. No plugin execution, no
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
@@ -33,6 +34,7 @@ from hermes_cli.dev_web_sandbox_guards import (
     evaluate_filesystem_path,
     evaluate_network_target,
     evaluate_secret_request,
+    redact_sandbox_payload,
 )
 from hermes_cli.dev_web_sandbox_policy import (
     CapabilityDecision,
@@ -96,6 +98,19 @@ class SandboxProofRequest:
     capability_context: CapabilityEvaluationContext | None = None
     safe_metadata: Mapping[str, Any] | None = None
 
+    def __post_init__(self) -> None:
+        # Defensive-copy caller-supplied mutable mappings so post-construction
+        # mutation of the caller's dict cannot change what the proof evaluates
+        # (deep copy: descriptor / safe metadata may be arbitrarily nested).
+        if self.descriptor_metadata is not None:
+            object.__setattr__(
+                self, "descriptor_metadata", copy.deepcopy(self.descriptor_metadata)
+            )
+        if self.safe_metadata is not None:
+            object.__setattr__(
+                self, "safe_metadata", copy.deepcopy(self.safe_metadata)
+            )
+
     def to_safe_dict(self) -> dict[str, Any]:
         # The request itself is never returned raw by the proof; this helper
         # exists only for debug / test projections and is re-redacted upstream.
@@ -129,6 +144,14 @@ class SandboxProofResult:
     capability_decisions: tuple[CapabilityDecision, ...] = ()
     audit_record: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        # Decouple the stored audit record from the builder's dict (and from any
+        # later caller read of ``result.audit_record``) via a deep copy. The
+        # result is frozen, so the field cannot be reassigned — but a mutable
+        # dict could still be mutated in place; this snapshot isolates it.
+        if self.audit_record:
+            object.__setattr__(self, "audit_record", copy.deepcopy(self.audit_record))
+
     def to_safe_dict(self) -> dict[str, Any]:
         return {
             "schemaVersion": SANDBOX_PROOF_VERSION,
@@ -143,7 +166,7 @@ class SandboxProofResult:
             "killSwitch": self.kill_switch_decision.to_safe_dict() if self.kill_switch_decision else None,
             "descriptor": self.descriptor_decision.to_safe_dict() if self.descriptor_decision else None,
             "capabilities": [c.to_safe_dict() for c in self.capability_decisions],
-            "audit": dict(self.audit_record),
+            "audit": redact_sandbox_payload(copy.deepcopy(dict(self.audit_record))),
             "redactionApplied": True,
         }
 
@@ -246,7 +269,7 @@ def evaluate_sandbox_proof(request: SandboxProofRequest) -> SandboxProofResult:
         triggered_guards=guards,
         requested_capabilities=list(request.requested_capabilities),
         descriptor_id=request.descriptor_id,
-        kill_switch_active=request.kill_switch_active,
+        kill_switch_active=ks_decision.active,
         safe_metadata=request.safe_metadata,
     )
 

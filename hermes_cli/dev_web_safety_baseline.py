@@ -377,8 +377,13 @@ def _normalize_lexically(path: Path) -> str:
     Expands ``~``, collapses redundant separators and resolves ``.`` / ``..``
     segments **lexically** (so ``~/.hermes/../.hermes`` still collapses to the
     production home). Symlinks are intentionally NOT resolved on disk.
+
+    Backslashes are treated as separators (mirroring the lexical comparator in
+    the sandbox guards) so a mixed-separator traversal like
+    ``foo\\..\\.hermes`` cannot slip past the boundary on a POSIX host where
+    ``\\`` is otherwise a legal filename character.
     """
-    expanded = Path(os.path.expanduser(str(path)))
+    expanded = Path(os.path.expanduser(str(path)).replace("\\", "/"))
     is_absolute = expanded.is_absolute()
     parts: list[str] = []
     for part in expanded.parts:
@@ -446,10 +451,16 @@ def assert_dev_environment(hermes_home: Any) -> None:
 
 
 def _looks_like_absolute_production_path(text: str) -> bool:
-    """True if a path string points at an absolute production location."""
-    if "/Users/huangruibang/.hermes" in text:
+    """True if a path string points at an absolute production location.
+
+    Case-insensitive: on a case-insensitive host filesystem (the default macOS
+    layout) ``/.HERMES`` resolves to the production home, so a string-only
+    evaluator must flag any ``.hermes`` segment regardless of case.
+    """
+    lowered = text.lower()
+    if "/users/huangruibang/.hermes" in lowered:
         return True
-    if text.startswith("/Users/") and ".hermes" in text:
+    if lowered.startswith("/users/") and ".hermes" in lowered:
         return True
     return False
 

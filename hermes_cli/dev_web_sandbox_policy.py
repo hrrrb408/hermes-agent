@@ -32,7 +32,8 @@ Status: implemented (policy). No plugin execution, no dynamic loading.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 from typing import Any, Mapping
 
 from hermes_cli.dev_web_plugin_descriptor_schema import is_forbidden_field_present
@@ -97,6 +98,7 @@ DANGEROUS_CAPABILITIES: frozenset[str] = frozenset(
 CAPABILITY_REASONS: frozenset[str] = frozenset(
     {
         "unknown_capability",
+        "capability_injection_denied",
         "capability_default_denied",
         "dangerous_capability_denied",
         "plugin_execution_denied",
@@ -165,6 +167,34 @@ class CapabilityEvaluationContext:
         }
 
 
+#: Characters / tokens that mark a capability string as injection-shaped
+#: (wildcard, traversal, path separator, shell metacharacter, null byte). Such
+#: strings are rejected explicitly with ``capability_injection_denied`` rather
+#: than merely falling through to ``unknown_capability``, so the boundary stays
+#: intentional even if the frozen label set is ever loosened. This never allows
+#: anything exact-membership would not already deny.
+_CAPABILITY_INJECTION_TOKENS: tuple[str, ...] = (
+    "*",
+    "?",
+    "..",
+    ";",
+    "|",
+    "&",
+    "$",
+    "`",
+    "<",
+    ">",
+    "\\",
+    "/",
+    "\x00",
+)
+
+
+def _is_capability_injection(capability: str) -> bool:
+    """True if *capability* carries wildcard / traversal / shell metacharacters."""
+    return any(tok in capability for tok in _CAPABILITY_INJECTION_TOKENS)
+
+
 def evaluate_capability(
     capability: Any,
     *,
@@ -174,17 +204,33 @@ def evaluate_capability(
 
     Rules (first match wins):
 
-      1. Unknown capability → denied (``unknown_capability``).
-      2. A frozen default-allowed label → allowed **as a label**; the note
+      1. Non-string / empty / whitespace → denied (``unknown_capability``).
+      2. Injection-shaped (wildcard / traversal / shell) → denied
+         (``capability_injection_denied``); the raw string is masked and never
+         echoed into the audit.
+      3. Not a known label → denied (``unknown_capability``).
+      4. A frozen default-allowed label → allowed **as a label**; the note
          records that it grants nothing at runtime.
-      3. ``filesystem.read`` → allowed only when the context marks a temp-root
+      5. ``filesystem.read`` → allowed only when the context marks a temp-root
          fixture; otherwise denied (``capability_default_denied``).
-      4. Any dangerous capability → denied with the specific reason.
-      5. Everything else → denied (``capability_default_denied``).
+      6. Any dangerous capability → denied with the specific reason.
+      7. Everything else → denied (``capability_default_denied``).
     """
-    if not isinstance(capability, str) or capability not in CAPABILITY_LABELS:
+    if not isinstance(capability, str) or not capability.strip():
         return CapabilityDecision(
             capability=str(capability) if isinstance(capability, str) else "<invalid>",
+            allowed=False,
+            reasons=("unknown_capability",),
+        )
+    if _is_capability_injection(capability):
+        return CapabilityDecision(
+            capability="<invalid>",
+            allowed=False,
+            reasons=("capability_injection_denied",),
+        )
+    if capability not in CAPABILITY_LABELS:
+        return CapabilityDecision(
+            capability=capability,
             allowed=False,
             reasons=("unknown_capability",),
         )
@@ -286,12 +332,20 @@ def evaluate_kill_switch(active: Any) -> KillSwitchDecision:
     """Evaluate the kill switch for a sandbox proof.
 
     ``active`` True → every proof evaluation fails closed
-    (``sandbox_proof_fail_closed``). ``active`` False → evaluation may proceed
-    through the guards, **but** an inactive switch grants no dangerous
-    capability (the note records this). The kill switch is a dev-only flag; it
-    never signals / stops / restarts any process.
+    (``sandbox_proof_fail_closed``). ``active`` False / None → evaluation may
+    proceed through the guards, **but** an inactive switch grants no dangerous
+    capability (the note records this). Any **non-bool, non-None** value
+    (string / number / container) is an *invalid* kill-switch state and is
+    treated as armed — fail-closed — so an ambiguous flag cannot disarm the
+    switch. The kill switch is a dev-only flag; it never signals / stops /
+    restarts any process, and cannot be overridden by request metadata (the
+    orchestrator reads only the ``kill_switch_active`` field).
     """
-    is_active = bool(active)
+    if active is None or isinstance(active, bool):
+        is_active = bool(active)
+    else:
+        # Invalid state → fail closed (armed).
+        is_active = True
     if is_active:
         return KillSwitchDecision(
             active=True,
@@ -318,6 +372,7 @@ DESCRIPTOR_REASONS: frozenset[str] = frozenset(
         "descriptor_carries_execution_surface",
         "descriptor_oversized",
         "descriptor_id_missing",
+        "descriptor_id_unsafe",
     }
 )
 
@@ -380,8 +435,32 @@ def evaluate_descriptor(descriptor_metadata: Any) -> DescriptorDecision:
             reasons=("descriptor_id_missing",),
         )
 
+    if not _descriptor_id_is_safe(descriptor_id):
+        # An id containing traversal / path-separator / shell / wildcard
+        # characters is denied outright (never merely redacted) — a clean
+        # descriptor id is a label, not a path or command.
+        return DescriptorDecision(
+            descriptor_id_redacted="",
+            descriptor_only=False,
+            allowed=False,
+            reasons=("descriptor_id_unsafe",),
+        )
+
     forbidden = is_forbidden_field_present(dict(descriptor_metadata))
     if forbidden is not None:
+        return DescriptorDecision(
+            descriptor_id_redacted=_redact_descriptor_id(descriptor_id),
+            descriptor_only=False,
+            allowed=False,
+            reasons=("descriptor_carries_execution_surface",),
+        )
+
+    # Extended execution/secret-surface scan: the Phase 3D blocklist matches
+    # forbidden fields by exact name, so a synonym key (``entrypoint``,
+    # ``module``, ``command``, ``url``, ``password``, ``private_key``,
+    # ``dockerImage`` …) would slip through. Deny any key whose segmented form
+    # denotes an execution / secret surface, recursively.
+    if _descriptor_has_extended_surface(descriptor_metadata):
         return DescriptorDecision(
             descriptor_id_redacted=_redact_descriptor_id(descriptor_id),
             descriptor_only=False,
@@ -409,15 +488,145 @@ def evaluate_descriptor(descriptor_metadata: Any) -> DescriptorDecision:
     )
 
 
+#: A clean descriptor id is a label over ``[A-Za-z0-9_.\-]`` only. Anything
+#: containing traversal (``..``), path separators, shell metacharacters, or
+#: wildcards is unsafe and denied before redaction.
+_DESCRIPTOR_ID_SAFE: re.Pattern[str] = re.compile(r"[A-Za-z0-9_.\-]+")
+
+
+def _descriptor_id_is_safe(descriptor_id: str) -> bool:
+    """True iff *descriptor_id* is a clean label (full match against the safe set)."""
+    if not isinstance(descriptor_id, str) or not descriptor_id:
+        return False
+    # An id with a traversal pair (``..``) is unsafe even though ``.`` is in
+    # the safe charset.
+    if ".." in descriptor_id:
+        return False
+    return _DESCRIPTOR_ID_SAFE.fullmatch(descriptor_id) is not None
+
+
 def _redact_descriptor_id(descriptor_id: str) -> str:
     """Return a sanitized descriptor id for audit (never a path / secret)."""
     if not isinstance(descriptor_id, str):
         return ""
     # Keep only the stable id characters; drop anything path/secret-like.
-    import re
-
     cleaned = re.sub(r"[^A-Za-z0-9_.\-]", "", descriptor_id)
     return cleaned[:128]
+
+
+#: Execution-surface key segments. A descriptor key whose segmented form (or a
+#: contiguous join of segments) carries one of these denotes an execution
+#: surface — denied even if the exact key name is not in the Phase 3D
+#: ``FORBIDDEN_FIELDS`` enumeration. Plurals included for exec (rarely config).
+_DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
+    {
+        "entrypoint",
+        "entrypoints",
+        "module",
+        "modules",
+        "import",
+        "imports",
+        "importpath",
+        "command",
+        "commands",
+        "cmd",
+        "exec",
+        "execute",
+        "executable",
+        "shell",
+        "bash",
+        "script",
+        "scripts",
+        "url",
+        "href",
+        "download",
+        "downloads",
+        "install",
+        "installs",
+        "installcommand",
+        "package",
+        "packages",
+        "packageurl",
+        "docker",
+        "dockerimage",
+        "image",
+        "wheel",
+        "wheelurl",
+        "manifest",
+        "manifesturl",
+        "callable",
+        "function",
+        "handler",
+        "binary",
+        "subprocess",
+        "childprocess",
+        "process",
+        "spawn",
+    }
+)
+
+#: Secret-surface key segments for a descriptor. ``token`` is intentionally
+#: singular (``maxTokens`` → ``tokens`` is not matched).
+_DESCRIPTOR_SECRET_STEMS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "secret",
+        "secrets",
+        "token",
+        "credential",
+        "credentials",
+        "apikey",
+        "privatekey",
+        "accesstoken",
+        "authtoken",
+        "authorization",
+    }
+)
+
+
+def _descriptor_key_is_surface(key: Any) -> bool:
+    """True if a descriptor key name denotes an execution / secret surface.
+
+    Splits the key on separators and camelCase, then checks single tokens and
+    contiguous joins (length 2–3) against the stem sets. ``api_key`` →
+    ``apikey``; ``dockerImage`` → ``docker``/``image``; ``pluginId`` →
+    ``plugin``/``id`` (not a surface); ``maxTokens`` is not a descriptor key
+    concern and resolves to ``tokens`` (not a stem).
+    """
+    if not isinstance(key, str):
+        return False
+    tokens: list[str] = []
+    for part in re.split(r"[^A-Za-z0-9]+", key):
+        if not part:
+            continue
+        sub = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+", part)
+        tokens.extend(s.lower() for s in (sub or [part.lower()]))
+    joins: set[str] = set(tokens)
+    n = len(tokens)
+    for i in range(n):
+        for j in range(i + 2, min(i + 4, n + 1)):
+            joins.add("".join(tokens[i:j]))
+    return bool(joins & (_DESCRIPTOR_EXEC_STEMS | _DESCRIPTOR_SECRET_STEMS))
+
+
+def _descriptor_has_extended_surface(node: Any) -> bool:
+    """Recursive scan for execution/secret-surface keys beyond FORBIDDEN_FIELDS.
+
+    Walks dicts / lists / tuples; a non-dict leaf is harmless. Descriptors are
+    JSON-native (acyclic), so no cycle guard is required.
+    """
+    if isinstance(node, Mapping):
+        for key, val in node.items():
+            if _descriptor_key_is_surface(key):
+                return True
+            if _descriptor_has_extended_surface(val):
+                return True
+    elif isinstance(node, (list, tuple)):
+        for item in node:
+            if _descriptor_has_extended_surface(item):
+                return True
+    return False
 
 
 __all__ = [

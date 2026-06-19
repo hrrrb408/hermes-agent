@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from hermes_cli.dev_web_sandbox_guards import contains_secret, redact_sandbox_payload
+from hermes_cli.dev_web_sandbox_guards import contains_secret, redact_sandbox_payload, redact_sandbox_text
 
 SANDBOX_AUDIT_SOURCE = "dev_web_sandbox_audit"
 SANDBOX_AUDIT_VERSION = "phase-3h-sandbox-proof-audit-v1"
@@ -63,13 +63,15 @@ def build_sandbox_audit_record(
     descriptor_id: str | None = None,
     kill_switch_active: bool | None = None,
     safe_metadata: Mapping[str, Any] | None = None,
+    safe_error_detail: str | None = None,
 ) -> dict[str, Any]:
     """Build a redacted, in-memory sandbox-proof audit record.
 
     Parameters are projected to safe scalars / lists and re-redacted before
     return. ``decision`` is coerced to ``"denied"`` unless it is exactly
-    ``"allowed"`` (fail-closed default). The record never carries a raw
-    secret or production path.
+    ``"allowed"`` (fail-closed default). ``safe_error_detail`` (an exception
+    message / error string) is run through the secret redactor before it can
+    reach the record. The record never carries a raw secret or production path.
     """
     coerced_decision = "allowed" if decision == "allowed" else "denied"
 
@@ -79,6 +81,7 @@ def build_sandbox_audit_record(
 
     sanitized_descriptor = _sanitize_descriptor_id(descriptor_id)
     sanitized_meta = redact_sandbox_payload(dict(safe_metadata) if safe_metadata else {})
+    sanitized_error = redact_sandbox_text(safe_error_detail) if safe_error_detail else ""
 
     record: dict[str, Any] = {
         "schemaVersion": SANDBOX_AUDIT_VERSION,
@@ -90,6 +93,7 @@ def build_sandbox_audit_record(
         "descriptorId": sanitized_descriptor,
         "killSwitchActive": bool(kill_switch_active) if kill_switch_active is not None else None,
         "safeMetadata": sanitized_meta,
+        "errorDetail": sanitized_error,
         "evidence": _evidence_flags(),
         "redactionApplied": True,
         "persisted": False,
@@ -144,6 +148,7 @@ def _redaction_failed_record() -> dict[str, Any]:
         "descriptorId": "",
         "killSwitchActive": None,
         "safeMetadata": {},
+        "errorDetail": "",
         "evidence": _evidence_flags(),
         "redactionApplied": True,
         "redactionFailed": True,
