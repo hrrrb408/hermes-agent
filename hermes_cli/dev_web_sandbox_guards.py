@@ -94,19 +94,65 @@ class FilesystemDecision:
         }
 
 
+#: Runtime-store-shaped path markers. A raw runtime-store filename — even a
+#: fake / temp one — is masked from every audit projection: a dev-only proof
+#: must never echo a runtime-store path (``plugin_runtime.jsonl``,
+#: ``*-store.json``, a ``runtime-store`` / ``plugin-store`` directory, …).
+#: Case-insensitive substring match; the real path is never opened.
+RUNTIME_STORE_PATH_MARKERS: tuple[str, ...] = (
+    "runtime-store",
+    "runtime_store",
+    "plugin-store",
+    "plugin_store",
+    "provider-live-store",
+    "provider_live_store",
+    "workflow-store",
+    "workflow_store",
+    "audit-store",
+    "audit_store",
+    "capability-store",
+    "capability_store",
+    "plugin_runtime.jsonl",
+    "plugin_registry.json",
+    "plugin_execution_store.json",
+    "provider_live_store.json",
+    "workflow_runtime_store.json",
+    "audit_runtime_store.json",
+    "capability_runtime_store.json",
+)
+
+
+def path_mentions_runtime_store(text: Any) -> bool:
+    """True iff *text* (a path string) names a runtime-store artifact.
+
+    Pure substring match against :data:`RUNTIME_STORE_PATH_MARKERS` — the path
+    is never opened or stated. Case-insensitive so ``STATE.DB``-style casing
+    cannot smuggle a marker past the redactor.
+    """
+    if not isinstance(text, str) or not text:
+        return False
+    lowered = text.lower()
+    return any(marker in lowered for marker in RUNTIME_STORE_PATH_MARKERS)
+
+
 def _redact_path_for_audit(candidate: Any) -> str:
     """Render a path for an audit record. Production-like paths are masked.
 
-    Never returns a raw production path. A path that resolves into the
-    production home or a production database is replaced wholesale; an
-    otherwise-safe path is shown verbatim (it is a dev temp / fixture path).
+    Never returns a raw production path or a raw runtime-store path. A path that
+    resolves into the production home, a production database, or a runtime-store
+    artifact is replaced wholesale; an otherwise-safe path is shown verbatim (it
+    is a dev temp / fixture path). All comparisons are case-insensitive so a
+    ``.HERMES`` / ``STATE.DB`` casing trick cannot slip a forbidden path through.
     """
     if not isinstance(candidate, (str, os.PathLike)):
         return REDACTED_VALUE if candidate is not None else ""
     text = os.path.expanduser(str(candidate))
-    if is_production_home(text) or is_production_state_db(text) or "/.hermes" in text:
+    lowered = text.lower()
+    if is_production_home(text) or is_production_state_db(text):
         return REDACTED_VALUE
-    if "state.db" in text.lower():
+    if "/.hermes" in lowered or ".hermes/" in lowered or "state.db" in lowered:
+        return REDACTED_VALUE
+    if path_mentions_runtime_store(lowered):
         return REDACTED_VALUE
     return text
 
@@ -553,10 +599,19 @@ def redact_sandbox_payload(payload: Any, *, depth: int = 0) -> Any:
     if isinstance(payload, dict):
         out: dict[str, Any] = {}
         for key, val in payload.items():
+            # A key string that *itself* embeds a secret token (an ``sk-…`` /
+            # ``ghp_…`` value, a ``Bearer …`` / ``Authorization: …`` header, a
+            # PEM block, a ``KEY=value`` assignment, …) is masked wholesale — a
+            # smuggler must not launder a secret through a dict key name.
+            safe_key = str(key)
+            if isinstance(key, str):
+                key_detected, _ = detect_secret_in_string(key)
+                if key_detected:
+                    safe_key = REDACTED_VALUE
             if _is_secret_bearing_name(key) and isinstance(val, str) and val:
-                out[str(key)] = REDACTED_VALUE
+                out[safe_key] = REDACTED_VALUE
                 continue
-            out[str(key)] = redact_sandbox_payload(val, depth=depth + 1)
+            out[safe_key] = redact_sandbox_payload(val, depth=depth + 1)
         return out
     if isinstance(payload, (list, tuple)):
         return [redact_sandbox_payload(v, depth=depth + 1) for v in payload]
@@ -582,6 +637,12 @@ def contains_secret(payload: Any, *, depth: int = 0) -> bool:
         return detected
     if isinstance(payload, dict):
         for key, val in payload.items():
+            # A dict key that itself embeds a secret token is a leak — scan it
+            # like any value string (an already-redacted placeholder is safe).
+            if isinstance(key, str) and key != REDACTED_VALUE:
+                key_detected, _ = detect_secret_in_string(key)
+                if key_detected:
+                    return True
             if _is_secret_bearing_name(key):
                 if isinstance(val, str):
                     if val and val != REDACTED_VALUE:
@@ -611,6 +672,8 @@ __all__ = [
     "evaluate_network_target",
     "SECRET_GUARD_REASONS",
     "SecretDecision",
+    "RUNTIME_STORE_PATH_MARKERS",
+    "path_mentions_runtime_store",
     "detect_secret_in_string",
     "evaluate_secret_request",
     "redact_sandbox_text",

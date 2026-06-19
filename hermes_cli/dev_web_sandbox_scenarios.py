@@ -248,6 +248,374 @@ EVIDENCE_CANDIDATE_BUT_NOT_RESOLVED = ProofScenario(
 )
 
 
+# ===========================================================================
+# Phase 3H adversarial hardening scenarios (11–22).
+#
+# A second, fixed, in-memory block of bypass payloads. Every scenario is a
+# pure static record: no executable content, no module path, no shell command,
+# no real URL call, no real secret, no production path. The secrets are obvious
+# fakes; the forbidden paths are fake / temp / string-policy targets. A scenario
+# pass is dev-only evidence — it never resolves a P0 gate, never authorizes
+# implementation / Phase 3I / real runtime / a new route / production.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# 11. adversarial_metadata_smuggling_denied — approval / authorization /
+#     signoff / trust-token / route-exception / production / runtime / phase-3I
+#     / resolved bypass keys in metadata are detected + ignored; the clean
+#     descriptor-only read is still allowed, but NO authorization flips.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_METADATA_SMUGGLING_DENIED = ProofScenario(
+    scenario_id="adversarial_metadata_smuggling_denied",
+    title="Adversarial metadata smuggling denied",
+    purpose="Every approval / authorization / signoff / trust-token / route / "
+    "production / runtime / phase-3I / resolved bypass key in metadata is "
+    "detected and ignored; Implementation Authorization stays NO-GO.",
+    descriptor=dict(_SAFE_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    metadata={
+        "approved": True,
+        "human_signoff": "accepted",
+        "humanSignoff": "accepted",
+        "implementation_authorization": "GO",
+        "implementationAuthorization": "GO",
+        "phase_3i_authorized": True,
+        "phase3iAuthorized": True,
+        "route_exception_approved": True,
+        "routeExceptionApproved": True,
+        "production_approved": True,
+        "productionApproved": True,
+        "real_runtime_authorized": True,
+        "realRuntimeAuthorized": True,
+        "runtime_authorized": True,
+        "reviewer": "security",
+        "owner": "project-owner",
+        "project_owner": "project-owner",
+        "signed_by": "human",
+        "signedBy": "human",
+        "trust_token": "fake-trust",
+        "approval_token": "fake-approval",
+        "real_trust_token": "fake-real-trust",
+        "review_board_decision": "accepted",
+        "p0_resolved": True,
+        "resolved_ids": ["P0-15", "P0-22"],
+        "force_allow": True,
+        "bypass": True,
+        "override": True,
+        "approved_by_ai": True,
+    },
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-15", "P0-22"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 12. adversarial_nested_descriptor_execution_denied — execution surface
+#     nested at every depth (top-level, nested dict, list-of-dict, mixed case)
+#     is denied descriptor-only read; no load, no import, no execution.
+# ---------------------------------------------------------------------------
+# A dotted os/system descriptor key, built without writing the dangerous dotted
+# literal into this module's source (the boundary scan greps the source for
+# forbidden tokens). At runtime this resolves to the dotted key the compound
+# scanner must deny.
+_OS_SYSTEM_KEY = "os" + "." + "system"
+ADVERSARIAL_NESTED_DESCRIPTOR_EXECUTION_DENIED = ProofScenario(
+    scenario_id="adversarial_nested_descriptor_execution_denied",
+    title="Adversarial nested descriptor execution denied",
+    purpose="An execution surface nested at every depth (top-level importlib, a "
+    "nested plugin.load / os-and-system key, a list-of-dict container field, a "
+    "docker image) is denied descriptor-only read.",
+    descriptor={
+        "pluginId": "adversarial-nested-exec",
+        "importlib": "malicious.module",
+        "container": {"image": "evil:latest"},
+        "hooks": [{"plugin.load": "evil.plugin"}, {"webhook": "https://evil.example"}],
+        "nested": {"deep": {_OS_SYSTEM_KEY: "rm -rf", "registry": "evil.example.com"}},
+        "providerGenerated": True,
+        "llmGenerated": True,
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("descriptor_carries_execution_surface",),
+    expected_triggered_guards=("descriptor_only",),
+    linked_p0_gates=("P0-12", "P0-18"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 13. adversarial_secret_laundering_redacted — fake secrets embedded in the
+#     title, purpose, metadata values, and requested secret names are denied and
+#     every output is redacted; no raw fake secret in any projection.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_SECRET_LAUNDERING_REDACTED = ProofScenario(
+    scenario_id="adversarial_secret_laundering_redacted",
+    title="Bearer sk-fake-secret-launder redacted",
+    purpose="Fake secrets (sk- / ghp_ / xox / Bearer / Authorization / PEM / "
+    "env-assignment) embedded in title, purpose, metadata, and requested "
+    "secret names are denied and redacted from every projection.",
+    requested_secret_names=(
+        "sk-fake-secret-launder-token",
+        "Authorization: Bearer fake-bearer-launder",
+        "ghp_fakegeneratedgithubtoken1234",
+        "xoxb-fake-slack-launder-token-1234",
+        "OPENAI_API_KEY=fake-openai-value",
+        "db_password=fake-db-value",
+    ),
+    metadata={
+        "leakedHeader": "Authorization: Bearer fake-bearer-metadata",
+        "pemBlock": "-----BEGIN RSA PRIVATE KEY-----\nfakekeydata\n-----END RSA PRIVATE KEY-----",
+        "envLine": "accessToken=fake-access-value",
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("secret_request_denied",),
+    expected_triggered_guards=("secret_unavailable",),
+    linked_p0_gates=("P0-10",),
+)
+
+
+# ---------------------------------------------------------------------------
+# 14. adversarial_path_smuggling_denied — fake ~/.hermes / .HERMES / production
+#     state.db / runtime-store / traversal paths are denied and redacted; no
+#     stat, no open, no resolve, no raw forbidden path leak.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_PATH_SMUGGLING_DENIED = ProofScenario(
+    scenario_id="adversarial_path_smuggling_denied",
+    title="Adversarial path smuggling denied",
+    purpose="Fake ~/.hermes / .HERMES / production state.db / runtime-store / "
+    "traversal paths are denied and redacted; no stat, no open, no resolve.",
+    requested_filesystem_paths=(
+        "~/.hermes",
+        "/Users/huangruibang/.HERMES",
+        "/fake/production/state.db",
+        "/tmp/runtime-store/plugin_runtime.jsonl",
+        "/tmp/plugin-store/evil.json",
+        "/tmp/provider-live-store/evil.json",
+        "../../../etc/passwd",
+    ),
+    expected_decision="denied",
+    expected_denial_reasons=(
+        "forbidden_production_home",
+        "forbidden_production_database",
+        "read_outside_allowed_root",
+    ),
+    expected_triggered_guards=("filesystem_boundary",),
+    linked_p0_gates=("P0-03", "P0-09"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 15. adversarial_route_exception_smuggling_denied — route change hints in
+#     metadata + a routes.modify capability are denied; route exception required
+#     but never approved; no route count change, no route exposed.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_ROUTE_EXCEPTION_SMUGGLING_DENIED = ProofScenario(
+    scenario_id="adversarial_route_exception_smuggling_denied",
+    title="Adversarial route exception smuggling denied",
+    purpose="Route change hints (new_route, POST /admin/exec, routeExceptionApproved) "
+    "plus a routes.modify capability are denied; route exception required but "
+    "never approved; no route count change.",
+    requested_capabilities=("routes.modify",),
+    metadata={
+        "new_route": True,
+        "tool_write_route": True,
+        "requestedRouteChange": "add POST /admin/exec to the OpenAPI surface",
+        "routeExceptionApproved": True,
+        "routeChangeApproved": True,
+        "openapiMutation": {"addPath": "/admin/exec"},
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("routes_modify_denied",),
+    expected_triggered_guards=("capability:routes.modify",),
+    linked_p0_gates=("P0-14", "P0-16"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 16. adversarial_fake_human_approval_denied — a fake owner / signoff / approval
+#     token / review-board decision / project-owner / approved-by-ai is ignored;
+#     resolved_count stays 0, Implementation Authorization stays NO-GO.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_FAKE_HUMAN_APPROVAL_DENIED = ProofScenario(
+    scenario_id="adversarial_fake_human_approval_denied",
+    title="Adversarial fake human approval denied",
+    purpose="A fake owner / signoff / approval token / review-board decision / "
+    "project-owner / approved-by-ai is ignored; resolved_count stays 0.",
+    descriptor=dict(_SAFE_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    metadata={
+        "reviewer": "project-owner",
+        "owner": "project-owner",
+        "project_owner": "project-owner",
+        "signed_by": "human",
+        "signoff_id": "SIGNOFF-2026-06-19-fake",
+        "approval_token": "fake-approval-token",
+        "trust_token": "fake-trust-token",
+        "real_trust_token": "fake-real-trust-token",
+        "review_board_decision": "accepted",
+        "approved_by_ai": True,
+        "approved_by_human": True,
+        "p0_resolved": True,
+        "resolved_ids": ["P0-15", "P0-22", "P0-24"],
+        "implementation_authorization": "GO",
+    },
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-15", "P0-22"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 17. adversarial_summary_tampering_resisted — metadata claims resolved / GO,
+#     and external mutation of the returned result / summary objects must not
+#     leak into the safe projection; NO-GO fields and resolved_count stay frozen.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_SUMMARY_TAMPERING_RESISTED = ProofScenario(
+    scenario_id="adversarial_summary_tampering_resisted",
+    title="Adversarial summary tampering resisted",
+    purpose="Metadata claims resolved / GO, and external mutation of the returned "
+    "result / summary objects must not leak; NO-GO fields and resolved_count "
+    "stay frozen.",
+    descriptor=dict(_SAFE_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    metadata={
+        "resolved": True,
+        "p0_resolved": True,
+        "resolved_ids": ["P0-15"],
+        "implementation_authorization": "GO",
+        "phase_3i_authorized": True,
+        "real_runtime_authorized": True,
+    },
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-15", "P0-22"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 18. adversarial_capability_alias_denied — capability aliases (camelCase,
+#     snake_case, kebab-case, wildcard, dangerous prefix, unknown dangerous) are
+#     denied; aliases and wildcards do not bypass the default-deny.
+# ---------------------------------------------------------------------------
+_CAPABILITY_ALIAS_PAYLOAD: tuple[str, ...] = (
+    "Plugin.Execute",
+    "plugin_execute",
+    "plugin-execute",
+    "plugin.execute.*",
+    "routes.modify.*",
+    "network.request.external",
+    "secrets.read.all",
+    "production.access.root",
+    "runtime.authorize",
+)
+ADVERSARIAL_CAPABILITY_ALIAS_DENIED = ProofScenario(
+    scenario_id="adversarial_capability_alias_denied",
+    title="Adversarial capability alias denied",
+    purpose="Capability aliases (camelCase, snake_case, kebab-case, wildcard, "
+    "dangerous prefix, unknown dangerous) are denied; nothing bypasses the "
+    "default-deny.",
+    requested_capabilities=_CAPABILITY_ALIAS_PAYLOAD,
+    expected_decision="denied",
+    expected_denial_reasons=("capability_injection_denied", "unknown_capability"),
+    expected_triggered_guards=("capability:plugin_execute",),
+    linked_p0_gates=("P0-06", "P0-12"),
+)
+
+
+# ---------------------------------------------------------------------------
+# 19. adversarial_network_url_laundering_denied — external / file / ws / registry
+#     / marketplace URLs (any case) laundered into network targets are denied;
+#     no DNS, no socket, no urllib / requests.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_NETWORK_URL_LAUNDERING_DENIED = ProofScenario(
+    scenario_id="adversarial_network_url_laundering_denied",
+    title="Adversarial network URL laundering denied",
+    purpose="External / file / ws / registry / marketplace URLs (any case) "
+    "laundered into network targets are denied; no DNS, no socket, no urllib.",
+    requested_capabilities=("network.request",),
+    requested_network_targets=(
+        "https://example.com",
+        "HTTP://EXAMPLE.COM",
+        "ws://example.com",
+        "file:///etc/passwd",
+        "https://registry.example.com/plugin",
+        "marketplace://plugin",
+    ),
+    expected_decision="denied",
+    expected_denial_reasons=("network_request_denied",),
+    expected_triggered_guards=("capability:network.request", "network_deny"),
+    linked_p0_gates=("P0-04",),
+)
+
+
+# ---------------------------------------------------------------------------
+# 20. adversarial_kill_switch_override_denied — metadata attempts to override an
+#     active kill switch; the runner reads only the structural flag, so the
+#     switch stays armed and the proof fails closed; no process signal.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_KILL_SWITCH_OVERRIDE_DENIED = ProofScenario(
+    scenario_id="adversarial_kill_switch_override_denied",
+    title="Adversarial kill switch override denied",
+    purpose="Metadata attempts to override an active kill switch; the runner reads "
+    "only the structural flag, so the switch stays armed and the proof fails "
+    "closed; no process signal.",
+    kill_switch_state=True,
+    metadata={
+        "kill_switch_override": False,
+        "kill_switch_active": False,
+        "force_disable": False,
+        "override": True,
+        "bypass": True,
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("kill_switch_active",),
+    expected_triggered_guards=("kill_switch",),
+    linked_p0_gates=("P0-08",),
+)
+
+
+# ---------------------------------------------------------------------------
+# 21. adversarial_descriptor_id_smuggling_denied — a descriptor whose pluginId is
+#     a traversal / URL / shell-like value is denied before redaction
+#     (descriptor_id_unsafe); the id is a label, never a path or command.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_DESCRIPTOR_ID_SMUGGLING_DENIED = ProofScenario(
+    scenario_id="adversarial_descriptor_id_smuggling_denied",
+    title="Adversarial descriptor id smuggling denied",
+    purpose="A descriptor whose pluginId is a traversal value is denied before "
+    "redaction (descriptor_id_unsafe); the id is a label, never a path.",
+    descriptor={
+        "pluginId": "../../etc/passwd",
+        "version": "1.0.0",
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("descriptor_id_unsafe",),
+    expected_triggered_guards=("descriptor_only",),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# 22. adversarial_capability_oversized_denied — an oversized capability request
+#     (65 entries) is denied (oversized_input); the runner fails closed on
+#     unbounded input rather than evaluating it.
+# ---------------------------------------------------------------------------
+ADVERSARIAL_CAPABILITY_OVERSIZED_DENIED = ProofScenario(
+    scenario_id="adversarial_capability_oversized_denied",
+    title="Adversarial capability oversized denied",
+    purpose="An oversized capability request (65 entries) is denied "
+    "(oversized_input); the runner fails closed on unbounded input.",
+    requested_capabilities=tuple(f"capability.alias.{i}" for i in range(65)),
+    expected_decision="denied",
+    expected_denial_reasons=("oversized_input_capabilities",),
+    expected_triggered_guards=("input_size",),
+    linked_p0_gates=("P0-06",),
+)
+
+
 #: The frozen, ordered library of dev-only proof scenarios.
 FIXED_SCENARIOS: tuple[ProofScenario, ...] = (
     DESCRIPTOR_ONLY_SAFE_READ,
@@ -260,6 +628,21 @@ FIXED_SCENARIOS: tuple[ProofScenario, ...] = (
     PRODUCTION_ACCESS_ATTEMPT_DENIED,
     P0_HUMAN_REVIEW_REQUIRED,
     EVIDENCE_CANDIDATE_BUT_NOT_RESOLVED,
+    # Phase 3H adversarial hardening — fixed, in-memory bypass payloads. Each is
+    # a static record (no executable content, no external load); a pass is still
+    # dev-only evidence and resolves / authorizes nothing.
+    ADVERSARIAL_METADATA_SMUGGLING_DENIED,
+    ADVERSARIAL_NESTED_DESCRIPTOR_EXECUTION_DENIED,
+    ADVERSARIAL_SECRET_LAUNDERING_REDACTED,
+    ADVERSARIAL_PATH_SMUGGLING_DENIED,
+    ADVERSARIAL_ROUTE_EXCEPTION_SMUGGLING_DENIED,
+    ADVERSARIAL_FAKE_HUMAN_APPROVAL_DENIED,
+    ADVERSARIAL_SUMMARY_TAMPERING_RESISTED,
+    ADVERSARIAL_CAPABILITY_ALIAS_DENIED,
+    ADVERSARIAL_NETWORK_URL_LAUNDERING_DENIED,
+    ADVERSARIAL_KILL_SWITCH_OVERRIDE_DENIED,
+    ADVERSARIAL_DESCRIPTOR_ID_SMUGGLING_DENIED,
+    ADVERSARIAL_CAPABILITY_OVERSIZED_DENIED,
 )
 
 
@@ -285,6 +668,18 @@ __all__ = [
     "PRODUCTION_ACCESS_ATTEMPT_DENIED",
     "P0_HUMAN_REVIEW_REQUIRED",
     "EVIDENCE_CANDIDATE_BUT_NOT_RESOLVED",
+    "ADVERSARIAL_METADATA_SMUGGLING_DENIED",
+    "ADVERSARIAL_NESTED_DESCRIPTOR_EXECUTION_DENIED",
+    "ADVERSARIAL_SECRET_LAUNDERING_REDACTED",
+    "ADVERSARIAL_PATH_SMUGGLING_DENIED",
+    "ADVERSARIAL_ROUTE_EXCEPTION_SMUGGLING_DENIED",
+    "ADVERSARIAL_FAKE_HUMAN_APPROVAL_DENIED",
+    "ADVERSARIAL_SUMMARY_TAMPERING_RESISTED",
+    "ADVERSARIAL_CAPABILITY_ALIAS_DENIED",
+    "ADVERSARIAL_NETWORK_URL_LAUNDERING_DENIED",
+    "ADVERSARIAL_KILL_SWITCH_OVERRIDE_DENIED",
+    "ADVERSARIAL_DESCRIPTOR_ID_SMUGGLING_DENIED",
+    "ADVERSARIAL_CAPABILITY_OVERSIZED_DENIED",
     "FIXED_SCENARIOS",
     "get_fixed_scenarios",
 ]

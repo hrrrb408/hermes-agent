@@ -220,8 +220,9 @@ class TestScenarioModelSafety:
 
 
 class TestFixedScenarioLibrary:
-    def test_library_has_ten_scenarios(self) -> None:
-        assert len(FIXED_SCENARIOS) == 10
+    def test_library_has_expected_scenario_count(self) -> None:
+        # 10 baseline scenarios + 12 Phase 3H adversarial-hardening scenarios.
+        assert len(FIXED_SCENARIOS) == 22
 
     def test_all_scenario_ids_safe_and_unique(self) -> None:
         ids = [s.scenario_id for s in FIXED_SCENARIOS]
@@ -234,7 +235,7 @@ class TestFixedScenarioLibrary:
         assert first == second
         assert first is not FIXED_SCENARIOS  # fresh container
         # Library contents are immutable regardless.
-        assert len(FIXED_SCENARIOS) == 10
+        assert len(FIXED_SCENARIOS) == 22
 
     def test_no_scenario_carries_real_secret_or_production_path(self) -> None:
         for scenario in FIXED_SCENARIOS:
@@ -359,8 +360,8 @@ class TestSingleScenarioRunner:
 class TestMultiScenarioRunner:
     def test_runs_all_fixed_scenarios(self) -> None:
         summary = _safe_summary()
-        assert summary.total_scenarios == 10
-        assert summary.passed_scenarios == 10
+        assert summary.total_scenarios == 22
+        assert summary.passed_scenarios == 22
         assert summary.failed_scenarios == 0
 
     def test_summary_has_linked_p0_gates(self) -> None:
@@ -451,7 +452,7 @@ class TestP0Integration:
     def test_passing_scenarios_do_not_resolve_p0(self) -> None:
         # Even a fully-passing run resolves no gate.
         summary = _safe_summary()
-        assert summary.passed_scenarios == 10
+        assert summary.passed_scenarios == 22
         assert summary.p0_evidence_summary["resolvedCount"] == 0
 
     def test_candidate_evidence_is_not_resolved(self) -> None:

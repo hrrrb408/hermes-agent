@@ -72,8 +72,79 @@ a scenario is detected and ignored.
 | p0_human_review_required | allowed (authorization stays NO-GO) | P0-15, P0-22 |
 | evidence_candidate_but_not_resolved | allowed (candidate, not resolved) | P0-24 |
 
-All 10 scenarios pass; `resolved_count` remains **0** and every authorization
+All 10 baseline scenarios pass; `resolved_count` remains **0** and every authorization
 flag remains **NO-GO / NOT AUTHORIZED**.
+
+## D-bis. Adversarial scenario hardening (added)
+
+A second pass hardened the runner against bypass-shaped inputs. 12 **fixed,
+in-memory** adversarial scenarios were added to `dev_web_sandbox_scenarios.py`
+(no external load, no executable content):
+
+| scenario_id | expected decision | linked P0 gates |
+|-------------|-------------------|-----------------|
+| adversarial_metadata_smuggling_denied | allowed (auth stays NO-GO) | P0-15, P0-22 |
+| adversarial_nested_descriptor_execution_denied | denied | P0-12, P0-18 |
+| adversarial_secret_laundering_redacted | denied (redacted) | P0-10 |
+| adversarial_path_smuggling_denied | denied (redacted) | P0-03, P0-09 |
+| adversarial_route_exception_smuggling_denied | denied | P0-14, P0-16 |
+| adversarial_fake_human_approval_denied | allowed (auth stays NO-GO) | P0-15, P0-22 |
+| adversarial_summary_tampering_resisted | allowed (auth stays NO-GO) | P0-15, P0-22 |
+| adversarial_capability_alias_denied | denied | P0-06, P0-12 |
+| adversarial_network_url_laundering_denied | denied | P0-04 |
+| adversarial_kill_switch_override_denied | denied | P0-08 |
+| adversarial_descriptor_id_smuggling_denied | denied | P0-12 |
+| adversarial_capability_oversized_denied | denied | P0-06 |
+
+A scenario **pass is still not a P0 resolution**, still not Implementation
+Authorization GO, still not Phase 3I authorization, still not real-runtime
+authorization. `resolved_count` stays **0** regardless.
+
+### Bypasses found and fixed (adversarial self-review)
+
+Three audit / boundary-correctness gaps were found by direct probing and fixed
+(none enabled real execution — the runner has no loader / runtime; they were
+descriptor-only / redaction correctness gaps):
+
+1. **Nested descriptor injection** — execution-surface keys that tokenized to a
+   non-stem compound (`importlib`, `plugin.load`, dotted `os`/`system`,
+   `container`, `webhook`, `callback`, `registry`, `marketplace`,
+   `providerGenerated`, `llmGenerated`) slipped past descriptor-only
+   enforcement. Fixed in `dev_web_sandbox_policy.py` by extending the exec-stem
+   set and adding a normalized-compound dangerous-key scan; recursive nesting
+   and list-of-dict smuggling are now denied.
+2. **Secret-shaped key leak** — a dict key that itself embedded a secret token
+   (`sk-…`, `Bearer …`, `KEY=value`) was not redacted by `redact_sandbox_payload`
+   and not caught by `contains_secret`. Fixed in `dev_web_sandbox_guards.py`:
+   keys are now scanned like values and masked wholesale.
+3. **Runtime-store path leak** — runtime-store-shaped paths
+   (`plugin_runtime.jsonl`, `*-store.json`, `runtime-store` / `plugin-store`
+   dirs, traversal `..`) were not masked in scenario audit projections. Fixed in
+   `dev_web_sandbox_guards.py` (`RUNTIME_STORE_PATH_MARKERS` /
+   `path_mentions_runtime_store`) and `dev_web_sandbox_runner.py`
+   (`_redact_filesystem_path`); case-insensitive `.HERMES` / `state.db` masking
+   and traversal masking were also added.
+
+Additional hardening (defense-in-depth, no bypass required):
+
+- `_UNTRUSTED_METADATA_KEYS` widened to cover `signed_by` / `trust_token` /
+  `approval_token` / `real_trust_token` / `p0_resolved` / `resolved_ids` /
+  `project_owner` / `review_board_decision` / `approved_by_ai` / route-change /
+  runtime / production variants, so the ignored-key diagnostic is complete
+  (authorization was already a frozen constant regardless).
+- `ProofScenarioResult.redacted_audit` and `ProofRunSummary.redacted_audit_records`
+  are now stored as read-only `MappingProxyType` views, so in-place tampering of
+  a returned record raises and cannot pollute a later safe projection.
+
+### Hardening tests added
+
+`tests/test_dev_web_phase_3h_proof_runner_adversarial_hardening.py` — 183 tests
+covering the adversarial scenario library, metadata smuggling, nested
+descriptor injection, secret laundering, path smuggling, route-exception bypass,
+fake human approval, summary tampering, capability aliases, network URL
+laundering, kill-switch override, descriptor-id smuggling, source-boundary /
+dev_web_api isolation, route-count invariants, no-production-access,
+no-`~/.hermes`-access, and no-runtime-artifact invariants.
 
 ## E. Route governance (unchanged)
 

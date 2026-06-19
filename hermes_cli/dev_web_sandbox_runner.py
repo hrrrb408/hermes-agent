@@ -38,6 +38,7 @@ import copy
 import os
 import re
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Mapping
 
 from hermes_cli.dev_web_p0_evidence import (
@@ -60,6 +61,7 @@ from hermes_cli.dev_web_safety_baseline import (
 from hermes_cli.dev_web_sandbox_guards import (
     REDACTED_VALUE,
     contains_secret,
+    path_mentions_runtime_store,
     redact_sandbox_payload,
     redact_sandbox_text,
 )
@@ -109,10 +111,11 @@ def _redact_filesystem_path(path: Any) -> str:
     """Redact a filesystem path string for an audit record.
 
     ``redact_sandbox_payload`` is secret-shaped, not path-shaped, so a raw
-    ``~/.hermes`` / production ``state.db`` string would survive it. This helper
-    applies the same production-path classifiers the sandbox guard uses
-    (expanduser + string-only checks — the path is **never** opened or stated) so
-    no raw production / forbidden path reaches a scenario's audit projection.
+    ``~/.hermes`` / production ``state.db`` / runtime-store string would survive
+    it. This helper applies the same production-path classifiers the sandbox
+    guard uses (expanduser + string-only checks — the path is **never** opened or
+    stated) plus the runtime-store marker check, so no raw production /
+    forbidden / runtime-store path reaches a scenario's audit projection.
     """
     if path is None:
         return ""
@@ -123,6 +126,13 @@ def _redact_filesystem_path(path: Any) -> str:
         return REDACTED_VALUE
     lowered = text.lower()
     if "/.hermes" in lowered or ".hermes/" in lowered or "state.db" in lowered:
+        return REDACTED_VALUE
+    if path_mentions_runtime_store(lowered):
+        return REDACTED_VALUE
+    # A traversal (``..``) segment in a filesystem request is escape intent —
+    # mask it so no raw host-targeted path (``../../etc/passwd``) reaches the
+    # audit, even though the guard already denies it.
+    if ".." in lowered:
         return REDACTED_VALUE
     return path
 
@@ -221,11 +231,13 @@ class ProofScenarioResult:
         for flag in RESULT_EVIDENCE_FLAGS:
             if getattr(self, flag) is not False:
                 raise AssertionError(f"scenario result evidence flag must be False: {flag}")
-        # Defensive-copy the audit mapping so a caller mutation of the builder's
-        # dict (or a later read of result.redacted_audit) cannot leak a value.
+        # Defensive-copy the audit mapping and freeze its top level as a
+        # read-only mapping, so a caller mutation of the builder's dict — or an
+        # in-place mutation of ``result.redacted_audit`` after construction —
+        # cannot leak a value into a later projection.
         if self.redacted_audit:
             object.__setattr__(
-                self, "redacted_audit", copy.deepcopy(dict(self.redacted_audit))
+                self, "redacted_audit", MappingProxyType(copy.deepcopy(dict(self.redacted_audit)))
             )
 
     def to_safe_dict(self) -> dict[str, Any]:
@@ -302,10 +314,18 @@ class ProofRunSummary:
                 copy.deepcopy(dict(self.production_safety_summary)),
             )
         if self.redacted_audit_records:
+            # Deep-copy each record, then freeze its top level as a read-only
+            # mapping so an in-place mutation of a returned record
+            # (``summary.redacted_audit_records[i]["x"] = ...``) raises and can
+            # never pollute a later safe projection. Nested values stay readable
+            # (``to_safe_dict`` shallow-copies via ``dict(r)`` before redaction).
             object.__setattr__(
                 self,
                 "redacted_audit_records",
-                tuple(copy.deepcopy(dict(r)) for r in self.redacted_audit_records),
+                tuple(
+                    MappingProxyType(copy.deepcopy(dict(r)))
+                    for r in self.redacted_audit_records
+                ),
             )
 
     @property

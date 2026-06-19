@@ -527,6 +527,10 @@ _DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
         "import",
         "imports",
         "importpath",
+        "importlib",
+        "importmodule",
+        "loadmodule",
+        "dlopen",
         "command",
         "commands",
         "cmd",
@@ -550,6 +554,7 @@ _DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
         "docker",
         "dockerimage",
         "image",
+        "container",
         "wheel",
         "wheelurl",
         "manifest",
@@ -562,6 +567,44 @@ _DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
         "childprocess",
         "process",
         "spawn",
+        "webhook",
+        "callback",
+        "registry",
+        "marketplace",
+        "generated",
+        "fetch",
+    }
+)
+
+#: Normalized (alnum-only, lowercased) compound descriptor keys that denote an
+#: execution surface but do **not** tokenize to a stem above — e.g. a dotted
+#: ``os``/``system`` key normalizes to ``ossystem`` and a ``plugin``/``load``
+#: dotted key to ``pluginload``. ``plugin`` / ``system`` / ``load`` are
+#: deliberately *not* bare stems (``plugin`` would false-match ``pluginId``;
+#: ``system`` / ``load`` are too generic), so these specific dotted / snake
+#: smuggles are matched on their joined normalized form instead. Precise by
+#: construction: no allowed descriptor field normalizes to one of these.
+_DESCRIPTOR_DANGEROUS_COMPOUNDS: frozenset[str] = frozenset(
+    {
+        "ossystem",
+        "osexec",
+        "osspawn",
+        "osexit",
+        "ossystemcall",
+        "pluginload",
+        "pluginexec",
+        "pluginexecute",
+        "pluginrun",
+        "plugincall",
+        "pluginspawn",
+        "pluginimport",
+        "subprocesscall",
+        "popen",
+        "systemcall",
+        "importlib",
+        "importmodule",
+        "loadmodule",
+        "dlopen",
     }
 )
 
@@ -593,6 +636,12 @@ def _descriptor_key_is_surface(key: Any) -> bool:
     ``apikey``; ``dockerImage`` → ``docker``/``image``; ``pluginId`` →
     ``plugin``/``id`` (not a surface); ``maxTokens`` is not a descriptor key
     concern and resolves to ``tokens`` (not a stem).
+
+    A second pass normalizes the whole key to alnum-only lowercase and matches
+    it against :data:`_DESCRIPTOR_DANGEROUS_COMPOUNDS`, so a dotted / snake
+    smuggle like an ``os``/``system`` or ``plugin``/``load`` dotted key — whose
+    individual tokens are too generic to be stems — is still detected as an
+    execution surface.
     """
     if not isinstance(key, str):
         return False
@@ -607,7 +656,12 @@ def _descriptor_key_is_surface(key: Any) -> bool:
     for i in range(n):
         for j in range(i + 2, min(i + 4, n + 1)):
             joins.add("".join(tokens[i:j]))
-    return bool(joins & (_DESCRIPTOR_EXEC_STEMS | _DESCRIPTOR_SECRET_STEMS))
+    if joins & (_DESCRIPTOR_EXEC_STEMS | _DESCRIPTOR_SECRET_STEMS):
+        return True
+    normalized_key = re.sub(r"[^a-z0-9]", "", key.lower())
+    if normalized_key and normalized_key in _DESCRIPTOR_DANGEROUS_COMPOUNDS:
+        return True
+    return False
 
 
 def _descriptor_has_extended_surface(node: Any) -> bool:
