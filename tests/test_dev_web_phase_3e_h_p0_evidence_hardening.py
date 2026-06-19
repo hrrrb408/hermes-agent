@@ -984,6 +984,11 @@ SANDBOX_MODULES = {
     # assertion below now also forbids these two modules there).
     "dev_web_plugin_runtime",
     "dev_web_fixture_plugins",
+    # Phase 3I descriptor-registry → runtime binding — same safety family: it
+    # reuses the guards / policy / audit / P0 evidence primitives (by design)
+    # to bridge the Phase 3D static descriptor registry to the dev-only runtime,
+    # and is itself excluded from dev_web_api.
+    "dev_web_plugin_runtime_binding",
 }
 
 

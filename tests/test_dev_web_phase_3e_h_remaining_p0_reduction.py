@@ -578,6 +578,10 @@ def test_no_dev_web_module_imports_p0_evidence() -> None:
         # (by design) and is itself excluded from dev_web_api below.
         "dev_web_plugin_runtime",
         "dev_web_fixture_plugins",
+        # Phase 3I descriptor-registry → runtime binding — same safety family:
+        # it reuses the guards / policy / audit / P0 evidence primitives (by
+        # design) and is itself excluded from dev_web_api.
+        "dev_web_plugin_runtime_binding",
     }
     candidates = sorted((REPO_ROOT / "hermes_cli").glob("dev_web_*.py"))
     for path in candidates:

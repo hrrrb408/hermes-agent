@@ -921,6 +921,182 @@ def get_runtime_expansion_proof_scenarios() -> tuple[ProofScenario, ...]:
     return tuple(scenario for scenario in RUNTIME_EXPANSION_PROOF_SCENARIOS)
 
 
+# ===========================================================================
+# Phase 3I descriptor-registry runtime integration proof scenarios (separate,
+# fixed, dev-only).
+#
+# A fourth, isolated block of dev-only proof scenarios that reference the Phase
+# 3I descriptor-registry → runtime binding concerns (a reviewed fixture
+# descriptor sourced from the static descriptor registry binding to the fixture
+# allowlist; a remote-registry / command-surface descriptor being denied). Like
+# the runtime-themed scenarios above, these are **proof scenarios** driven
+# through the existing descriptor-only proof runner — they do NOT execute the
+# runtime (the runtime is invoked only by tests that call
+# ``run_dev_plugin_from_descriptor`` directly). Each is a pure static record:
+# no executable content, no module path, no shell command, no real URL call, no
+# real secret, no production path.
+#
+# Kept OUT of :data:`FIXED_SCENARIOS`, :data:`RUNTIME_PROOF_SCENARIOS`, and
+# :data:`RUNTIME_EXPANSION_PROOF_SCENARIOS` so all three frozen libraries'
+# regression assertions are unchanged. A scenario pass is dev-only evidence —
+# it never resolves a P0 gate, never authorizes implementation / Phase 3I /
+# real runtime / a new route / production.
+# ===========================================================================
+
+
+# A clean, descriptor-only record sourced from the static descriptor registry,
+# naming the reviewed fixture.echo/echo_uppercase binding. Read as metadata
+# only; never loaded / executed by the proof runner.
+_REGISTRY_ECHO_DESCRIPTOR: Mapping[str, Any] = {
+    "descriptorId": "descriptor.fixture.echo_uppercase",
+    "pluginId": "fixture.echo",
+    "operation": "echo_uppercase",
+    "source": "local_static_descriptor",
+    "version": "phase-3i-fixture-descriptor-v1",
+}
+
+
+# ---------------------------------------------------------------------------
+# DR1. descriptor_runtime_echo_allowed — a descriptor-only read of a reviewed
+#      registry fixture descriptor (fixture.echo/echo_uppercase) is a valid
+#      dev-only proof input (NOT plugin execution, NOT runtime approval).
+# ---------------------------------------------------------------------------
+DESCRIPTOR_RUNTIME_ECHO_ALLOWED = ProofScenario(
+    scenario_id="descriptor_runtime_echo_allowed",
+    title="Descriptor-registry echo fixture descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of a reviewed registry fixture descriptor is a "
+    "valid dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor=dict(_REGISTRY_ECHO_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# DR2. descriptor_runtime_normalize_allowed — a descriptor-only read of the
+#      reviewed registry fixture.transform/normalize_text descriptor is valid.
+# ---------------------------------------------------------------------------
+DESCRIPTOR_RUNTIME_NORMALIZE_ALLOWED = ProofScenario(
+    scenario_id="descriptor_runtime_normalize_allowed",
+    title="Descriptor-registry transform (normalize_text) descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of the reviewed registry fixture.transform descriptor "
+    "is a valid dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor={
+        "descriptorId": "descriptor.fixture.normalize_text",
+        "pluginId": "fixture.transform",
+        "operation": "normalize_text",
+        "source": "local_static_descriptor",
+        "version": "phase-3i-fixture-descriptor-v1",
+    },
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# DR3. descriptor_runtime_remote_registry_denied — a descriptor declaring a
+#      remote registry reference is denied descriptor-only read; no fetch, no
+#      load. (The descriptor-only proof runner denies the ``registry`` key as an
+#      execution surface; the runtime binding layer additionally denies a
+#      ``source: remote_registry`` provenance value, exercised by the runtime
+#      tests directly.)
+# ---------------------------------------------------------------------------
+DESCRIPTOR_RUNTIME_REMOTE_REGISTRY_DENIED = ProofScenario(
+    scenario_id="descriptor_runtime_remote_registry_denied",
+    title="Descriptor-registry remote-registry reference denied",
+    purpose="A descriptor declaring a remote registry reference is denied descriptor-only "
+    "read; no remote fetch, no load, no execution.",
+    descriptor={
+        "descriptorId": "descriptor.remote.registry.denied",
+        "pluginId": "fixture.echo",
+        "operation": "echo_uppercase",
+        "source": "local_static_descriptor",
+        "version": "1.0.0",
+        "registry": "evil.example.com/plugins",
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("descriptor_carries_execution_surface",),
+    expected_triggered_guards=("descriptor_only",),
+    linked_p0_gates=("P0-05", "P0-12", "P0-18"),
+)
+
+
+# ---------------------------------------------------------------------------
+# DR4. descriptor_runtime_command_denied — a descriptor carrying a command
+#      field is denied descriptor-only read; no shell, no execution.
+# ---------------------------------------------------------------------------
+DESCRIPTOR_RUNTIME_COMMAND_DENIED = ProofScenario(
+    scenario_id="descriptor_runtime_command_denied",
+    title="Descriptor-registry command-surface descriptor denied",
+    purpose="A descriptor carrying a command field is denied descriptor-only read; "
+    "no shell, no execution surface.",
+    descriptor={
+        "descriptorId": "descriptor.command.denied",
+        "pluginId": "fixture.echo",
+        "operation": "echo_uppercase",
+        "source": "local_static_descriptor",
+        "version": "1.0.0",
+        "command": "evil-run",
+    },
+    expected_decision="denied",
+    expected_denial_reasons=("descriptor_carries_execution_surface",),
+    expected_triggered_guards=("descriptor_only",),
+    linked_p0_gates=("P0-12", "P0-18"),
+)
+
+
+# ---------------------------------------------------------------------------
+# DR5. descriptor_runtime_batch_mixed_isolated — a descriptor-only read of a
+#      clean registry descriptor is allowed while the proof runner is also able
+#      to isolate a denied descriptor (here only the allowed side is asserted;
+#      batch isolation is exercised by the runtime tests directly). Kept as a
+#      descriptor-only scenario so the proof runner never executes a batch.
+# ---------------------------------------------------------------------------
+DESCRIPTOR_RUNTIME_BATCH_MIXED_ISOLATED = ProofScenario(
+    scenario_id="descriptor_runtime_batch_mixed_isolated",
+    title="Descriptor-registry batch isolation (descriptor-only read)",
+    purpose="A descriptor-only read of a reviewed registry descriptor is allowed; batch "
+    "failure isolation is exercised by the runtime tests, not the proof runner.",
+    descriptor=dict(_REGISTRY_ECHO_DESCRIPTOR),
+    requested_capabilities=("descriptor.read",),
+    metadata={
+        "batchId": "dev-only-descriptor-batch",
+        "failFast": False,
+        "implementation_authorization": "GO",
+        "phase_3i_authorized": True,
+    },
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-15", "P0-22"),
+)
+
+
+#: The frozen, ordered library of Phase 3I descriptor-registry runtime-integration
+#: dev-only proof scenarios. Separate from :data:`FIXED_SCENARIOS` (frozen Phase 3H
+#: 22-scenario library), :data:`RUNTIME_PROOF_SCENARIOS` (frozen 5-scenario
+#: library), and :data:`RUNTIME_EXPANSION_PROOF_SCENARIOS` (frozen 4-scenario
+#: library) so all three libraries' regression assertions are unchanged.
+DESCRIPTOR_REGISTRY_PROOF_SCENARIOS: tuple[ProofScenario, ...] = (
+    DESCRIPTOR_RUNTIME_ECHO_ALLOWED,
+    DESCRIPTOR_RUNTIME_NORMALIZE_ALLOWED,
+    DESCRIPTOR_RUNTIME_REMOTE_REGISTRY_DENIED,
+    DESCRIPTOR_RUNTIME_COMMAND_DENIED,
+    DESCRIPTOR_RUNTIME_BATCH_MIXED_ISOLATED,
+)
+
+
+def get_descriptor_registry_proof_scenarios() -> tuple[ProofScenario, ...]:
+    """Return a defensive copy of the descriptor-registry runtime scenario library."""
+    return tuple(scenario for scenario in DESCRIPTOR_REGISTRY_PROOF_SCENARIOS)
+
+
 __all__ = [
     "DESCRIPTOR_ONLY_SAFE_READ",
     "EXECUTABLE_DESCRIPTOR_DENIED",
@@ -961,4 +1137,13 @@ __all__ = [
     "RUNTIME_REDACT_PAYLOAD_ALLOWED",
     "RUNTIME_EXPANSION_PROOF_SCENARIOS",
     "get_runtime_expansion_proof_scenarios",
+    # Phase 3I descriptor-registry runtime-integration proof scenarios
+    # (separate, fixed, dev-only).
+    "DESCRIPTOR_RUNTIME_ECHO_ALLOWED",
+    "DESCRIPTOR_RUNTIME_NORMALIZE_ALLOWED",
+    "DESCRIPTOR_RUNTIME_REMOTE_REGISTRY_DENIED",
+    "DESCRIPTOR_RUNTIME_COMMAND_DENIED",
+    "DESCRIPTOR_RUNTIME_BATCH_MIXED_ISOLATED",
+    "DESCRIPTOR_REGISTRY_PROOF_SCENARIOS",
+    "get_descriptor_registry_proof_scenarios",
 ]
