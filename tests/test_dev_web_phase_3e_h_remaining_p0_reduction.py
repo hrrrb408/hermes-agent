@@ -571,6 +571,8 @@ def test_no_dev_web_module_imports_p0_evidence() -> None:
         "dev_web_sandbox_policy",
         "dev_web_sandbox_audit",
         "dev_web_safety_baseline",
+        "dev_web_sandbox_runner",
+        "dev_web_sandbox_scenarios",
     }
     candidates = sorted((REPO_ROOT / "hermes_cli").glob("dev_web_*.py"))
     for path in candidates:
