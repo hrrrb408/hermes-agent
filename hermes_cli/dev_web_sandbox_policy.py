@@ -518,6 +518,10 @@ def _redact_descriptor_id(descriptor_id: str) -> str:
 #: contiguous join of segments) carries one of these denotes an execution
 #: surface — denied even if the exact key name is not in the Phase 3D
 #: ``FORBIDDEN_FIELDS`` enumeration. Plurals included for exec (rarely config).
+#: ``file`` / ``path`` / ``remote`` are included because a descriptor naming a
+#: local file, an on-disk path, or a remote reference is an execution / load
+#: surface for a dev-only descriptor-only read (a clean descriptor never names
+#: one).
 _DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
     {
         "entrypoint",
@@ -573,6 +577,9 @@ _DESCRIPTOR_EXEC_STEMS: frozenset[str] = frozenset(
         "marketplace",
         "generated",
         "fetch",
+        "file",
+        "path",
+        "remote",
     }
 )
 
@@ -598,6 +605,11 @@ _DESCRIPTOR_DANGEROUS_COMPOUNDS: frozenset[str] = frozenset(
         "plugincall",
         "pluginspawn",
         "pluginimport",
+        "plugindir",
+        "pluginpath",
+        "localdirectory",
+        "localplugin",
+        "pluginstore",
         "subprocesscall",
         "popen",
         "systemcall",

@@ -53,7 +53,10 @@ from hermes_cli.dev_web_fixture_plugins import (
     FIXTURE_PLUGIN_IDS,
     FIXTURE_REGISTRY,
     FixtureOperation,
+    FixtureOutputError,
+    MAX_FIXTURE_NESTING_DEPTH,
     lookup_fixture,
+    validate_fixture_metadata,
 )
 from hermes_cli.dev_web_p0_evidence import (
     GATE_STATUS_PARTIAL_EVIDENCE,
@@ -103,6 +106,15 @@ RESULT_EVIDENCE_FLAGS: tuple[str, ...] = (
 #: Maximum number of requested items per category (caps / paths / targets /
 #: secrets). Oversized input → denied (``oversized_input``).
 MAX_REQUEST_ITEMS_PER_CATEGORY = 64
+
+#: Maximum number of requests in a single batch. An oversized batch is rejected
+#: outright (``batch_oversized``) so the batch runner never processes unbounded
+#: input.
+MAX_BATCH_REQUESTS: int = 32
+
+#: A safe batch id is a clean label over ``[A-Za-z0-9_.\-]`` (mirrors a
+#: descriptor / scenario id) — never a path, traversal pair, or command.
+_BATCH_ID_SAFE: re.Pattern[str] = re.compile(r"[A-Za-z0-9_.\-]+")
 
 #: The frozen runtime flags every result carries. The dev-only / fixture-only
 #: flags are True; every production / network / secret / route / store / load /
@@ -184,6 +196,15 @@ RUNTIME_REASONS: frozenset[str] = frozenset(
         "secret_unavailable",
         "fixture_execution_failed",
         "fixture_input_invalid",
+        "fixture_metadata_unsafe",
+        "fixture_metadata_missing",
+        "fixture_output_unsafe",
+        "capability_mismatch_denied",
+        "batch_oversized",
+        "batch_id_unsafe",
+        "batch_id_missing",
+        "batch_malformed_requests",
+        "batch_metadata_smuggling_denied",
         "redaction_failed_fail_closed",
     }
 )
@@ -389,6 +410,24 @@ def resolve_runtime_binding(request: PluginRuntimeRequest) -> RuntimeBinding:
         fixture = lookup_fixture(plugin_id, operation)
         if fixture is None:
             reasons.append("fixture_not_in_allowlist")
+
+    # 6. Metadata re-validation (defense-in-depth) + capability compatibility.
+    #    A bound fixture's safety metadata must be all-False (``side_effects`` /
+    #    ``network`` / ``secrets`` / ``filesystem`` / ``production`` /
+    #    ``route_change``); a forged / injected operation with tampered metadata
+    #    is refused here. Every requested capability must also be one the bound
+    #    fixture declares as compatible (a pure fixture allows only
+    #    descriptor-level labels) — a capability outside that set is a mismatch.
+    if fixture is not None:
+        meta_ok, meta_reasons = validate_fixture_metadata(fixture)
+        if not meta_ok:
+            reasons.extend(meta_reasons)
+            fixture = None
+        else:
+            for capability in request.requested_capabilities:
+                if capability not in fixture.allowed_capabilities:
+                    reasons.append("capability_mismatch_denied")
+                    break
 
     resolved = fixture is not None and not reasons
     return RuntimeBinding(
@@ -596,6 +635,31 @@ def _runtime_p0_projection(kind: str) -> dict[str, Any]:
     }
 
 
+def _runtime_authorization_projection() -> dict[str, Any]:
+    """A frozen, redaction-safe authorization verdict block for an audit record.
+
+    The key names deliberately avoid secret-bearing stems (``auth`` / ``token`` /
+    ``secret`` / ``apikey`` / ``credential``): the sandbox redactor would
+    collapse a string value under such a key to ``[REDACTED]``, hiding the very
+    ``NO-GO`` / ``False`` verdicts the block exists to carry (and tripping the
+    audit's final secret sweep). The ``*Gate`` names keep the verdicts readable:
+    ``implementationGate`` carries Implementation Authorization (NO-GO),
+    ``phase3iGate`` carries Phase 3I authorization (NOT AUTHORIZED / False),
+    ``productionRuntimeGate`` carries production-runtime authorization (NO-GO).
+    Every value is a frozen constant — a runtime pass (single or batch) flips
+    none of them.
+    """
+    return {
+        "implementationGate": IMPLEMENTATION_AUTHORIZATION,
+        "phase3iGate": PHASE_3I_AUTHORIZED,
+        "productionRuntimeGate": REAL_RUNTIME,
+        "newRouteGate": NEW_ROUTE,
+        "productionRolloutGate": PRODUCTION_ROLLOUT,
+        "resolved": False,
+        "redactionApplied": True,
+    }
+
+
 @dataclass(frozen=True)
 class PluginRuntimeResult:
     """Output model for a dev-only local plugin runtime evaluation."""
@@ -721,6 +785,7 @@ def _redaction_failed_audit() -> dict[str, Any]:
         "denialReasons": ["redaction_failed_fail_closed"],
         "triggeredGuards": ["redaction_failure"],
         "runtimeFlags": _frozen_runtime_flags(),
+        "authorizationSummary": _runtime_authorization_projection(),
         "p0Evidence": _runtime_p0_projection("guard_evidence"),
         "evidence": {flag: False for flag in RESULT_EVIDENCE_FLAGS},
         "redactionApplied": True,
@@ -769,6 +834,7 @@ def _build_runtime_audit(
         "redactedOutput": dict(output_payload),
         "redactedErrors": list(errors),
         "runtimeFlags": _frozen_runtime_flags(),
+        "authorizationSummary": _runtime_authorization_projection(),
         "p0Evidence": _runtime_p0_projection(p0_kind),
         "evidence": {flag: False for flag in RESULT_EVIDENCE_FLAGS},
         "redactionApplied": True,
@@ -782,6 +848,30 @@ def _build_runtime_audit(
 # ---------------------------------------------------------------------------
 # 6. run_dev_plugin — the single dev-only execution entry point
 # ---------------------------------------------------------------------------
+
+
+def _assert_fixture_output(value: Any, *, depth: int = 0) -> None:
+    """Assert a fixture result is a bounded, JSON-native mapping.
+
+    A fixture must return a dict of JSON-native scalars / dicts / lists (no
+    callables, modules, or arbitrary objects) bounded in nesting depth. A
+    non-conforming value raises :class:`FixtureOutputError`, which the runtime
+    records as a fail-closed result (``fixture_output_unsafe``) so the
+    non-native value is never echoed into an audit projection.
+    """
+    if depth > MAX_FIXTURE_NESTING_DEPTH + 2:
+        raise FixtureOutputError("fixture output exceeds the depth bound")
+    if isinstance(value, Mapping):
+        for val in value.values():
+            _assert_fixture_output(val, depth=depth + 1)
+        return
+    if isinstance(value, (list, tuple)):
+        for val in value:
+            _assert_fixture_output(val, depth=depth + 1)
+        return
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return
+    raise FixtureOutputError("fixture output contains a non-json-native value")
 
 
 def run_dev_plugin(request: PluginRuntimeRequest) -> PluginRuntimeResult:
@@ -830,6 +920,7 @@ def run_dev_plugin(request: PluginRuntimeRequest) -> PluginRuntimeResult:
             raw_output = binding.fixture.invoker(payload)
             if not isinstance(raw_output, Mapping):
                 raise RuntimeError("fixture returned a non-mapping result")
+            _assert_fixture_output(raw_output)
             output_payload = redact_sandbox_payload(copy.deepcopy(dict(raw_output)))
             executed = True
             p0_kind = "partial_evidence"
@@ -838,12 +929,15 @@ def run_dev_plugin(request: PluginRuntimeRequest) -> PluginRuntimeResult:
             failed = True
             allowed = False
             errors = (redact_sandbox_text(str(exc)),)
-            # Distinguish an input-validation failure from a deliberate failure
-            # so the audit / P0 projection is precise.
+            # Distinguish an input-validation failure, an output-validation
+            # failure, and a deliberate failure so the audit / P0 projection is
+            # precise.
             from hermes_cli.dev_web_fixture_plugins import FixtureInputError
 
             if isinstance(exc, FixtureInputError):
                 reasons.append("fixture_input_invalid")
+            elif isinstance(exc, FixtureOutputError):
+                reasons.append("fixture_output_unsafe")
             else:
                 reasons.append("fixture_execution_failed")
             guards.append("failure_handler")
@@ -880,7 +974,303 @@ def run_dev_plugin(request: PluginRuntimeRequest) -> PluginRuntimeResult:
 
 
 # ---------------------------------------------------------------------------
-# 7. Boundary re-affirmation (pure constants, grep-able)
+# 7. Batch runtime execution (multi-plugin, isolated, fail-closed)
+# ---------------------------------------------------------------------------
+
+
+#: Default batch id when a caller supplies none (a safe label, never a path).
+_DEFAULT_BATCH_ID = "dev-only-batch"
+
+
+def _batch_id_is_safe(value: Any) -> bool:
+    """True iff *value* is a clean ``[A-Za-z0-9_.\\-]`` label with no traversal."""
+    if not isinstance(value, str) or not value:
+        return False
+    if ".." in value:
+        return False
+    return _BATCH_ID_SAFE.fullmatch(value) is not None
+
+
+@dataclass(frozen=True)
+class PluginRuntimeBatchRequest:
+    """Input model for a dev-only multi-plugin batch runtime evaluation.
+
+    Carries a list of :class:`PluginRuntimeRequest` (each independently
+    validated + bound), a safe ``batch_id`` label, a ``fail_fast`` flag, and
+    optional untrusted ``metadata``. **Never** carries executable plugin code,
+    a module path, a shell command, an external URL, a real API key, or a
+    production path. ``metadata`` is untrusted by construction: an
+    authorization-smuggling payload fails the whole batch closed.
+    """
+
+    requests: tuple[PluginRuntimeRequest, ...] = ()
+    batch_id: str = ""
+    fail_fast: bool = False
+    metadata: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        # Coerce + defensive-copy: requests become a fresh tuple; metadata is
+        # deep-copied so a caller mutation after construction cannot change what
+        # the batch evaluates.
+        if isinstance(self.requests, (list, tuple)):
+            object.__setattr__(self, "requests", tuple(self.requests))
+        else:
+            object.__setattr__(self, "requests", ())
+        if self.metadata is not None:
+            object.__setattr__(self, "metadata", copy.deepcopy(self.metadata))
+
+    def to_safe_dict(self) -> dict[str, Any]:
+        return {
+            "batchId": self.batch_id if _batch_id_is_safe(self.batch_id) else "",
+            "requestCount": len(self.requests),
+            "failFast": bool(self.fail_fast),
+            "hasMetadata": self.metadata is not None,
+            "redactionApplied": True,
+        }
+
+
+@dataclass(frozen=True)
+class PluginRuntimeBatchResult:
+    """Output model for a dev-only multi-plugin batch runtime evaluation.
+
+    Every result is in-memory, redacted, and isolation-preserving: one fixture
+    failure or denial never poisons another request, and a batch pass resolves
+    / authorizes nothing (``resolved`` stays False, every authorization flag
+    stays NO-GO / not-authorized). The runtime flags must equal the frozen
+    constants — a batch flips none of them.
+    """
+
+    batch_id: str
+    total: int
+    succeeded: int
+    failed: int
+    denied: int
+    results: tuple[PluginRuntimeResult, ...] = ()
+    redacted_audit: Mapping[str, Any] = field(default_factory=dict)
+    runtime_flags: Mapping[str, bool] = field(default_factory=_frozen_runtime_flags)
+    p0_evidence: Mapping[str, Any] = field(default_factory=dict)
+    errors: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if dict(self.runtime_flags) != RUNTIME_FLAGS_FROZEN:
+            raise AssertionError("batch runtime flags must equal the frozen constants")
+        # Freeze the mutable mappings + results tuple so an in-place mutation of
+        # a returned field cannot leak a value into a later safe projection.
+        if self.results:
+            object.__setattr__(self, "results", tuple(self.results))
+        if self.redacted_audit:
+            object.__setattr__(
+                self, "redacted_audit", MappingProxyType(copy.deepcopy(dict(self.redacted_audit)))
+            )
+        if self.runtime_flags:
+            object.__setattr__(
+                self, "runtime_flags", MappingProxyType(copy.deepcopy(dict(self.runtime_flags)))
+            )
+        if self.p0_evidence:
+            object.__setattr__(
+                self, "p0_evidence", MappingProxyType(copy.deepcopy(dict(self.p0_evidence)))
+            )
+
+    def to_safe_dict(self) -> dict[str, Any]:
+        return redact_sandbox_payload(
+            {
+                "schemaVersion": PLUGIN_RUNTIME_VERSION,
+                "source": PLUGIN_RUNTIME_AUDIT_SOURCE + ".batch",
+                "batchId": self.batch_id,
+                "total": self.total,
+                "succeeded": self.succeeded,
+                "failed": self.failed,
+                "denied": self.denied,
+                "results": [r.to_safe_dict() for r in self.results],
+                "audit": dict(self.redacted_audit),
+                "runtimeFlags": dict(self.runtime_flags),
+                "p0Evidence": dict(self.p0_evidence),
+                "errors": list(self.errors),
+                "redactionApplied": True,
+                "persisted": False,
+            }
+        )
+
+
+def _batch_p0_projection(results: tuple[PluginRuntimeResult, ...]) -> dict[str, Any]:
+    """Conservative P0 projection for a batch.
+
+    A batch with any successful fixture is ``partial_evidence`` (reproducibility
+    evidence); a batch of only denials is ``guard_evidence``; a batch with any
+    failure is ``failure_mode_evidence``. ``resolved`` is always False and every
+    authorization flag is frozen — a batch pass resolves / authorizes nothing.
+    """
+    if any(r.failed for r in results):
+        kind = "failure_mode_evidence"
+    elif any(r.allowed for r in results):
+        kind = "partial_evidence"
+    else:
+        kind = "guard_evidence"
+    projection = _runtime_p0_projection(kind)
+    projection["batchKind"] = kind
+    projection["note"] = "dev_only_fixture_batch_partial_evidence_only"
+    return projection
+
+
+def _fail_closed_batch(
+    batch_id: str, *, reasons: tuple[str, ...], errors: tuple[str, ...]
+) -> PluginRuntimeBatchResult:
+    """Build a fail-closed (no results, redacted) batch for an invalid request."""
+    audit = redact_sandbox_payload(
+        {
+            "schemaVersion": PLUGIN_RUNTIME_VERSION,
+            "source": PLUGIN_RUNTIME_AUDIT_SOURCE + ".batch",
+            "batchId": batch_id,
+            "total": 0,
+            "succeeded": 0,
+            "failed": 0,
+            "denied": 0,
+            "perOperationSummary": [],
+            "decision": "denied",
+            "denialReasons": list(reasons),
+            "triggeredGuards": ["batch_fail_closed"],
+            "runtimeFlags": _frozen_runtime_flags(),
+            "authorizationSummary": _runtime_authorization_projection(),
+            "p0Evidence": _batch_p0_projection(()),
+            "evidence": {flag: False for flag in RESULT_EVIDENCE_FLAGS},
+            "redactionApplied": True,
+            "persisted": False,
+        }
+    )
+    return PluginRuntimeBatchResult(
+        batch_id=batch_id,
+        total=0,
+        succeeded=0,
+        failed=0,
+        denied=0,
+        results=(),
+        redacted_audit=audit,
+        runtime_flags=_frozen_runtime_flags(),
+        p0_evidence=_batch_p0_projection(()),
+        errors=errors,
+    )
+
+
+def run_dev_plugin_batch(request: PluginRuntimeBatchRequest) -> PluginRuntimeBatchResult:
+    """Run a dev-only multi-plugin batch. Fail-closed; isolation-preserving.
+
+    Behavior:
+
+      - Validates the batch id (a non-empty unsafe label fails the batch closed),
+        the requests list (must be a sequence of :class:`PluginRuntimeRequest`),
+        the batch size (``<= MAX_BATCH_REQUESTS``), and the batch metadata (an
+        authorization-smuggling payload fails the batch closed).
+      - Runs each request through :func:`run_dev_plugin` independently — one
+        fixture failure / denial never poisons another request.
+      - With ``fail_fast=True`` the batch stops after the first request that is
+        not allowed (denied or failed); with ``fail_fast=False`` every request
+        runs to completion.
+      - Result order is preserved; the aggregate audit + P0 projection are
+        redacted, in-memory, and resolve / authorize nothing.
+
+    The batch runner loads / imports / fetches / shells nothing and adds no
+    route; it only orchestrates :func:`run_dev_plugin`.
+    """
+    batch_id = request.batch_id if isinstance(request.batch_id, str) and request.batch_id else ""
+    if not batch_id:
+        batch_id = _DEFAULT_BATCH_ID
+    elif not _batch_id_is_safe(batch_id):
+        return _fail_closed_batch(
+            _DEFAULT_BATCH_ID,
+            reasons=("batch_id_unsafe",),
+            errors=("batch_id_unsafe",),
+        )
+
+    if not isinstance(request.requests, tuple):
+        return _fail_closed_batch(
+            batch_id, reasons=("batch_malformed_requests",), errors=("batch_malformed_requests",)
+        )
+    for item in request.requests:
+        if not isinstance(item, PluginRuntimeRequest):
+            return _fail_closed_batch(
+                batch_id,
+                reasons=("batch_malformed_requests",),
+                errors=("batch_malformed_requests",),
+            )
+    if len(request.requests) > MAX_BATCH_REQUESTS:
+        return _fail_closed_batch(
+            batch_id, reasons=("batch_oversized",), errors=("batch_oversized",)
+        )
+
+    # Batch-level metadata smuggling fails the whole batch closed (a runtime
+    # that invokes code must refuse a smuggling attempt up front).
+    meta_ok, meta_reasons = RUNTIME_POLICY.validate_metadata_no_authorization_smuggling(
+        request.metadata
+    )
+    if not meta_ok:
+        return _fail_closed_batch(
+            batch_id, reasons=meta_reasons, errors=meta_reasons
+        )
+
+    results: list[PluginRuntimeResult] = []
+    for sub_request in request.requests:
+        # Each request is fully isolated: run_dev_plugin holds no shared mutable
+        # state, so a failure / denial here cannot affect the next request.
+        result = run_dev_plugin(sub_request)
+        results.append(result)
+        if request.fail_fast and not result.allowed:
+            break
+
+    succeeded = sum(1 for r in results if r.allowed and not r.failed)
+    failed = sum(1 for r in results if r.failed)
+    denied = sum(1 for r in results if not r.allowed and not r.failed)
+
+    per_operation_summary = [
+        {
+            "pluginId": r.plugin_id,
+            "operation": r.operation,
+            "allowed": r.allowed,
+            "executed": r.executed,
+            "failed": r.failed,
+        }
+        for r in results
+    ]
+
+    p0 = _batch_p0_projection(tuple(results))
+    audit = redact_sandbox_payload(
+        {
+            "schemaVersion": PLUGIN_RUNTIME_VERSION,
+            "source": PLUGIN_RUNTIME_AUDIT_SOURCE + ".batch",
+            "batchId": batch_id,
+            "total": len(results),
+            "succeeded": succeeded,
+            "failed": failed,
+            "denied": denied,
+            "failFast": bool(request.fail_fast),
+            "perOperationSummary": per_operation_summary,
+            "decision": "mixed" if (succeeded and (failed or denied)) else (
+                "allowed" if succeeded and not (failed or denied) else "denied"
+            ),
+            "runtimeFlags": _frozen_runtime_flags(),
+            "authorizationSummary": _runtime_authorization_projection(),
+            "p0Evidence": p0,
+            "evidence": {flag: False for flag in RESULT_EVIDENCE_FLAGS},
+            "redactionApplied": True,
+            "persisted": False,
+        }
+    )
+
+    return PluginRuntimeBatchResult(
+        batch_id=batch_id,
+        total=len(results),
+        succeeded=succeeded,
+        failed=failed,
+        denied=denied,
+        results=tuple(results),
+        redacted_audit=audit,
+        runtime_flags=_frozen_runtime_flags(),
+        p0_evidence=p0,
+        errors=(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. Boundary re-affirmation (pure constants, grep-able)
 # ---------------------------------------------------------------------------
 
 NO_REAL_PLUGIN_RUNTIME: bool = True
@@ -927,6 +1317,7 @@ __all__ = [
     "PLUGIN_RUNTIME_AUDIT_SOURCE",
     "RESULT_EVIDENCE_FLAGS",
     "MAX_REQUEST_ITEMS_PER_CATEGORY",
+    "MAX_BATCH_REQUESTS",
     "RUNTIME_FLAGS_FROZEN",
     "RUNTIME_REASONS",
     "PluginRuntimeRequest",
@@ -938,6 +1329,9 @@ __all__ = [
     "PluginRuntimeResult",
     "is_runtime_result_safe",
     "run_dev_plugin",
+    "PluginRuntimeBatchRequest",
+    "PluginRuntimeBatchResult",
+    "run_dev_plugin_batch",
     # boundary constants
     "NO_REAL_PLUGIN_RUNTIME",
     "NO_ARBITRARY_PLUGIN_LOADING",

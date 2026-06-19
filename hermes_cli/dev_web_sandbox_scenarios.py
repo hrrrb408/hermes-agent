@@ -793,6 +793,134 @@ def get_runtime_proof_scenarios() -> tuple[ProofScenario, ...]:
     return tuple(scenario for scenario in RUNTIME_PROOF_SCENARIOS)
 
 
+# ===========================================================================
+# Phase 3I runtime expansion proof scenarios (separate, fixed, dev-only).
+#
+# A third, isolated block of dev-only proof scenarios that reference the Phase
+# 3I runtime's EXPANDED reviewed-fixture surface (fixture.transform /
+# fixture.validate / fixture.math / fixture.redact). Like the runtime-themed
+# scenarios above, these are **proof scenarios** driven through the existing
+# descriptor-only proof runner — they do NOT execute the runtime. Each is a pure
+# static record: no executable content, no module path, no shell command, no
+# real URL call, no real secret, no production path.
+#
+# Kept OUT of :data:`FIXED_SCENARIOS` and :data:`RUNTIME_PROOF_SCENARIOS` so
+# both frozen libraries' regression assertions are unchanged. A scenario pass is
+# dev-only evidence — it never resolves a P0 gate, never authorizes
+# implementation / Phase 3I / real runtime / a new route / production.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# RE1. runtime_transform_normalize_allowed — a descriptor-only read of the
+#      reviewed fixture.transform / normalize_text fixture is a valid dev-only
+#      proof input (NOT plugin execution, NOT runtime approval).
+# ---------------------------------------------------------------------------
+RUNTIME_TRANSFORM_NORMALIZE_ALLOWED = ProofScenario(
+    scenario_id="runtime_transform_normalize_allowed",
+    title="Runtime transform (normalize_text) descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of the reviewed fixture.transform fixture is a "
+    "valid dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor={
+        "pluginId": "fixture.transform",
+        "operation": "normalize_text",
+        "source": "descriptor_only",
+        "version": "1.0.0",
+    },
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# RE2. runtime_validate_required_keys_allowed — a descriptor-only read of the
+#      reviewed fixture.validate / validate_required_keys fixture is valid.
+# ---------------------------------------------------------------------------
+RUNTIME_VALIDATE_REQUIRED_KEYS_ALLOWED = ProofScenario(
+    scenario_id="runtime_validate_required_keys_allowed",
+    title="Runtime validate (required_keys) descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of the reviewed fixture.validate fixture is a "
+    "valid dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor={
+        "pluginId": "fixture.validate",
+        "operation": "validate_required_keys",
+        "source": "descriptor_only",
+        "version": "1.0.0",
+    },
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# RE3. runtime_count_items_allowed — a descriptor-only read of the reviewed
+#      fixture.math / count_items fixture is valid.
+# ---------------------------------------------------------------------------
+RUNTIME_COUNT_ITEMS_ALLOWED = ProofScenario(
+    scenario_id="runtime_count_items_allowed",
+    title="Runtime math (count_items) descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of the reviewed fixture.math fixture is a valid "
+    "dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor={
+        "pluginId": "fixture.math",
+        "operation": "count_items",
+        "source": "descriptor_only",
+        "version": "1.0.0",
+    },
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+# ---------------------------------------------------------------------------
+# RE4. runtime_redact_payload_allowed — a descriptor-only read of the reviewed
+#      fixture.redact / redact_payload fixture is valid.
+# ---------------------------------------------------------------------------
+RUNTIME_REDACT_PAYLOAD_ALLOWED = ProofScenario(
+    scenario_id="runtime_redact_payload_allowed",
+    title="Runtime redact (redact_payload) descriptor allowed (descriptor-only read)",
+    purpose="A descriptor-only read of the reviewed fixture.redact fixture is a valid "
+    "dev-only proof input; not plugin execution, not runtime approval.",
+    descriptor={
+        "pluginId": "fixture.redact",
+        "operation": "redact_payload",
+        "source": "descriptor_only",
+        "version": "1.0.0",
+    },
+    requested_capabilities=("descriptor.read",),
+    expected_decision="allowed",
+    expected_denial_reasons=(),
+    expected_triggered_guards=(),
+    linked_p0_gates=("P0-12",),
+)
+
+
+#: The frozen, ordered library of Phase 3I runtime-EXPANSION dev-only proof
+#: scenarios. Separate from :data:`FIXED_SCENARIOS` (frozen Phase 3H 22-scenario
+#: library) and :data:`RUNTIME_PROOF_SCENARIOS` (frozen 5-scenario runtime
+#: library) so both libraries' regression assertions are unchanged.
+RUNTIME_EXPANSION_PROOF_SCENARIOS: tuple[ProofScenario, ...] = (
+    RUNTIME_TRANSFORM_NORMALIZE_ALLOWED,
+    RUNTIME_VALIDATE_REQUIRED_KEYS_ALLOWED,
+    RUNTIME_COUNT_ITEMS_ALLOWED,
+    RUNTIME_REDACT_PAYLOAD_ALLOWED,
+)
+
+
+def get_runtime_expansion_proof_scenarios() -> tuple[ProofScenario, ...]:
+    """Return a defensive copy of the Phase 3I runtime-expansion scenario library."""
+    return tuple(scenario for scenario in RUNTIME_EXPANSION_PROOF_SCENARIOS)
+
+
 __all__ = [
     "DESCRIPTOR_ONLY_SAFE_READ",
     "EXECUTABLE_DESCRIPTOR_DENIED",
@@ -826,4 +954,11 @@ __all__ = [
     "LOCAL_RUNTIME_DESCRIPTOR_EXECUTION_DENIED",
     "RUNTIME_PROOF_SCENARIOS",
     "get_runtime_proof_scenarios",
+    # Phase 3I runtime-expansion proof scenarios (separate, fixed, dev-only).
+    "RUNTIME_TRANSFORM_NORMALIZE_ALLOWED",
+    "RUNTIME_VALIDATE_REQUIRED_KEYS_ALLOWED",
+    "RUNTIME_COUNT_ITEMS_ALLOWED",
+    "RUNTIME_REDACT_PAYLOAD_ALLOWED",
+    "RUNTIME_EXPANSION_PROOF_SCENARIOS",
+    "get_runtime_expansion_proof_scenarios",
 ]

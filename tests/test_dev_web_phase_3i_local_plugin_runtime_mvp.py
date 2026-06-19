@@ -146,11 +146,31 @@ class TestBoundaryAndRegistry:
         fx()
 
     def test_fixture_registry_is_frozen_and_complete(self) -> None:
-        assert len(FIXTURE_REGISTRY) == 3
-        assert len(FIXTURE_ALLOWLIST) == 3
-        assert FIXTURE_PLUGIN_IDS == frozenset({"fixture.echo", "fixture.inspect", "fixture.fault"})
+        # Three original reviewed fixtures (echo / inspect / fault) plus four
+        # Phase 3I-expansion fixtures (transform / validate / math / redact).
+        assert len(FIXTURE_REGISTRY) == 7
+        assert len(FIXTURE_ALLOWLIST) == 7
+        assert FIXTURE_PLUGIN_IDS == frozenset(
+            {
+                "fixture.echo",
+                "fixture.inspect",
+                "fixture.fault",
+                "fixture.transform",
+                "fixture.validate",
+                "fixture.math",
+                "fixture.redact",
+            }
+        )
         assert FIXTURE_OPERATION_NAMES == frozenset(
-            {"echo_uppercase", "summarize_keys", "deliberate_failure"}
+            {
+                "echo_uppercase",
+                "summarize_keys",
+                "deliberate_failure",
+                "normalize_text",
+                "validate_required_keys",
+                "count_items",
+                "redact_payload",
+            }
         )
 
     def test_runtime_flags_are_frozen_constants(self) -> None:
