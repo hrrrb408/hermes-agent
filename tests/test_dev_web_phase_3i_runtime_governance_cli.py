@@ -394,7 +394,7 @@ class TestCliList:
         code, env = run_cli(["list"])
         assert code == 0
         assert env["ok"] is True
-        assert env["command"] == "list"
+        assert env["command"] == "dev-runtime.list"
         assert env["result"]["count"] == 6
         assert env["authorization"]["implementationGate"] == "NO-GO"
         assert contains_secret(env) is False
@@ -602,7 +602,7 @@ class TestCliHelp:
     def test_no_args_prints_help(self, run_cli) -> None:
         code, env = run_cli([])
         assert code == 0
-        assert env["command"] == "help"
+        assert env["command"] == "dev-runtime.help"
 
 
 # ===========================================================================
@@ -954,7 +954,7 @@ class TestSubprocessWiring:
         assert result.returncode == 0, result.stderr
         env = json.loads(result.stdout)
         assert env["ok"] is True
-        assert env["command"] == "list"
+        assert env["command"] == "dev-runtime.list"
         assert env["result"]["count"] == 6
         assert env["authorization"]["implementationGate"] == "NO-GO"
 

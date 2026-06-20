@@ -16725,9 +16725,11 @@ Examples:
         description=(
             "Dev-only Phase 3I runtime governance CLI. Operates ONLY on the frozen "
             "reviewed-fixture descriptors (list / show / run / batch / audit / "
-            "p0-report / help). Production-forbidden: no arbitrary plugin loading, "
-            "no remote registry, no marketplace, no external network, no real API "
-            "key, no ~/.hermes access, no new HTTP route."
+            "p0-report / help), with safe aliases (ls / inspect / exec / evidence). "
+            "Output is JSON by default; pass --pretty for indent=2 JSON. "
+            "Production-forbidden: no arbitrary plugin loading, no remote registry, "
+            "no marketplace, no external network, no real API key, no ~/.hermes "
+            "access, no new HTTP route."
         ),
     )
     dev_runtime_parser.add_argument(

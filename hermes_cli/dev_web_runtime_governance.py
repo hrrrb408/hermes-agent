@@ -108,8 +108,66 @@ NO_FILE_READ: bool = True
 NO_FILE_WRITE: bool = True
 
 
-def assert_no_side_effect_surface() -> None:
-    """Re-affirm the governance no-side-effect + no-authorization invariants."""
+#: The frozen side-effect surface projected by every CLI envelope. Every value
+#: is a plain bool (never a string), so the conservative redactor — which only
+#: masks a value under a secret-bearing *key* when the value is a non-empty
+#: *string* — leaves every ``False`` intact and the invariant stays visible. A
+#: governance pass performs none of these actions no matter what runs or what
+#: untrusted metadata a request carries; the block cannot be overridden.
+_SIDE_EFFECT_FIELDS: tuple[str, ...] = (
+    "productionAccess",
+    "externalNetwork",
+    "realSecretRead",
+    "routeChange",
+    "runtimeStoreWrite",
+    "auditStoreWrite",
+    "arbitraryPluginLoad",
+    "localPluginDirectoryRead",
+    "remotePluginFetch",
+    "marketplaceAccess",
+    "inputFileRead",
+    "outputFileWrite",
+)
+
+
+def side_effect_projection() -> dict[str, bool]:
+    """The frozen all-False side-effect surface appended to every CLI envelope.
+
+    Every value is ``not <frozen NO_* flag>``: with every boundary flag frozen
+    ``True`` today, every value resolves to ``False`` — and if a future editor
+    flipped a flag to ``False`` (allowing the action), the corresponding side
+    effect would surface as ``True`` rather than stay hidden. A descriptor-backed
+    fixture pass (single or batch) performs none of these actions: it touches no
+    production path, no network, no real secret, adds no route, writes no runtime
+    / audit store, loads / fetches / scans no plugin source, and reads / writes
+    no file. The values are plain bools, so the conservative redactor (which only
+    masks a value under a secret-bearing key when the value is a non-empty
+    *string*) leaves every ``False`` intact.
+    """
+    return {
+        "productionAccess": not NO_PRODUCTION_ACCESS,
+        "externalNetwork": not NO_EXTERNAL_NETWORK,
+        "realSecretRead": not NO_REAL_API_KEY_READ,
+        "routeChange": not NO_NEW_ROUTE,
+        "runtimeStoreWrite": not NO_RUNTIME_STORE_WRITE,
+        "auditStoreWrite": not NO_AUDIT_PERSISTENCE,
+        "arbitraryPluginLoad": not NO_ARBITRARY_PLUGIN_LOADING,
+        "localPluginDirectoryRead": not NO_LOCAL_PLUGIN_DIRECTORY_LOADING,
+        "remotePluginFetch": not NO_REMOTE_REGISTRY,
+        "marketplaceAccess": not NO_MARKETPLACE,
+        "inputFileRead": not NO_FILE_READ,
+        "outputFileWrite": not NO_FILE_WRITE,
+    }
+
+
+def assert_no_side_effect_surface() -> dict[str, bool]:
+    """Re-affirm the governance no-side-effect + no-authorization invariants.
+
+    Returns the frozen :func:`side_effect_projection` so a caller can both
+    assert (this call raises if any frozen boundary flag drifted) and use the
+    resulting all-False block directly. The CLI re-affirms this on every
+    invocation and projects the returned block into every envelope.
+    """
     assert NO_REAL_PLUGIN_RUNTIME is True
     assert NO_ARBITRARY_PLUGIN_LOADING is True
     assert NO_LOCAL_PLUGIN_DIRECTORY_LOADING is True
@@ -128,6 +186,7 @@ def assert_no_side_effect_surface() -> None:
     assert NO_AUDIT_PERSISTENCE is True
     assert NO_FILE_READ is True
     assert NO_FILE_WRITE is True
+    return side_effect_projection()
 
 
 # ---------------------------------------------------------------------------
@@ -142,13 +201,24 @@ def authorization_projection() -> dict[str, Any]:
     can never drift to GO / authorized by accident. A descriptor-backed fixture
     pass authorizes nothing.
 
-    The keys mirror the value-preserving ``*Gate`` names used by the P0
+    The verdict keys mirror the value-preserving ``*Gate`` names used by the P0
     projection (:func:`_p0_projection`): a key whose name carries a secret stem
-    (e.g. ``*Authorization``) would have its value collapsed to ``[REDACTED]`` by
-    :func:`~dev_web_sandbox_guards.redact_sandbox_payload`, which would hide the
-    very NO-GO / not-authorized signal this block exists to surface. The ``*Gate``
-    keys preserve their string values while remaining grep-able and consistent
-    with the rest of the runtime's authorization vocabulary.
+    (e.g. ``*Authorization`` / ``*ApiKey``) would have its value collapsed to
+    ``[REDACTED]`` by :func:`~dev_web_sandbox_guards.redact_sandbox_payload`,
+    which would hide the very NO-GO / not-authorized signal this block exists to
+    surface. The ``*Gate`` keys preserve their string values while remaining
+    grep-able and consistent with the rest of the runtime's authorization
+    vocabulary.
+
+    The block surfaces every authorization dimension the governance boundary
+    freezes: implementation / Phase 3I production / production runtime / new
+    route / production rollout verdicts (``*Gate`` strings), plus the explicit
+    supply-chain / network verdicts (``arbitraryPluginLoading``,
+    ``localPluginDirectoryLoading``, ``remoteRegistry``, ``marketplace``,
+    ``externalNetwork``, ``newRoute``, ``productionRollout``). The real-API-key
+    dimension is projected as ``realApiKeyRead: False`` — a key whose name carries
+    the ``apikey`` stem would be masked with any string value, so a plain bool
+    keeps the "no real key read" signal visible.
     """
     return {
         "implementationGate": IMPLEMENTATION_AUTHORIZATION,
@@ -156,6 +226,18 @@ def authorization_projection() -> dict[str, Any]:
         "productionRuntimeGate": REAL_RUNTIME,
         "newRouteGate": NEW_ROUTE,
         "productionRolloutGate": PRODUCTION_ROLLOUT,
+        # Explicit supply-chain / network / rollout verdicts (safe key names —
+        # none carries a secret stem, so the "NO-GO" string survives redaction).
+        "arbitraryPluginLoading": "NO-GO",
+        "localPluginDirectoryLoading": "NO-GO",
+        "remoteRegistry": "NO-GO",
+        "marketplace": "NO-GO",
+        "externalNetwork": "NO-GO",
+        "newRoute": NEW_ROUTE,
+        "productionRollout": PRODUCTION_ROLLOUT,
+        # The real-API-key dimension as a bool: a key with the "apikey" stem +
+        # a string value would be redacted, so a plain False keeps it visible.
+        "realApiKeyRead": not NO_REAL_API_KEY_READ,
     }
 
 
@@ -338,6 +420,7 @@ def _project_run_result(descriptor_id: Any, result: PluginRuntimeResult) -> dict
             "redactedAudit": dict(result.redacted_audit),
             "runtimeFlags": dict(result.runtime_flags),
             "p0Evidence": dict(result.p0_evidence),
+            "sideEffects": side_effect_projection(),
             "errors": list(result.errors),
             "registrySource": DESCRIPTOR_BINDING_SOURCE,
             "redactionApplied": True,
@@ -521,7 +604,10 @@ def build_runtime_audit_report(result_report: Any) -> dict[str, Any]:
 
     *result_report* is a dict produced by :func:`run_runtime_descriptor` or
     :func:`run_runtime_descriptor_batch`. The audit + P0 evidence are projected
-    value-free; nothing runs again.
+    value-free; nothing runs again. The report surfaces the descriptor id,
+    plugin id, operation, verdict, denial reasons, triggered guards, the redacted
+    audit, the P0 evidence, the frozen authorization block, and the all-False
+    side-effect surface — every value redacted, nothing persisted.
     """
     if not isinstance(result_report, Mapping):
         return redact_sandbox_payload(
@@ -529,21 +615,31 @@ def build_runtime_audit_report(result_report: Any) -> dict[str, Any]:
                 "schemaVersion": GOVERNANCE_VERSION,
                 "source": GOVERNANCE_AUDIT_SOURCE + ".audit",
                 "malformed": True,
+                "sideEffects": side_effect_projection(),
+                "authorization": authorization_projection(),
                 "redactionApplied": True,
+                "persisted": False,
             }
         )
     audit = result_report.get("redactedAudit") or result_report.get("audit")
     p0 = result_report.get("p0Evidence") or result_report.get("p0Projection")
+    reasons = result_report.get("denialReasons")
+    guards = result_report.get("triggeredGuards")
     return redact_sandbox_payload(
         {
             "schemaVersion": GOVERNANCE_VERSION,
             "source": GOVERNANCE_AUDIT_SOURCE + ".audit",
             "descriptorId": result_report.get("descriptorId", ""),
+            "pluginId": result_report.get("pluginId", ""),
+            "operation": result_report.get("operation", ""),
             "allowed": result_report.get("allowed"),
             "executed": result_report.get("executed"),
             "failed": result_report.get("failed"),
+            "denialReasons": list(reasons) if isinstance(reasons, (list, tuple)) else [],
+            "triggeredGuards": list(guards) if isinstance(guards, (list, tuple)) else [],
             "redactedAudit": dict(audit) if isinstance(audit, Mapping) else {},
             "p0Evidence": dict(p0) if isinstance(p0, Mapping) else {},
+            "sideEffects": side_effect_projection(),
             "authorization": authorization_projection(),
             "redactionApplied": True,
             "persisted": False,
@@ -579,6 +675,7 @@ __all__ = [
     "GOVERNANCE_AUDIT_SOURCE",
     "assert_no_side_effect_surface",
     "authorization_projection",
+    "side_effect_projection",
     "list_runtime_descriptors",
     "show_runtime_descriptor_binding",
     "run_runtime_descriptor",

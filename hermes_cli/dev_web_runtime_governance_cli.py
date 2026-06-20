@@ -69,6 +69,7 @@ from hermes_cli.dev_web_runtime_governance import (
     run_runtime_descriptor,
     run_runtime_descriptor_batch,
     show_runtime_descriptor_binding,
+    side_effect_projection,
 )
 from hermes_cli.dev_web_sandbox_guards import redact_sandbox_payload, redact_sandbox_text
 
@@ -95,6 +96,68 @@ COMMANDS: tuple[str, ...] = (
     "help",
 )
 
+#: Canonical short aliases. An alias resolves to its canonical command BEFORE
+#: dispatch, so the envelope ``command`` always carries the canonical name and
+#: the alias changes no behavior. Aliases are a pure typing convenience.
+COMMAND_ALIASES: dict[str, str] = {
+    "ls": "list",
+    "inspect": "show",
+    "exec": "run",
+    "evidence": "p0-report",
+}
+
+#: The canonical envelope command-group prefix (``dev-runtime.<command>``).
+COMMAND_GROUP: str = "dev-runtime"
+
+#: Concrete, copy-pasteable examples surfaced in the help envelope. They are
+#: plain strings — no example reads or writes a file.
+COMMAND_EXAMPLES: tuple[str, ...] = (
+    "hermes dev-runtime list",
+    "hermes dev-runtime show descriptor.fixture.echo_uppercase",
+    "hermes dev-runtime run descriptor.fixture.echo_uppercase --input '{\"text\":\"hello\"}'",
+    "hermes dev-runtime batch --items '[{\"descriptor_id\":\"descriptor.fixture.echo_uppercase\",\"input\":{\"text\":\"hello\"}}]'",
+    "hermes dev-runtime audit descriptor.fixture.echo_uppercase --input '{\"text\":\"hello\"}'",
+    "hermes dev-runtime p0-report",
+)
+
+#: Per-subcommand help (summary + usage + the args it accepts). Surfaced by
+#: ``hermes dev-runtime <command> --help``. ``pretty`` / aliases are global and
+#: noted once in the root help.
+SUBCOMMAND_HELP: dict[str, dict[str, str]] = {
+    "list": {
+        "summary": "List the frozen reviewed-fixture descriptors (no execution).",
+        "usage": "hermes dev-runtime list",
+    },
+    "show": {
+        "summary": "Inspect the registry→runtime binding for a descriptor (no execution).",
+        "usage": "hermes dev-runtime show <descriptor-id>",
+        "args": "descriptor-id — a reviewed fixture descriptor id (e.g. descriptor.fixture.echo_uppercase).",
+    },
+    "run": {
+        "summary": "Run one descriptor-backed fixture operation.",
+        "usage": "hermes dev-runtime run <descriptor-id> --input JSON",
+        "args": "descriptor-id — a reviewed fixture descriptor id; --input — a JSON object payload.",
+    },
+    "batch": {
+        "summary": "Run a multi-descriptor batch (isolated, fail-closed, order-preserving).",
+        "usage": "hermes dev-runtime batch --items JSON [--fail-fast]",
+        "args": "--items — a JSON array of {descriptor_id, input?}; --fail-fast — stop after the first non-allowed result.",
+    },
+    "audit": {
+        "summary": "Run one descriptor and print its redacted audit.",
+        "usage": "hermes dev-runtime audit <descriptor-id> --input JSON",
+        "args": "descriptor-id — a reviewed fixture descriptor id; --input — a JSON object payload.",
+    },
+    "p0-report": {
+        "summary": "Print the conservative P0 evidence projection summary.",
+        "usage": "hermes dev-runtime p0-report",
+    },
+    "help": {
+        "summary": "Print the governance CLI help (dev-only / production-forbidden).",
+        "usage": "hermes dev-runtime help",
+    },
+}
+
 
 class GovernanceInputError(Exception):
     """A fail-closed input-validation error raised by the governance CLI.
@@ -109,6 +172,19 @@ class GovernanceInputError(Exception):
         self.message = message
 
 
+def _canonical_command(command: Any) -> str:
+    """Render *command* as the canonical envelope token ``dev-runtime.<command>``.
+
+    Unknown / non-string input maps to ``dev-runtime.unknown`` (the raw token is
+    never echoed — it could carry an unsafe value). ``help`` and the canonical
+    commands are rendered verbatim; aliases are resolved by the caller before
+    this is called.
+    """
+    if isinstance(command, str) and command in COMMANDS:
+        return f"{COMMAND_GROUP}.{command}"
+    return f"{COMMAND_GROUP}.unknown"
+
+
 def _help_text() -> str:
     """The governance CLI help (states the dev-only / production-forbidden boundary).
 
@@ -117,6 +193,8 @@ def _help_text() -> str:
     conservative redactor does not collapse the help string when it is projected
     into the JSON envelope.
     """
+    alias_line = ", ".join(f"{a} -> {c}" for a, c in COMMAND_ALIASES.items())
+    examples_block = "\n".join(f"  {ex}" for ex in COMMAND_EXAMPLES)
     return (
         "hermes dev-runtime — Phase 3I Runtime Governance CLI\n"
         "\n"
@@ -134,14 +212,55 @@ def _help_text() -> str:
         "  audit <descriptor-id> --input Run one descriptor and print its redacted audit.\n"
         "  p0-report                     Print the P0 evidence projection summary.\n"
         "  help                          Print this help.\n"
-        "\n"
-        "Every command prints a JSON-safe, redacted report to stdout with a frozen\n"
-        "authorization block. Implementation Authorization is NO-GO; Phase 3I\n"
+        f"\nAliases (canonical behavior, identical output): {alias_line}\n"
+        "\nOutput: every command prints a JSON-safe, redacted report to stdout.\n"
+        "Default output is compact JSON; pass --pretty for indent=2 JSON. The data\n"
+        "content is identical either way (no non-JSON text is added).\n"
+        f"\nExamples:\n{examples_block}\n"
+        "\nEvery command carries a frozen authorization block and an all-False\n"
+        "side-effect surface. Implementation Authorization is NO-GO; Phase 3I\n"
         "production authorization is NOT AUTHORIZED; production runtime is NO-GO;\n"
         "new route is NO-GO; production rollout is NO-GO. A descriptor-backed\n"
         "fixture pass resolves / authorizes nothing (P0 resolved_count stays 0).\n"
         f"\nSchema version: {GOVERNANCE_VERSION}"
     )
+
+
+def _root_help_result() -> dict[str, Any]:
+    """The structured help result projected by the root ``help`` / no-args path."""
+    return {
+        "schemaVersion": GOVERNANCE_VERSION,
+        "source": "dev_web_runtime_governance_cli",
+        "help": _help_text(),
+        "commands": list(COMMANDS),
+        "aliases": dict(COMMAND_ALIASES),
+        "examples": list(COMMAND_EXAMPLES),
+        "devOnly": True,
+        "fixtureOnly": True,
+        "production": False,
+        "prettySupported": True,
+        "redactionApplied": True,
+    }
+
+
+def _subcommand_help_result(command: str) -> dict[str, Any]:
+    """The structured help result projected by ``<command> --help``."""
+    info = SUBCOMMAND_HELP.get(command, {})
+    return {
+        "schemaVersion": GOVERNANCE_VERSION,
+        "source": "dev_web_runtime_governance_cli",
+        "command": command,
+        "canonical": _canonical_command(command),
+        "summary": info.get("summary", ""),
+        "usage": info.get("usage", ""),
+        "args": info.get("args", ""),
+        "aliases": [a for a, c in COMMAND_ALIASES.items() if c == command],
+        "prettySupported": True,
+        "devOnly": True,
+        "fixtureOnly": True,
+        "production": False,
+        "redactionApplied": True,
+    }
 
 
 def _validate_descriptor_id(value: Any) -> str:
@@ -250,12 +369,50 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _print_json(envelope: dict[str, Any]) -> None:
-    """Print a JSON-safe, redacted envelope to stdout (sort_keys for determinism)."""
+def _print_json(envelope: dict[str, Any], *, pretty: bool = False) -> None:
+    """Print a JSON-safe, redacted envelope to stdout.
+
+    Default (``pretty=False``) is compact, single-line JSON with sorted keys; with
+    ``pretty=True`` the same data is rendered ``indent=2``. Both are deterministic
+    (``sort_keys=True``) and contain no non-JSON text. No timestamp / runId is
+    emitted, so the output is a stable snapshot.
+    """
     redacted = redact_sandbox_payload(envelope)
-    sys.stdout.write(json.dumps(redacted, indent=2, sort_keys=True))
+    if pretty:
+        text = json.dumps(redacted, indent=2, sort_keys=True)
+    else:
+        text = json.dumps(redacted, sort_keys=True, separators=(",", ":"))
+    sys.stdout.write(text)
     sys.stdout.write("\n")
     sys.stdout.flush()
+
+
+def _envelope(
+    command: Any,
+    *,
+    ok: bool,
+    result: Any = None,
+    error: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the stable governance CLI envelope.
+
+    Every envelope — success or failure, including help — carries the frozen
+    ``schemaVersion``, the canonical ``command`` token, the frozen
+    ``authorization`` block, and the all-False ``sideEffects`` surface. ``ok``
+    envelopes carry ``result``; failure envelopes carry a redacted ``error``.
+    """
+    env: dict[str, Any] = {
+        "ok": ok,
+        "command": _canonical_command(command),
+        "schemaVersion": GOVERNANCE_VERSION,
+        "authorization": authorization_projection(),
+        "sideEffects": side_effect_projection(),
+    }
+    if result is not None:
+        env["result"] = result
+    if error is not None:
+        env["error"] = error
+    return env
 
 
 def _dispatch(command: str, args: argparse.Namespace) -> dict[str, Any]:
@@ -293,6 +450,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     ``argv`` defaults to ``sys.argv[1:]``. Prints a JSON-safe, redacted envelope
     to stdout. Re-affirms the no-side-effect boundary on every invocation.
+
+    Output mode: default is compact JSON; ``--pretty`` (accepted anywhere on the
+    command line) renders the same data ``indent=2``. ``-h`` / ``--help`` anywhere
+    prints root help (or, when it follows a known subcommand, that subcommand's
+    help). Canonical aliases (``COMMAND_ALIASES``) resolve before dispatch, so the
+    envelope ``command`` always carries the canonical token and the alias changes
+    no behavior.
     """
     assert_no_side_effect_surface()
 
@@ -300,98 +464,108 @@ def main(argv: Sequence[str] | None = None) -> int:
         argv = sys.argv[1:]
     argv = list(argv)
 
+    # ``--pretty`` is a position-independent global output flag (it is NOT a
+    # file flag and adds no I/O). Pre-scan and strip it so the argparse
+    # subparsers never have to know about it and so ``dev-runtime --pretty list``
+    # and ``dev-runtime list --pretty`` both work.
+    pretty = "--pretty" in argv
+    if pretty:
+        argv = [a for a in argv if a != "--pretty"]
+
     parser = _build_parser()
 
-    # No subcommand (or explicit help) → print the help envelope, exit 0.
-    if not argv or argv[0] in ("help", "-h", "--help"):
-        envelope = {
-            "ok": True,
-            "command": "help",
-            "result": {
-                "schemaVersion": GOVERNANCE_VERSION,
-                "source": "dev_web_runtime_governance_cli",
-                "help": _help_text(),
-                "commands": list(COMMANDS),
-                "devOnly": True,
-                "fixtureOnly": True,
-                "production": False,
-                "redactionApplied": True,
-            },
-            "authorization": authorization_projection(),
-        }
-        _print_json(envelope)
+    # Help routing: ``-h`` / ``--help`` anywhere → root or subcommand help.
+    help_index = next((i for i, a in enumerate(argv) if a in ("-h", "--help")), None)
+    if help_index is not None:
+        preceding = argv[:help_index]
+        sub = next(
+            (a for a in preceding if a in COMMANDS or a in COMMAND_ALIASES),
+            None,
+        )
+        canonical = COMMAND_ALIASES.get(sub, sub) if sub else None
+        if canonical and canonical != "help":
+            envelope = _envelope(
+                canonical, ok=True, result=_subcommand_help_result(canonical)
+            )
+        else:
+            envelope = _envelope("help", ok=True, result=_root_help_result())
+        _print_json(envelope, pretty=pretty)
         return 0
 
-    command = argv[0]
-    if command not in COMMANDS:
-        envelope = {
-            "ok": False,
-            "command": "help",
-            "error": {
+    # No subcommand, or explicit ``help`` → root help, exit 0.
+    if not argv or argv[0] == "help":
+        envelope = _envelope("help", ok=True, result=_root_help_result())
+        _print_json(envelope, pretty=pretty)
+        return 0
+
+    raw_command = argv[0]
+    # Alias resolution: an alias maps to its canonical command before dispatch.
+    if raw_command in COMMAND_ALIASES:
+        command = COMMAND_ALIASES[raw_command]
+        argv = [command, *argv[1:]]
+    elif raw_command in COMMANDS:
+        command = raw_command
+    else:
+        envelope = _envelope(
+            "unknown",
+            ok=False,
+            error={
                 "code": "unknown_command",
                 "message": redact_sandbox_text("unknown governance command"),
                 "redacted": True,
             },
-            "authorization": authorization_projection(),
-        }
-        _print_json(envelope)
+        )
+        _print_json(envelope, pretty=pretty)
         return 2
 
-    # Parse the rest with argparse (it never sees the subcommand token).
+    # Parse the rest with argparse (it never sees the subcommand token as unknown
+    # — it is now the canonical command, which is a registered subparser).
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         # argparse exits 2 on usage errors — surface a redacted JSON error.
-        envelope = {
-            "ok": False,
-            "command": command,
-            "error": {
+        envelope = _envelope(
+            command,
+            ok=False,
+            error={
                 "code": "invalid_usage",
                 "message": redact_sandbox_text("invalid governance CLI usage"),
                 "redacted": True,
             },
-            "authorization": authorization_projection(),
-        }
-        _print_json(envelope)
+        )
+        _print_json(envelope, pretty=pretty)
         code = exc.code if isinstance(exc.code, int) else 2
         return code
 
     try:
         result = _dispatch(command, args)
     except GovernanceInputError as exc:
-        envelope = {
-            "ok": False,
-            "command": command,
-            "error": {
+        envelope = _envelope(
+            command,
+            ok=False,
+            error={
                 "code": exc.code,
                 "message": redact_sandbox_text(exc.message),
                 "redacted": True,
             },
-            "authorization": authorization_projection(),
-        }
-        _print_json(envelope)
+        )
+        _print_json(envelope, pretty=pretty)
         return 2
     except Exception as exc:  # defensive: never leak an internal trace to stdout
-        envelope = {
-            "ok": False,
-            "command": command,
-            "error": {
+        envelope = _envelope(
+            command,
+            ok=False,
+            error={
                 "code": "internal_error",
                 "message": redact_sandbox_text(str(exc)),
                 "redacted": True,
             },
-            "authorization": authorization_projection(),
-        }
-        _print_json(envelope)
+        )
+        _print_json(envelope, pretty=pretty)
         return 2
 
-    envelope = {
-        "ok": True,
-        "command": command,
-        "result": result,
-        "authorization": authorization_projection(),
-    }
-    _print_json(envelope)
+    envelope = _envelope(command, ok=True, result=result)
+    _print_json(envelope, pretty=pretty)
     return 0
 
 
@@ -401,6 +575,10 @@ if __name__ == "__main__":  # pragma: no cover - module entry point
 
 __all__ = [
     "COMMANDS",
+    "COMMAND_ALIASES",
+    "COMMAND_GROUP",
+    "COMMAND_EXAMPLES",
+    "SUBCOMMAND_HELP",
     "GOVERNANCE_VERSION",
     "MAX_CLI_INPUT_CHARS",
     "GovernanceInputError",

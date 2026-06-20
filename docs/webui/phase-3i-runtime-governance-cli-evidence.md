@@ -17,16 +17,157 @@ projections in `hermes_cli/dev_web_runtime_governance.py`; it adds **no**
 capability — it only projects the existing reviewed-fixture runtime as
 JSON-safe, redacted reports.
 
+The CLI was then promoted from "basic usable" to a **complete developer CLI**:
+stable JSON envelope, command aliases, `--pretty` output, subcommand help,
+deterministic report snapshots, transcript-replay coverage, a redaction
+regression corpus, invalid-input hardening, batch-consistency invariants, an
+audit-completion surface, a no-side-effect invariant block on every envelope, a
+subprocess smoke suite, a source-boundary scan, `dev_web_api` isolation, and
+production-safety (no `~/.hermes` / production `state.db` access) checks.
+
 | Item | Value |
 |------|-------|
 | Command group | `hermes dev-runtime` |
 | Subcommands | `list`, `show`, `run`, `batch`, `audit`, `p0-report`, `help` |
+| Aliases | `ls`→`list`, `inspect`→`show`, `exec`→`run`, `evidence`→`p0-report` |
+| Output mode | compact JSON (default) / `--pretty` for `indent=2` |
 | Descriptor reach | Frozen reviewed-fixture descriptors only |
-| Output | JSON-safe, redacted, `persisted: False`, stdout only |
+| Envelope | `ok`, `command` (`dev-runtime.<canonical>`), `schemaVersion`, `authorization`, `sideEffects`, `result`/`error` |
 | New HTTP route | **0** (route governance unchanged: `34/34/5/0/1/1`) |
 | P0 resolved_count | **0** (unchanged) |
 | Implementation Authorization | **NO-GO** (unchanged) |
 | Phase 3I production authorization | **NOT AUTHORIZED** (unchanged) |
+
+## Stable JSON envelope
+
+Every command — success, failure, and help — prints the same envelope shape:
+
+```json
+{
+  "ok": true,
+  "command": "dev-runtime.<canonical-command>",
+  "schemaVersion": "phase-3i-runtime-governance-v1",
+  "authorization": {
+    "implementationGate": "NO-GO",
+    "phase3iProductionGate": "NOT_AUTHORIZED",
+    "productionRuntimeGate": "NO-GO",
+    "newRouteGate": "NO-GO",
+    "productionRolloutGate": "NO-GO",
+    "arbitraryPluginLoading": "NO-GO",
+    "localPluginDirectoryLoading": "NO-GO",
+    "remoteRegistry": "NO-GO",
+    "marketplace": "NO-GO",
+    "externalNetwork": "NO-GO",
+    "newRoute": "NO-GO",
+    "productionRollout": "NO-GO",
+    "realApiKeyRead": false
+  },
+  "sideEffects": {
+    "productionAccess": false,
+    "externalNetwork": false,
+    "realSecretRead": false,
+    "routeChange": false,
+    "runtimeStoreWrite": false,
+    "auditStoreWrite": false,
+    "arbitraryPluginLoad": false,
+    "localPluginDirectoryRead": false,
+    "remotePluginFetch": false,
+    "marketplaceAccess": false,
+    "inputFileRead": false,
+    "outputFileWrite": false
+  },
+  "result": { "redacted": true, "persisted": false }
+}
+```
+
+The `*Gate` / supply-chain verdict keys are chosen so the conservative redactor
+cannot mask the NO-GO / not-authorized signal (a key whose name carries a secret
+stem — e.g. `*Authorization` / `*ApiKey` — would have its value collapsed to
+`[REDACTED]`, hiding the very signal the block exists to surface). The
+real-API-key dimension is projected as `realApiKeyRead: false` (a bool) so it
+stays visible. Invalid input / unknown commands return `ok: false` with a
+redacted `error.code` and exit code `2`. Output is deterministic
+(`sort_keys=True`), carries no timestamp / runId, and is therefore a stable
+snapshot.
+
+## CLI completion behavior
+
+- **Command group:** `hermes dev-runtime` (and `python -m
+  hermes_cli.dev_web_runtime_governance_cli ...` directly).
+- **Subcommands:** `list`, `show`, `run`, `batch`, `audit`, `p0-report`, `help`.
+- **Aliases:** `ls`, `inspect`, `exec`, `evidence` — each resolves to its
+  canonical command before dispatch; the envelope `command` always carries the
+  canonical token and the alias changes no behavior.
+- **`--pretty`:** accepted anywhere on the command line; renders the identical
+  data `indent=2`. Default output is compact single-line JSON.
+- **Help:** `hermes dev-runtime help`, `hermes dev-runtime` (no args),
+  `hermes dev-runtime --help` / `-h` (root), and
+  `hermes dev-runtime <command> --help` (per-subcommand) all print a JSON-safe
+  help envelope stating the dev-only / production-forbidden boundary.
+- **Examples:** the help envelope carries concrete, copy-pasteable examples
+  (no example reads or writes a file).
+- **Exit codes:** `0` = parsed and ran (`ok` true; a denied / failed descriptor
+  is still `ok` true — the CLI reported the outcome correctly); `2` = invalid
+  input / usage error / unknown command (`ok` false; redacted error).
+
+## Test coverage (completion suite)
+
+`tests/test_dev_web_phase_3i_runtime_governance_cli.py` (governance projections,
+CLI list/show/run/batch/audit/p0-report, invalid-input, redaction, source
+boundary, `dev_web_api` isolation, route governance, production safety,
+subprocess wiring) plus
+`tests/test_dev_web_phase_3i_runtime_governance_cli_completion.py`:
+
+- **UX / help / aliases / pretty** — root + subcommand help, every alias,
+  `--pretty` indent + position-independence + data-identical, JSON parseability.
+- **Envelope schema** — every success / failure / help / unknown envelope carries
+  `schemaVersion`, the full `authorization` block, and the all-False
+  `sideEffects` block.
+- **Snapshots** — `list` (count 6, sorted ids), `show` (allowed binding),
+  `run` (`HELLO`, resolved 0), denied run, `batch` (counts + order), `p0-report`
+  (24 / 0) — inline expected dicts, no snapshot files.
+- **Transcript replay** — happy, denied, and adversarial multi-step sequences;
+  authorization invariant across the transcript; no secret / production leak.
+- **Redaction corpus** — fake `sk-` / `ghp_` / `xoxb-` / `Bearer` / PEM /
+  env-assignment secrets and fake `/Users/.../.hermes` / `state.db` paths are
+  masked across `run` / `batch` / `audit` / error envelopes / `--pretty`.
+- **Invalid-input hardening** — missing args, invalid JSON, wrong shapes,
+  oversized input / batch, unsafe / too-long / secret-shaped descriptor ids,
+  unsupported commands, no traceback on stdout.
+- **Batch consistency** — `total == succeeded + failed + denied`, order
+  preserved, fail-fast, isolation (a fault does not poison siblings), per-result
+  + batch side-effects all False, resolved 0, not persisted.
+- **Audit completion** — happy / fault / denied audit surface the full report
+  (descriptorId, pluginId, operation, verdict, denialReasons, triggeredGuards,
+  redactedAudit, p0Evidence, sideEffects, authorization, persisted false).
+- **No-side-effect invariants** — metadata bypass keys, batch-item metadata, and
+  fake-descriptor metadata cannot flip a side effect or authorize.
+- **Smoke suite** — real subprocess invocations of
+  `python -m hermes_cli.dev_web_runtime_governance_cli ...` and
+  `python -m hermes_cli.main dev-runtime ...`.
+- **Source boundary** — no dynamic-load / network / subprocess / file-I/O /
+  path-resolution primitives in any governance-family module (precise usage
+  patterns; the two modified modules held to a strict substring standard).
+- **`dev_web_api` isolation** — the API does not import the governance surface;
+  governance route probes return 404; OpenAPI paths remain 34; baseline
+  `34/34/5/0/1/1` unchanged.
+- **Production safety** — a recording stat/resolve/expanduser spy proves no
+  command touches the production home or a production database; no runtime-store
+  artifacts are created; every report is `persisted: false`.
+
+## Redaction guarantees
+
+The CLI runs every envelope through the frozen redactor
+(`dev_web_sandbox_guards.redact_sandbox_payload`), which masks fake secret shapes
+(`sk-` / `ghp_` / `xox[baprs]-` / `Bearer …` / `Authorization: …` / PEM blocks /
+`.env`-style secret assignments) and fake production-path values
+(`/Users/<user>/.hermes`, `state.db`) to `[REDACTED]`. The redaction regression
+corpus pins these guarantees across `run` / `batch` / `audit`, error envelopes,
+and `--pretty` output. The frozen redactor itself is **not** modified by this
+task (it lives in `dev_web_sandbox_guards.py`); the corpus uses
+redactor-matching forms.
+
+
 
 ## Files added / changed
 
@@ -54,40 +195,10 @@ JSON-safe, redacted reports.
 
 ## What the CLI can do
 
-- `list` — list the frozen reviewed-fixture descriptors (no execution).
-- `show <descriptor-id>` — inspect the registry→runtime binding (no execution).
-- `run <descriptor-id> --input JSON` — run one descriptor-backed fixture
-  operation.
-- `batch --items JSON [--fail-fast]` — run a multi-descriptor batch (isolated,
-  fail-closed, order-preserving).
-- `audit <descriptor-id> --input JSON` — run one descriptor and print its
-  redacted audit.
-- `p0-report` — print the conservative P0 evidence projection summary.
-- `help` — print the command help (states the dev-only / production-forbidden
-  boundary).
-
-Every command prints a JSON-safe envelope:
-
-```json
-{
-  "ok": true,
-  "command": "<subcommand>",
-  "result": { "...": "redacted, persisted: false" },
-  "authorization": {
-    "implementationGate": "NO-GO",
-    "phase3iProductionGate": "NOT_AUTHORIZED",
-    "productionRuntimeGate": "NO-GO",
-    "newRouteGate": "NO-GO",
-    "productionRolloutGate": "NO-GO"
-  }
-}
-```
-
-The `*Gate` key names mirror the value-preserving P0 projection vocabulary so
-the redactor (which masks values under secret-bearing keys such as
-`*Authorization`) cannot hide the very NO-GO / not-authorized signal this block
-exists to surface. Invalid input / unknown commands return `ok: false` with a
-redacted `error.code` and exit code `2`.
+The seven subcommands (`list`, `show`, `run`, `batch`, `audit`, `p0-report`,
+`help`) plus their aliases, output mode, help routing, and exit-code behavior
+are described above under **CLI completion behavior**. Each prints the stable
+envelope described under **Stable JSON envelope**.
 
 ## What the CLI does NOT do (frozen boundary)
 
