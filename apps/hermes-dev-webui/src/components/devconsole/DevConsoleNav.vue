@@ -9,6 +9,7 @@ import {
   Puzzle,
   ScrollText,
   ShieldCheck,
+  UserCheck,
   Workflow,
   Wrench,
 } from '@lucide/vue'
@@ -36,6 +37,7 @@ const ICONS: Readonly<Record<DevConsoleSection, Component>> = {
   capabilities: ListChecks,
   plugins: Puzzle,
   runtimeGovernance: ScrollText,
+  humanReview: UserCheck,
 }
 
 function select(section: DevConsoleSection): void {
