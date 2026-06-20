@@ -28,6 +28,7 @@ export type DevConsoleSection =
   | 'workflow'
   | 'capabilities'
   | 'plugins'
+  | 'runtimeGovernance'
 
 export const CONSOLE_SECTIONS: readonly DevConsoleSection[] = [
   'overview',
@@ -39,6 +40,7 @@ export const CONSOLE_SECTIONS: readonly DevConsoleSection[] = [
   'workflow',
   'capabilities',
   'plugins',
+  'runtimeGovernance',
   'diagnostics',
 ]
 
@@ -54,6 +56,7 @@ export const CONSOLE_SECTION_LABELS: Readonly<Record<DevConsoleSection, string>>
   workflow: 'Workflow',
   capabilities: 'Capability Registry',
   plugins: 'Plugin Descriptors',
+  runtimeGovernance: 'Runtime Governance',
 } as const
 
 const STORAGE_KEY = 'hermes-dev-webui.devconsole.section'
