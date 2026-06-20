@@ -106,6 +106,26 @@ export interface RuntimeCliExample {
   readonly aliases: readonly string[]
 }
 
+/**
+ * A frozen boundary-banner row. `kind` selects the icon; `label` is the explicit
+ * non-color text that conveys the boundary (status is never color-only).
+ */
+export interface RuntimeBoundaryItem {
+  readonly kind: 'lock' | 'ban'
+  readonly label: string
+}
+
+/** A read-only status chip projected into the page header (non-color text). */
+export interface RuntimeStatusBadge {
+  readonly label: string
+}
+
+/** The denied-binding preview projected for an unknown / unsafe descriptor id. */
+export interface RuntimeDeniedPreview {
+  readonly denied: true
+  readonly denialReasons: readonly string[]
+}
+
 /** A summary card projected for the Runtime Governance overview. */
 export interface RuntimeSummaryCard {
   readonly label: string

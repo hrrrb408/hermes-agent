@@ -113,6 +113,8 @@ describe('RuntimeGovernance no-leak / no-execution HARDENING (Phase 3J)', () => 
         addEventListener: () => {},
       }
     })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(RuntimeGovernanceSection)
       // Interact with every harmless control.
@@ -121,6 +123,9 @@ describe('RuntimeGovernance no-leak / no-execution HARDENING (Phase 3J)', () => 
       }
       await wrapper.find('[data-testid="runtime-denied-preview-toggle"]').trigger('click')
       await wrapper.find('[data-testid="runtime-denied-preview-toggle"]').trigger('click')
+      // Copy is a clipboard-only affordance — it must not become a network call.
+      const firstCopy = wrapper.find('[data-testid="runtime-cli-list"] li').find('button')
+      await firstCopy.trigger('click')
       expect(fetchSpy).not.toHaveBeenCalled()
       expect(xhrSpy).not.toHaveBeenCalled()
     } finally {

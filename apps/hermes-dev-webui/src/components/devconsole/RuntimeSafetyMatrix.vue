@@ -17,7 +17,7 @@ defineProps<{
 
 <template>
   <div class="devconsole-card" data-testid="runtime-safety-matrix">
-    <h3>Side-effect invariants (all false)</h3>
+    <h2>Side-effect invariants (all false)</h2>
     <p class="rtgov-muted">
       The frozen no-side-effect surface projected by every governance report.
       Every value is a plain boolean and cannot be overridden by metadata.

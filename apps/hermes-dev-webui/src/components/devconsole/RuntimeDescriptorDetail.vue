@@ -37,9 +37,11 @@ const runtimeFlagEntries = computed(() =>
 </script>
 
 <template>
-  <div class="devconsole-card rtgov-detail" data-testid="runtime-descriptor-detail">
-    <h3>Descriptor binding detail</h3>
-
+  <div
+    class="devconsole-card rtgov-detail"
+    data-testid="runtime-descriptor-detail"
+    aria-label="Descriptor binding detail"
+  >
     <div v-if="mode === 'empty'" data-testid="runtime-detail-empty">
       <EmptyState
         message="No descriptor selected."
@@ -117,7 +119,7 @@ const runtimeFlagEntries = computed(() =>
         </div>
       </dl>
 
-      <h4 class="rtgov-detail__subhead">Runtime flags (frozen)</h4>
+      <h3 class="rtgov-detail__subhead">Runtime flags (frozen)</h3>
       <ul class="rtgov-detail__flags" data-testid="runtime-detail-runtime-flags">
         <li v-for="f in runtimeFlagEntries" :key="f.key" :data-flag="`${f.key}-${f.value}`">
           <code>{{ f.key }}</code>

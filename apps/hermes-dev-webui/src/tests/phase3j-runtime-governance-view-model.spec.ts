@@ -14,13 +14,22 @@ import {
   buildSummaryCards,
   buildDescriptorRows,
   buildDescriptorBindingDetail,
+  buildStatusBadges,
+  buildBoundaryItems,
+  buildDeniedPreview,
   findDescriptorRow,
   redactRuntimeValue,
+  sanitizeRuntimeGovernanceDisplayText,
   allSideEffectsFalse,
   allVerdictsNoGo,
   DEFAULT_DESCRIPTOR_ID,
 } from '@/lib/runtimeGovernanceViewModel'
-import { RUNTIME_REVIEWED_DESCRIPTORS } from '@/constants/runtimeGovernanceManifest'
+import {
+  RUNTIME_REVIEWED_DESCRIPTORS,
+  RUNTIME_SIDE_EFFECT_FLAGS,
+  RUNTIME_AUTHORIZATION_VERDICTS,
+  RUNTIME_FLAGS_FROZEN,
+} from '@/constants/runtimeGovernanceManifest'
 
 const EXPECTED_IDS = [
   'descriptor.fixture.echo_uppercase',
@@ -157,16 +166,30 @@ describe('runtimeGovernanceViewModel (Phase 3J)', () => {
     const CORPUS = [
       'sk-FAKE-SECRET-DO-NOT-LEAK-12345678',
       'Authorization: Bearer fake-token',
+      '~/.hermes',
       '~/.hermes/production/state.db',
       '/fake/production/state.db',
       'implementation_authorization=GO',
       'ghp_fakegithubtoken',
       'xox-fake-slack-token',
       '-----BEGIN PRIVATE KEY-----',
+      'BEGIN PRIVATE KEY fake',
+      'OPENAI_API_KEY=fake',
+      'db_password=fake',
+      'accessToken=fake',
+      'phase_3i_authorized=true',
+      'production_approved=true',
+      'route_exception_approved=true',
     ]
 
     it.each(CORPUS)('masks secret-shaped value %s', (value) => {
       expect(redactRuntimeValue(value)).toBe('[REDACTED]')
+    })
+
+    it('sanitizeRuntimeGovernanceDisplayText is a stable alias of redactRuntimeValue', () => {
+      for (const c of CORPUS) {
+        expect(sanitizeRuntimeGovernanceDisplayText(c)).toBe('[REDACTED]')
+      }
     })
 
     it('leaves safe descriptor text intact', () => {
@@ -191,6 +214,87 @@ describe('runtimeGovernanceViewModel (Phase 3J)', () => {
           expect(d.displayName).not.toContain(c)
         }
       }
+    })
+  })
+
+  describe('new view-model projections (status badges / boundary / denied preview)', () => {
+    it('buildStatusBadges projects the five frozen header badges', () => {
+      const badges = buildStatusBadges()
+      expect(badges.map((b) => b.label)).toEqual([
+        'DEV-ONLY',
+        'READ-ONLY',
+        'FIXTURE-ONLY',
+        'NO PRODUCTION',
+        'NO WEBUI EXECUTION',
+      ])
+    })
+
+    it('buildBoundaryItems projects the frozen boundary rows with safe kinds', () => {
+      const items = buildBoundaryItems()
+      expect(items.length).toBeGreaterThan(0)
+      for (const it of items) {
+        expect(it.kind === 'lock' || it.kind === 'ban').toBe(true)
+        expect(it.label.trim().length).toBeGreaterThan(0)
+      }
+      const labels = items.map((i) => i.label)
+      expect(labels.some((l) => /arbitrary plugin loading/i.test(l))).toBe(true)
+      expect(labels.some((l) => /local plugin directory loading/i.test(l))).toBe(true)
+      expect(labels.some((l) => /remote registry/i.test(l))).toBe(true)
+      expect(labels.some((l) => /marketplace/i.test(l))).toBe(true)
+      expect(labels.some((l) => /production rollout/i.test(l))).toBe(true)
+    })
+
+    it('buildDeniedPreview projects the frozen denial reasons', () => {
+      const preview = buildDeniedPreview()
+      expect(preview.denied).toBe(true)
+      expect(preview.denialReasons).toContain('descriptor_not_in_static_registry')
+      expect(preview.denialReasons).toContain('descriptor_registry_lookup')
+    })
+  })
+
+  describe('view-model immutability (external mutation cannot reach the canonical manifest)', () => {
+    it('the canonical manifest exports are frozen', () => {
+      expect(Object.isFrozen(RUNTIME_REVIEWED_DESCRIPTORS)).toBe(true)
+      expect(Object.isFrozen(RUNTIME_REVIEWED_DESCRIPTORS[0])).toBe(true)
+      expect(Object.isFrozen(RUNTIME_SIDE_EFFECT_FLAGS)).toBe(true)
+      expect(Object.isFrozen(RUNTIME_AUTHORIZATION_VERDICTS)).toBe(true)
+      expect(Object.isFrozen(RUNTIME_FLAGS_FROZEN)).toBe(true)
+    })
+
+    it('mutating a returned descriptor row does not mutate the canonical manifest', () => {
+      const before = RUNTIME_REVIEWED_DESCRIPTORS[0]!.description
+      const rows = buildDescriptorRows()
+      rows[0]!.description = 'tampered'
+      expect(rows[0]!.description).toBe('tampered') // local copy is independently mutable
+      expect(RUNTIME_REVIEWED_DESCRIPTORS[0]!.description).toBe(before) // canonical untouched
+    })
+
+    it('mutating a returned binding (runtimeFlags) does not mutate the canonical flags', () => {
+      const binding = buildDescriptorBindingDetail(DEFAULT_DESCRIPTOR_ID)!
+      binding.runtimeFlags.production_access = true
+      expect(binding.runtimeFlags.production_access).toBe(true) // local copy
+      // Canonical frozen flags are untouched.
+      expect(() => {
+        // Direct canonical mutation throws in strict mode (frozen) — wrap to prove it.
+        ;(RUNTIME_FLAGS_FROZEN as Record<string, boolean>).production_access = false
+      }).toThrow()
+    })
+
+    it('mutating a returned side-effect array/flag does not flip the canonical invariant', () => {
+      const vm = buildRuntimeGovernanceViewModel()
+      vm.sideEffectFlags[0]!.value = true
+      vm.sideEffectFlags.push({ key: 'x', label: 'x', value: true })
+      // The returned (tampered) collection is no longer all-false…
+      expect(allSideEffectsFalse(vm.sideEffectFlags)).toBe(false)
+      // …but a fresh build is still all-false — the canonical source never changed.
+      expect(allSideEffectsFalse(buildRuntimeGovernanceViewModel().sideEffectFlags)).toBe(true)
+    })
+
+    it('mutating a returned authorization verdict does not flip the canonical NO-GO', () => {
+      const vm = buildRuntimeGovernanceViewModel()
+      vm.authorizationVerdicts[0]!.verdict = 'GO'
+      // Fresh build still every-NO-GO.
+      expect(allVerdictsNoGo(buildRuntimeGovernanceViewModel().authorizationVerdicts)).toBe(true)
     })
   })
 })

@@ -17,7 +17,7 @@ defineProps<{
 
 <template>
   <div class="devconsole-card" data-testid="runtime-p0-evidence-panel">
-    <h3>P0 evidence projection</h3>
+    <h2>P0 evidence projection</h2>
     <p class="rtgov-muted">{{ evidence.classificationNote }}</p>
 
     <dl class="rtgov-dl" data-testid="runtime-p0-counts">

@@ -10,30 +10,21 @@
  */
 import { Ban, Lock, ShieldAlert, ShieldX } from '@lucide/vue'
 import type { Component } from 'vue'
-import type { RuntimeAuthorizationVerdict } from '@/types/api/runtimeGovernance'
+import type {
+  RuntimeAuthorizationVerdict,
+  RuntimeBoundaryItem,
+} from '@/types/api/runtimeGovernance'
 
 defineProps<{
+  items: readonly RuntimeBoundaryItem[]
   verdicts: readonly RuntimeAuthorizationVerdict[]
 }>()
 
-interface StaticRow {
-  readonly icon: Component
-  readonly label: string
+/** Map a boundary item kind to its icon (status is conveyed by the text label). */
+const KIND_ICON: Readonly<Record<RuntimeBoundaryItem['kind'], Component>> = {
+  lock: Lock,
+  ban: Ban,
 }
-
-const STATIC_ROWS: readonly StaticRow[] = [
-  { icon: Lock, label: 'DEV-ONLY — local fixture runtime' },
-  { icon: Lock, label: 'READ-ONLY WebUI surface — no execution from the browser' },
-  { icon: Lock, label: 'FIXTURE-ONLY — reviewed-fixture descriptors only' },
-  { icon: Ban, label: 'NO real plugin runtime' },
-  { icon: Ban, label: 'NO arbitrary plugin loading' },
-  { icon: Ban, label: 'NO local plugin directory loading' },
-  { icon: Ban, label: 'NO remote registry / marketplace / external plugin fetch' },
-  { icon: Ban, label: 'NO external network' },
-  { icon: Ban, label: 'NO real API key read' },
-  { icon: Ban, label: 'NO new route — backend route counts unchanged' },
-  { icon: Ban, label: 'NO production rollout' },
-]
 </script>
 
 <template>
@@ -45,7 +36,7 @@ const STATIC_ROWS: readonly StaticRow[] = [
   >
     <header class="rtgov-banner__header">
       <ShieldAlert :size="16" aria-hidden="true" />
-      <h3>Runtime Governance — dev-only, read-only, fixture-only</h3>
+      <h2>Runtime Governance — dev-only, read-only, fixture-only</h2>
     </header>
     <p class="rtgov-banner__note">
       This is a <strong>read-only projection</strong> of the Phase 3I dev-only
@@ -55,9 +46,9 @@ const STATIC_ROWS: readonly StaticRow[] = [
       <strong>not</strong> execute a runtime, does not load a plugin, does not
       authorize production, and does not add a backend route.
     </p>
-    <ul class="rtgov-banner__list">
-      <li v-for="row in STATIC_ROWS" :key="row.label">
-        <component :is="row.icon" :size="13" aria-hidden="true" />
+    <ul class="rtgov-banner__list" data-testid="runtime-boundary-items">
+      <li v-for="row in items" :key="row.label" :data-boundary-kind="row.kind">
+        <component :is="KIND_ICON[row.kind]" :size="13" aria-hidden="true" />
         <span>{{ row.label }}</span>
       </li>
     </ul>
@@ -90,7 +81,7 @@ const STATIC_ROWS: readonly StaticRow[] = [
   gap: var(--space-2, 8px);
   margin-bottom: var(--space-2, 8px);
 }
-.rtgov-banner__header h3 {
+.rtgov-banner__header h2 {
   margin: 0;
   font-size: var(--font-size-md, 14px);
 }

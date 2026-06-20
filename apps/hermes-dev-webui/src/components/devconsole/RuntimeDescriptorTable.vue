@@ -22,72 +22,78 @@ const emit = defineEmits<{ (e: 'select', descriptorId: string): void }>()
 
 <template>
   <div class="devconsole-card" data-testid="runtime-descriptor-table">
-    <h3>Reviewed fixture descriptors</h3>
+    <h2>Reviewed fixture descriptors</h2>
     <p class="rtgov-muted">
       The frozen reviewed-fixture descriptor registry (static_descriptor_registry).
       Each row is a static, reviewed, dev-only, fixture-only record — never
       executed, never remote, never marketplace, never production, never a route change.
     </p>
-    <table class="rtgov-table">
-      <thead>
-        <tr>
-          <th scope="col">Descriptor ID</th>
-          <th scope="col">Plugin / Operation</th>
-          <th scope="col">Source</th>
-          <th scope="col">Dev-only</th>
-          <th scope="col">Fixture-only</th>
-          <th scope="col">Reviewed</th>
-          <th scope="col">Executable</th>
-          <th scope="col">Remote</th>
-          <th scope="col">Marketplace</th>
-          <th scope="col">Production</th>
-          <th scope="col">Route change</th>
-          <th scope="col">Binding</th>
-          <th scope="col"><span class="sr-only">Inspect binding</span></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="d in descriptors"
-          :key="d.descriptorId"
-          :class="{ 'rtgov-row--selected': d.descriptorId === selectedId }"
-          :data-descriptor-id="d.descriptorId"
-        >
-          <th scope="row">
-            <code class="rtgov-table__code">{{ d.descriptorId }}</code>
-          </th>
-          <td>
-            <div class="rtgov-table__pair">
-              <code>{{ d.pluginId }}</code>
-              <span class="rtgov-muted">/</span>
-              <code>{{ d.operation }}</code>
-            </div>
-          </td>
-          <td><code>{{ d.source }}</code></td>
-          <td :data-flag="`devOnly-${d.devOnly}`">{{ d.devOnly }}</td>
-          <td :data-flag="`fixtureOnly-${d.fixtureOnly}`">{{ d.fixtureOnly }}</td>
-          <td :data-flag="`reviewedFixture-${d.reviewedFixture}`">{{ d.reviewedFixture }}</td>
-          <td :data-flag="`executable-${d.executable}`">{{ d.executable }}</td>
-          <td :data-flag="`remote-${d.remote}`">{{ d.remote }}</td>
-          <td :data-flag="`marketplace-${d.marketplace}`">{{ d.marketplace }}</td>
-          <td :data-flag="`production-${d.production}`">{{ d.production }}</td>
-          <td :data-flag="`routeChange-${d.routeChange}`">{{ d.routeChange }}</td>
-          <td :data-flag="`bindingAllowed-${d.bindingAllowed}`">{{ d.bindingAllowed ? 'allowed' : 'denied' }}</td>
-          <td>
-            <button
-              type="button"
-              class="rtgov-inspect-btn"
-              :aria-pressed="d.descriptorId === selectedId"
-              :aria-label="`Inspect binding for ${d.descriptorId}`"
-              :data-testid="`runtime-inspect-${d.descriptorId}`"
-              @click="emit('select', d.descriptorId)"
-            >
-              Inspect
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="rtgov-table-scroll" role="region" aria-label="Reviewed fixture descriptors" tabindex="0">
+      <table class="rtgov-table">
+        <caption class="sr-only">
+          Reviewed fixture descriptors — six dev-only, fixture-only, reviewed records, none executable.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Descriptor ID</th>
+            <th scope="col">Plugin / Operation</th>
+            <th scope="col">Source</th>
+            <th scope="col">Dev-only</th>
+            <th scope="col">Fixture-only</th>
+            <th scope="col">Reviewed</th>
+            <th scope="col">Executable</th>
+            <th scope="col">Remote</th>
+            <th scope="col">Marketplace</th>
+            <th scope="col">Production</th>
+            <th scope="col">Route change</th>
+            <th scope="col">Binding</th>
+            <th scope="col"><span class="sr-only">Inspect binding</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="d in descriptors"
+            :key="d.descriptorId"
+            :class="{ 'rtgov-row--selected': d.descriptorId === selectedId }"
+            :aria-current="d.descriptorId === selectedId ? 'true' : undefined"
+            :data-descriptor-id="d.descriptorId"
+          >
+            <th scope="row">
+              <code class="rtgov-table__code">{{ d.descriptorId }}</code>
+            </th>
+            <td>
+              <div class="rtgov-table__pair">
+                <code>{{ d.pluginId }}</code>
+                <span class="rtgov-muted">/</span>
+                <code>{{ d.operation }}</code>
+              </div>
+            </td>
+            <td><code>{{ d.source }}</code></td>
+            <td :data-flag="`devOnly-${d.devOnly}`">{{ d.devOnly }}</td>
+            <td :data-flag="`fixtureOnly-${d.fixtureOnly}`">{{ d.fixtureOnly }}</td>
+            <td :data-flag="`reviewedFixture-${d.reviewedFixture}`">{{ d.reviewedFixture }}</td>
+            <td :data-flag="`executable-${d.executable}`">{{ d.executable }}</td>
+            <td :data-flag="`remote-${d.remote}`">{{ d.remote }}</td>
+            <td :data-flag="`marketplace-${d.marketplace}`">{{ d.marketplace }}</td>
+            <td :data-flag="`production-${d.production}`">{{ d.production }}</td>
+            <td :data-flag="`routeChange-${d.routeChange}`">{{ d.routeChange }}</td>
+            <td :data-flag="`bindingAllowed-${d.bindingAllowed}`">{{ d.bindingAllowed ? 'allowed' : 'denied' }}</td>
+            <td>
+              <button
+                type="button"
+                class="rtgov-inspect-btn"
+                :aria-pressed="d.descriptorId === selectedId"
+                :aria-label="`Inspect binding for ${d.descriptorId}`"
+                :data-testid="`runtime-inspect-${d.descriptorId}`"
+                @click="emit('select', d.descriptorId)"
+              >
+                Inspect
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -96,10 +102,21 @@ const emit = defineEmits<{ (e: 'select', descriptorId: string): void }>()
   color: var(--color-text-muted, #8a8a94);
   font-size: var(--font-size-sm, 13px);
 }
+.rtgov-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rtgov-table-scroll:focus-visible {
+  outline: 2px solid var(--color-accent, #6f8cff);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm, 6px);
+}
 .rtgov-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-size-sm, 13px);
+  min-width: 720px;
 }
 .rtgov-table th,
 .rtgov-table td {
@@ -135,6 +152,10 @@ const emit = defineEmits<{ (e: 'select', descriptorId: string): void }>()
 }
 .rtgov-inspect-btn:hover {
   border-color: var(--color-accent, #6f8cff);
+}
+.rtgov-inspect-btn:focus-visible {
+  outline: 2px solid var(--color-accent, #6f8cff);
+  outline-offset: 1px;
 }
 .sr-only {
   position: absolute;

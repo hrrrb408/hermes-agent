@@ -22,32 +22,45 @@ import {
   RUNTIME_FLAGS_FROZEN,
   RUNTIME_CLI_EXAMPLES,
   RUNTIME_ROUTE_GOVERNANCE_BASELINE,
+  RUNTIME_STATUS_BADGES,
+  RUNTIME_BOUNDARY_ITEMS,
+  RUNTIME_DENIED_PREVIEW,
 } from '@/constants/runtimeGovernanceManifest'
 import type {
   RuntimeGovernanceViewModel,
   RuntimeDescriptorRow,
   RuntimeDescriptorBindingDetail,
   RuntimeSummaryCard,
+  RuntimeBoundaryItem,
+  RuntimeStatusBadge,
+  RuntimeDeniedPreview,
 } from '@/types/api/runtimeGovernance'
 
 /**
  * Secret / production-path stems a defense-in-depth redactor masks. These are
  * *patterns* (not real values) — they exist only to scrub a substring should
  * one ever reach this surface. Mirrors the conservative spirit of the backend
- * redact_sandbox_payload: prefer masking over exposing.
+ * redact_sandbox_payload: prefer masking over exposing. Comparison is
+ * case-insensitive, so stems are written in their canonical lower-case form.
  */
 const REDACT_STEMS: readonly string[] = [
   'sk-',
-  'Bearer ',
-  'Authorization:',
+  'bearer ',
+  'authorization:',
   'ghp_',
   'xox',
-  'BEGIN PRIVATE KEY',
+  'begin private key',
   '~/.hermes',
   '.hermes/',
   'state.db',
   'implementation_authorization=go',
   'implementation authorization = go',
+  'openai_api_key',
+  'db_password',
+  'accesstoken',
+  'phase_3i_authorized=true',
+  'production_approved=true',
+  'route_exception_approved=true',
 ]
 
 /** Mask placeholder emitted by the defense-in-depth redactor. */
@@ -67,6 +80,15 @@ export function redactRuntimeValue(value: string): string {
     }
   }
   return value
+}
+
+/**
+ * Stable public alias for {@link redactRuntimeValue}. Sanitizes free-text a
+ * caller intends to display on the Runtime Governance surface so a future
+ * editor adding a secret-shaped substring can never leak it through this view.
+ */
+export function sanitizeRuntimeGovernanceDisplayText(value: string): string {
+  return redactRuntimeValue(value)
 }
 
 /** True iff every side-effect flag is False (the frozen invariant). */
@@ -110,6 +132,10 @@ export const DEFAULT_DESCRIPTOR_ID = 'descriptor.fixture.echo_uppercase'
  * backend show projection's safe fields. A reviewed descriptor always binds
  * (bindingAllowed true, no denial reasons); an unknown id yields undefined and
  * the section renders the denied/empty state.
+ *
+ * Every nested collection is a fresh defensive copy, so mutating a returned
+ * binding (or its runtimeFlags / triggeredGuards) can never reach the frozen
+ * canonical manifest.
  */
 export function buildDescriptorBindingDetail(
   descriptorId: string | null,
@@ -127,7 +153,7 @@ export function buildDescriptorBindingDetail(
     bindingAllowed: true,
     denialReasons: [],
     triggeredGuards: ['descriptor_registry_lookup', 'fixture_allowlist_binding'],
-    runtimeFlags: RUNTIME_FLAGS_FROZEN,
+    runtimeFlags: { ...RUNTIME_FLAGS_FROZEN },
     redactedDescriptor: { redactionApplied: true },
   }
 }
@@ -192,6 +218,31 @@ export function buildSummaryCards(): readonly RuntimeSummaryCard[] {
   ]
 }
 
+/**
+ * Project the frozen page-header status badges (defensive copy). Non-color text
+ * labels that convey the read-only boundary at a glance.
+ */
+export function buildStatusBadges(): readonly RuntimeStatusBadge[] {
+  return RUNTIME_STATUS_BADGES.map((b) => ({ label: b.label }))
+}
+
+/**
+ * Project the frozen boundary-banner rows (defensive copy). Each item carries an
+ * icon `kind` (lock | ban) and an explicit non-color text label.
+ */
+export function buildBoundaryItems(): readonly RuntimeBoundaryItem[] {
+  return RUNTIME_BOUNDARY_ITEMS.map((row) => ({ kind: row.kind, label: row.label }))
+}
+
+/**
+ * Project the frozen denied-binding preview (defensive copy). Used when an
+ * unknown / unsafe descriptor id is selected — no fixture runs, no binding is
+ * resolved, and the denial reasons are surfaced verbatim.
+ */
+export function buildDeniedPreview(): RuntimeDeniedPreview {
+  return { denied: true, denialReasons: [...RUNTIME_DENIED_PREVIEW.denialReasons] }
+}
+
 /** Assemble the full read-only Runtime Governance view model. Deterministic. */
 export function buildRuntimeGovernanceViewModel(): RuntimeGovernanceViewModel {
   const descriptors = buildDescriptorRows()
@@ -199,13 +250,13 @@ export function buildRuntimeGovernanceViewModel(): RuntimeGovernanceViewModel {
     schemaVersion: RUNTIME_GOVERNANCE_VERSION,
     descriptors,
     descriptorCount: descriptors.length,
-    fixtureAllowlist: RUNTIME_FIXTURE_ALLOWLIST,
+    fixtureAllowlist: RUNTIME_FIXTURE_ALLOWLIST.map((f) => ({ pluginId: f.pluginId, operation: f.operation })),
     fixtureAllowlistCount: RUNTIME_FIXTURE_ALLOWLIST.length,
-    p0Evidence: RUNTIME_P0_EVIDENCE,
-    authorizationVerdicts: RUNTIME_AUTHORIZATION_VERDICTS,
-    sideEffectFlags: RUNTIME_SIDE_EFFECT_FLAGS,
-    runtimeFlags: RUNTIME_FLAGS_FROZEN,
-    cliExamples: RUNTIME_CLI_EXAMPLES,
+    p0Evidence: { ...RUNTIME_P0_EVIDENCE },
+    authorizationVerdicts: RUNTIME_AUTHORIZATION_VERDICTS.map((v) => ({ ...v })),
+    sideEffectFlags: RUNTIME_SIDE_EFFECT_FLAGS.map((f) => ({ ...f })),
+    runtimeFlags: { ...RUNTIME_FLAGS_FROZEN },
+    cliExamples: RUNTIME_CLI_EXAMPLES.map((c) => ({ ...c, aliases: [...c.aliases] })),
     routeGovernanceBaseline: RUNTIME_ROUTE_GOVERNANCE_BASELINE,
     backendRoutesChanged: false,
   }

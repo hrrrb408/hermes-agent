@@ -32,11 +32,17 @@ import {
   buildRuntimeGovernanceViewModel,
   buildSummaryCards,
   buildDescriptorBindingDetail,
+  buildBoundaryItems,
+  buildStatusBadges,
+  buildDeniedPreview,
   DEFAULT_DESCRIPTOR_ID,
 } from '@/lib/runtimeGovernanceViewModel'
 
 const viewModel = buildRuntimeGovernanceViewModel()
 const summaryCards = buildSummaryCards()
+const statusBadges = buildStatusBadges()
+const boundaryItems = buildBoundaryItems()
+const deniedPreviewModel = buildDeniedPreview()
 
 /** Harmless UI-only state: which descriptor's read-only binding to inspect. */
 const selectedDescriptorId = ref<string>(DEFAULT_DESCRIPTOR_ID)
@@ -68,7 +74,21 @@ function toggleDeniedPreview(): void {
     data-testid="runtime-governance-section"
   >
     <div class="devconsole-section__intro">
-      <h2>Runtime Governance</h2>
+      <h1>Runtime Governance</h1>
+      <ul
+        class="rtgov-status-badges"
+        data-testid="runtime-status-badges"
+        aria-label="Runtime Governance status"
+      >
+        <li
+          v-for="badge in statusBadges"
+          :key="badge.label"
+          class="rtgov-status-badge"
+          :data-status-badge="badge.label"
+        >
+          {{ badge.label }}
+        </li>
+      </ul>
       <p>
         A read-only projection of the Phase 3I dev-only descriptor-backed fixture
         runtime. It <strong>displays only — it does not execute a runtime, does
@@ -79,7 +99,10 @@ function toggleDeniedPreview(): void {
       </p>
     </div>
 
-    <RuntimeBoundaryBanner :verdicts="viewModel.authorizationVerdicts" />
+    <RuntimeBoundaryBanner
+      :items="boundaryItems"
+      :verdicts="viewModel.authorizationVerdicts"
+    />
 
     <PluginRuntimeDisabledBanner />
 
@@ -93,7 +116,7 @@ function toggleDeniedPreview(): void {
 
     <div class="devconsole-card rtgov-detail-wrap">
       <div class="rtgov-detail-wrap__bar">
-        <h3 style="margin: 0">Descriptor binding detail</h3>
+        <h2 class="rtgov-detail-wrap__title">Descriptor binding detail</h2>
         <button
           type="button"
           class="rtgov-inspect-btn"
@@ -107,12 +130,12 @@ function toggleDeniedPreview(): void {
       <RuntimeDescriptorDetail
         :binding="binding"
         :denied="deniedPreview"
-        :denial-reasons="['descriptor_not_in_static_registry', 'descriptor_registry_lookup']"
+        :denial-reasons="deniedPreviewModel.denialReasons"
       />
     </div>
 
     <div class="devconsole-card" data-testid="runtime-fixture-allowlist">
-      <h3>Supported fixture runtime (allowlist)</h3>
+      <h2>Supported fixture runtime (allowlist)</h2>
       <p class="rtgov-muted">
         The dev-only fixture functions a reviewed descriptor may bind to. Each is
         a pure in-process fixture — never a real plugin, never loaded from disk,
@@ -130,7 +153,7 @@ function toggleDeniedPreview(): void {
     <RuntimeSafetyMatrix :flags="viewModel.sideEffectFlags" />
 
     <div class="devconsole-card" data-testid="runtime-route-governance">
-      <h3>Route governance status</h3>
+      <h2>Route governance status</h2>
       <dl class="rtgov-dl">
         <div class="rtgov-dl__row">
           <dt>Frozen baseline</dt>
@@ -170,6 +193,26 @@ function toggleDeniedPreview(): void {
   color: var(--color-text-muted, #8a8a94);
   font-size: var(--font-size-sm, 13px);
 }
+.rtgov-status-badges {
+  list-style: none;
+  margin: 0 0 var(--space-2, 8px);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 4px) var(--space-2, 8px);
+}
+.rtgov-status-badge {
+  border: 1px solid var(--color-border, #2a2a33);
+  border-radius: var(--radius-sm, 6px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  background: var(--color-surface, #101015);
+  color: var(--color-text, #e6e6ec);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .rtgov-detail-wrap {
   display: flex;
   flex-direction: column;
@@ -182,6 +225,10 @@ function toggleDeniedPreview(): void {
   gap: var(--space-2, 8px);
   flex-wrap: wrap;
 }
+.rtgov-detail-wrap__title {
+  margin: 0;
+  font-size: var(--font-size-md, 14px);
+}
 .rtgov-inspect-btn {
   border: 1px solid var(--color-border, #2a2a33);
   background: transparent;
@@ -193,6 +240,10 @@ function toggleDeniedPreview(): void {
 }
 .rtgov-inspect-btn:hover {
   border-color: var(--color-accent, #6f8cff);
+}
+.rtgov-inspect-btn:focus-visible {
+  outline: 2px solid var(--color-accent, #6f8cff);
+  outline-offset: 1px;
 }
 .rtgov-allowlist {
   list-style: none;

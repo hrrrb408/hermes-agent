@@ -32,12 +32,35 @@ import type {
   RuntimeAuthorizationVerdict,
   RuntimeSideEffectFlag,
   RuntimeCliExample,
+  RuntimeBoundaryItem,
+  RuntimeStatusBadge,
+  RuntimeDeniedPreview,
   RUNTIME_DESCRIPTOR_BINDING_SOURCE,
   ROUTE_GOVERNANCE_BASELINE,
 } from '@/types/api/runtimeGovernance'
 
+/**
+ * Recursively deep-freeze a value (arrays + nested objects). Applied to every
+ * exported constant below so the canonical governance state is immutable at
+ * runtime — an external caller can never mutate a returned projection into the
+ * canonical manifest, never flip a frozen NO-GO verdict, and never flip a
+ * frozen False side-effect flag. Reads, spreads, and `.map()` copies are
+ * unaffected. Pure and total.
+ */
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) {
+    for (const item of value) deepFreeze(item)
+  } else {
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      deepFreeze((value as Record<string, unknown>)[key])
+    }
+  }
+  return Object.freeze(value)
+}
+
 /** Schema version (mirrors backend GOVERNANCE_VERSION). */
-export const RUNTIME_GOVERNANCE_VERSION = 'phase-3i-runtime-governance-v1'
+export const RUNTIME_GOVERNANCE_VERSION = deepFreeze('phase-3i-runtime-governance-v1')
 
 /** Frozen binding-source label (mirrors backend DESCRIPTOR_BINDING_SOURCE). */
 export const RUNTIME_DESCRIPTOR_SOURCE: typeof RUNTIME_DESCRIPTOR_BINDING_SOURCE =
@@ -56,7 +79,7 @@ export const RUNTIME_ROUTE_GOVERNANCE_BASELINE: typeof ROUTE_GOVERNANCE_BASELINE
  * no module path, no shell command, no real URL, no real secret, no production
  * path. These describe a fixture binding; they are never themselves executed.
  */
-export const RUNTIME_REVIEWED_DESCRIPTORS: readonly RuntimeDescriptorRow[] = [
+export const RUNTIME_REVIEWED_DESCRIPTORS: readonly RuntimeDescriptorRow[] = deepFreeze([
   {
     descriptorId: 'descriptor.fixture.echo_uppercase',
     pluginId: 'fixture.echo',
@@ -165,7 +188,7 @@ export const RUNTIME_REVIEWED_DESCRIPTORS: readonly RuntimeDescriptorRow[] = [
     routeChange: false,
     bindingAllowed: true,
   },
-]
+])
 
 /**
  * The supported dev-only fixture runtime allowlist (mirrors backend
@@ -173,7 +196,7 @@ export const RUNTIME_REVIEWED_DESCRIPTORS: readonly RuntimeDescriptorRow[] = [
  * (pluginId, operation) pairs. Each is a pure in-process fixture function —
  * never a real plugin, never loaded from disk, never fetched remotely.
  */
-export const RUNTIME_FIXTURE_ALLOWLIST: readonly RuntimeFixtureAllowlistEntry[] = [
+export const RUNTIME_FIXTURE_ALLOWLIST: readonly RuntimeFixtureAllowlistEntry[] = deepFreeze([
   { pluginId: 'fixture.echo', operation: 'echo_uppercase' },
   { pluginId: 'fixture.inspect', operation: 'summarize_keys' },
   { pluginId: 'fixture.fault', operation: 'deliberate_failure' },
@@ -181,10 +204,10 @@ export const RUNTIME_FIXTURE_ALLOWLIST: readonly RuntimeFixtureAllowlistEntry[] 
   { pluginId: 'fixture.validate', operation: 'validate_required_keys' },
   { pluginId: 'fixture.math', operation: 'count_items' },
   { pluginId: 'fixture.redact', operation: 'redact_payload' },
-]
+])
 
 /** The frozen runtime flags (mirrors backend RUNTIME_FLAGS_FROZEN). */
-export const RUNTIME_FLAGS_FROZEN: Readonly<Record<string, boolean>> = {
+export const RUNTIME_FLAGS_FROZEN: Readonly<Record<string, boolean>> = deepFreeze({
   dev_only: true,
   fixture_only: true,
   production_access: false,
@@ -195,7 +218,7 @@ export const RUNTIME_FLAGS_FROZEN: Readonly<Record<string, boolean>> = {
   arbitrary_plugin_load: false,
   remote_plugin_fetch: false,
   marketplace_access: false,
-}
+})
 
 /**
  * The conservative P0 evidence projection (mirrors backend
@@ -205,7 +228,7 @@ export const RUNTIME_FLAGS_FROZEN: Readonly<Record<string, boolean>> = {
  * Gate distribution (24 total): 19 partial_evidence, 5 blocked_by_human_review,
  * 0 candidate_for_review, 0 governance_only, 0 no_evidence, 0 resolved.
  */
-export const RUNTIME_P0_EVIDENCE: RuntimeP0EvidenceProjection = {
+export const RUNTIME_P0_EVIDENCE: RuntimeP0EvidenceProjection = deepFreeze({
   totalGates: 24,
   resolvedCount: 0,
   partialEvidenceCount: 19,
@@ -224,14 +247,14 @@ export const RUNTIME_P0_EVIDENCE: RuntimeP0EvidenceProjection = {
     'It never resolves a P0 gate, never authorizes production, and never ' +
     'authorizes a real runtime. Resolution requires a valid out-of-band human ' +
     'approval the dev skeleton cannot produce.',
-}
+})
 
 /**
  * The frozen authorization verdict block (mirrors backend
  * authorization_projection()). Every dimension is frozen — a governance pass
  * authorizes nothing.
  */
-export const RUNTIME_AUTHORIZATION_VERDICTS: readonly RuntimeAuthorizationVerdict[] = [
+export const RUNTIME_AUTHORIZATION_VERDICTS: readonly RuntimeAuthorizationVerdict[] = deepFreeze([
   { key: 'implementationGate', label: 'Implementation Authorization', verdict: 'NO-GO', kind: 'gate' },
   { key: 'phase3iProductionGate', label: 'Phase 3I Production Authorization', verdict: 'NOT_AUTHORIZED', kind: 'gate' },
   { key: 'productionRuntimeGate', label: 'Production Runtime', verdict: 'NO-GO', kind: 'gate' },
@@ -244,14 +267,14 @@ export const RUNTIME_AUTHORIZATION_VERDICTS: readonly RuntimeAuthorizationVerdic
   { key: 'externalNetwork', label: 'External Network', verdict: 'NO-GO', kind: 'dimension' },
   { key: 'productionRollout', label: 'Production Rollout (supply chain)', verdict: 'NO-GO', kind: 'dimension' },
   { key: 'realApiKeyRead', label: 'Real API Key Read', verdict: 'false', kind: 'flag' },
-]
+])
 
 /**
  * The frozen all-False side-effect surface (mirrors backend
  * side_effect_projection()). A governance pass performs none of these actions
  * no matter what renders or what untrusted metadata a request carries.
  */
-export const RUNTIME_SIDE_EFFECT_FLAGS: readonly RuntimeSideEffectFlag[] = [
+export const RUNTIME_SIDE_EFFECT_FLAGS: readonly RuntimeSideEffectFlag[] = deepFreeze([
   { key: 'productionAccess', label: 'Production access', value: false },
   { key: 'externalNetwork', label: 'External network', value: false },
   { key: 'realSecretRead', label: 'Real secret read', value: false },
@@ -264,7 +287,7 @@ export const RUNTIME_SIDE_EFFECT_FLAGS: readonly RuntimeSideEffectFlag[] = [
   { key: 'marketplaceAccess', label: 'Marketplace access', value: false },
   { key: 'inputFileRead', label: 'Input file read', value: false },
   { key: 'outputFileWrite', label: 'Output file write', value: false },
-]
+])
 
 /**
  * Read-only CLI command examples (mirrors backend COMMAND_EXAMPLES). These are
@@ -272,7 +295,7 @@ export const RUNTIME_SIDE_EFFECT_FLAGS: readonly RuntimeSideEffectFlag[] = [
  * WebUI. The WebUI renders them as text — it never executes them, never spawns
  * a shell, and never writes the example to a file.
  */
-export const RUNTIME_CLI_EXAMPLES: readonly RuntimeCliExample[] = [
+export const RUNTIME_CLI_EXAMPLES: readonly RuntimeCliExample[] = deepFreeze([
   {
     command: 'hermes dev-runtime list',
     summary: 'List the frozen reviewed-fixture descriptors (no execution).',
@@ -304,10 +327,10 @@ export const RUNTIME_CLI_EXAMPLES: readonly RuntimeCliExample[] = [
     summary: 'Print the conservative P0 evidence projection summary.',
     aliases: ['evidence'],
   },
-]
+])
 
 /** Canonical CLI commands (mirrors backend COMMANDS). */
-export const RUNTIME_CLI_COMMANDS: readonly string[] = [
+export const RUNTIME_CLI_COMMANDS: readonly string[] = deepFreeze([
   'list',
   'show',
   'run',
@@ -315,12 +338,53 @@ export const RUNTIME_CLI_COMMANDS: readonly string[] = [
   'audit',
   'p0-report',
   'help',
-]
+])
 
 /** Canonical CLI aliases (mirrors backend COMMAND_ALIASES). */
-export const RUNTIME_CLI_ALIASES: Readonly<Record<string, string>> = {
+export const RUNTIME_CLI_ALIASES: Readonly<Record<string, string>> = deepFreeze({
   ls: 'list',
   inspect: 'show',
   exec: 'run',
   evidence: 'p0-report',
-}
+})
+
+/**
+ * The frozen page-header status badges. Explicit non-color text labels that
+ * convey the read-only / dev-only / fixture-only / no-production / no-execution
+ * boundary at a glance. Frozen so a governance pass can never drop one.
+ */
+export const RUNTIME_STATUS_BADGES: readonly RuntimeStatusBadge[] = deepFreeze([
+  { label: 'DEV-ONLY' },
+  { label: 'READ-ONLY' },
+  { label: 'FIXTURE-ONLY' },
+  { label: 'NO PRODUCTION' },
+  { label: 'NO WEBUI EXECUTION' },
+])
+
+/**
+ * The frozen boundary-banner rows (non-color text + an icon kind). Each line is
+ * an explicit NO-GO / read-only / dev-only label. Frozen so a governance pass
+ * can never weaken the boundary language.
+ */
+export const RUNTIME_BOUNDARY_ITEMS: readonly RuntimeBoundaryItem[] = deepFreeze([
+  { kind: 'lock', label: 'DEV-ONLY — local fixture runtime' },
+  { kind: 'lock', label: 'READ-ONLY WebUI surface — no execution from the browser' },
+  { kind: 'lock', label: 'FIXTURE-ONLY — reviewed-fixture descriptors only' },
+  { kind: 'ban', label: 'NO real plugin runtime' },
+  { kind: 'ban', label: 'NO arbitrary plugin loading' },
+  { kind: 'ban', label: 'NO local plugin directory loading' },
+  { kind: 'ban', label: 'NO remote registry / marketplace / external plugin fetch' },
+  { kind: 'ban', label: 'NO external network' },
+  { kind: 'ban', label: 'NO real API key read' },
+  { kind: 'ban', label: 'NO new route — backend route counts unchanged' },
+  { kind: 'ban', label: 'NO production rollout' },
+])
+
+/**
+ * The frozen denial reasons projected for the denied-binding preview (an unknown
+ * / unsafe descriptor id). Frozen so a governance pass can never drop a guard.
+ */
+export const RUNTIME_DENIED_PREVIEW: RuntimeDeniedPreview = deepFreeze({
+  denied: true,
+  denialReasons: ['descriptor_not_in_static_registry', 'descriptor_registry_lookup'],
+})
