@@ -582,6 +582,12 @@ def test_no_dev_web_module_imports_p0_evidence() -> None:
         # it reuses the guards / policy / audit / P0 evidence primitives (by
         # design) and is itself excluded from dev_web_api.
         "dev_web_plugin_runtime_binding",
+        # Phase 3I runtime governance CLI — read-only report projections over the
+        # dev-only descriptor-backed fixture runtime. It reuses the guards /
+        # redaction / P0 evidence primitives (by design) and is itself excluded
+        # from dev_web_api (it is a CLI surface that adds no HTTP route).
+        "dev_web_runtime_governance",
+        "dev_web_runtime_governance_cli",
     }
     candidates = sorted((REPO_ROOT / "hermes_cli").glob("dev_web_*.py"))
     for path in candidates:

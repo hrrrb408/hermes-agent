@@ -6609,6 +6609,24 @@ def cmd_version(args):
     _print_version_info(check_updates=True)
 
 
+def cmd_dev_runtime(args):
+    """Phase 3I dev-only runtime governance CLI (reviewed fixture descriptors only).
+
+    A thin delegator: it forwards the remaining arguments to the self-contained
+    governance CLI (:mod:`hermes_cli.dev_web_runtime_governance_cli`) and exits
+    with its return code. The governance CLI is dev-only / fixture-only /
+    production-forbidden — it adds no HTTP route and touches no production path.
+    """
+    from hermes_cli.dev_web_runtime_governance_cli import main as governance_main
+
+    governance_argv = list(getattr(args, "governance_args", None) or [])
+    # ``argparse.REMAINDER`` may prepend a leading ``--`` separator; drop it so
+    # the governance parser sees the real subcommand token.
+    if governance_argv and governance_argv[0] == "--":
+        governance_argv = governance_argv[1:]
+    raise SystemExit(governance_main(governance_argv))
+
+
 def cmd_dev_info(args):
     """Show development/runtime diagnostics for this Hermes invocation."""
 
@@ -16697,6 +16715,27 @@ Examples:
         help="Check development environment isolation",
     )
     dev_check_parser.set_defaults(func=cmd_dev_check)
+
+    # =========================================================================
+    # dev-runtime command — Phase 3I runtime governance CLI (dev-only)
+    # =========================================================================
+    dev_runtime_parser = subparsers.add_parser(
+        "dev-runtime",
+        help="Phase 3I runtime governance CLI (dev-only, reviewed fixture descriptors only)",
+        description=(
+            "Dev-only Phase 3I runtime governance CLI. Operates ONLY on the frozen "
+            "reviewed-fixture descriptors (list / show / run / batch / audit / "
+            "p0-report / help). Production-forbidden: no arbitrary plugin loading, "
+            "no remote registry, no marketplace, no external network, no real API "
+            "key, no ~/.hermes access, no new HTTP route."
+        ),
+    )
+    dev_runtime_parser.add_argument(
+        "governance_args",
+        nargs=argparse.REMAINDER,
+        help="Governance subcommand and arguments (e.g. 'list' or 'run <id> --input JSON').",
+    )
+    dev_runtime_parser.set_defaults(func=cmd_dev_runtime)
 
     # =========================================================================
     # hierarchical memory router commands

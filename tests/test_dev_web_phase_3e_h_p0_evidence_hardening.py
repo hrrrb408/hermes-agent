@@ -989,6 +989,13 @@ SANDBOX_MODULES = {
     # to bridge the Phase 3D static descriptor registry to the dev-only runtime,
     # and is itself excluded from dev_web_api.
     "dev_web_plugin_runtime_binding",
+    # Phase 3I runtime governance CLI — read-only report projections over the
+    # dev-only descriptor-backed fixture runtime. It reuses the guards / redaction
+    # / P0 evidence primitives (by design) to project the runtime as JSON-safe
+    # reports and is itself excluded from dev_web_api (it is a CLI surface that
+    # adds no HTTP route).
+    "dev_web_runtime_governance",
+    "dev_web_runtime_governance_cli",
 }
 
 
