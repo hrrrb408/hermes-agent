@@ -15,6 +15,7 @@ import CapabilityRegistrySection from './CapabilityRegistrySection.vue'
 import PluginDescriptorRegistrySection from './PluginDescriptorRegistrySection.vue'
 import RuntimeGovernanceSection from './RuntimeGovernanceSection.vue'
 import HumanReviewGovernanceSection from './HumanReviewGovernanceSection.vue'
+import GovernanceHubSection from './GovernanceHubSection.vue'
 import ThemeSwitcher from '@/components/theme/ThemeSwitcher.vue'
 import { useDevConsoleNavStore, type DevConsoleSection } from '@/stores/devConsoleNav'
 
@@ -40,6 +41,7 @@ const SECTIONS: Readonly<Record<DevConsoleSection, Component>> = {
   plugins: PluginDescriptorRegistrySection,
   runtimeGovernance: RuntimeGovernanceSection,
   humanReview: HumanReviewGovernanceSection,
+  governanceHub: GovernanceHubSection,
 }
 
 const activeComponent = computed<Component>(() => SECTIONS[nav.activeSection] ?? OverviewSection)

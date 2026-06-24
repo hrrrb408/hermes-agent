@@ -3,6 +3,7 @@ import {
   Activity,
   ClipboardList,
   FilePen,
+  Gauge,
   LayoutDashboard,
   ListChecks,
   Plug,
@@ -38,6 +39,7 @@ const ICONS: Readonly<Record<DevConsoleSection, Component>> = {
   plugins: Puzzle,
   runtimeGovernance: ScrollText,
   humanReview: UserCheck,
+  governanceHub: Gauge,
 }
 
 function select(section: DevConsoleSection): void {
