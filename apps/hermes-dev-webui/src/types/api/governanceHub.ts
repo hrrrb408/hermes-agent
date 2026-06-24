@@ -162,6 +162,128 @@ export interface GovernanceHubCrossLink {
   readonly detail: string
 }
 
+/**
+ * Target A Completion region schema version (Phase 3M).
+ *
+ * Target A is the **dev-only runtime prototype**: Static Descriptor Registry →
+ * Runtime Binding → Fixture Runtime → CLI → read-only Runtime Governance WebUI →
+ * read-only Human Review Governance WebUI → unified read-only Governance Hub. It
+ * is COMPLETE as a dev-only, fixture-only, read-only-governed prototype while
+ * production remains explicitly NO-GO.
+ */
+export const TARGET_A_SCHEMA_VERSION = 'phase-3m-target-a-v1' as const
+
+/** Frozen phase label for the Target A completion region. */
+export const TARGET_A_PHASE = 'Phase 3M' as const
+
+/** Target A lifecycle status — always COMPLETE for this dev-only prototype. */
+export type TargetAStatus = 'COMPLETE'
+
+/** Target B status — always deferred / not started / NO-GO. */
+export type TargetBStatus = 'NOT_STARTED_OR_NO_GO'
+
+/** A capability's contribution to Target A. */
+export type TargetAContribution = 'complete' | 'implemented' | 'partial'
+
+/** A readiness checklist item status — always pass for Target A. */
+export type TargetAReadinessStatus = 'pass'
+
+/**
+ * The conservative Target A completion summary. `targetStatus` is COMPLETE only
+ * in the dev-only sense; every production dimension stays NO-GO, P0 resolved
+ * stays 0, and production readiness is stated as NO-GO (never a percentage that
+ * could be misread as production progress).
+ */
+export interface TargetACompletionSummary {
+  readonly targetName: 'Dev-only Runtime Prototype'
+  readonly targetStatus: TargetAStatus
+  readonly targetScope: 'dev-only / fixture-only / read-only governed'
+  readonly completionLabel: 'Dev-only runtime prototype complete'
+  readonly completionPercentage: 100
+  readonly productionReadiness: 'NO-GO'
+  readonly notProduction: true
+  readonly p0Total: 24
+  readonly p0Resolved: 0
+  readonly p0Partial: 19
+  readonly p0PendingHumanReview: 5
+  readonly routeGovernance: typeof GOVERNANCE_HUB_ROUTE_BASELINE
+  readonly backendRouteChanges: 0
+  readonly productionRuntime: 'NO-GO'
+  readonly webuiExecution: 'NO-GO'
+  readonly approvalActions: 'NO-GO'
+  readonly productionRollout: 'NO-GO'
+  readonly targetBStatus: TargetBStatus
+  readonly targetBReason: string
+}
+
+/** A row in the Target A capability matrix (the full Phase 3 capability chain). */
+export interface TargetACapabilityRow {
+  readonly capability: string
+  readonly phase: string
+  readonly status: string
+  readonly evidence: string
+  readonly tests: string
+  readonly routeImpact: 'No new route'
+  readonly productionImpact: string
+  readonly targetAContribution: TargetAContribution
+  readonly targetBImpact: string
+}
+
+/** A single Target A readiness checklist item (always pass — never production-ready). */
+export interface TargetAReadinessCheckItem {
+  readonly id: string
+  readonly label: string
+  readonly status: TargetAReadinessStatus
+  readonly evidenceSummary: string
+  readonly linkedSection?: GovernanceHubLinkTarget | 'governanceHub'
+  readonly blockingForTargetA: false
+}
+
+/** A row in the Target B deferred matrix — every item stays NO-GO / not-authorized. */
+export interface TargetBDeferredRow {
+  readonly item: string
+  readonly currentStatus: 'NO-GO'
+  readonly whyDeferred: string
+  readonly requiredBeforeStart: string
+  readonly targetAImpact: 'not required'
+  readonly targetBImpact: 'required / future phase'
+}
+
+/** The frozen Target A release-readiness projection. No value implies production. */
+export interface TargetAReleaseReadiness {
+  readonly frontendTests: 'green'
+  readonly backendIsolationTests: 'green'
+  readonly runtimeCliTests: 'green'
+  readonly descriptorRegistryTests: 'green'
+  readonly memoryCheck: 'PASS'
+  readonly routeGovernance: 'unchanged'
+  readonly productionSafety: 'unchanged'
+  readonly worktreeExpectedCleanAfterCommit: true
+  readonly claudeTracked: false
+}
+
+/** The final dev-only prototype acceptance reasoning (why PASS, why not production). */
+export interface TargetAAcceptanceReason {
+  readonly verdict: 'PASS'
+  readonly whyPass: readonly string[]
+  readonly whyNotProduction: readonly string[]
+}
+
+/** The full read-only Target A Completion view model. */
+export interface TargetACompletionViewModel {
+  readonly schemaVersion: typeof TARGET_A_SCHEMA_VERSION
+  readonly phase: typeof TARGET_A_PHASE
+  readonly summary: TargetACompletionSummary
+  readonly completionCards: readonly GovernanceSummaryCard[]
+  readonly capabilityMatrix: readonly TargetACapabilityRow[]
+  readonly readinessChecklist: readonly TargetAReadinessCheckItem[]
+  readonly targetBDeferredMatrix: readonly TargetBDeferredRow[]
+  readonly releaseReadiness: TargetAReleaseReadiness
+  readonly acceptance: TargetAAcceptanceReason
+  readonly boundaryCompleted: readonly string[]
+  readonly boundaryDeferred: readonly string[]
+}
+
 /** The full read-only Governance Hub view model. */
 export interface GovernanceHubViewModel {
   readonly schemaVersion: typeof GOVERNANCE_HUB_SCHEMA_VERSION
@@ -178,4 +300,5 @@ export interface GovernanceHubViewModel {
   readonly allowedUiActions: readonly string[]
   readonly routeGovernanceBaseline: typeof GOVERNANCE_HUB_ROUTE_BASELINE
   readonly backendRoutesChanged: false
+  readonly targetA: TargetACompletionViewModel
 }

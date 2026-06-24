@@ -30,6 +30,16 @@ import {
   GOVERNANCE_HUB_ALLOWED_UI_ACTIONS,
   GOVERNANCE_HUB_STATUS_BADGES,
   GOVERNANCE_HUB_BOUNDARY_ITEMS,
+  TARGET_A_VERSION,
+  TARGET_A_PHASE_LABEL,
+  TARGET_A_COMPLETION_SUMMARY,
+  TARGET_A_CAPABILITY_MATRIX,
+  TARGET_A_READINESS_CHECKLIST,
+  TARGET_B_DEFERRED_MATRIX,
+  TARGET_A_RELEASE_READINESS,
+  TARGET_A_ACCEPTANCE,
+  TARGET_A_BOUNDARY_COMPLETED,
+  TARGET_A_BOUNDARY_DEFERRED,
 } from '@/constants/governanceHubManifest'
 import type {
   GovernanceHubViewModel,
@@ -46,6 +56,11 @@ import type {
   GovernanceSummaryCard,
   GovernanceModuleLifecycle,
   GovernanceHubLinkTarget,
+  TargetACompletionViewModel,
+  TargetACompletionSummary,
+  TargetACapabilityRow,
+  TargetAReadinessCheckItem,
+  TargetBDeferredRow,
 } from '@/types/api/governanceHub'
 
 /**
@@ -77,6 +92,10 @@ const REDACT_STEMS: readonly string[] = [
   'approved_by_ai=true',
   'trust_token=fake',
   'trust_token=',
+  'target_b_authorized=true',
+  'target_b_authorized=',
+  'production_runtime_go=true',
+  'production_runtime_go=',
 ]
 
 /** Mask placeholder emitted by the defense-in-depth redactor. */
@@ -301,6 +320,114 @@ export function buildGovernanceHubSummaryCards(): readonly GovernanceSummaryCard
   ]
 }
 
+// ===========================================================================
+// Target A — Dev-only Runtime Prototype completion projections (Phase 3M).
+//
+// Every projection is pure, deterministic, defense-in-depth redacted, and a
+// defensive copy — mutating a returned Target A value can never reach the frozen
+// canonical manifest, can never flip a frozen NO-GO, can never raise P0 resolved
+// above 0, and can never authorize Target B or production.
+// ===========================================================================
+
+/** Project the frozen Target A completion summary (defensive copy). Deterministic. */
+export function buildTargetACompletionSummary(): TargetACompletionSummary {
+  return { ...TARGET_A_COMPLETION_SUMMARY }
+}
+
+/**
+ * Project the Target A capability matrix (free-text fields defense-in-depth
+ * redacted). Every nested collection is a fresh defensive copy.
+ */
+export function buildTargetACapabilityMatrix(): readonly TargetACapabilityRow[] {
+  return TARGET_A_CAPABILITY_MATRIX.map((r) => ({
+    ...r,
+    capability: redactGovernanceHubValue(r.capability),
+    evidence: redactGovernanceHubValue(r.evidence),
+    tests: redactGovernanceHubValue(r.tests),
+    productionImpact: redactGovernanceHubValue(r.productionImpact),
+    targetBImpact: redactGovernanceHubValue(r.targetBImpact),
+  }))
+}
+
+/** Project the Target A readiness checklist (free-text fields redacted). Defensive copy. */
+export function buildTargetAReadinessChecklist(): readonly TargetAReadinessCheckItem[] {
+  return TARGET_A_READINESS_CHECKLIST.map((i) => ({
+    ...i,
+    label: redactGovernanceHubValue(i.label),
+    evidenceSummary: redactGovernanceHubValue(i.evidenceSummary),
+  }))
+}
+
+/** Project the Target B deferred matrix (free-text fields redacted). Defensive copy. */
+export function buildTargetBDeferredMatrix(): readonly TargetBDeferredRow[] {
+  return TARGET_B_DEFERRED_MATRIX.map((r) => ({
+    ...r,
+    item: redactGovernanceHubValue(r.item),
+    whyDeferred: redactGovernanceHubValue(r.whyDeferred),
+    requiredBeforeStart: redactGovernanceHubValue(r.requiredBeforeStart),
+  }))
+}
+
+/** Project the frozen Target A completion cards. Deterministic. */
+export function buildTargetACompletionCards(): readonly GovernanceSummaryCard[] {
+  const s = TARGET_A_COMPLETION_SUMMARY
+  return [
+    { label: 'Target A Status', value: s.targetStatus, sub: s.completionLabel, tone: 'ok' },
+    { label: 'Scope', value: 'dev-only', sub: s.targetScope, tone: 'info' },
+    { label: 'Fixture runtime', value: 'IMPLEMENTED', sub: 'in-process fixture allowlist', tone: 'ok' },
+    { label: 'CLI', value: 'COMPLETE', sub: 'list/show/run/batch/audit/p0-report', tone: 'ok' },
+    { label: 'WebUI governance', value: 'COMPLETE', sub: 'Runtime / Human Review / Hub', tone: 'ok' },
+    { label: 'P0 resolved', value: s.p0Resolved, sub: 'always 0 — requires human approval', tone: 'warn' },
+    { label: 'Route governance', value: s.routeGovernance, sub: 'unchanged', tone: 'ok' },
+    { label: 'Production runtime', value: s.productionRuntime, sub: 'not authorized', tone: 'danger' },
+    { label: 'Target B', value: 'deferred', sub: s.targetBStatus, tone: 'danger' },
+    { label: 'Production readiness', value: s.productionReadiness, sub: 'not authorized', tone: 'danger' },
+  ]
+}
+
+/**
+ * A deterministic, redacted plain-text snapshot of the Target A completion
+ * summary, used by the Copy control. Pure — operates on the frozen summary only,
+ * performs no network call and writes no file.
+ */
+export function buildTargetASummaryText(): string {
+  const s = TARGET_A_COMPLETION_SUMMARY
+  const lines = [
+    `Hermes Dev WebUI — Target A: Dev-only Runtime Prototype (${TARGET_A_PHASE_LABEL})`,
+    `Target A: ${s.targetStatus} — ${s.completionLabel}.`,
+    `Scope: ${s.targetScope}.`,
+    'READ-ONLY governance surface — no execution, no approval, no authorization, no new route.',
+    '',
+    `Production readiness: ${s.productionReadiness} — this is NOT production authorization.`,
+    `P0 gates: total ${s.p0Total} | resolved ${s.p0Resolved} | partial ${s.p0Partial} | pending human review ${s.p0PendingHumanReview}`,
+    `Route governance: ${s.routeGovernance} (unchanged) | backend route changes: ${s.backendRouteChanges}`,
+    `Production runtime: ${s.productionRuntime} | WebUI execution: ${s.webuiExecution} | approval actions: ${s.approvalActions} | production rollout: ${s.productionRollout}`,
+    `Target B: ${s.targetBStatus} — ${s.targetBReason}`,
+  ]
+  return lines.map((l) => redactGovernanceHubValue(l)).join('\n')
+}
+
+/** Assemble the full read-only Target A Completion view model. Deterministic. */
+export function buildTargetACompletionViewModel(): TargetACompletionViewModel {
+  return {
+    schemaVersion: TARGET_A_VERSION,
+    phase: TARGET_A_PHASE_LABEL,
+    summary: buildTargetACompletionSummary(),
+    completionCards: buildTargetACompletionCards(),
+    capabilityMatrix: buildTargetACapabilityMatrix(),
+    readinessChecklist: buildTargetAReadinessChecklist(),
+    targetBDeferredMatrix: buildTargetBDeferredMatrix(),
+    releaseReadiness: { ...TARGET_A_RELEASE_READINESS },
+    acceptance: {
+      verdict: TARGET_A_ACCEPTANCE.verdict,
+      whyPass: [...TARGET_A_ACCEPTANCE.whyPass].map((l) => redactGovernanceHubValue(l)),
+      whyNotProduction: [...TARGET_A_ACCEPTANCE.whyNotProduction].map((l) => redactGovernanceHubValue(l)),
+    },
+    boundaryCompleted: [...TARGET_A_BOUNDARY_COMPLETED].map((l) => redactGovernanceHubValue(l)),
+    boundaryDeferred: [...TARGET_A_BOUNDARY_DEFERRED].map((l) => redactGovernanceHubValue(l)),
+  }
+}
+
 /** Assemble the full read-only Governance Hub view model. Deterministic. */
 export function buildGovernanceHubViewModel(): GovernanceHubViewModel {
   return {
@@ -318,5 +445,6 @@ export function buildGovernanceHubViewModel(): GovernanceHubViewModel {
     allowedUiActions: buildGovernanceHubAllowedUiActions(),
     routeGovernanceBaseline: GOVERNANCE_HUB_ROUTE_GOVERNANCE_BASELINE,
     backendRoutesChanged: false,
+    targetA: buildTargetACompletionViewModel(),
   }
 }

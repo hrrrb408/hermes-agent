@@ -23,6 +23,7 @@
  */
 import { ref } from 'vue'
 import GovernanceHubBoundaryBanner from './GovernanceHubBoundaryBanner.vue'
+import GovernanceHubTargetACompletion from './GovernanceHubTargetACompletion.vue'
 import GovernanceHubModuleBoard from './GovernanceHubModuleBoard.vue'
 import GovernanceHubRoutePanel from './GovernanceHubRoutePanel.vue'
 import GovernanceHubProductionSafetyPanel from './GovernanceHubProductionSafetyPanel.vue'
@@ -123,6 +124,8 @@ async function onCopySummary(): Promise<void> {
       :items="boundaryItems"
       :decisions="viewModel.decisionRows"
     />
+
+    <GovernanceHubTargetACompletion />
 
     <PluginRuntimeDisabledBanner />
 

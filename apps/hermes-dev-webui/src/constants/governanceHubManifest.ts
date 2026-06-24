@@ -41,6 +41,12 @@ import type {
   GovernanceBoundaryItem,
   GovernanceStatusBadge,
   GOVERNANCE_HUB_ROUTE_BASELINE,
+  TargetACompletionSummary,
+  TargetACapabilityRow,
+  TargetAReadinessCheckItem,
+  TargetBDeferredRow,
+  TargetAReleaseReadiness,
+  TargetAAcceptanceReason,
 } from '@/types/api/governanceHub'
 
 /**
@@ -543,4 +549,651 @@ export const GOVERNANCE_HUB_BOUNDARY_ITEMS: readonly GovernanceBoundaryItem[] = 
   { kind: 'ban', label: 'NO remote registry / NO marketplace / NO external plugin fetch' },
   { kind: 'ban', label: 'NO external network / NO real API key read' },
   { kind: 'ban', label: 'NO new backend route — route counts unchanged' },
+])
+
+// ===========================================================================
+// Target A — Dev-only Runtime Prototype completion (Phase 3M).
+//
+// Target A is the dev-only, fixture-only, read-only-governed runtime prototype
+// capability chain. It is COMPLETE in the dev-only sense ONLY: every capability
+// in the chain is implemented, the governance surfaces are complete, and the
+// tests are green — while production remains explicitly NO-GO. P0 resolved_count
+// stays 0, five gates remain pending human review, no trust token is provisioned,
+// and metadata / AI / placeholder approval cannot advance any gate.
+//
+// These constants are frozen, value-free, and defense-in-depth redacted (see the
+// view-model redactor). They carry no secret, no Authorization / Bearer, no
+// production path, no ~/.hermes path, no dynamic import path, no external URL,
+// no install command, no trust token, and no real PID. Nothing here grants
+// permission, loads a plugin, executes a plugin, approves a gate, authorizes a
+// runtime, resolves a P0 gate, provisions a trust token, or rolls out production.
+// ===========================================================================
+
+/** Schema version (mirrors TARGET_A_SCHEMA_VERSION). */
+export const TARGET_A_VERSION = deepFreeze('phase-3m-target-a-v1')
+
+/** Frozen phase label for the Target A completion region. */
+export const TARGET_A_PHASE_LABEL = deepFreeze('Phase 3M')
+
+/**
+ * The frozen Target A completion summary. `targetStatus` is COMPLETE only as a
+ * dev-only prototype; production readiness is stated as NO-GO (never a
+ * percentage), P0 resolved stays 0, and every production dimension stays NO-GO.
+ */
+export const TARGET_A_COMPLETION_SUMMARY: TargetACompletionSummary = deepFreeze({
+  targetName: 'Dev-only Runtime Prototype',
+  targetStatus: 'COMPLETE',
+  targetScope: 'dev-only / fixture-only / read-only governed',
+  completionLabel: 'Dev-only runtime prototype complete',
+  completionPercentage: 100,
+  productionReadiness: 'NO-GO',
+  notProduction: true,
+  p0Total: 24,
+  p0Resolved: 0,
+  p0Partial: 19,
+  p0PendingHumanReview: 5,
+  routeGovernance: '34/34/5/0/1/1',
+  backendRouteChanges: 0,
+  productionRuntime: 'NO-GO',
+  webuiExecution: 'NO-GO',
+  approvalActions: 'NO-GO',
+  productionRollout: 'NO-GO',
+  targetBStatus: 'NOT_STARTED_OR_NO_GO',
+  targetBReason:
+    'Production runtime and real plugin loading remain explicitly unauthorized.',
+})
+
+/**
+ * The Target A capability matrix — the full Phase 3 capability chain. Every row
+ * contributes to Target A; every row adds no route; every row authorizes no
+ * production. The target-B impact of each is explicit (not required for Target A
+ * / required for a future production phase). Frozen so a governance pass can
+ * never flip a row to authorizing production.
+ */
+export const TARGET_A_CAPABILITY_MATRIX: readonly TargetACapabilityRow[] = deepFreeze([
+  {
+    capability: 'Static Descriptor Registry',
+    phase: 'Phase 3D',
+    status: 'IMPLEMENTED',
+    evidence: 'Descriptor-only plugin descriptor registry — describes descriptors, never loads or executes a plugin.',
+    tests: 'Vitest frontend + Python descriptor-registry isolation green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Not required for Target A; foundation only for a future production review.',
+  },
+  {
+    capability: 'Reviewed Fixture Descriptors',
+    phase: 'Phase 3D',
+    status: 'IMPLEMENTED',
+    evidence: 'Reviewed fixture descriptors available in the static registry with deny-by-default provenance.',
+    tests: 'Descriptor-registry validation + non-execution boundary tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Not required for Target A.',
+  },
+  {
+    capability: 'Sandbox Safety Baseline',
+    phase: 'Phase 3E-H',
+    status: 'IMPLEMENTED',
+    evidence: 'Deterministic string-only evaluators for filesystem, network, production-isolation, and route-governance (34/34/5/0/1/1) boundaries.',
+    tests: 'Safety baseline + route-governance regression green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Baseline only — not an approved production sandbox model.',
+  },
+  {
+    capability: 'P0 Evidence Projection',
+    phase: 'Phase 3E-H',
+    status: 'IMPLEMENTED',
+    evidence: 'Frozen P0 evidence model: 24 gates, 0 resolved, 19 partial, 5 blocked by human review.',
+    tests: 'P0 evidence isolation tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Decision-readiness projection — not a decision.',
+  },
+  {
+    capability: 'Proof Runner',
+    phase: 'Phase 3H',
+    status: 'IMPLEMENTED',
+    evidence: 'Dev-only, fail-closed, in-process sandbox proof skeleton.',
+    tests: 'Proof-runner skeleton tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'implemented',
+    targetBImpact: 'Skeleton only — not an approved worker lifecycle.',
+  },
+  {
+    capability: 'Adversarial Hardening',
+    phase: 'Phase 3H',
+    status: 'IMPLEMENTED',
+    evidence: 'Adversarial tests prove process.spawn is denied, the network is intent-level denied, secrets are redacted, and no unapproved execution path exists.',
+    tests: 'Adversarial failure-mode tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'implemented',
+    targetBImpact: 'Hardening evidence only — not an approved runtime.',
+  },
+  {
+    capability: 'Dev-only Fixture Runtime',
+    phase: 'Phase 3I',
+    status: 'IMPLEMENTED',
+    evidence: 'Reviewed-fixture descriptor registry binds to an in-process fixture allowlist and runs fail-closed without side effects.',
+    tests: 'Runtime MVP + fixture-runtime isolation tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Fixture-only — never loads a real plugin, never reaches production.',
+  },
+  {
+    capability: 'Fixture Runtime Expansion',
+    phase: 'Phase 3I',
+    status: 'IMPLEMENTED',
+    evidence: 'Multi-descriptor batch runs isolated and fail-closed; a redacted audit projects from a run / batch report without re-execution.',
+    tests: 'Runtime expansion + in-memory audit tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'In-memory audit only — no persistent runtime audit store.',
+  },
+  {
+    capability: 'Descriptor Runtime Binding',
+    phase: 'Phase 3I',
+    status: 'IMPLEMENTED',
+    evidence: 'A reviewed descriptor resolves to a fixture binding through the static descriptor registry with deny-by-default provenance.',
+    tests: 'Descriptor runtime integration tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'No source trust granted — not a production loader.',
+  },
+  {
+    capability: 'Runtime Governance CLI',
+    phase: 'Phase 3I',
+    status: 'IMPLEMENTED',
+    evidence: 'Read-only governance report projections: list / show / run / batch / audit / p0-report available on the dev-only CLI.',
+    tests: 'Runtime governance CLI tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Governance report only — never approves a gate or provisions a trust token.',
+  },
+  {
+    capability: 'Runtime Governance CLI Completion',
+    phase: 'Phase 3I',
+    status: 'COMPLETE',
+    evidence: 'The CLI projects the frozen no-side-effect surface and the all-NO-GO authorization verdicts without executing anything.',
+    tests: 'Runtime governance CLI completion tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Not required for Target A beyond the dev-only CLI.',
+  },
+  {
+    capability: 'Runtime Governance WebUI',
+    phase: 'Phase 3J',
+    status: 'COMPLETE',
+    evidence: 'Read-only descriptor registry, binding detail, P0 summary, safety matrix, and CLI examples — rendered with no execution and no new route.',
+    tests: 'Phase 3J frontend panel + view-model + no-leak + routes tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Read-only evidence — not an execution surface.',
+  },
+  {
+    capability: 'Runtime Governance WebUI QA',
+    phase: 'Phase 3J',
+    status: 'COMPLETE',
+    evidence: 'vue-tsc type-check, ESLint, Vitest, and accessibility pass for the read-only runtime governance surface.',
+    tests: 'Phase 3J completion + QA tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'QA evidence only.',
+  },
+  {
+    capability: 'Human Review Governance WebUI',
+    phase: 'Phase 3K',
+    status: 'IMPLEMENTED',
+    evidence: 'Read-only 24-gate picture (19 partial evidence, 5 pending human review), evidence trail, and frozen NO-GO decision.',
+    tests: 'Phase 3K frontend panel + view-model + no-leak + routes tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Decision-readiness surface — not a decision.',
+  },
+  {
+    capability: 'Governance Hub',
+    phase: 'Phase 3L',
+    status: 'IMPLEMENTED',
+    evidence: 'Unified read-only control center aggregating Runtime Governance, Human Review, route, production-safety, evidence, NO-GO, and deferred summaries.',
+    tests: 'Phase 3L frontend panel + view-model + no-leak + routes tests green.',
+    routeImpact: 'No new route',
+    productionImpact: 'No production authorization',
+    targetAContribution: 'complete',
+    targetBImpact: 'Read-only summary — authorizes nothing.',
+  },
+])
+
+/**
+ * The Target A readiness checklist. Every item is pass. None says the system is
+ * production-ready; production readiness remains NO-GO (stated separately).
+ * Frozen so a governance pass can never flip an item to blocking or to a
+ * production-readiness claim.
+ */
+export const TARGET_A_READINESS_CHECKLIST: readonly TargetAReadinessCheckItem[] = deepFreeze([
+  {
+    id: 'descriptorRegistry',
+    label: 'Descriptor registry available',
+    status: 'pass',
+    evidenceSummary: 'Static Descriptor Registry implemented (Phase 3D).',
+    linkedSection: 'governanceHub',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'fixtureAllowlist',
+    label: 'Fixture allowlist available',
+    status: 'pass',
+    evidenceSummary: 'Reviewed fixture descriptors bound to an in-process allowlist (Phase 3I).',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'runtimeBinding',
+    label: 'Runtime binding available',
+    status: 'pass',
+    evidenceSummary: 'Descriptor resolves to a fixture binding with deny-by-default provenance (Phase 3I).',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'cliSurface',
+    label: 'CLI list/show/run/batch/audit/p0-report available',
+    status: 'pass',
+    evidenceSummary: 'Runtime governance CLI complete (Phase 3I).',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'runtimeGovernanceWebui',
+    label: 'WebUI Runtime Governance visible',
+    status: 'pass',
+    evidenceSummary: 'Read-only Runtime Governance section complete (Phase 3J).',
+    linkedSection: 'runtimeGovernance',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'humanReviewWebui',
+    label: 'WebUI Human Review Governance visible',
+    status: 'pass',
+    evidenceSummary: 'Read-only Human Review Governance section implemented (Phase 3K).',
+    linkedSection: 'humanReview',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'governanceHub',
+    label: 'Governance Hub visible',
+    status: 'pass',
+    evidenceSummary: 'Unified read-only Governance Hub implemented (Phase 3L).',
+    linkedSection: 'governanceHub',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'p0Visible',
+    label: 'P0 24/0/19/5 visible',
+    status: 'pass',
+    evidenceSummary: '24 total, 0 resolved, 19 partial, 5 pending human review — frozen and visible.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'routeGovernance',
+    label: 'Route governance unchanged',
+    status: 'pass',
+    evidenceSummary: '34/34/5/0/1/1 — every new-route flag 0.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'productionSafety',
+    label: 'Production safety unchanged',
+    status: 'pass',
+    evidenceSummary: 'No production gateway, state.db, home, or secret access.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'noApprovalControls',
+    label: 'No approval controls',
+    status: 'pass',
+    evidenceSummary: 'No approve / reject / authorize / signoff / resolve / override control.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'noExecutionControls',
+    label: 'No execution controls',
+    status: 'pass',
+    evidenceSummary: 'No run / execute / batch / WebUI execution control.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'noProductionAccess',
+    label: 'No production access',
+    status: 'pass',
+    evidenceSummary: 'No ~/.hermes access (not even metadata), no production state.db access.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'testsGreen',
+    label: 'Test suites green',
+    status: 'pass',
+    evidenceSummary: 'Frontend, backend isolation, CLI, descriptor, and safety tests pass.',
+    blockingForTargetA: false,
+  },
+  {
+    id: 'docsUpdated',
+    label: 'Docs updated',
+    status: 'pass',
+    evidenceSummary: 'Phase 3M Target A completion evidence documented.',
+    blockingForTargetA: false,
+  },
+])
+
+/**
+ * The Target B deferred matrix. Target B is the real production plugin runtime /
+ * real plugin ecosystem. Every item stays NO-GO / not-authorized; each states why
+ * it is deferred and what is required before it could even be considered. Frozen
+ * so a governance pass can never drop or authorize one. Rendered as explanatory
+ * TEXT only — never as an interactive control.
+ */
+export const TARGET_B_DEFERRED_MATRIX: readonly TargetBDeferredRow[] = deepFreeze([
+  {
+    item: 'production plugin runtime',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No approved sandbox / worker lifecycle model; P0-19 pending human review.',
+    requiredBeforeStart: 'Approved runtime sandbox, worker lifecycle, failure-mode plan, and human signoff.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'arbitrary plugin loading',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Only the reviewed fixture allowlist is ever loaded.',
+    requiredBeforeStart: 'A reviewed supply-chain trust model and a plugin review board.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'user-uploaded plugins',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No upload surface exists; uploads are explicitly forbidden.',
+    requiredBeforeStart: 'A signed, reviewed upload pipeline and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'local plugin directory loading outside fixture allowlist',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Only the fixture allowlist binds; directory scanning is forbidden.',
+    requiredBeforeStart: 'A reviewed directory-trust policy and allowlist governance.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'remote registry',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No remote registry integration exists or is reachable.',
+    requiredBeforeStart: 'A pinned, signed registry and an external-network review.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'marketplace',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No marketplace integration exists.',
+    requiredBeforeStart: 'A reviewed marketplace trust model and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'external plugin fetch',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No external fetch path exists; external network is forbidden.',
+    requiredBeforeStart: 'An external-network allowlist review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'provider-generated plugin install',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Providers cannot install plugins.',
+    requiredBeforeStart: 'A provider-trust model and a human review board.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'LLM-generated plugin install',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'LLM-generated installs are explicitly forbidden.',
+    requiredBeforeStart: 'A review board for generated plugins; never AI-only approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'real API key reading',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'The surface reads no real API key; secrets are redacted.',
+    requiredBeforeStart: 'A secret-read policy and an approved secret store.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'external network',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No outbound network path exists.',
+    requiredBeforeStart: 'An external-network allowlist review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'new backend route',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Route baseline frozen at 34/34/5/0/1/1; no route added.',
+    requiredBeforeStart: 'A route-governance review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'approval backend route',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No approve endpoint exists; P0-16 pending human review.',
+    requiredBeforeStart: 'An endpoint-authorization review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'authorization backend route',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No authorize / signoff endpoint exists.',
+    requiredBeforeStart: 'An authorization-endpoint review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'WebUI execution route',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No WebUI execution / run / batch endpoint exists.',
+    requiredBeforeStart: 'An execution-route review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'WebUI run button',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No run control is offered from the browser.',
+    requiredBeforeStart: 'An execution-control review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'WebUI approve / reject / authorize action',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'The WebUI offers no approval control; metadata cannot approve a gate.',
+    requiredBeforeStart: 'An approval-action review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'WebUI production rollout action',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No rollout control exists; no trust token provisioned.',
+    requiredBeforeStart: 'A rollout / rollback / incident plan and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'production rollout',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No approved rollback / incident plan; production access forbidden.',
+    requiredBeforeStart: 'A rollback / incident plan, a trust token, and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'provider write',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Providers cannot perform writes.',
+    requiredBeforeStart: 'A provider-write policy and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'autonomous write',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Autonomous writes are explicitly forbidden.',
+    requiredBeforeStart: 'An autonomous-write policy and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'live provider execution',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Only dev-only fixture execution exists; no live provider execution.',
+    requiredBeforeStart: 'A live-execution review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'shell execution',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'process.spawn is denied; no shell execution path exists.',
+    requiredBeforeStart: 'A shell-execution review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'database mutation outside approved tests',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No production database mutation; only approved test fixtures mutate.',
+    requiredBeforeStart: 'A database-mutation policy and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'production operation',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'No production operation of any kind.',
+    requiredBeforeStart: 'A production-operation review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'CLI input-file reading',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'The CLI does not read input files.',
+    requiredBeforeStart: 'An input-file review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'CLI output-file writing',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'The CLI does not write output files.',
+    requiredBeforeStart: 'An output-file review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+  {
+    item: 'persistent runtime audit store',
+    currentStatus: 'NO-GO',
+    whyDeferred: 'Only an in-memory audit projects from a report; no persistent store.',
+    requiredBeforeStart: 'A persistent-audit review and human approval.',
+    targetAImpact: 'not required',
+    targetBImpact: 'required / future phase',
+  },
+])
+
+/** The frozen Target A release-readiness projection. No value implies production. */
+export const TARGET_A_RELEASE_READINESS: TargetAReleaseReadiness = deepFreeze({
+  frontendTests: 'green',
+  backendIsolationTests: 'green',
+  runtimeCliTests: 'green',
+  descriptorRegistryTests: 'green',
+  memoryCheck: 'PASS',
+  routeGovernance: 'unchanged',
+  productionSafety: 'unchanged',
+  worktreeExpectedCleanAfterCommit: true,
+  claudeTracked: false,
+})
+
+/**
+ * The final dev-only prototype acceptance reasoning. `verdict` is PASS in the
+ * dev-only sense ONLY — the whyPass list states the prototype is complete, the
+ * whyNotProduction list states explicitly why this is NOT production
+ * authorization. Frozen so a governance pass can never flip the verdict or drop a
+ * not-production reason.
+ */
+export const TARGET_A_ACCEPTANCE: TargetAAcceptanceReason = deepFreeze({
+  verdict: 'PASS',
+  whyPass: [
+    'All Target A capabilities in the capability chain are implemented.',
+    'The read-only governance surfaces (Runtime Governance, Human Review, Governance Hub) are complete.',
+    'Frontend, backend isolation, CLI, descriptor, and safety test suites are green.',
+    'Route governance is unchanged (34/34/5/0/1/1).',
+    'Production is untouched — no gateway, state.db, home, or secret access.',
+  ],
+  whyNotProduction: [
+    'P0 resolved_count remains 0.',
+    'Five gates remain pending human review (P0-15 / P0-16 / P0-18 / P0-19 / P0-22).',
+    'Production runtime remains NO-GO.',
+    'No trust token is provisioned.',
+    'No production rollout authorization exists.',
+  ],
+})
+
+/**
+ * The Target A completed boundary — what Target A delivers (dev-only). Rendered as
+ * explanatory TEXT only.
+ */
+export const TARGET_A_BOUNDARY_COMPLETED: readonly string[] = deepFreeze([
+  'dev-only fixture runtime',
+  'static descriptor registry',
+  'CLI',
+  'read-only WebUI governance',
+  'human review read-only visibility',
+  'governance hub',
+  'tests / evidence',
+])
+
+/**
+ * The Target B deferred boundary — what remains NO-GO / not started. Rendered as
+ * explanatory TEXT only — never as an interactive control.
+ */
+export const TARGET_A_BOUNDARY_DEFERRED: readonly string[] = deepFreeze([
+  'production runtime',
+  'arbitrary plugin loading',
+  'real plugin ecosystem',
+  'remote registry',
+  'marketplace',
+  'external network',
+  'real API keys',
+  'WebUI execution',
+  'production rollout',
 ])
