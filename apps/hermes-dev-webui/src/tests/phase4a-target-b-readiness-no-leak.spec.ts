@@ -1,36 +1,42 @@
 /**
- * Phase 3M — Target A Completion no-leak / no-approval HARDENING tests.
+ * Phase 4A — Target B Readiness no-leak / no-approval HARDENING tests.
  *
- * Asserts the read-only Governance Hub surface (now including the Target A
- * Completion region):
- *   - exposes NO approval / authorization / execution / loading controls (no
- *     Approve / Reject / Authorize / Sign off / Resolve / Override / Enable /
- *     Run / Execute / Batch / Upload / Load / Fetch) — only harmless Filter +
- *     Inspect + View-section + Copy UI selects;
- *   - exposes NO input that could carry an API key, secret, file, or arbitrary
- *     JSON for execution (no <input>, no <textarea>, no file picker, no select);
- *   - makes NO network call and NO write/exec API call (no fetch, no XHR);
+ * Asserts the read-only Governance Hub surface (now including the Target B
+ * Readiness region):
+ *   - exposes NO approval / authorization / execution / loading / install /
+ *     fetch / registry / marketplace controls (no Approve / Reject / Authorize
+ *     / Sign off / Resolve / Override / Enable / Run / Execute / Batch / Upload
+ *     / Load / Fetch / Install / Marketplace / API-key / trust-token / signature
+ *     upload control) — only harmless Filter + Inspect + View-section + Copy UI
+ *     selects;
+ *   - exposes NO input that could carry an API key, secret, file, JSON, trust
+ *     token, or signature for execution (no <input>, no <textarea>, no file
+ *     picker, no <select>);
+ *   - renders the WebUI execution flow as disabled TEXT only — never as an
+ *     interactive execute / run button;
+ *   - makes NO network call and NO write/exec API call (no fetch, no XHR)
+ *     during render, filter, inspect, copy, and view-section interactions;
  *   - leaks no secret, callable repr, shell command, SQL statement, production
- *     path, local plugin path, dynamic import path, external URL, download URL,
- *     install command, Authorization header, Bearer token, trust token, Target-B
- *     fake-authorization marker, or raw production state path into the DOM.
+ *     path, production home path, production state path, external URL, download
+ *     URL, install command, Authorization header, Bearer token, registry token,
+ *     real signature material, or Target-B fake-authorization marker into the
+ *     DOM or the copied summary.
  *
  * Tests distinguish interactive BUTTON controls from explanatory TEXT: forbidden
- * action words may appear in descriptive text (the deferred matrix, the boundary
- * panel, the acceptance panel) but never as a button's visible text or accessible
- * name.
+ * action words may appear in descriptive text (the architecture board, the
+ * permission model, the forbidden-actions list, the execution-flow notes) but
+ * never as a button's visible text or accessible name.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
 import GovernanceHubSection from '@/components/devconsole/GovernanceHubSection.vue'
-import { GOVERNANCE_HUB_MODULES } from '@/constants/governanceHubManifest'
 
 /**
  * Forbidden action verbs that must never appear as a BUTTON control (visible text
  * or accessible name). They MAY appear as descriptive explanatory text (the
- * deferred matrix / boundary panel / acceptance panel).
+ * architecture board / permission model / execution-flow notes / forbidden list).
  */
 const FORBIDDEN_BUTTON_WORDS = [
   'approve',
@@ -54,9 +60,10 @@ const FORBIDDEN_BUTTON_WORDS = [
   'start',
   'stop',
   'restart',
+  'marketplace',
 ]
 
-/** Secret / production-path / fake-approval tokens that must never render. */
+/** Secret / production-path / fake-authorization tokens that must never render. */
 const FORBIDDEN_DOM_TOKENS = [
   'sk-',
   'Bearer ',
@@ -77,6 +84,8 @@ const FORBIDDEN_DOM_TOKENS = [
   'route_exception_approved=true',
   'approved_by_ai=true',
   'trust_token=fake',
+  'registry_token=fake',
+  'plugin_signature=fake-private-key',
   'target_b_authorized=true',
   'production_runtime_go=true',
   'pythonImportPath',
@@ -96,38 +105,33 @@ const FORBIDDEN_DOM_TOKENS = [
 
 /** Harmless affordances a button MAY mention (visible text or aria-label). */
 const ALLOWED_BUTTON_WORDS = [
+  // Governance Hub module-board filter buttons (pre-existing Phase 3L region).
   'all modules',
   'complete',
   'implemented',
   'read-only',
-  'inspect',
   'selected',
+  // Target B Readiness region (Phase 4A) filter / inspect / copy / cross-link.
+  'designed',
+  'scaffolded',
+  'inspect',
   'view',
   'copy',
   'copied',
   'unavailable',
   'summary',
-  'target a',
-  // Phase 4A — the Governance Hub now also renders the read-only Target B
-  // Readiness region. These are that region's harmless read-only control words
-  // (its client-side module filter + inspect + copy + cross-link buttons). They
-  // are descriptors only — none is an approval / authorization / execution /
-  // loading verb, so the forbidden-control guard below still rejects every
-  // dangerous action.
-  'target b',
   'readiness',
-  'designed',
-  'scaffolded',
-  'architecture',
-  'permission',
-  'registry',
-  'preview',
-  'disabled',
+  'target b',
+  'target a',
   'runtime governance',
   'human review',
+  'disabled',
+  'preview',
+  // Target A completion region (Phase 3M) cross-link / copy affordances.
+  'modules',
 ]
 
-describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () => {
+describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     window.localStorage.clear()
@@ -147,7 +151,7 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     expect(wrapper.find('input[type="password"]').exists()).toBe(false)
   })
 
-  it('exposes no approval / authorization / execution / loading control on any button', () => {
+  it('exposes no approval / execution / loading / install / marketplace control on any button', () => {
     const wrapper = mount(GovernanceHubSection)
     const buttons = wrapper.findAll('button')
     expect(buttons.length).toBeGreaterThan(0)
@@ -174,7 +178,18 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     }
   })
 
-  it('makes no network call and no write/exec API call on render + Target A interaction', async () => {
+  it('the WebUI execution flow is TEXT-only — there is no execute / run button anywhere', () => {
+    const wrapper = mount(GovernanceHubSection)
+    const flow = wrapper.find('[data-testid="governance-hub-target-b-execution-flow"]')
+    expect(flow.exists()).toBe(true)
+    // The flow is a <ul> of <li>, never buttons.
+    expect(flow.findAll('button').length).toBe(0)
+    expect(flow.findAll('li').length).toBeGreaterThan(0)
+    // And no form / submit control exists for execution.
+    expect(wrapper.find('form').exists()).toBe(false)
+  })
+
+  it('makes no network call during render + Target B interactions', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called by the read-only surface')
     })
@@ -191,24 +206,20 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      // Apply every module filter.
-      for (const key of ['all', 'COMPLETE', 'IMPLEMENTED', 'READ_ONLY']) {
-        await wrapper.find(`[data-testid="governance-hub-module-filter-${key}"]`).trigger('click')
+      const region = wrapper.find('[data-testid="governance-hub-target-b-region"]')
+      // Apply every architecture module filter.
+      for (const key of ['all', 'DESIGNED', 'SCAFFOLDED_DISABLED']) {
+        await region.find(`[data-testid="governance-hub-target-b-module-filter-${key}"]`).trigger('click')
       }
-      await wrapper.find('[data-testid="governance-hub-module-filter-all"]').trigger('click')
       // Inspect every module.
-      for (const m of GOVERNANCE_HUB_MODULES) {
-        await wrapper.find(`[data-testid="governance-hub-module-inspect-${m.key}"]`).trigger('click')
+      for (const m of region.findAll('tbody tr[data-module-key]')) {
+        const key = m.attributes('data-module-key')!
+        await region.find(`[data-testid="governance-hub-target-b-module-inspect-${key}"]`).trigger('click')
       }
-      // Target A region interactions.
-      await wrapper.find('[data-testid="governance-hub-target-a-readiness-link-runtimeGovernanceWebui"]').trigger('click')
-      await wrapper.find('[data-testid="governance-hub-target-a-readiness-link-humanReviewWebui"]').trigger('click')
-      await wrapper.find('[data-testid="governance-hub-target-a-copy-summary"]').trigger('click')
-      // Cross-link navigation + module-board view link + hub copy.
-      await wrapper.find('[data-testid="governance-hub-cross-link-runtimeGovernance"]').trigger('click')
-      await wrapper.find('[data-testid="governance-hub-cross-link-humanReview"]').trigger('click')
-      await wrapper.find('[data-testid="governance-hub-module-link-runtimeGovernanceWebui"]').trigger('click')
-      await wrapper.find('[data-testid="governance-hub-copy-summary"]').trigger('click')
+      // Copy summary + cross-link view buttons.
+      await region.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
+      await region.find('[data-testid="governance-hub-target-b-view-runtime-governance"]').trigger('click')
+      await region.find('[data-testid="governance-hub-target-b-view-human-review"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(fetchSpy).not.toHaveBeenCalled()
@@ -219,14 +230,14 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     }
   })
 
-  it('the full section HTML contains no forbidden secret/path/fake-approval token', () => {
+  it('the full section HTML contains no forbidden secret/path/fake-authorization token', () => {
     const html = mount(GovernanceHubSection).html()
     for (const token of FORBIDDEN_DOM_TOKENS) {
       expect(html, `forbidden token ${token}`).not.toContain(token)
     }
   })
 
-  it('copying the Target A summary never calls fetch even when the clipboard resolves', async () => {
+  it('copying the Target B summary never calls fetch even when the clipboard resolves', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called')
     })
@@ -234,7 +245,7 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      await wrapper.find('[data-testid="governance-hub-target-a-copy-summary"]').trigger('click')
+      await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(writeText).toHaveBeenCalled()
@@ -244,7 +255,7 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     }
   })
 
-  it('copying the Target A summary never calls fetch even when the clipboard rejects', async () => {
+  it('copying the Target B summary never calls fetch even when the clipboard rejects', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called')
     })
@@ -252,23 +263,23 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      await wrapper.find('[data-testid="governance-hub-target-a-copy-summary"]').trigger('click')
+      await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(writeText).toHaveBeenCalled()
       expect(fetchSpy).not.toHaveBeenCalled()
-      const btn = wrapper.find('[data-testid="governance-hub-target-a-copy-summary"]')
+      const btn = wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]')
       expect(btn.attributes('data-copy-state')).toBe('unavailable')
     } finally {
       vi.unstubAllGlobals()
     }
   })
 
-  it('the copied Target A summary contains no secret / forbidden path / fake-approval marker', async () => {
+  it('the copied Target B summary contains no secret / forbidden path / fake-authorization marker', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const wrapper = mount(GovernanceHubSection)
-    await wrapper.find('[data-testid="governance-hub-target-a-copy-summary"]').trigger('click')
+    await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
     await Promise.resolve()
     await Promise.resolve()
     const text = String(writeText.mock.calls[0]![0])
@@ -277,20 +288,16 @@ describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () =>
     }
   })
 
-  it('Target A boundary / acceptance / deferred panels render as TEXT, never as buttons', () => {
+  it('the architecture board / permission model / execution flow render as TEXT, never as approval/execute buttons', () => {
     const wrapper = mount(GovernanceHubSection)
-    const region = wrapper.find('[data-testid="governance-hub-target-a-region"]')
-    // The boundary completed / deferred lists are <ul> of <li>, not buttons.
-    expect(region.find('[data-testid="governance-hub-target-a-boundary-completed"]').findAll('button').length).toBe(0)
-    expect(region.find('[data-testid="governance-hub-target-a-boundary-completed"]').findAll('li').length).toBeGreaterThan(0)
-    expect(region.find('[data-testid="governance-hub-target-a-boundary-deferred"]').findAll('button').length).toBe(0)
-    expect(region.find('[data-testid="governance-hub-target-a-boundary-deferred"]').findAll('li').length).toBeGreaterThan(0)
-    // The acceptance why-pass / why-not-production lists are <ul> of <li>.
-    expect(region.find('[data-testid="governance-hub-target-a-acceptance-why-pass"]').findAll('li').length).toBeGreaterThan(0)
-    expect(region.find('[data-testid="governance-hub-target-a-acceptance-why-pass"]').findAll('button').length).toBe(0)
-    expect(region.find('[data-testid="governance-hub-target-a-acceptance-why-not-production"]').findAll('li').length).toBeGreaterThan(0)
-    expect(region.find('[data-testid="governance-hub-target-a-acceptance-why-not-production"]').findAll('button').length).toBe(0)
-    // The capability matrix is a table — no buttons.
-    expect(region.find('[data-testid="governance-hub-target-a-capability-table"]').findAll('button').length).toBe(0)
+    const region = wrapper.find('[data-testid="governance-hub-target-b-region"]')
+    // The permission table and execution flow have no buttons.
+    expect(region.find('[data-testid="governance-hub-target-b-permission-table"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-execution-flow"]').findAll('button').length).toBe(0)
+    // The enablement blockers and Target A relationship are <ul> of <li>, not buttons.
+    expect(region.find('[data-testid="governance-hub-target-b-enablement-blockers"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-target-a-relationship"] ul').findAll('button').length).toBe(0)
+    // The forbidden-actions list is text only.
+    expect(region.find('[data-testid="governance-hub-target-b-forbidden-actions"]').findAll('button').length).toBe(0)
   })
 })

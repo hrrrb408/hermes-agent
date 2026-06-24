@@ -131,7 +131,14 @@ describe('Governance Hub no-leak / no-approval HARDENING (Phase 3L)', () => {
     const buttons = wrapper.findAll('button')
     // Every button must mention at least one harmless affordance in its text or
     // aria-label, and none offers a forbidden action.
-    const ALLOWED = ['all modules', 'complete', 'implemented', 'read-only', 'inspect', 'selected', 'view', 'copy', 'copied', 'unavailable', 'summary']
+    const ALLOWED = ['all modules', 'complete', 'implemented', 'read-only', 'inspect', 'selected', 'view', 'copy', 'copied', 'unavailable', 'summary',
+      // Phase 4A — the Governance Hub now also renders the read-only Target B
+      // Readiness region. These are that region's harmless read-only control
+      // words (its client-side module filter + inspect + copy + cross-link
+      // buttons). They are descriptors only — none is an approval /
+      // authorization / execution / loading verb, so the forbidden-control guard
+      // still rejects every dangerous action.
+      'target b', 'readiness', 'designed', 'scaffolded', 'architecture', 'permission', 'registry', 'preview', 'disabled', 'runtime governance', 'human review']
     for (const btn of buttons) {
       const label = (btn.text() + ' ' + (btn.attributes('aria-label') ?? '')).toLowerCase()
       expect(ALLOWED.some((a) => label.includes(a)), `unexpected button "${btn.text()}"`).toBe(true)
