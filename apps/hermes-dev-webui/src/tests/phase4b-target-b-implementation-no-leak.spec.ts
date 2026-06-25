@@ -1,8 +1,8 @@
 /**
- * Phase 4A — Target B Readiness no-leak / no-approval HARDENING tests.
+ * Phase 4B — Target B Implementation no-leak / no-approval HARDENING tests.
  *
  * Asserts the read-only Governance Hub surface (now including the Target B
- * Readiness region):
+ * Implementation region):
  *   - exposes NO approval / authorization / execution / loading / install /
  *     fetch / registry / marketplace controls (no Approve / Reject / Authorize
  *     / Sign off / Resolve / Override / Enable / Run / Execute / Batch / Upload
@@ -12,7 +12,7 @@
  *   - exposes NO input that could carry an API key, secret, file, JSON, trust
  *     token, or signature for execution (no <input>, no <textarea>, no file
  *     picker, no <select>);
- *   - renders the WebUI execution flow as disabled TEXT only — never as an
+ *   - renders the execution policy as disabled TEXT only — never as an
  *     interactive execute / run button;
  *   - makes NO network call and NO write/exec API call (no fetch, no XHR)
  *     during render, filter, inspect, copy, and view-section interactions;
@@ -23,9 +23,9 @@
  *     DOM or the copied summary.
  *
  * Tests distinguish interactive BUTTON controls from explanatory TEXT: forbidden
- * action words may appear in descriptive text (the architecture board, the
- * permission model, the forbidden-actions list, the execution-flow notes) but
- * never as a button's visible text or accessible name.
+ * action words may appear in descriptive text (the layer board, the permission
+ * model, the forbidden-actions list, the execution-policy reasons) but never as
+ * a button's visible text or accessible name.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -36,7 +36,7 @@ import GovernanceHubSection from '@/components/devconsole/GovernanceHubSection.v
 /**
  * Forbidden action verbs that must never appear as a BUTTON control (visible text
  * or accessible name). They MAY appear as descriptive explanatory text (the
- * architecture board / permission model / execution-flow notes / forbidden list).
+ * layer board / permission model / execution-policy reasons / forbidden list).
  */
 const FORBIDDEN_BUTTON_WORDS = [
   'approve',
@@ -105,7 +105,7 @@ const FORBIDDEN_DOM_TOKENS = [
 
 /** Harmless affordances a button MAY mention (visible text or aria-label). */
 const ALLOWED_BUTTON_WORDS = [
-  // Governance Hub module-board filter buttons (pre-existing Phase 3L region).
+  // Governance Hub module-board filter buttons (pre-existing regions).
   'all modules',
   'complete',
   'implemented',
@@ -127,24 +127,13 @@ const ALLOWED_BUTTON_WORDS = [
   'human review',
   'disabled',
   'preview',
-  // Target A completion region (Phase 3M) cross-link / copy affordances.
   'modules',
-  // Phase 4B — the Governance Hub now also renders the read-only Target B
-  // Implementation region. These are that region's harmless read-only control
-  // words (its client-side layer filter + inspect + copy buttons). They are
-  // descriptors only — none is an approval / authorization / execution /
-  // loading verb, so the forbidden-control guard still rejects every dangerous
-  // action.
-  'implementation',
+  // Target B Implementation region (Phase 4B) filter / inspect / copy / cross-link.
   'layers',
-  'signature',
-  'sandbox',
-  'approval',
-  'rollback',
-  'audit',
+  'implementation',
 ]
 
-describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => {
+describe('Target B Implementation no-leak / no-approval HARDENING (Phase 4B)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     window.localStorage.clear()
@@ -191,18 +180,22 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     }
   })
 
-  it('the WebUI execution flow is TEXT-only — there is no execute / run button anywhere', () => {
+  it('the execution policy is TEXT-only — there is no execute / run button in the implementation region', () => {
     const wrapper = mount(GovernanceHubSection)
-    const flow = wrapper.find('[data-testid="governance-hub-target-b-execution-flow"]')
-    expect(flow.exists()).toBe(true)
-    // The flow is a <ul> of <li>, never buttons.
-    expect(flow.findAll('button').length).toBe(0)
-    expect(flow.findAll('li').length).toBeGreaterThan(0)
-    // And no form / submit control exists for execution.
-    expect(wrapper.find('form').exists()).toBe(false)
+    const region = wrapper.find('[data-testid="governance-hub-target-b-impl-region"]')
+    const policy = region.find('[data-testid="governance-hub-target-b-impl-execution-policy"]')
+    expect(policy.exists()).toBe(true)
+    // The execution policy panel has no buttons.
+    expect(policy.findAll('button').length).toBe(0)
+    // The permission table and layer board carry no action buttons either.
+    expect(
+      region.find('[data-testid="governance-hub-target-b-impl-permission-table"]').findAll('button').length,
+    ).toBe(0)
+    // No form / submit control exists for execution.
+    expect(region.find('form').exists()).toBe(false)
   })
 
-  it('makes no network call during render + Target B interactions', async () => {
+  it('makes no network call during render + Target B implementation interactions', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called by the read-only surface')
     })
@@ -219,20 +212,20 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      const region = wrapper.find('[data-testid="governance-hub-target-b-region"]')
-      // Apply every architecture module filter.
+      const region = wrapper.find('[data-testid="governance-hub-target-b-impl-region"]')
+      // Apply every implementation layer filter.
       for (const key of ['all', 'DESIGNED', 'SCAFFOLDED_DISABLED']) {
-        await region.find(`[data-testid="governance-hub-target-b-module-filter-${key}"]`).trigger('click')
+        await region.find(`[data-testid="governance-hub-target-b-impl-layer-filter-${key}"]`).trigger('click')
       }
-      // Inspect every module.
-      for (const m of region.findAll('tbody tr[data-module-key]')) {
-        const key = m.attributes('data-module-key')!
-        await region.find(`[data-testid="governance-hub-target-b-module-inspect-${key}"]`).trigger('click')
+      // Inspect every layer.
+      for (const l of region.findAll('tbody tr[data-layer-key]')) {
+        const key = l.attributes('data-layer-key')!
+        await region.find(`[data-testid="governance-hub-target-b-impl-layer-inspect-${key}"]`).trigger('click')
       }
       // Copy summary + cross-link view buttons.
-      await region.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
-      await region.find('[data-testid="governance-hub-target-b-view-runtime-governance"]').trigger('click')
-      await region.find('[data-testid="governance-hub-target-b-view-human-review"]').trigger('click')
+      await region.find('[data-testid="governance-hub-target-b-impl-copy-summary"]').trigger('click')
+      await region.find('[data-testid="governance-hub-target-b-impl-view-runtime-governance"]').trigger('click')
+      await region.find('[data-testid="governance-hub-target-b-impl-view-human-review"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(fetchSpy).not.toHaveBeenCalled()
@@ -250,7 +243,7 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     }
   })
 
-  it('copying the Target B summary never calls fetch even when the clipboard resolves', async () => {
+  it('copying the implementation summary never calls fetch even when the clipboard resolves', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called')
     })
@@ -258,7 +251,7 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
+      await wrapper.find('[data-testid="governance-hub-target-b-impl-copy-summary"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(writeText).toHaveBeenCalled()
@@ -268,7 +261,7 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     }
   })
 
-  it('copying the Target B summary never calls fetch even when the clipboard rejects', async () => {
+  it('copying the implementation summary never calls fetch even when the clipboard rejects', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('fetch must not be called')
     })
@@ -276,23 +269,23 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     try {
       const wrapper = mount(GovernanceHubSection)
-      await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
+      await wrapper.find('[data-testid="governance-hub-target-b-impl-copy-summary"]').trigger('click')
       await Promise.resolve()
       await Promise.resolve()
       expect(writeText).toHaveBeenCalled()
       expect(fetchSpy).not.toHaveBeenCalled()
-      const btn = wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]')
+      const btn = wrapper.find('[data-testid="governance-hub-target-b-impl-copy-summary"]')
       expect(btn.attributes('data-copy-state')).toBe('unavailable')
     } finally {
       vi.unstubAllGlobals()
     }
   })
 
-  it('the copied Target B summary contains no secret / forbidden path / fake-authorization marker', async () => {
+  it('the copied implementation summary contains no secret / forbidden path / fake-authorization marker', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const wrapper = mount(GovernanceHubSection)
-    await wrapper.find('[data-testid="governance-hub-target-b-copy-summary"]').trigger('click')
+    await wrapper.find('[data-testid="governance-hub-target-b-impl-copy-summary"]').trigger('click')
     await Promise.resolve()
     await Promise.resolve()
     const text = String(writeText.mock.calls[0]![0])
@@ -301,16 +294,16 @@ describe('Target B Readiness no-leak / no-approval HARDENING (Phase 4A)', () => 
     }
   })
 
-  it('the architecture board / permission model / execution flow render as TEXT, never as approval/execute buttons', () => {
+  it('the layer board / permission matrix / execution policy render as TEXT, never as approval/execute buttons', () => {
     const wrapper = mount(GovernanceHubSection)
-    const region = wrapper.find('[data-testid="governance-hub-target-b-region"]')
-    // The permission table and execution flow have no buttons.
-    expect(region.find('[data-testid="governance-hub-target-b-permission-table"]').findAll('button').length).toBe(0)
-    expect(region.find('[data-testid="governance-hub-target-b-execution-flow"]').findAll('button').length).toBe(0)
-    // The enablement blockers and Target A relationship are <ul> of <li>, not buttons.
-    expect(region.find('[data-testid="governance-hub-target-b-enablement-blockers"]').findAll('button').length).toBe(0)
-    expect(region.find('[data-testid="governance-hub-target-b-target-a-relationship"] ul').findAll('button').length).toBe(0)
-    // The forbidden-actions list is text only.
-    expect(region.find('[data-testid="governance-hub-target-b-forbidden-actions"]').findAll('button').length).toBe(0)
+    const region = wrapper.find('[data-testid="governance-hub-target-b-impl-region"]')
+    expect(region.find('[data-testid="governance-hub-target-b-impl-permission-table"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-execution-policy"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-signature"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-registry"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-sandbox"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-approval"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-audit-rollback"]').findAll('button').length).toBe(0)
+    expect(region.find('[data-testid="governance-hub-target-b-impl-forbidden-actions"]').findAll('button').length).toBe(0)
   })
 })

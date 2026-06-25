@@ -138,7 +138,14 @@ describe('Governance Hub no-leak / no-approval HARDENING (Phase 3L)', () => {
       // buttons). They are descriptors only — none is an approval /
       // authorization / execution / loading verb, so the forbidden-control guard
       // still rejects every dangerous action.
-      'target b', 'readiness', 'designed', 'scaffolded', 'architecture', 'permission', 'registry', 'preview', 'disabled', 'runtime governance', 'human review']
+      'target b', 'readiness', 'designed', 'scaffolded', 'architecture', 'permission', 'registry', 'preview', 'disabled', 'runtime governance', 'human review',
+      // Phase 4B — the Governance Hub now also renders the read-only Target B
+      // Implementation region. These are that region's harmless read-only control
+      // words (its client-side layer filter + inspect + copy buttons). They are
+      // descriptors only — none is an approval / authorization / execution /
+      // loading verb, so the forbidden-control guard still rejects every
+      // dangerous action.
+      'implementation', 'layers', 'signature', 'sandbox', 'approval', 'rollback', 'audit']
     for (const btn of buttons) {
       const label = (btn.text() + ' ' + (btn.attributes('aria-label') ?? '')).toLowerCase()
       expect(ALLOWED.some((a) => label.includes(a)), `unexpected button "${btn.text()}"`).toBe(true)

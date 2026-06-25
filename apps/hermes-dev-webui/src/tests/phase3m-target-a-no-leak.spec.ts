@@ -125,6 +125,19 @@ const ALLOWED_BUTTON_WORDS = [
   'disabled',
   'runtime governance',
   'human review',
+  // Phase 4B — the Governance Hub now also renders the read-only Target B
+  // Implementation region. These are that region's harmless read-only control
+  // words (its client-side layer filter + inspect + copy buttons). They are
+  // descriptors only — none is an approval / authorization / execution /
+  // loading verb, so the forbidden-control guard still rejects every
+  // dangerous action.
+  'implementation',
+  'layers',
+  'signature',
+  'sandbox',
+  'approval',
+  'rollback',
+  'audit',
 ]
 
 describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () => {

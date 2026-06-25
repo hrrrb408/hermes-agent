@@ -25,6 +25,7 @@ import { ref } from 'vue'
 import GovernanceHubBoundaryBanner from './GovernanceHubBoundaryBanner.vue'
 import GovernanceHubTargetACompletion from './GovernanceHubTargetACompletion.vue'
 import GovernanceHubTargetBReadiness from './GovernanceHubTargetBReadiness.vue'
+import GovernanceHubTargetBImplementation from './GovernanceHubTargetBImplementation.vue'
 import GovernanceHubModuleBoard from './GovernanceHubModuleBoard.vue'
 import GovernanceHubRoutePanel from './GovernanceHubRoutePanel.vue'
 import GovernanceHubProductionSafetyPanel from './GovernanceHubProductionSafetyPanel.vue'
@@ -129,6 +130,8 @@ async function onCopySummary(): Promise<void> {
     <GovernanceHubTargetACompletion />
 
     <GovernanceHubTargetBReadiness />
+
+    <GovernanceHubTargetBImplementation />
 
     <PluginRuntimeDisabledBanner />
 
