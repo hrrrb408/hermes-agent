@@ -138,6 +138,12 @@ const ALLOWED_BUTTON_WORDS = [
   'approval',
   'rollback',
   'audit',
+  // Target B Authorization region (Phase 4C) filter / inspect / copy / cross-link words.
+  'authorization',
+  'authorized',
+  'design',
+  'package',
+  'gate',
 ]
 
 describe('Target A Completion no-leak / no-approval HARDENING (Phase 3M)', () => {

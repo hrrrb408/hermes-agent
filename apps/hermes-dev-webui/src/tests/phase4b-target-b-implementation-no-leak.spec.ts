@@ -131,6 +131,12 @@ const ALLOWED_BUTTON_WORDS = [
   // Target B Implementation region (Phase 4B) filter / inspect / copy / cross-link.
   'layers',
   'implementation',
+  // Target B Authorization region (Phase 4C) filter / inspect / copy / cross-link.
+  'authorization',
+  'authorized',
+  'design',
+  'package',
+  'gate',
 ]
 
 describe('Target B Implementation no-leak / no-approval HARDENING (Phase 4B)', () => {

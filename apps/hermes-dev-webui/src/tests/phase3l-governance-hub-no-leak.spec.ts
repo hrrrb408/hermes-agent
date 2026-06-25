@@ -145,7 +145,9 @@ describe('Governance Hub no-leak / no-approval HARDENING (Phase 3L)', () => {
       // descriptors only — none is an approval / authorization / execution /
       // loading verb, so the forbidden-control guard still rejects every
       // dangerous action.
-      'implementation', 'layers', 'signature', 'sandbox', 'approval', 'rollback', 'audit']
+      'implementation', 'layers', 'signature', 'sandbox', 'approval', 'rollback', 'audit',
+      // Target B Authorization region (Phase 4C) filter / inspect / copy / cross-link words.
+      'authorization', 'authorized', 'design', 'package', 'gate']
     for (const btn of buttons) {
       const label = (btn.text() + ' ' + (btn.attributes('aria-label') ?? '')).toLowerCase()
       expect(ALLOWED.some((a) => label.includes(a)), `unexpected button "${btn.text()}"`).toBe(true)
